@@ -333,6 +333,7 @@
 
 /* settlement stage: two labelled fields, no tile chrome */
 #a-finance-payroll .pay-stage { display: block; padding: 0; margin: 0; border: 0; background: none; }
+#a-finance-payroll .pay-stage.locked { opacity: 1; pointer-events: auto; }
 #a-finance-payroll .pay-stage .stage-hint { margin: 0 0 8px; font-size: 12.5px; }
 #a-finance-payroll .pay-stage .stat-obl-meta { display: grid; grid-template-columns: 1.4fr 1fr; gap: 10px; margin: 0 0 12px; }
 #a-finance-payroll .pay-stage .stat-obl-row { padding: 0; border: 0; background: none; border-radius: 0; gap: 5px; }
@@ -978,7 +979,10 @@
   #a-finance-payroll #payrollScreen1 .pv-s1-period-grid,
   #a-finance-payroll #payrollScreen1 .pv-p1-stats,
   #a-finance-payroll #payrollScreen4 .pv-s4-stats,
-  #a-finance-payroll #payrollScreen5 .pv-s5-grid {
+  #a-finance-payroll #payrollScreen5 .pv-s5-grid,
+  #a-finance-payroll #payrollScreen6 .stat-grid,
+  #a-finance-payroll #payrollScreen6 .pv-s6-tiles,
+  #a-finance-payroll #payrollScreen6 .pv-s6-fields {
     grid-template-columns: minmax(0, 1fr);
   }
   #a-finance-payroll .payroll-step-pill { display: none; }

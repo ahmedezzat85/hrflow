@@ -455,149 +455,141 @@
               <!-- ==================== SCREEN 6: STATUTORY RECONCILIATION ==================== -->
               <div class="payroll-screen-view screen payroll-hidden" id="payrollScreen6">
                 <div class="title-row">
-                  <div class="section-title"><i class="fa-solid fa-landmark"></i> Statutory reconciliation</div>
+                  <div class="section-title">Statutory reconciliation</div>
                   <div style="display:flex; align-items:center; gap:8px;">
                     <span class="p-badge b-blue" id="p6StatutoryBadge">Recorded — Unpaid</span>
                   </div>
                 </div>
 
-
-                <div class="stat-grid">
+                <div class="stat-grid" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-bottom: 14px;">
                   <!-- Card 1: Social Insurance -->
-                  <div class="stat-obl-card si" id="siCard">
-                    <div class="stripe"></div>
-                    <div class="stat-obl-card-body">
-                      <div class="stat-obl-head">
-                        <div>
-                          <div class="stat-obl-title"><i class="fa-solid fa-shield-halved"></i> Social insurance</div>
-                          <div class="stat-obl-sub">Employee and employer contributions</div>
-                        </div>
-                        <span class="stage-badge unrecorded" id="p6SiStatusBadge">Unrecorded</span>
+                  <div class="stat-obl-card si pv-s6-card" id="siCard" style="background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: var(--pv-r, 14px); padding: 14px 16px; display: flex; flex-direction: column; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                      <div style="flex: 1;">
+                        <h2 style="margin: 0; font-family: var(--font-display, Sora, sans-serif); font-size: 15px; font-weight: 700; color: var(--ink-strong);">Social insurance</h2>
+                        <div style="font-size: 12.5px; color: var(--ink-muted);">Employee and employer contributions</div>
                       </div>
+                      <span class="stage-badge unrecorded" id="p6SiStatusBadge">Not recorded</span>
+                    </div>
 
-                      <div class="stat-obl-amount-lbl">Internal estimate (run snapshot)</div>
-                      <div class="stat-obl-amount" style="color:var(--warning)" id="p6SocialInsEstimate">0.00 EGP</div>
-
-                      <div class="stat-obl-meta">
-                        <div class="stat-obl-row">
-                          <span class="k"><i class="fa-solid fa-file-invoice"></i> Portal-confirmed amount</span>
-                          <input type="number" step="0.01" min="0" id="p6SocialInsActual" placeholder="0.00" oninput="PayrollApp.calcScreen6Variance('si')">
-                        </div>
-                        <div class="stat-obl-row">
-                          <span class="k"><i class="fa-solid fa-scale-balanced"></i> Variance vs estimate</span>
-                          <span class="v" id="p6SocialInsVariance">0.00 EGP</span>
-                        </div>
+                    <div class="pv-s6-tiles" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;">
+                      <div class="pv-tile-cell" style="padding: 10px 12px; border-radius: 12px; background: var(--fv-surface-soft); display: flex; flex-direction: column; gap: 2px;">
+                        <span style="font-size: 12px; color: var(--ink-muted);">HRFlow estimate</span>
+                        <span class="stat-obl-amount" style="font-weight: 700; font-size: 14px; color: var(--ink-strong);" id="p6SocialInsEstimate">0.00 EGP</span>
+                        <span style="font-size: 11.5px; color: var(--ink-muted);">run snapshot</span>
                       </div>
+                      <label class="pv-tile-cell" style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 12px; background: var(--fv-surface-soft); font-size: 12px; color: var(--ink-muted);">
+                        <span>Portal-confirmed</span>
+                        <input type="number" step="0.01" min="0" id="p6SocialInsActual" placeholder="From the portal" oninput="PayrollApp.calcScreen6Variance('si')" style="height: 30px; padding: 0 8px; border: 1px solid var(--fv-input-border); border-radius: 8px; font-size: 13.5px; font-weight: 700; color: var(--ink-strong); background: var(--fv-surface);">
+                      </label>
+                      <div class="pv-tile-cell" style="padding: 10px 12px; border-radius: 12px; background: var(--fv-surface-soft); display: flex; flex-direction: column; gap: 2px;">
+                        <span style="font-size: 12px; color: var(--ink-muted);">Variance</span>
+                        <span style="font-weight: 700; font-size: 14px; color: var(--warning-text, var(--warning));" id="p6SocialInsVariance">0.00 EGP</span>
+                        <span style="font-size: 11.5px; color: var(--ink-muted);">confirmed − estimate</span>
+                      </div>
+                    </div>
 
-                      <div class="stat-obl-actions">
-                        <button type="button" class="btn btn-fill" id="btnP6RecordSocialIns" onclick="PayrollApp.recordStatutoryObligation('si')">
-                          <i class="fa-solid fa-file-circle-check"></i> Record obligation
+                    <div class="pay-stage locked" id="p6SiPayStage">
+                      <div class="pv-s6-fields" style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 10px; margin-bottom: 12px;">
+                        <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label);">
+                          Pay from company account
+                          <select id="p6SiDebitAccount" style="height: 36px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; background: var(--fv-surface); color: var(--ink-strong);"></select>
+                        </label>
+                        <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label);">
+                          Settlement date
+                          <input type="date" id="p6SiPaymentDate" placeholder="Pick a date" style="height: 36px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; background: var(--fv-surface); color: var(--ink-strong);">
+                        </label>
+                      </div>
+                      <div class="stat-obl-actions" style="display: flex; justify-content: flex-end; gap: 10px;">
+                        <button type="button" class="btn btn-outline" id="btnP6RecordSocialIns" onclick="PayrollApp.recordStatutoryObligation('si')" style="height: 34px; padding: 0 14px; border-radius: 9px; font-weight: 600; font-size: 13px;">
+                          Record obligation
                         </button>
-                      </div>
-
-                      <div class="pay-stage locked" id="p6SiPayStage">
-                        <div class="stage-hint"><i class="fa-solid fa-circle-info"></i> Record the obligation to unlock payment settlement.</div>
-                        <div class="stat-obl-meta">
-                          <div class="stat-obl-row">
-                            <span class="k"><i class="fa-solid fa-building-columns"></i> Debit from company bank account</span>
-                            <select id="p6SiDebitAccount"></select>
-                          </div>
-                          <div class="stat-obl-row">
-                            <span class="k"><i class="fa-solid fa-calendar-day"></i> Settlement date</span>
-                            <input type="date" id="p6SiPaymentDate">
-                          </div>
-                        </div>
-                        <div class="stat-obl-actions">
-                          <button type="button" class="btn btn-fill" id="btnP6SettleSocialIns" onclick="PayrollApp.settleStatutory('si')" disabled>
-                            <i class="fa-solid fa-money-bill-transfer"></i> Record remittance
-                          </button>
-                        </div>
+                        <button type="button" class="btn btn-fill" id="btnP6SettleSocialIns" onclick="PayrollApp.settleStatutory('si')" disabled style="height: 34px; padding: 0 16px; border-radius: 9px; font-weight: 600; font-size: 13px;">
+                          Record payment
+                        </button>
                       </div>
                     </div>
                   </div>
 
                   <!-- Card 2: Income Tax -->
-                  <div class="stat-obl-card tax" id="taxCard">
-                    <div class="stripe"></div>
-                    <div class="stat-obl-card-body">
-                      <div class="stat-obl-head">
-                        <div>
-                          <div class="stat-obl-title"><i class="fa-solid fa-receipt"></i> Salary income tax</div>
-                          <div class="stat-obl-sub">Withheld from salaries</div>
-                        </div>
-                        <span class="stage-badge unrecorded" id="p6TaxStatusBadge">Unrecorded</span>
+                  <div class="stat-obl-card tax pv-s6-card" id="taxCard" style="background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: var(--pv-r, 14px); padding: 14px 16px; display: flex; flex-direction: column; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                      <div style="flex: 1;">
+                        <h2 style="margin: 0; font-family: var(--font-display, Sora, sans-serif); font-size: 15px; font-weight: 700; color: var(--ink-strong);">Salary income tax</h2>
+                        <div style="font-size: 12.5px; color: var(--ink-muted);">Withheld from salaries</div>
                       </div>
+                      <span class="stage-badge unrecorded" id="p6TaxStatusBadge">Not recorded</span>
+                    </div>
 
-                      <div class="stat-obl-amount-lbl">Internal estimate (run snapshot)</div>
-                      <div class="stat-obl-amount" style="color:#8b5cf6" id="p6TaxEstimate">0.00 EGP</div>
-
-                      <div class="stat-obl-meta">
-                        <div class="stat-obl-row">
-                          <span class="k"><i class="fa-solid fa-file-invoice"></i> Portal-confirmed amount</span>
-                          <input type="number" step="0.01" min="0" id="p6TaxActual" placeholder="0.00" oninput="PayrollApp.calcScreen6Variance('tax')">
-                        </div>
-                        <div class="stat-obl-row">
-                          <span class="k"><i class="fa-solid fa-scale-balanced"></i> Variance vs estimate</span>
-                          <span class="v" id="p6TaxVariance">0.00 EGP</span>
-                        </div>
+                    <div class="pv-s6-tiles" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;">
+                      <div class="pv-tile-cell" style="padding: 10px 12px; border-radius: 12px; background: var(--fv-surface-soft); display: flex; flex-direction: column; gap: 2px;">
+                        <span style="font-size: 12px; color: var(--ink-muted);">HRFlow estimate</span>
+                        <span class="stat-obl-amount" style="font-weight: 700; font-size: 14px; color: var(--ink-strong);" id="p6TaxEstimate">0.00 EGP</span>
+                        <span style="font-size: 11.5px; color: var(--ink-muted);">run snapshot</span>
                       </div>
+                      <label class="pv-tile-cell" style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 12px; background: var(--fv-surface-soft); font-size: 12px; color: var(--ink-muted);">
+                        <span>Portal-confirmed</span>
+                        <input type="number" step="0.01" min="0" id="p6TaxActual" placeholder="From the portal" oninput="PayrollApp.calcScreen6Variance('tax')" style="height: 30px; padding: 0 8px; border: 1px solid var(--fv-input-border); border-radius: 8px; font-size: 13.5px; font-weight: 700; color: var(--ink-strong); background: var(--fv-surface);">
+                      </label>
+                      <div class="pv-tile-cell" style="padding: 10px 12px; border-radius: 12px; background: var(--fv-surface-soft); display: flex; flex-direction: column; gap: 2px;">
+                        <span style="font-size: 12px; color: var(--ink-muted);">Variance</span>
+                        <span style="font-weight: 700; font-size: 14px; color: var(--warning-text, var(--warning));" id="p6TaxVariance">0.00 EGP</span>
+                        <span style="font-size: 11.5px; color: var(--ink-muted);">confirmed − estimate</span>
+                      </div>
+                    </div>
 
-                      <div class="stat-obl-actions">
-                        <button type="button" class="btn btn-fill" id="btnP6RecordTax" onclick="PayrollApp.recordStatutoryObligation('tax')">
-                          <i class="fa-solid fa-file-circle-check"></i> Record obligation
+                    <div class="pay-stage locked" id="p6TaxPayStage">
+                      <div class="pv-s6-fields" style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 10px; margin-bottom: 12px;">
+                        <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label);">
+                          Pay from company account
+                          <select id="p6TaxDebitAccount" style="height: 36px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; background: var(--fv-surface); color: var(--ink-strong);"></select>
+                        </label>
+                        <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label);">
+                          Settlement date
+                          <input type="date" id="p6TaxPaymentDate" placeholder="Pick a date" style="height: 36px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; background: var(--fv-surface); color: var(--ink-strong);">
+                        </label>
+                      </div>
+                      <div class="stat-obl-actions" style="display: flex; justify-content: flex-end; gap: 10px;">
+                        <button type="button" class="btn btn-outline" id="btnP6RecordTax" onclick="PayrollApp.recordStatutoryObligation('tax')" style="height: 34px; padding: 0 14px; border-radius: 9px; font-weight: 600; font-size: 13px;">
+                          Record obligation
                         </button>
-                      </div>
-
-                      <div class="pay-stage locked" id="p6TaxPayStage">
-                        <div class="stage-hint"><i class="fa-solid fa-circle-info"></i> Record the obligation to unlock payment settlement.</div>
-                        <div class="stat-obl-meta">
-                          <div class="stat-obl-row">
-                            <span class="k"><i class="fa-solid fa-building-columns"></i> Debit from company bank account</span>
-                            <select id="p6TaxDebitAccount"></select>
-                          </div>
-                          <div class="stat-obl-row">
-                            <span class="k"><i class="fa-solid fa-calendar-day"></i> Settlement date</span>
-                            <input type="date" id="p6TaxPaymentDate">
-                          </div>
-                        </div>
-                        <div class="stat-obl-actions">
-                          <button type="button" class="btn btn-fill" id="btnP6SettleTax" onclick="PayrollApp.settleStatutory('tax')" disabled>
-                            <i class="fa-solid fa-money-bill-transfer"></i> Record remittance
-                          </button>
-                        </div>
+                        <button type="button" class="btn btn-fill" id="btnP6SettleTax" onclick="PayrollApp.settleStatutory('tax')" disabled style="height: 34px; padding: 0 16px; border-radius: 9px; font-weight: 600; font-size: 13px;">
+                          Record payment
+                        </button>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 <!-- Linked Statutory Obligations Table -->
-                <div class="pv-linked">
-                  <b>Linked statutory obligations recorded for this run</b>
-                  <div class="payroll-table-wrap">
-                    <table class="payroll-worksheet" id="payrollStatutoryRecordsTable">
+                <div class="pv-linked" style="background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: var(--pv-r, 14px); overflow: hidden; margin-bottom: 14px;">
+                  <div style="padding: 12px 16px; border-bottom: 1px solid var(--fv-line);">
+                    <h2 style="margin: 0; font-family: var(--font-display, Sora, sans-serif); font-size: 15px; font-weight: 700; color: var(--ink-strong);">Statutory obligations for this run</h2>
+                  </div>
+                  <div class="payroll-table-wrap" style="border: 0; border-radius: 0; box-shadow: none;">
+                    <table class="payroll-worksheet fv-table" id="payrollStatutoryRecordsTable">
                       <thead>
                         <tr>
-                          <th>ID</th>
-                          <th>Type</th>
-                          <th>Period</th>
-                          <th class="num payroll-num-th">Accrued amount</th>
-                          <th class="num payroll-num-th">Remitted</th>
-                          <th>Status</th>
-                          <th>Notes</th>
+                          <th scope="col" style="text-align: left; padding: 11px 16px;">Obligation</th>
+                          <th scope="col" style="text-align: left; padding: 11px 12px;">Period</th>
+                          <th scope="col" class="num" style="text-align: right; padding: 11px 12px;">Accrued</th>
+                          <th scope="col" class="num" style="text-align: right; padding: 11px 12px;">Remitted</th>
+                          <th scope="col" style="text-align: left; padding: 11px 12px;">Status</th>
+                          <th scope="col" style="text-align: left; padding: 11px 16px;">Notes</th>
                         </tr>
                       </thead>
                       <tbody id="payrollStatutoryRecordsTableBody">
-                        <tr><td colspan="7" class="muted" style="text-align:center; padding:16px;">No statutory obligations recorded yet for this payroll run.</td></tr>
+                        <tr><td colspan="6" class="muted" style="text-align:center; padding:16px;">No statutory obligations recorded yet for this payroll run.</td></tr>
                       </tbody>
                     </table>
                   </div>
                 </div>
 
-                <div class="footer payroll-footer-actions">
-                  <div class="left-info" style="display:none;">Step 6 of 6 — Statutory liabilities reconciled and recorded. Cycle journey complete.</div>
-                  <button class="btn btn-ghost" id="btnP6Back" onclick="PayrollApp.setStep(4)"><i class="fa-solid fa-arrow-left"></i> Back</button>
-                  <button class="btn btn-fill" id="btnP6Finish" onclick="PayrollApp.showPage('list')">
-                    <i class="fa-solid fa-check"></i> Finish and return to runs
+                <div class="footer payroll-footer-actions pv-s6-footer" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-radius: 14px; background: var(--fv-surface); border: 1px solid var(--fv-line);">
+                  <button class="btn btn-ghost" id="btnP6Back" onclick="PayrollApp.setStep(4)" style="height: 34px; padding: 0 12px; border-radius: 9px; font-weight: 600; font-size: 13px;">Back</button>
+                  <span style="font-size: 12.5px; color: var(--ink-muted);">The government portal is the source of truth for statutory amounts. HRFlow keeps its estimate, the confirmed amount and the variance side by side.</span>
+                  <button class="btn btn-fill" id="btnP6Finish" onclick="PayrollApp.showPage('list')" style="height: 34px; padding: 0 16px; border-radius: 9px; font-weight: 600; font-size: 13px;">
+                    Finish and return to runs
                   </button>
                 </div>
               </div>

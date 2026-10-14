@@ -1108,6 +1108,69 @@ for (const theme of ['light', 'dark']) {
       // 4. Style assertions
       await expectStyle(cards.first(), { borderRadius: '14px' });
     });
+
+    test(`S4.7 Step 6 Pay-Run-Statutory in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+      await page.evaluate(() => showSection('a-finance-payroll', 'admin'));
+      await page.click('#btnOpenCurrentCycle');
+      const intSelect = page.locator('#p1IntAccount');
+      const intUsd = intSelect.locator('option:has-text("USD")').first();
+      if (await intUsd.count() > 0) {
+        const val = await intUsd.getAttribute('value');
+        if (val) await intSelect.selectOption(val);
+      }
+      await page.click('#btnP1Proceed');
+      await submitAndApprove(page);
+      await page.click('#btnP3Next');
+      await page.click('#btnP4Next');
+      await page.click('#btnP5ProceedStatutory');
+
+      const s6 = page.locator('#payrollScreen6');
+      await expect(s6).toBeVisible();
+
+      // 1. Two cards: Social insurance and Salary income tax
+      const cards = s6.locator('.pv-s6-card');
+      await expect(cards).toHaveCount(2);
+      await expect(cards.nth(0).locator('h2')).toHaveText('Social insurance');
+      await expect(cards.nth(1).locator('h2')).toHaveText('Salary income tax');
+
+      // 2. Metrics tiles
+      await expect(page.locator('#p6SocialInsEstimate')).toBeVisible();
+      await expect(page.locator('#p6SocialInsActual')).toBeVisible();
+      await expect(page.locator('#p6SocialInsVariance')).toBeVisible();
+      await expect(page.locator('#p6TaxEstimate')).toBeVisible();
+      await expect(page.locator('#p6TaxActual')).toBeVisible();
+      await expect(page.locator('#p6TaxVariance')).toBeVisible();
+
+      // Sub lines
+      await expect(cards.nth(0)).toContainText('run snapshot');
+      await expect(cards.nth(0)).toContainText('confirmed − estimate');
+
+      // 3. Fields & Actions
+      await expect(page.locator('#p6SiDebitAccount')).toBeVisible();
+      await expect(page.locator('#p6SiPaymentDate')).toBeVisible();
+      await expect(page.locator('#btnP6RecordSocialIns')).toBeVisible();
+
+      // 4. Obligations Table
+      const table = page.locator('#payrollStatutoryRecordsTable');
+      await expect(table).toBeVisible();
+      const headers = table.locator('thead th');
+      await expect(headers).toHaveCount(6);
+      await expect(headers.nth(0)).toHaveText('Obligation');
+      await expect(headers.nth(1)).toHaveText('Period');
+      await expect(headers.nth(2)).toHaveText('Accrued');
+      await expect(headers.nth(3)).toHaveText('Remitted');
+      await expect(headers.nth(4)).toHaveText('Status');
+      await expect(headers.nth(5)).toHaveText('Notes');
+
+      // 5. Footer elements
+      await expect(page.locator('#btnP6Back')).toHaveText('Back');
+      await expect(page.locator('#btnP6Finish')).toHaveText('Finish and return to runs');
+      await expect(page.locator('.pv-s6-footer')).toContainText('The government portal is the source of truth');
+
+      // 6. Style assertions
+      await expectStyle(cards.first(), { borderRadius: '14px' });
+    });
   });
 }
 

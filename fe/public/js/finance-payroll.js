@@ -2105,7 +2105,7 @@
         const diff = Math.round((actual - est) * 100) / 100;
         const sign = diff > 0 ? '+' : '';
         varEl.textContent = `${sign}${diff.toFixed(2)} EGP`;
-        varEl.style.color = diff !== 0 ? (diff > 0 ? '#b91c1c' : '#15803d') : '#64748b';
+        varEl.style.color = diff !== 0 ? (diff > 0 ? 'var(--warning-text, var(--warning))' : 'var(--success)') : 'var(--ink-muted)';
       } else if (type === 'tax') {
         const estText = document.getElementById('p6TaxEstimate');
         const input = document.getElementById('p6TaxActual');
@@ -2116,13 +2116,27 @@
         const diff = Math.round((actual - est) * 100) / 100;
         const sign = diff > 0 ? '+' : '';
         varEl.textContent = `${sign}${diff.toFixed(2)} EGP`;
-        varEl.style.color = diff !== 0 ? (diff > 0 ? '#b91c1c' : '#15803d') : '#64748b';
+        varEl.style.color = diff !== 0 ? (diff > 0 ? 'var(--warning-text, var(--warning))' : 'var(--success)') : 'var(--ink-muted)';
       }
     },
 
     async loadLinkedStatutoryObligations() {
       const tbody = document.getElementById('payrollStatutoryRecordsTableBody');
       if (!tbody) return;
+
+      const typeLabel = (t) => {
+        if (!t) return '—';
+        if (t.includes('social_insurance')) return 'Social insurance';
+        if (t.includes('tax')) return 'Salary income tax';
+        return t.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      };
+
+      const statusBadge = (st) => {
+        const s = (st || 'accrued').toLowerCase();
+        if (s === 'remitted') return '<span class="stage-badge settled">Remitted</span>';
+        if (s === 'accrued') return '<span class="stage-badge recorded">Recorded, unpaid</span>';
+        return '<span class="stage-badge unrecorded">Not recorded</span>';
+      };
 
       try {
         if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.listStatutoryObligations === 'function') {
@@ -2133,13 +2147,12 @@
           if (linked.length > 0) {
             tbody.innerHTML = linked.map(o => `
               <tr>
-                <td><strong>#${o.id}</strong></td>
-                <td>${o.obligation_type}</td>
-                <td>${o.period}</td>
-                <td class="num payroll-num">${Number(o.amount_accrued).toFixed(2)} ${o.currency}</td>
-                <td class="num payroll-num">${Number(o.amount_remitted || 0).toFixed(2)} ${o.currency}</td>
-                <td><span class="pill-${o.status === 'remitted' ? 'success' : 'info'} badge-pill">${(o.status || 'accrued').toUpperCase()}</span></td>
-                <td><span style="font-size:0.75rem; color:#64748b;">${o.notes || '—'}</span></td>
+                <td style="padding: 11px 16px; font-weight: 600; color: var(--ink-strong);">${typeLabel(o.obligation_type)}</td>
+                <td style="padding: 11px 12px;">${escapeHtml(o.period || '')}</td>
+                <td class="num payroll-num" style="padding: 11px 12px; text-align: right; font-weight: 600; color: var(--ink-strong);">${o.currency || 'EGP'} ${Number(o.amount_accrued).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td class="num payroll-num" style="padding: 11px 12px; text-align: right; color: var(--ink-muted);">${o.currency || 'EGP'} ${Number(o.amount_remitted || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style="padding: 11px 12px;">${statusBadge(o.status)}</td>
+                <td style="padding: 11px 16px; color: var(--ink-muted);">${escapeHtml(o.notes || '—')}</td>
               </tr>
             `).join('');
 
@@ -2149,6 +2162,8 @@
 
             const siBadge = document.getElementById('p6SiStatusBadge');
             const taxBadge = document.getElementById('p6TaxStatusBadge');
+            const btnRecordSi = document.getElementById('btnP6RecordSocialIns');
+            const btnRecordTax = document.getElementById('btnP6RecordTax');
             const btnSettleSi = document.getElementById('btnP6SettleSocialIns');
             const btnSettleTax = document.getElementById('btnP6SettleTax');
             const siPayStage = document.getElementById('p6SiPayStage');
@@ -2157,41 +2172,53 @@
             if (siObl) {
               if (siBadge) {
                 const isRemitted = siObl.status === 'remitted';
-                siBadge.textContent = isRemitted ? 'Remitted' : 'Recorded';
+                siBadge.textContent = isRemitted ? 'Remitted' : 'Recorded, unpaid';
                 siBadge.className = `stage-badge ${isRemitted ? 'settled' : 'recorded'}`;
               }
               if (siPayStage) siPayStage.classList.remove('locked');
               if (btnSettleSi) {
                 btnSettleSi.disabled = siObl.status === 'remitted';
                 btnSettleSi.setAttribute('data-obl-id', siObl.id);
+                btnSettleSi.style.display = '';
               }
+              if (btnRecordSi) btnRecordSi.style.display = 'none';
             } else {
               if (siBadge) {
-                siBadge.textContent = 'Unrecorded';
+                siBadge.textContent = 'Not recorded';
                 siBadge.className = 'stage-badge unrecorded';
               }
               if (siPayStage) siPayStage.classList.add('locked');
-              if (btnSettleSi) btnSettleSi.disabled = true;
+              if (btnSettleSi) {
+                btnSettleSi.disabled = true;
+                btnSettleSi.style.display = 'none';
+              }
+              if (btnRecordSi) btnRecordSi.style.display = '';
             }
 
             if (taxObl) {
               if (taxBadge) {
                 const isRemitted = taxObl.status === 'remitted';
-                taxBadge.textContent = isRemitted ? 'Remitted' : 'Recorded';
+                taxBadge.textContent = isRemitted ? 'Remitted' : 'Recorded, unpaid';
                 taxBadge.className = `stage-badge ${isRemitted ? 'settled' : 'recorded'}`;
               }
               if (taxPayStage) taxPayStage.classList.remove('locked');
               if (btnSettleTax) {
                 btnSettleTax.disabled = taxObl.status === 'remitted';
                 btnSettleTax.setAttribute('data-obl-id', taxObl.id);
+                btnSettleTax.style.display = '';
               }
+              if (btnRecordTax) btnRecordTax.style.display = 'none';
             } else {
               if (taxBadge) {
-                taxBadge.textContent = 'Unrecorded';
+                taxBadge.textContent = 'Not recorded';
                 taxBadge.className = 'stage-badge unrecorded';
               }
               if (taxPayStage) taxPayStage.classList.add('locked');
-              if (btnSettleTax) btnSettleTax.disabled = true;
+              if (btnSettleTax) {
+                btnSettleTax.disabled = true;
+                btnSettleTax.style.display = 'none';
+              }
+              if (btnRecordTax) btnRecordTax.style.display = '';
             }
 
             const resolved = this.resolvePayrollRunState(this.currentRun, linked);
@@ -2210,11 +2237,19 @@
       const taxBadge = document.getElementById('p6TaxStatusBadge');
       const siPayStage = document.getElementById('p6SiPayStage');
       const taxPayStage = document.getElementById('p6TaxPayStage');
-      if (siBadge) { siBadge.textContent = 'Unrecorded'; siBadge.className = 'stage-badge unrecorded'; }
-      if (taxBadge) { taxBadge.textContent = 'Unrecorded'; taxBadge.className = 'stage-badge unrecorded'; }
+      const btnRecordSi = document.getElementById('btnP6RecordSocialIns');
+      const btnRecordTax = document.getElementById('btnP6RecordTax');
+      const btnSettleSi = document.getElementById('btnP6SettleSocialIns');
+      const btnSettleTax = document.getElementById('btnP6SettleTax');
+      if (siBadge) { siBadge.textContent = 'Not recorded'; siBadge.className = 'stage-badge unrecorded'; }
+      if (taxBadge) { taxBadge.textContent = 'Not recorded'; taxBadge.className = 'stage-badge unrecorded'; }
       if (siPayStage) siPayStage.classList.add('locked');
       if (taxPayStage) taxPayStage.classList.add('locked');
-      tbody.innerHTML = '<tr><td colspan="7" class="muted" style="text-align:center; padding:16px;">No statutory obligations recorded yet for this payroll run.</td></tr>';
+      if (btnRecordSi) btnRecordSi.style.display = '';
+      if (btnRecordTax) btnRecordTax.style.display = '';
+      if (btnSettleSi) { btnSettleSi.disabled = true; btnSettleSi.style.display = 'none'; }
+      if (btnSettleTax) { btnSettleTax.disabled = true; btnSettleTax.style.display = 'none'; }
+      tbody.innerHTML = '<tr><td colspan="6" class="muted" style="text-align:center; padding:16px;">No statutory obligations recorded yet for this payroll run.</td></tr>';
     },
 
     async recordStatutoryObligation(type) {
