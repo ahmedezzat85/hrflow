@@ -63,71 +63,68 @@
 
               <!-- ==================== SCREEN 1: INITIATION ==================== -->
               <div class="payroll-screen-view screen on" id="payrollScreen1">
-                <div class="title-row">
-                  <div class="section-title"><i class="fa-solid fa-flag"></i> Initiation and FX</div>
-                </div>
-
-                <div class="grid">
-                  <div class="inner">
-                    <div class="innerhead"><i class="fa-solid fa-calendar-days"></i> Period and schedule</div>
-                    <div class="form two">
-                      <div class="field"><label for="p1Month">Payroll month</label><input type="month" id="p1Month" value="2026-09" onchange="PayrollApp.onScreen1PeriodChange()" /></div>
-                      <div class="field"><label for="p1PayDate">Pay date</label><input type="date" id="p1PayDate" value="2026-09-30" onchange="PayrollApp.onScreen1PeriodChange()" /></div>
-                      <div class="field"><label for="p1Start">Period start</label><input type="date" id="p1Start" value="2026-09-01" onchange="PayrollApp.onScreen1PeriodChange()" /></div>
-                      <div class="field"><label for="p1End">Period end</label><input type="date" id="p1End" value="2026-09-30" onchange="PayrollApp.onScreen1PeriodChange()" /></div>
+                <div class="pv-s1-grid">
+                  <section class="pv-s1-card">
+                    <h2>Period and pay date</h2>
+                    <div class="pv-s1-period-grid">
+                      <label for="p1Month">Payroll month<input type="month" id="p1Month" value="2026-09" onchange="PayrollApp.onScreen1PeriodChange()" /></label>
+                      <label for="p1PayDate">Pay date<input type="date" id="p1PayDate" value="2026-09-30" onchange="PayrollApp.onScreen1PeriodChange()" /></label>
+                      <label for="p1Start">Period start<input type="date" id="p1Start" value="2026-09-01" onchange="PayrollApp.onScreen1PeriodChange()" /></label>
+                      <label for="p1End">Period end<input type="date" id="p1End" value="2026-09-30" onchange="PayrollApp.onScreen1PeriodChange()" /></label>
                     </div>
-                  </div>
+                  </section>
 
-                  <div class="inner">
-                    <div class="innerhead"><i class="fa-solid fa-building-columns"></i> Target funding accounts</div>
-                    <div class="form">
-                      <div class="field">
-                        <label for="p1ExtAccount">Company funding account (external salaries)</label>
-                        <select id="p1ExtAccount" onchange="PayrollApp.onScreen1AccountChange()"></select>
-                      </div>
-                      <div class="field">
-                        <label for="p1IntAccount">Company funding account (internal salaries)</label>
-                        <select id="p1IntAccount" onchange="PayrollApp.onScreen1AccountChange()"></select>
-                      </div>
-                      <div class="field">
-                        <label>FX conversion rate (USD &rarr; EGP)</label>
-                        <div style="display:flex; gap:8px; align-items:center;">
-                          <input type="number" step="0.0001" min="1" id="p1FxRateInput" placeholder="50.0000" style="width:120px;" />
-                          <button type="button" class="btn btn-fill sm" id="btnP1ApplyFx" onclick="PayrollApp.applyScreen1Fx()">Apply</button>
-                          <button type="button" class="btn sm btn-ghost" id="btnP1ResetFx" onclick="PayrollApp.resetScreen1Fx()">Reset</button>
-                        </div>
-                      </div>
+                  <section class="pv-s1-card">
+                    <h2>Company funding accounts and FX</h2>
+                    <label for="p1ExtAccount">Company account for external salaries<select id="p1ExtAccount" onchange="PayrollApp.onScreen1AccountChange()"></select></label>
+                    <label for="p1IntAccount">Company account for internal salaries<select id="p1IntAccount" onchange="PayrollApp.onScreen1AccountChange()"></select></label>
+                    <div class="pv-fx-field-row">
+                      <label class="pv-fx-lbl" for="p1FxRateInput">
+                        FX rate, USD to EGP
+                        <span class="pv-addon-wrap">
+                          <span class="pv-addon">1 USD =</span>
+                          <input type="number" step="0.0001" min="1" id="p1FxRateInput" aria-label="EGP per USD" placeholder="50.0000" />
+                        </span>
+                      </label>
+                      <button type="button" class="btn btn-fill" id="btnP1ApplyFx" onclick="PayrollApp.applyScreen1Fx()">Apply</button>
+                      <button type="button" class="btn btn-ghost" id="btnP1ResetFx" onclick="PayrollApp.resetScreen1Fx()">Reset</button>
                     </div>
-                  </div>
+                  </section>
                 </div>
 
                 <!-- Screen 1 Preview Summary Cards -->
-                <div class="stats payroll-stats">
-                  <div class="payroll-card payroll-stat stat">
-                    <div class="lbl label">Active Headcount</div>
+                <div class="stats payroll-stats pv-p1-stats">
+                  <div class="payroll-card payroll-stat stat pv-stat-tile">
+                    <div class="lbl label">Eligible employees</div>
                     <div class="val value" id="p1Headcount">0</div>
-                    <div class="hint sub">Eligible employees</div>
+                    <div class="hint sub" id="p1HeadcountSub">active in September</div>
                   </div>
-                  <div class="payroll-card payroll-stat stat">
-                    <div class="lbl label">Est. external base</div>
+                  <div class="payroll-card payroll-stat stat pv-stat-tile">
+                    <div class="lbl label">External base</div>
                     <div class="val value" id="p1ExtEst">$0.00</div>
-                    <div class="hint sub">Bank transfer salaries</div>
+                    <div class="hint sub">bank transfer, USD</div>
                   </div>
-                  <div class="payroll-card payroll-stat stat">
-                    <div class="lbl label">Est. internal base</div>
+                  <div class="payroll-card payroll-stat stat pv-stat-tile">
+                    <div class="lbl label">Internal base</div>
                     <div class="val value" id="p1IntEst">$0.00</div>
-                    <div class="hint sub">Cash disbursement</div>
+                    <div class="hint sub">cash, paid in EGP</div>
                   </div>
-                  <div class="payroll-card payroll-stat stat">
-                    <div class="lbl label">Projected net disbursal</div>
-                    <div class="val value accent" id="p1NetEst">$0.00</div>
-                    <div class="hint sub">Total employee net</div>
+                  <div class="payroll-card payroll-stat stat pv-stat-tile">
+                    <div class="lbl label">Projected net pay</div>
+                    <div class="val value val-accent accent" id="p1NetEst">$0.00</div>
+                    <div class="hint sub">estimate before statutory</div>
                   </div>
                 </div>
 
-                <div class="footer payroll-footer-actions">
+                <div class="pv-bank-warn" id="p1MissingBankWarn" hidden>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h0M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg>
+                  <span><strong id="p1MissingBankCount">1 employee has</strong> no bank details. The run continues; the payment preview flags the row.</span>
+                </div>
+
+                <div class="footer payroll-footer-actions pv-s1-footer">
+                  <span class="pv-s1-footer-note">Saved automatically after every change</span>
                   <button class="btn btn-fill" id="btnP1Proceed" onclick="PayrollApp.proceedFromScreen1()">
-                    Next: Review &amp; Approve <i class="fa-solid fa-arrow-right"></i>
+                    Next: review pay
                   </button>
                 </div>
               </div>

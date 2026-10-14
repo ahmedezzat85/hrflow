@@ -271,9 +271,9 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     await expect(p1Card).toHaveClass(/payroll-stat/);
 
     // Check inner structure
-    await expect(p1Card.locator('.label')).toHaveText('Active Headcount');
+    await expect(p1Card.locator('.label')).toHaveText('Eligible employees');
     await expect(p1Card.locator('.value')).toHaveText('2');
-    await expect(p1Card.locator('.sub')).toHaveText('Eligible employees');
+    await expect(p1Card.locator('.sub')).toHaveText(/active in/);
 
     // Check computed styles on Screen 1 card: border and background
     const p1CardBorder = await p1Card.evaluate((el) => window.getComputedStyle(el).borderStyle);

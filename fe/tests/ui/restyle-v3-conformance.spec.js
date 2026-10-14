@@ -850,6 +850,52 @@ for (const theme of ['light', 'dark']) {
       await expect(steps.nth(4)).toContainText('Confirm payment');
       await expect(steps.nth(5)).toContainText('Statutory payments');
     });
+
+    test(`S4.2 Step 1 Pay-Run-Setup in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+      await page.evaluate(() => showSection('a-finance-payroll', 'admin'));
+      await page.click('#btnOpenCurrentCycle');
+
+      const s1 = page.locator('#payrollScreen1');
+      await expect(s1).toBeVisible();
+
+      // 1. Two top cards
+      const cards = s1.locator('.pv-s1-card');
+      await expect(cards).toHaveCount(2);
+      await expect(cards.nth(0).locator('h2')).toHaveText('Period and pay date');
+      await expect(cards.nth(1).locator('h2')).toHaveText('Company funding accounts and FX');
+
+      // 2. Period inputs
+      await expect(page.locator('#p1Month')).toBeVisible();
+      await expect(page.locator('#p1PayDate')).toBeVisible();
+      await expect(page.locator('#p1Start')).toBeVisible();
+      await expect(page.locator('#p1End')).toBeVisible();
+
+      // 3. Accounts and FX add-on
+      await expect(page.locator('#p1ExtAccount')).toBeVisible();
+      await expect(page.locator('#p1IntAccount')).toBeVisible();
+      await expect(s1.locator('.pv-addon')).toHaveText('1 USD =');
+      await expect(page.locator('#p1FxRateInput')).toBeVisible();
+      await expect(page.locator('#btnP1ApplyFx')).toHaveText('Apply');
+      await expect(page.locator('#btnP1ResetFx')).toHaveText('Reset');
+
+      // 4. Four KPI tiles
+      const tiles = s1.locator('.pv-stat-tile');
+      await expect(tiles).toHaveCount(4);
+      await expect(tiles.nth(0).locator('.label')).toHaveText('Eligible employees');
+      await expect(page.locator('#p1Headcount')).toHaveText('2');
+      await expect(tiles.nth(1).locator('.label')).toHaveText('External base');
+      await expect(tiles.nth(2).locator('.label')).toHaveText('Internal base');
+      await expect(tiles.nth(3).locator('.label')).toHaveText('Projected net pay');
+
+      // 5. Footer note & button
+      await expect(s1.locator('.pv-s1-footer-note')).toHaveText('Saved automatically after every change');
+      await expect(page.locator('#btnP1Proceed')).toContainText('Next: review pay');
+
+      // 6. Style assertions
+      await expectStyle(cards.first(), { borderRadius: '14px' });
+      await expectStyle(tiles.first(), { borderRadius: '14px' });
+    });
   });
 }
 

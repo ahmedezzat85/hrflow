@@ -812,6 +812,29 @@
       if (extEl) extEl.textContent = this.money((p && p.final_ext_total) || t.external);
       if (intEl) intEl.textContent = this.money((p && p.final_int_total) || t.internal);
       if (netEl) netEl.textContent = this.money((p && p.total_net) || t.net);
+
+      const hcSub = document.getElementById('p1HeadcountSub');
+      if (hcSub) {
+        const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        const m = /^(\d{4})-(\d{2})/.exec(String(this.month || ''));
+        hcSub.textContent = `active in ${m ? MONTHS[+m[2] - 1] : this.month}`;
+      }
+
+      const warnEl = document.getElementById('p1MissingBankWarn');
+      const warnCountEl = document.getElementById('p1MissingBankCount');
+      if (warnEl) {
+        const missing = this.missingBankCount();
+        if (missing > 0) {
+          warnEl.hidden = false;
+          warnEl.style.display = 'flex';
+          if (warnCountEl) {
+            warnCountEl.textContent = `${missing} employee${missing > 1 ? 's have' : ' has'}`;
+          }
+        } else {
+          warnEl.hidden = true;
+          warnEl.style.display = 'none';
+        }
+      }
     },
 
     onScreen1PeriodChange() {
