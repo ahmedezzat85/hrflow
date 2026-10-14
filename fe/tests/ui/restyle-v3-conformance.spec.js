@@ -913,10 +913,11 @@ for (const theme of ['light', 'dark']) {
       await expect(card.locator('h2')).toHaveText('Review pay');
       await expect(card.locator('.pv-s2-sub')).toHaveText('One employee per row. Bonus and commission are optional for each month.');
 
-      // 2. Variable pay filter & search input
-      await expect(page.locator('#payrollSearchInput')).toBeVisible();
-      await expect(page.locator('#payrollBonusFilter')).toBeVisible();
-      await expect(page.locator('#payrollBonusFilter option').first()).toHaveText('All variable pay');
+      // 2. Search input (bonus filter removed from UI per user override)
+      const searchInput = page.locator('#payrollSearchInput');
+      await expect(searchInput).toBeVisible();
+      await expect(searchInput).toHaveAttribute('placeholder', 'Search employee name...');
+      await expect(page.locator('#payrollBonusFilter')).toBeHidden();
 
       // 3. Table headers
       const ths = page.locator('#payrollWorksheetTable thead th');

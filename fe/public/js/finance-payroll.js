@@ -1094,10 +1094,10 @@
 
         rowsHtml += `
           <tr>
-            <td class="payroll-name-th" data-label="Employee" style="padding:8px 16px;">
+            <td class="payroll-emp-cell" data-label="Employee" style="padding:8px 16px; text-align:left;">
               <span class="col-id sr-only">${r.id}</span>
               <div class="tname" style="display:flex; align-items:center; gap:10px;">
-                <span class="avatar" style="width:32px; height:32px; flex:none; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; background:var(--brand-wash); color:var(--brand-text);">${inits}</span>
+                <span class="avatar">${inits}</span>
                 <span>
                   <a class="payroll-emp-link" href="${Router.hrefFor('a-employee-detail', 'admin').replace(/\/?$/, '')}/${encodeURIComponent(r.id)}" data-action="open-employee-profile" data-employee-id="${escapeHtml(r.id)}" style="display:block; font-weight:600; color:var(--ink-strong); text-decoration:none;">${escapeHtml(r.name)}</a>
                   <span class="pv-emp-sub" style="font-size:12px; color:var(--ink-muted);">${escapeHtml(r.role || r.dept || 'Employee')}</span>
@@ -1107,10 +1107,10 @@
             <td class="num payroll-num" data-label="External base, USD" style="padding:8px 12px; text-align:right; font-variant-numeric:tabular-nums;">${this.money(r.baseExt)}</td>
             <td class="num payroll-num" data-label="Internal base, USD" style="padding:8px 12px; text-align:right; font-variant-numeric:tabular-nums;">${this.money(r.baseInt)}</td>
             <td class="payroll-bonus-col" data-label="Bonus or commission" style="padding:8px 12px; text-align:left;">
-              ${bonusBadges || '<span class="muted" style="color:var(--ink-muted); font-weight:600;">—</span>'}
+              ${bonusBadges || '<span class="muted" style="color:var(--ink-muted); font-size:14px;">—</span>'}
             </td>
             <td class="num payroll-num strong" data-label="Total pay, gross" style="padding:8px 16px; text-align:right; font-weight:700; color:var(--ink-strong); font-variant-numeric:tabular-nums;">${this.money(r.baseExt + r.baseInt + c.bonusTotal)}</td>
-            <td class="col-actions" style="text-align:center;">
+            <td class="col-actions" style="width:40px; text-align:center; padding:8px 8px;">
               <button type="button" class="plus" id="btnPlus_${r.id}" onclick="PayrollApp.toggleInlineBonus(${r.id}, this)" title="Add bonus / commission">+</button>
             </td>
           </tr>
@@ -1499,7 +1499,7 @@
               <td class="payroll-name-th" data-label="Employee" style="padding:9px 16px;">
                 <span class="col-id sr-only">${l.employee_id}</span>
                 <span style="display:flex; align-items:center; gap:10px;">
-                  <span class="avatar" style="width:32px; height:32px; flex:none; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; background:var(--brand-wash); color:var(--brand-text);">${inits}</span>
+                  <span class="avatar">${inits}</span>
                   <span style="display:block;">
                     <strong style="color:var(--ink-strong); font-weight:600;">${escapeHtml(empName)}</strong>
                     <span class="pv-emp-sub" style="display:block; font-size:12px; color:var(--ink-muted);">${escapeHtml(l.role || l.dept || 'Employee')}</span>
@@ -1542,7 +1542,7 @@
               <td class="payroll-name-th" data-label="Employee" style="padding:9px 16px;">
                 <span class="col-id sr-only">${r.id}</span>
                 <span style="display:flex; align-items:center; gap:10px;">
-                  <span class="avatar" style="width:32px; height:32px; flex:none; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; background:var(--brand-wash); color:var(--brand-text);">${inits}</span>
+                  <span class="avatar">${inits}</span>
                   <span style="display:block;">
                     <strong style="color:var(--ink-strong); font-weight:600;">${escapeHtml(r.name)}</strong>
                     <span class="pv-emp-sub" style="display:block; font-size:12px; color:var(--ink-muted);">${escapeHtml(r.role || r.dept || 'Employee')}</span>
@@ -1698,7 +1698,7 @@
             <td class="col-id payroll-id-th sr-only" style="display:none;" data-label="ID">${r.id}</td>
             <td class="payroll-name-th" data-label="Employee" style="padding:9px 16px;">
               <span style="display:flex; align-items:center; gap:10px;">
-                <span class="avatar" style="width:32px; height:32px; flex:none; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; background:var(--brand-wash); color:var(--brand-text);">${inits}</span>
+                <span class="avatar">${inits}</span>
                 <a class="payroll-emp-link" href="${empProfileHref}" data-action="open-employee-profile" data-employee-id="${escapeHtml(r.id)}" style="color:var(--ink-strong); font-weight:600; text-decoration:none;"><strong>${escapeHtml(r.name)}</strong></a>
               </span>
             </td>

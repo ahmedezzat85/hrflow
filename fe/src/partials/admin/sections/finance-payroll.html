@@ -32,9 +32,9 @@
 
             <!-- ===================== 2. ACTUAL RUN PAGE ===================== -->
             <div class="payroll-card card payroll-hidden" id="payrollViewRun">
-              <div class="runhead">
+              <div class="runhead" style="display:none;">
                 <div class="runhead-right">
-                  <div class="payroll-fx-controls" id="payrollFxControls">
+                  <div class="payroll-fx-controls" id="payrollFxControls" style="display:none;">
                     <button type="button" class="editbtn btn-ghost" id="btnToggleFxOverride" onclick="PayrollApp.toggleFxOverride()" title="Change FX rate">
                       <i class="fa-solid fa-pencil"></i> Change FX rate
                     </button>
@@ -144,8 +144,8 @@
                       <div class="pv-s2-sub">One employee per row. Bonus and commission are optional for each month.</div>
                     </div>
                     <div class="pv-s2-controls">
-                      <input id="payrollSearchInput" placeholder="Search employee name or ID..." oninput="PayrollApp.drawTable()" />
-                      <select id="payrollBonusFilter" onchange="PayrollApp.drawTable()" aria-label="Filter by variable pay">
+                      <input id="payrollSearchInput" placeholder="Search employee name..." oninput="PayrollApp.drawTable()" />
+                      <select id="payrollBonusFilter" onchange="PayrollApp.drawTable()" aria-label="Filter by variable pay" style="display:none;">
                         <option value="all">All variable pay</option>
                         <option value="none">No bonus</option>
                         <option value="Bonus">Bonus</option>
@@ -165,18 +165,18 @@
                           <th scope="col" class="num payroll-num-th" style="text-align: right; padding: 11px 12px;">Internal base, USD</th>
                           <th scope="col" class="payroll-bonus-col" style="text-align: left; padding: 11px 12px;">Bonus or commission</th>
                           <th scope="col" class="num payroll-num-th" style="text-align: right; padding: 11px 16px;">Total pay, gross</th>
-                          <th scope="col" class="col-actions" style="width: 40px; text-align: center;"></th>
+                          <th scope="col" class="col-actions" style="width: 40px; text-align: center; padding: 11px 8px;"></th>
                         </tr>
                       </thead>
                       <tbody id="payrollTableBody"></tbody>
                       <tfoot>
                         <tr style="background: var(--fv-canvas);">
-                          <td id="fTotalsLabel" style="padding: 10px 16px; font-weight: 700; color: var(--ink-strong);">Totals</td>
+                          <td id="fTotalsLabel" style="padding: 10px 16px; font-weight: 700; color: var(--ink-strong); text-align: left;">Totals</td>
                           <td class="num payroll-num" id="fBaseExt" style="padding: 10px 12px; text-align: right; font-weight: 700; color: var(--ink-strong);">-</td>
                           <td class="num payroll-num" id="fBaseInt" style="padding: 10px 12px; text-align: right; font-weight: 700; color: var(--ink-strong);">-</td>
                           <td class="num payroll-num" id="fBonus" style="padding: 10px 12px; font-weight: 700; color: var(--ink-strong); text-align: left;">-</td>
                           <td class="num payroll-num strong accent" id="fNet" style="padding: 10px 16px; text-align: right; font-family: var(--font-display, Sora, sans-serif); font-weight: 700; color: var(--brand-text);">-</td>
-                          <td></td>
+                          <td class="col-actions" style="width: 40px; text-align: center; padding: 10px 8px;"></td>
                         </tr>
                       </tfoot>
                     </table>
