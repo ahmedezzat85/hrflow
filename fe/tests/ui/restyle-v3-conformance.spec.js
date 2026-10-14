@@ -1217,7 +1217,10 @@ for (const theme of ['light', 'dark']) {
       await expect(page.locator('#payrollSettingsSaveBtn')).toHaveText('Save settings');
 
       // 4. Style assertions
+      await expect(page.locator('#payrollViewSettings button:has-text("Back to payroll runs")')).toHaveCount(0);
       await expectStyle(card1, { borderRadius: '14px' });
+      await expectStyle(card1.locator('.payroll-settings-card-header'), { justifyContent: 'flex-start' });
+      await expectStyle(saveBar, { marginTop: '0px' });
 
       // 5. Revert Run modal
       await page.evaluate(() => {

@@ -991,8 +991,8 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     await page.waitForTimeout(100);
     await page.screenshot({ path: `${artifactDir}/payroll-settings-mobile.png`, fullPage: false, animations: 'disabled' });
 
-    // Return to runs
-    await page.click('button:has-text("Back to payroll runs")');
+    // Return to runs via Cancel
+    await page.click('#payrollViewSettings button:has-text("Cancel")');
     await expect(page.locator('#payrollViewList')).toBeVisible();
   });
 });
