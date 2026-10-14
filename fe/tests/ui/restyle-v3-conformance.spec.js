@@ -1236,6 +1236,78 @@ for (const theme of ['light', 'dark']) {
       await page.evaluate(() => window.PayrollApp.closeRevertModal());
       await expect(revertModal).toBeHidden();
     });
+
+    test(`S5.1 Roles page and role modal in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+      await page.click('#systemRailBtn');
+      await page.click('#systemNavRoles');
+      await expect(page.locator('#a-system-roles')).toBeVisible();
+
+      // Table & structure
+      const table = page.locator('#a-system-roles table');
+      await expect(table).toBeVisible();
+      const headers = table.locator('thead th');
+      await expect(headers).toHaveCount(5);
+      await expect(headers.nth(0)).toHaveText('Role');
+      await expect(headers.nth(1)).toHaveText('Description');
+      await expect(headers.nth(2)).toHaveText('Users');
+      await expect(headers.nth(3)).toHaveText('Permissions');
+
+      // Super-Admin row
+      const firstRow = table.locator('tbody tr').first();
+      await expect(firstRow).toContainText('Super-Admin');
+      await expect(firstRow).toContainText('Built-in role');
+
+      // Create role modal
+      await page.click('#btnCreateRole');
+      const roleModal = page.locator('#roleModal');
+      await expect(roleModal).toHaveClass(/active/);
+      await expectStyle(roleModal.locator('.modal'), { width: '700px', borderRadius: '18px' });
+      await expect(page.locator('#roleModalTitle')).toHaveText('Create role');
+      await page.click('#roleModalCancelBtn');
+      await expect(roleModal).not.toHaveClass(/active/);
+    });
+
+    test(`S5.2 Users page and modals in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+      await page.click('#systemRailBtn');
+      await page.click('#systemNavUsers');
+      await expect(page.locator('#a-system-users')).toBeVisible();
+
+      // Table & structure
+      const tbody = page.locator('#systemUsersTableBody');
+      await expect(tbody.locator('tr')).toHaveCount(6);
+
+      const headers = page.locator('#a-system-users table thead th');
+      await expect(headers).toHaveCount(5);
+      await expect(headers.nth(0)).toHaveText('User ↑');
+      await expect(headers.nth(1)).toHaveText('Email');
+      await expect(headers.nth(2)).toHaveText('Role');
+      await expect(headers.nth(3)).toHaveText('Status');
+
+      // Footer
+      const footer = page.locator('#systemUsersFooter');
+      await expect(footer).toBeVisible();
+      await expect(footer).toContainText('users · you cannot archive your own account');
+
+      // External user modal
+      await page.click('#btnAddExternalUser');
+      const extModal = page.locator('#externalUserModal');
+      await expect(extModal).toHaveClass(/active/);
+      await expectStyle(extModal.locator('.modal'), { width: '520px', borderRadius: '18px' });
+      await expect(page.locator('#externalUserModalTitle')).toHaveText('Add external user');
+      await page.click('#extUserCancelBtn');
+      await expect(extModal).not.toHaveClass(/active/);
+
+      // Assign role modal
+      const johnRow = tbody.locator('tr:has-text("John Doe")');
+      await johnRow.locator('.btn-assign-roles').click();
+      const assignModal = page.locator('#assignRolesModal');
+      await expect(assignModal).toHaveClass(/active/);
+      await expectStyle(assignModal.locator('.modal'), { width: '520px', borderRadius: '18px' });
+      await page.click('#assignRolesCancelBtn');
+      await expect(assignModal).not.toHaveClass(/active/);
+    });
   });
 }
 
