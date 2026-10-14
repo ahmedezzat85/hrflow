@@ -1171,6 +1171,67 @@ for (const theme of ['light', 'dark']) {
       // 6. Style assertions
       await expectStyle(cards.first(), { borderRadius: '14px' });
     });
+
+    test(`S4.8 Settings and Revert modal in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+      await page.waitForFunction(() => window.PayrollApp && typeof showSection === 'function');
+      await page.evaluate(() => showSection('a-finance-payroll', 'admin'));
+      await page.click('#payrollNavSettings');
+
+      // 1. Settings view visibility & intro
+      const settings = page.locator('#payrollViewSettings');
+      await expect(settings).toBeVisible();
+      await expect(page.locator('.pv-settings-intro')).toHaveText('Defaults for every new payroll run. The statutory rates are internal estimates; the government portals stay authoritative.');
+
+      // 2. Four Cards
+      const card1 = page.locator('#payrollFundingAccountsSettingsCard');
+      const card2 = page.locator('#payrollMonthFxSettingsCard');
+      const card3 = page.locator('#payrollSocialInsuranceSettingsCard');
+      const card4 = page.locator('#payrollTaxSettingsCard');
+
+      await expect(card1).toBeVisible();
+      await expect(card1.locator('h2')).toHaveText('Company funding accounts');
+      await expect(page.locator('#payrollTargetExternalAccount')).toBeVisible();
+      await expect(page.locator('#payrollTargetInternalAccount')).toBeVisible();
+
+      await expect(card2).toBeVisible();
+      await expect(card2.locator('h2')).toHaveText('Active cycle and FX rate');
+      await expect(page.locator('#payrollSetMonth')).toBeVisible();
+      await expect(page.locator('.pv-affix-prefix')).toHaveText('1 USD =');
+      await expect(page.locator('#payrollSetFxRate')).toBeVisible();
+
+      await expect(card3).toBeVisible();
+      await expect(card3.locator('h2')).toHaveText('Social insurance rates');
+      await expect(page.locator('#payrollEmployeeInsuranceRate')).toBeVisible();
+      await expect(page.locator('#payrollEmployerInsuranceRate')).toBeVisible();
+
+      await expect(card4).toBeVisible();
+      await expect(card4.locator('h2')).toHaveText('Income tax exemption');
+      await expect(page.locator('#payrollTaxLimitP')).toBeVisible();
+      await expect(page.locator('.pv-affix-suffix:has-text("EGP a year")')).toBeVisible();
+
+      // 3. Save bar
+      const saveBar = page.locator('.pv-settings-save-bar');
+      await expect(saveBar).toBeVisible();
+      await expect(saveBar).toContainText('Changes apply to the current and future runs');
+      await expect(page.locator('#payrollSettingsSaveBtn')).toHaveText('Save settings');
+
+      // 4. Style assertions
+      await expectStyle(card1, { borderRadius: '14px' });
+
+      // 5. Revert Run modal
+      await page.evaluate(() => {
+        window.PayrollApp.showPage('run');
+        window.PayrollApp.openRevertModal();
+      });
+      const revertModal = page.locator('#payrollRevertModal');
+      await expect(revertModal).toBeVisible();
+      await expect(page.locator('#payrollRevertTitle')).toContainText('Revert');
+      await expect(page.locator('#payrollRevertReason')).toBeVisible();
+      await expect(revertModal.locator('.modal-body')).toContainText('Required. Saved in the audit log.');
+      await page.evaluate(() => window.PayrollApp.closeRevertModal());
+      await expect(revertModal).toBeHidden();
+    });
   });
 }
 

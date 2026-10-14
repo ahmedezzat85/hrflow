@@ -2627,6 +2627,10 @@
         this.drawFundingAccounts();
         const setFxInput = document.getElementById('payrollSetFxRate');
         if (setFxInput) setFxInput.value = this.fxRateValue || '';
+        const monthBadge = document.getElementById('payrollSettingsMonthBadge');
+        if (monthBadge) {
+          monthBadge.textContent = this.formatMonthName(this.month) || 'Current cycle';
+        }
 
         // Populate Social Insurance rates
         if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.getPayrollSettings === 'function') {
@@ -2692,9 +2696,21 @@
       }
     },
 
+    formatMonthName(ym) {
+      const m = /^(\d{4})-(\d{2})/.exec(String(ym || ''));
+      const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      return m ? `${MONTHS[+m[2] - 1]} ${m[1]}` : String(ym || '');
+    },
+
     openRevertModal() {
       const reason = document.getElementById('payrollRevertReason');
       if (reason) reason.value = '';
+      const title = document.getElementById('payrollRevertTitle');
+      if (title) {
+        const m = (this.currentRun && (this.currentRun.month || this.currentRun.period_month)) || this.month || '';
+        const formatted = this.formatMonthName(m);
+        title.textContent = formatted ? `Revert ${formatted} to draft?` : 'Revert run to draft?';
+      }
       openModal('payrollRevertModal');
       if (reason) setTimeout(() => reason.focus(), 50);
     },

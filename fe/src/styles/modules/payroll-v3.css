@@ -972,6 +972,148 @@
   border: 1px solid var(--fv-line);
 }
 
+/* S4.8 Payroll Settings */
+#a-finance-payroll #payrollViewSettings {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+#a-finance-payroll #payrollViewSettings.payroll-hidden {
+  display: none !important;
+}
+#a-finance-payroll .pv-settings-intro-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+#a-finance-payroll .pv-settings-intro {
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+#a-finance-payroll .payroll-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+#a-finance-payroll .payroll-settings-card {
+  background: var(--fv-surface);
+  border: 1px solid var(--fv-line);
+  border-radius: var(--pv-r, 14px);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+#a-finance-payroll .payroll-settings-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+#a-finance-payroll .payroll-settings-card-header h2 {
+  margin: 0;
+  font-family: var(--font-display, Sora, sans-serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink-strong);
+}
+#a-finance-payroll .payroll-settings-card-header .pv-card-sub {
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+#a-finance-payroll .pv-card-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+#a-finance-payroll .pv-card-icon.blue { background: var(--fv-area-blue-bg); color: var(--fv-area-blue-ink); }
+#a-finance-payroll .pv-card-icon.violet { background: var(--fv-area-violet-bg); color: var(--fv-area-violet-ink); }
+#a-finance-payroll .pv-card-icon.teal { background: var(--fv-area-teal-bg); color: var(--fv-area-teal-ink); }
+#a-finance-payroll .pv-card-icon.ochre { background: var(--fv-area-ochre-bg); color: var(--fv-area-ochre-ink); }
+
+#a-finance-payroll .payroll-settings-card label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-label);
+}
+#a-finance-payroll .payroll-settings-card label .pv-subhint {
+  font-weight: 400;
+  color: var(--ink-muted);
+  font-size: 12px;
+}
+#a-finance-payroll .payroll-settings-card select,
+#a-finance-payroll .payroll-settings-card input {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--fv-input-border);
+  border-radius: 9px;
+  font-size: 13.5px;
+  background: var(--fv-surface);
+  color: var(--ink-strong);
+}
+#a-finance-payroll .payroll-settings-card .pv-callout {
+  padding: 9px 12px;
+  border-radius: 11px;
+  background: var(--fv-surface-soft);
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+#a-finance-payroll .pv-input-affix {
+  display: flex;
+}
+#a-finance-payroll .pv-affix-prefix {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  border: 1px solid var(--fv-input-border);
+  border-right: 0;
+  border-radius: 9px 0 0 9px;
+  background: var(--fv-surface-soft);
+  color: var(--ink-muted);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+#a-finance-payroll .pv-input-affix input.has-prefix {
+  border-radius: 0 9px 9px 0;
+}
+#a-finance-payroll .pv-input-affix input.has-suffix {
+  border-right: 0;
+  border-radius: 9px 0 0 9px;
+}
+#a-finance-payroll .pv-affix-suffix {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  border: 1px solid var(--fv-input-border);
+  border-radius: 0 9px 9px 0;
+  background: var(--fv-surface-soft);
+  color: var(--ink-muted);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+#a-finance-payroll .pv-settings-save-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: var(--fv-surface);
+  border: 1px solid var(--fv-line);
+}
 
 /* Phone: keep the compact "Step N of 6" stepper and let banners/footers wrap */
 @media (max-width: 768px) {
@@ -982,8 +1124,14 @@
   #a-finance-payroll #payrollScreen5 .pv-s5-grid,
   #a-finance-payroll #payrollScreen6 .stat-grid,
   #a-finance-payroll #payrollScreen6 .pv-s6-tiles,
-  #a-finance-payroll #payrollScreen6 .pv-s6-fields {
+  #a-finance-payroll #payrollScreen6 .pv-s6-fields,
+  #a-finance-payroll .payroll-settings-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+  #a-finance-payroll .pv-settings-save-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
   }
   #a-finance-payroll .payroll-step-pill { display: none; }
   #a-finance-payroll .payroll-stepper { padding: 10px 14px; }

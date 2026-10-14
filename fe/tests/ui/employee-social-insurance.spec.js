@@ -98,7 +98,7 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
     // Verify Social Insurance Contribution Rates card exists
     const rateCard = page.locator('#payrollSocialInsuranceSettingsCard');
     await expect(rateCard).toBeVisible();
-    await expect(rateCard).toContainText('Social Insurance Contribution Rates');
+    await expect(rateCard).toContainText('Social insurance rates');
 
     const empRateInput = page.locator('#payrollEmployeeInsuranceRate');
     const empyrRateInput = page.locator('#payrollEmployerInsuranceRate');
@@ -127,9 +127,9 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
 
     // Verify Screen 3 table headers contain statutory Social Insurance snapshots
     const tableHeader = page.locator('#payrollProcessingTable thead');
-    await expect(tableHeader).toContainText('Emp SI (EGP)');
-    await expect(tableHeader).toContainText('Empr SI (EGP)');
-    await expect(tableHeader).toContainText('Total SI (EGP)');
+    await expect(tableHeader).toContainText('Employee SI, EGP');
+    await expect(tableHeader).toContainText('Employer SI, EGP');
+    await expect(tableHeader).toContainText('Total SI, EGP');
   });
 
   test('Regression fix: Employee profile card renders with header and compensation grid', async ({ page }) => {
