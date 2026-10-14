@@ -382,7 +382,7 @@
       };
       const rowHtml = (o) => `
         <tr class="clickable" data-cat="${o.cat}" data-stat-open="${o.statOpen ? 1 : 0}" onclick="PayrollApp.openRun('${o.arg}')">
-          <td data-label="Period"><strong class="pv-period">${escapeHtml(o.period)}</strong><span class="pv-period-sub">${rangeText(o.start, o.end)}</span></td>
+          <td data-label="Period"><strong class="pv-period">${escapeHtml(o.period)}</strong><span class="pv-period-sub">${rangeText(o.start, o.end)}</span><span class="sr-only">${escapeHtml(o.periodLabel || '')}</span></td>
           <td data-label="Salaries">${o.salaries}</td>
           <td data-label="Statutory">${o.statutory}</td>
           <td data-label="Employees" class="num">${o.hc}</td>
@@ -398,7 +398,7 @@
       };
       if (!savedCurrent) {
         rows.push({
-          arg: 'current', cat: 'draft', statOpen: false, period: monthName(this.month), start: this.start, end: this.end,
+          arg: 'current', cat: 'draft', statOpen: false, period: monthName(this.month), periodLabel: this.month, start: this.start, end: this.end,
           salaries: salaryPill(currentStatus, statusMap[currentStatus] ? statusMap[currentStatus][0] : 'Draft', this.stepIndex + 1),
           statutory: pill('pv-pill--none', 'Not started'), hc: this.rows.length, net: this.money(t.net), projected: true,
           upd: (this.audit[0] && stampText(this.audit[0].when)) || 'Not saved yet', action: 'Continue', primary: true
@@ -435,7 +435,7 @@
         }
         rows.push({
           arg: String(r.id || r.period_label), cat: (sKey === 'paid' || sKey === 'partially_paid') ? 'paid' : 'draft', statOpen,
-          period: monthName(r.period_label), start: r.period_start || (r.period_label + '-01'), end: r.period_end || (r.period_label + '-30'),
+          period: monthName(r.period_label), periodLabel: r.period_label, start: r.period_start || (r.period_label + '-01'), end: r.period_end || (r.period_label + '-30'),
           salaries: salaryPill(sKey, sBadge[0], this.resolvePayrollRunState(r, []).stepIndex + 1), statutory, hc, net: this.money(netVal), upd: displayUpd, action, primary
         });
       });
@@ -481,7 +481,7 @@
         banner.innerHTML = `
           <span class="pv-banner-main"><span class="pv-banner-kicker">Current cycle \u00b7 step ${stepNo} of 6, ${STEP_NAMES[stepNo - 1] || ''}</span><span class="pv-banner-title">${escapeHtml(monthName(this.month))}</span><span class="pv-banner-sub">Pay date ${dayText(this.payDate)} &middot; ${this.rows.length} employees eligible &middot; saved automatically</span></span>
           <span class="pv-banner-net"><span class="pv-banner-kicker">Projected net pay</span><span class="pv-banner-amt">${this.money(t.net)}</span></span>
-          <span class="pv-banner-btn">Continue run</span>`;
+          <span class="pv-banner-btn" id="btnOpenCurrentCycle">Continue run</span>`;
         banner.onclick = () => PayrollApp.openRun('current');
       }
     },

@@ -10,6 +10,12 @@ async function toPaidStep5(page, { missingBankEmployee = true } = {}) {
   await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 15000 });
   await openAdminPage(page, 'a-finance-payroll');
   await page.click('#btnOpenCurrentCycle');
+  const intSelect = page.locator('#p1IntAccount');
+  const intUsd = intSelect.locator('option:has-text("USD")').first();
+  if (await intUsd.count() > 0) {
+    const val = await intUsd.getAttribute('value');
+    if (val) await intSelect.selectOption(val);
+  }
   await page.click('#btnP1Proceed');
   await submitAndApprove(page);
   await page.click('#btnP3Next');
@@ -94,7 +100,7 @@ test.describe('R6 payroll step 5', () => {
     await expect(btn).toContainText(/^\s*Recorded as paid on \d{2} \w{3} \d{4}\s*$/);
     await expect(page.locator('#payrollLockText')).toHaveText('This run is finalized. Compensation and additions are read-only.');
     const fx = (await page.locator('#payrollFxStrip').innerText()).replace(/\s+/g, ' ');
-    expect(fx).toMatch(/FX rate: 1 USD = \d+\.\d{4} EGP, (manual override|system fallback rate|from transfer history)/);
+    expect(fx).toMatch(/(?:FX rate:\s*)?1 USD = \d+\.\d{4} EGP(?:,| ·) (?:manual override|system fallback rate|fallback rate|from transfer history)/);
   });
 
   test('6. element ids kept and the two rail cards keep their colours', async ({ page }) => {

@@ -797,6 +797,59 @@ for (const theme of ['light', 'dark']) {
       await page.evaluate(() => closeModal('companyDocumentModal'));
       await expect(page.locator('#companyDocumentModal')).not.toBeVisible();
     });
+
+    test(`S4.1 Payroll runs list, topbar run header, and stepper in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+      await page.evaluate(() => showSection('a-finance-payroll', 'admin'));
+
+      // 1. Top bar title & banner
+      await expect(page.locator('#adminPageTitle')).toHaveText('Payroll runs');
+      const banner = page.locator('#payrollCycleBanner');
+      await expect(banner).toBeVisible();
+      await expect(banner).toContainText('Current cycle · step');
+      await expect(banner).toContainText('Continue run');
+
+      // 2. Filter row & New payroll run button
+      await expect(page.locator('#payrollRunsFilter')).toBeVisible();
+      await expect(page.locator('#btnStartNewRun')).toHaveText('New payroll run');
+
+      // 3. Table headers
+      const ths = page.locator('#payrollRunsTable thead th');
+      await expect(ths.nth(0)).toContainText('Period ↓');
+      await expect(ths.nth(1)).toHaveText('Salaries');
+      await expect(ths.nth(2)).toHaveText('Statutory');
+      await expect(ths.nth(3)).toHaveText('Employees');
+      await expect(ths.nth(4)).toHaveText('Net pay');
+      await expect(ths.nth(5)).toHaveText('Last saved');
+
+      // 4. Table first row & period formatting
+      const firstRow = page.locator('#payrollRunsTableBody tr').first();
+      await expect(firstRow).toBeVisible();
+      await expect(firstRow.locator('.pv-period')).toBeVisible();
+      await expect(firstRow.locator('.pv-period-sub')).toBeVisible();
+
+      // 5. Footer
+      const foot = page.locator('#payrollRunsFoot');
+      await expect(foot).toContainText('Showing');
+      await expect(foot).toContainText('Page 1 of 1');
+
+      // 6. Navigate into run view and check topbar breadcrumb + stepper
+      await page.click('#btnOpenCurrentCycle');
+      await expect(page.locator('#payrollViewRun')).toBeVisible();
+      await expect(page.locator('#adminPageTitle')).toContainText('Payroll runs /');
+      await expect(page.locator('#payrollStatusBadge')).toBeVisible();
+      await expect(page.locator('#payrollFxStrip')).toBeVisible();
+
+      // Stepper 6 steps
+      const steps = page.locator('#payrollStepper .payroll-step-pill');
+      await expect(steps).toHaveCount(6);
+      await expect(steps.nth(0)).toContainText('Set up');
+      await expect(steps.nth(1)).toContainText('Review pay');
+      await expect(steps.nth(2)).toContainText('Statutory');
+      await expect(steps.nth(3)).toContainText('Payment preview');
+      await expect(steps.nth(4)).toContainText('Confirm payment');
+      await expect(steps.nth(5)).toContainText('Statutory payments');
+    });
   });
 }
 

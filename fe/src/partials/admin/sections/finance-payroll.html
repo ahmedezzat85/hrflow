@@ -3,7 +3,10 @@
 
             <!-- ===================== 1. RUNS LIST / HISTORY PAGE ===================== -->
             <div class="payroll-card card" id="payrollViewList">
-              <a class="pv-banner" id="payrollCycleBanner" hidden></a>
+              <span id="payrollRunsCount" style="display:none;" aria-hidden="true"></span>
+              <a class="pv-banner" id="payrollCycleBanner" hidden>
+                <span class="pv-banner-btn" id="btnOpenCurrentCycle">Continue run</span>
+              </a>
               <div class="pv-filterrow">
                 <div class="pv-fpgroup" id="payrollRunsFilter" role="group" aria-label="Filter by status"></div>
                 <button type="button" class="btn btn-outline" id="btnStartNewRun" onclick="PayrollApp.startNewRun()">New payroll run</button>
