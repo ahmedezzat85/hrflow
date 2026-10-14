@@ -131,67 +131,75 @@
 
               <!-- ==================== SCREEN 2: APPROVE & ADJUSTMENTS ==================== -->
               <div class="payroll-screen-view screen payroll-hidden" id="payrollScreen2">
-                <div class="title-row">
-                  <div class="section-title"><i class="fa-solid fa-list-check"></i> Compensation review</div>
-                </div>
-
                 <!-- Blocking readiness issues: submission is disabled until these are fixed -->
                 <div class="payroll-readiness" id="p2ReadinessPanel" role="alert" hidden></div>
 
-                <!-- 4 KPI Stat Cards -->
-                <div class="stats payroll-stats" id="payrollStatsGrid"></div>
+                <!-- 4 KPI Stat Cards preserved in DOM for compatibility -->
+                <div class="stats payroll-stats" id="payrollStatsGrid" style="display:none;"></div>
 
-                <!-- Filter Toolbar -->
-                <div class="toolbar-row payroll-toolbar">
-                  <input id="payrollSearchInput" placeholder="Search employee name or ID..." oninput="PayrollApp.drawTable()" />
-                  <select id="payrollBonusFilter" onchange="PayrollApp.drawTable()">
-                    <option value="all">All bonus types</option>
-                    <option value="none">No bonus</option>
-                    <option value="Bonus">Bonus</option>
-                    <option value="Sales Commission">Sales Commission</option>
-                    <option value="Support Commission">Support Commission</option>
-                  </select>
+                <section class="pv-s2-card">
+                  <div class="pv-s2-card-header">
+                    <div>
+                      <h2>Review pay</h2>
+                      <div class="pv-s2-sub">One employee per row. Bonus and commission are optional for each month.</div>
+                    </div>
+                    <div class="pv-s2-controls">
+                      <input id="payrollSearchInput" placeholder="Search employee name or ID..." oninput="PayrollApp.drawTable()" />
+                      <select id="payrollBonusFilter" onchange="PayrollApp.drawTable()" aria-label="Filter by variable pay">
+                        <option value="all">All variable pay</option>
+                        <option value="none">No bonus</option>
+                        <option value="Bonus">Bonus</option>
+                        <option value="Sales Commission">Sales Commission</option>
+                        <option value="Support Commission">Support Commission</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- Payroll Worksheet Table -->
+                  <div class="payroll-table-wrap">
+                    <table class="payroll-worksheet responsive-card-table" id="payrollWorksheetTable">
+                      <thead>
+                        <tr>
+                          <th scope="col" class="payroll-name-th" style="text-align: left; padding: 11px 16px;">Employee</th>
+                          <th scope="col" class="num payroll-num-th" style="text-align: right; padding: 11px 12px;">External base, USD</th>
+                          <th scope="col" class="num payroll-num-th" style="text-align: right; padding: 11px 12px;">Internal base, USD</th>
+                          <th scope="col" class="payroll-bonus-col" style="text-align: left; padding: 11px 12px;">Bonus or commission</th>
+                          <th scope="col" class="num payroll-num-th" style="text-align: right; padding: 11px 16px;">Total pay, gross</th>
+                          <th scope="col" class="col-actions" style="width: 40px; text-align: center;"></th>
+                        </tr>
+                      </thead>
+                      <tbody id="payrollTableBody"></tbody>
+                      <tfoot>
+                        <tr style="background: var(--fv-canvas);">
+                          <td id="fTotalsLabel" style="padding: 10px 16px; font-weight: 700; color: var(--ink-strong);">Totals</td>
+                          <td class="num payroll-num" id="fBaseExt" style="padding: 10px 12px; text-align: right; font-weight: 700; color: var(--ink-strong);">-</td>
+                          <td class="num payroll-num" id="fBaseInt" style="padding: 10px 12px; text-align: right; font-weight: 700; color: var(--ink-strong);">-</td>
+                          <td class="num payroll-num" id="fBonus" style="padding: 10px 12px; font-weight: 700; color: var(--ink-strong); text-align: left;">-</td>
+                          <td class="num payroll-num strong accent" id="fNet" style="padding: 10px 16px; text-align: right; font-family: var(--font-display, Sora, sans-serif); font-weight: 700; color: var(--brand-text);">-</td>
+                          <td></td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </section>
+
+                <div class="pv-s2-info-strip">
+                  Submit for approval, then approve to move on to statutory. Approved lines are read-only until the run is reverted to draft.
                 </div>
 
-                <!-- Payroll Worksheet Table (Restricted Columns) -->
-                <div class="payroll-table-wrap">
-                  <table class="payroll-worksheet responsive-card-table" id="payrollWorksheetTable">
-                    <thead>
-                      <tr>
-                        <th class="col-id payroll-id-th">ID</th>
-                        <th class="payroll-name-th">Employee</th>
-                        <th class="num payroll-num-th">Base Ext</th>
-                        <th class="num payroll-num-th">Base Int</th>
-                        <th class="num payroll-num-th">Bonus / Commission</th>
-                        <th class="num payroll-num-th">Total comp (gross)</th>
-                        <th class="col-actions" style="width:50px; text-align:center;"></th>
-                      </tr>
-                    </thead>
-                    <tbody id="payrollTableBody"></tbody>
-                    <tfoot>
-                      <tr>
-                        <td colspan="2" style="font-weight:800;">Totals</td>
-                        <td class="num payroll-num" id="fBaseExt">-</td>
-                        <td class="num payroll-num" id="fBaseInt">-</td>
-                        <td class="num payroll-num" id="fBonus">-</td>
-                        <td class="num payroll-num strong accent" id="fNet" style="font-weight:800;">-</td>
-                        <td></td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-
-                <div class="footer payroll-footer-actions">
+                <div class="footer payroll-footer-actions pv-s2-footer">
                   <div class="left-info" id="p2StepHint" style="display:none;">Step 2 of 6 — Review base compensation and dynamic additions. Submit for approval, then approve to advance to statutory processing.</div>
-                  <div class="left-info" id="p2ApprovalHint"></div>
-                  <button class="btn btn-ghost" id="btnP2Back" onclick="PayrollApp.setStep(0)"><i class="fa-solid fa-arrow-left"></i> Back</button>
-                  <button class="btn btn-ghost" id="btnP2SaveDraft" onclick="PayrollApp.saveDraftRun()"><i class="fa-solid fa-floppy-disk"></i> Save draft</button>
-                  <label class="p2-self-approve" id="p2SelfApproveRow" hidden>
-                    <input type="checkbox" id="p2SelfApprove"> I am approving my own submission
-                  </label>
-                  <button class="btn btn-fill" id="btnP2Approve" onclick="PayrollApp.submitAndApproveRun()">
-                    Submit for approval <i class="fa-solid fa-paper-plane"></i>
-                  </button>
+                  <div class="left-info" id="p2ApprovalHint" style="display:none;"></div>
+                  <button class="btn btn-ghost" id="btnP2Back" onclick="PayrollApp.setStep(0)">Back</button>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <button class="btn btn-ghost" id="btnP2SaveDraft" onclick="PayrollApp.saveDraftRun()">Save draft</button>
+                    <label class="p2-self-approve" id="p2SelfApproveRow" hidden>
+                      <input type="checkbox" id="p2SelfApprove"> I am approving my own submission
+                    </label>
+                    <button class="btn btn-fill" id="btnP2Approve" onclick="PayrollApp.submitAndApproveRun()">
+                      Submit for approval
+                    </button>
+                  </div>
                 </div>
               </div>
 

@@ -6,14 +6,14 @@
 
 (function () {
   const seedEmployees = [
-    { id: 301, name: 'Youssef Adel', baseExt: 1800, baseInt: 4300, deductions: 473.00, deductions_total: 473.00, bonuses: [], exception: null },
-    { id: 302, name: 'Salma Ibrahim', baseExt: 0, baseInt: 4450, deductions: 489.50, deductions_total: 489.50, bonuses: [{ type: 'Support Commission', amount: 360, source: 'internal' }], exception: null },
-    { id: 303, name: 'Karim Nabil', baseExt: 2500, baseInt: 4500, deductions: 495.00, deductions_total: 495.00, bonuses: [{ type: 'Bonus', amount: 600, source: 'external' }], exception: null },
-    { id: 304, name: 'Mariam Essam', baseExt: 1200, baseInt: 4550, deductions: 500.50, deductions_total: 500.50, bonuses: [{ type: 'Sales Commission', amount: 1050, source: 'internal' }, { type: 'Bonus', amount: 200, source: 'external' }], exception: null },
-    { id: 305, name: 'Omar Farouk', baseExt: 0, baseInt: 4200, deductions: 462.00, deductions_total: 462.00, bonuses: [{ type: 'Support Commission', amount: 430, source: 'internal' }], exception: null },
-    { id: 306, name: 'Nadine Samir', baseExt: 2000, baseInt: 3100, deductions: 341.00, deductions_total: 341.00, bonuses: [], exception: null },
-    { id: 307, name: 'Hassan Tarek', baseExt: 0, baseInt: 5200, deductions: 572.00, deductions_total: 572.00, bonuses: [{ type: 'Bonus', amount: 750, source: 'internal' }], exception: null },
-    { id: 308, name: 'Lina Kamal', baseExt: 1600, baseInt: 3900, deductions: 429.00, deductions_total: 429.00, bonuses: [], exception: null }
+    { id: 301, name: 'Youssef Adel', role: 'Software Engineer', dept: 'Engineering', baseExt: 1800, baseInt: 4300, deductions: 473.00, deductions_total: 473.00, bonuses: [], exception: null },
+    { id: 302, name: 'Salma Ibrahim', role: 'Product Manager', dept: 'Product', baseExt: 0, baseInt: 4450, deductions: 489.50, deductions_total: 489.50, bonuses: [{ type: 'Support Commission', amount: 360, source: 'internal' }], exception: null },
+    { id: 303, name: 'Karim Nabil', role: 'Design Lead', dept: 'Design', baseExt: 2500, baseInt: 4500, deductions: 495.00, deductions_total: 495.00, bonuses: [{ type: 'Bonus', amount: 600, source: 'external' }], exception: null },
+    { id: 304, name: 'Mariam Essam', role: 'Sales Executive', dept: 'Sales', baseExt: 1200, baseInt: 4550, deductions: 500.50, deductions_total: 500.50, bonuses: [{ type: 'Sales Commission', amount: 1050, source: 'internal' }, { type: 'Bonus', amount: 200, source: 'external' }], exception: null },
+    { id: 305, name: 'Omar Farouk', role: 'Support Specialist', dept: 'Support', baseExt: 0, baseInt: 4200, deductions: 462.00, deductions_total: 462.00, bonuses: [{ type: 'Support Commission', amount: 430, source: 'internal' }], exception: null },
+    { id: 306, name: 'Nadine Samir', role: 'HR Coordinator', dept: 'Human Resources', baseExt: 2000, baseInt: 3100, deductions: 341.00, deductions_total: 341.00, bonuses: [], exception: null },
+    { id: 307, name: 'Hassan Tarek', role: 'DevOps Engineer', dept: 'Infrastructure', baseExt: 0, baseInt: 5200, deductions: 572.00, deductions_total: 572.00, bonuses: [{ type: 'Bonus', amount: 750, source: 'internal' }], exception: null },
+    { id: 308, name: 'Lina Kamal', role: 'Finance Analyst', dept: 'Finance', baseExt: 1600, baseInt: 3900, deductions: 429.00, deductions_total: 429.00, bonuses: [], exception: null }
   ];
 
   const seedBanks = [
@@ -148,6 +148,7 @@
               return {
                 id: e.id,
                 name: e.name,
+                role: e.role || e.title || e.position || e.dept || 'Employee',
                 dept: e.dept || e.department || 'Operations',
                 baseExt: baseExt,
                 baseInt: baseInt,
@@ -1093,19 +1094,22 @@
 
         rowsHtml += `
           <tr>
-            <td class="col-id payroll-id-th" data-label="ID">${r.id}</td>
-            <td class="payroll-name-th">
-              <div class="tname">
-                <span class="avatar">${inits}</span>
-                <a class="payroll-emp-link" href="${Router.hrefFor('a-employee-detail', 'admin').replace(/\/?$/, '')}/${encodeURIComponent(r.id)}" data-action="open-employee-profile" data-employee-id="${escapeHtml(r.id)}"><strong>${escapeHtml(r.name)}</strong></a>
+            <td class="payroll-name-th" data-label="Employee" style="padding:8px 16px;">
+              <span class="col-id sr-only">${r.id}</span>
+              <div class="tname" style="display:flex; align-items:center; gap:10px;">
+                <span class="avatar" style="width:32px; height:32px; flex:none; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; background:var(--brand-wash); color:var(--brand-text);">${inits}</span>
+                <span>
+                  <a class="payroll-emp-link" href="${Router.hrefFor('a-employee-detail', 'admin').replace(/\/?$/, '')}/${encodeURIComponent(r.id)}" data-action="open-employee-profile" data-employee-id="${escapeHtml(r.id)}" style="display:block; font-weight:600; color:var(--ink-strong); text-decoration:none;">${escapeHtml(r.name)}</a>
+                  <span class="pv-emp-sub" style="font-size:12px; color:var(--ink-muted);">${escapeHtml(r.role || r.dept || 'Employee')}</span>
+                </span>
               </div>
             </td>
-            <td class="num payroll-num" data-label="Base Ext">${this.money(r.baseExt)}</td>
-            <td class="num payroll-num" data-label="Base Int">${this.money(r.baseInt)}</td>
-            <td class="num payroll-num" data-label="Bonus / Commission">
-              ${bonusBadges || '<span class="muted" style="color:var(--text3); font-weight:600;">—</span>'}
+            <td class="num payroll-num" data-label="External base, USD" style="padding:8px 12px; text-align:right; font-variant-numeric:tabular-nums;">${this.money(r.baseExt)}</td>
+            <td class="num payroll-num" data-label="Internal base, USD" style="padding:8px 12px; text-align:right; font-variant-numeric:tabular-nums;">${this.money(r.baseInt)}</td>
+            <td class="payroll-bonus-col" data-label="Bonus or commission" style="padding:8px 12px; text-align:left;">
+              ${bonusBadges || '<span class="muted" style="color:var(--ink-muted); font-weight:600;">—</span>'}
             </td>
-            <td class="num payroll-num strong" data-label="Total comp (gross)">${this.money(r.baseExt + r.baseInt + c.bonusTotal)}</td>
+            <td class="num payroll-num strong" data-label="Total pay, gross" style="padding:8px 16px; text-align:right; font-weight:700; color:var(--ink-strong); font-variant-numeric:tabular-nums;">${this.money(r.baseExt + r.baseInt + c.bonusTotal)}</td>
             <td class="col-actions" style="text-align:center;">
               <button type="button" class="plus" id="btnPlus_${r.id}" onclick="PayrollApp.toggleInlineBonus(${r.id}, this)" title="Add bonus / commission">+</button>
             </td>
@@ -1119,6 +1123,8 @@
       const fInt = document.getElementById('fBaseInt');
       const fBon = document.getElementById('fBonus');
       const fNet = document.getElementById('fNet');
+      const fLbl = document.getElementById('fTotalsLabel');
+      if (fLbl) fLbl.textContent = `Totals \u00b7 ${filtered.length} ${filtered.length === 1 ? 'employee' : 'employees'}`;
       if (fExt) fExt.textContent = this.money(totExt);
       if (fInt) fInt.textContent = this.money(totInt);
       if (fBon) fBon.textContent = this.money(totBonus);
@@ -1152,7 +1158,7 @@
       expandTr.className = 'expand';
       expandTr.id = `expandRow_${empId}`;
       expandTr.innerHTML = `
-        <td colspan="7">
+        <td colspan="6">
           <div class="expandbox">
             ${existingHtml}
             <div class="inlineform">

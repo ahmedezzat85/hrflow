@@ -896,6 +896,56 @@ for (const theme of ['light', 'dark']) {
       await expectStyle(cards.first(), { borderRadius: '14px' });
       await expectStyle(tiles.first(), { borderRadius: '14px' });
     });
+
+    test(`S4.3 Step 2 Review pay in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+      await page.evaluate(() => showSection('a-finance-payroll', 'admin'));
+      await page.click('#btnOpenCurrentCycle');
+      await page.click('#btnP1Proceed');
+
+      const s2 = page.locator('#payrollScreen2');
+      await expect(s2).toBeVisible();
+
+      // 1. Card header and subtitle
+      const card = s2.locator('.pv-s2-card');
+      await expect(card).toBeVisible();
+      await expect(card.locator('h2')).toHaveText('Review pay');
+      await expect(card.locator('.pv-s2-sub')).toHaveText('One employee per row. Bonus and commission are optional for each month.');
+
+      // 2. Variable pay filter & search input
+      await expect(page.locator('#payrollSearchInput')).toBeVisible();
+      await expect(page.locator('#payrollBonusFilter')).toBeVisible();
+      await expect(page.locator('#payrollBonusFilter option').first()).toHaveText('All variable pay');
+
+      // 3. Table headers
+      const ths = page.locator('#payrollWorksheetTable thead th');
+      await expect(ths.nth(0)).toHaveText('Employee');
+      await expect(ths.nth(1)).toHaveText('External base, USD');
+      await expect(ths.nth(2)).toHaveText('Internal base, USD');
+      await expect(ths.nth(3)).toHaveText('Bonus or commission');
+      await expect(ths.nth(4)).toHaveText('Total pay, gross');
+
+      // 4. Employee first cell two-line structure (name + role subline)
+      const firstRow = page.locator('#payrollTableBody tr').first();
+      await expect(firstRow).toBeVisible();
+      await expect(firstRow.locator('.payroll-emp-link')).toContainText('Youssef Adel');
+      await expect(firstRow.locator('.pv-emp-sub')).toBeVisible();
+
+      // 5. Totals row
+      await expect(page.locator('#fTotalsLabel')).toContainText('Totals ·');
+      await expect(page.locator('#fNet')).toBeVisible();
+
+      // 6. Blue info strip
+      await expect(s2.locator('.pv-s2-info-strip')).toHaveText('Submit for approval, then approve to move on to statutory. Approved lines are read-only until the run is reverted to draft.');
+
+      // 7. Footer buttons
+      await expect(page.locator('#btnP2Back')).toHaveText('Back');
+      await expect(page.locator('#btnP2SaveDraft')).toHaveText('Save draft');
+      await expect(page.locator('#btnP2Approve')).toContainText('Submit for approval');
+
+      // 8. Style assertions
+      await expectStyle(card, { borderRadius: '14px' });
+    });
   });
 }
 
