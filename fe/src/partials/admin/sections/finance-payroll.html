@@ -261,69 +261,65 @@
 
               <!-- ==================== SCREEN 4: PAYMENT PREVIEW ==================== -->
               <div class="payroll-screen-view screen payroll-hidden" id="payrollScreen4">
-                <div class="title-row">
-                  <div class="section-title"><i class="fa-solid fa-money-bill-transfer"></i> Payment preview</div>
-                </div>
-
-                <div class="stats payroll-stats five-col" id="payrollScreen4Stats">
-                  <div class="stat payroll-card payroll-stat">
+                <div class="stats payroll-stats pv-s4-stats" id="payrollScreen4Stats">
+                  <div class="stat payroll-card payroll-stat pv-stat-tile">
                     <div class="lbl label">External payment</div>
                     <div class="val value" id="p4ExtBankTotal">$0.00</div>
-                    <div class="hint sub">Operating bank wire</div>
+                    <div class="hint sub">operating bank transfer</div>
                   </div>
-                  <div class="stat payroll-card payroll-stat">
+                  <div class="stat payroll-card payroll-stat pv-stat-tile">
                     <div class="lbl label">Internal net payment</div>
                     <div class="val value" id="p4IntCashTotal">$0.00</div>
-                    <div class="hint sub">Internal cash treasury</div>
+                    <div class="hint sub">internal cash</div>
                   </div>
-                  <div class="stat payroll-card payroll-stat">
-                    <div class="lbl label">Total Net Disbursal</div>
-                    <div class="val value accent val-accent" id="p4TotalNet">$0.00</div>
-                    <div class="hint sub">Total employee net cash &amp; wire</div>
+                  <div class="stat payroll-card payroll-stat pv-stat-tile">
+                    <div class="lbl label">Total net pay</div>
+                    <div class="val value accent val-accent" id="p4TotalNet" style="color: var(--brand-text); font-family: var(--font-display, Sora, sans-serif);">$0.00</div>
+                    <div class="hint sub">cash and transfer</div>
                   </div>
-                  <div class="stat payroll-card payroll-stat">
+                  <div class="stat payroll-card payroll-stat pv-stat-tile" id="p4RecipientsCard">
                     <div class="lbl label">Recipients</div>
-                    <div class="val value" id="p4Headcount">0</div>
-                    <div class="hint sub" id="p4RecipientsSub">All recipients ready</div>
-                  </div>
-                  <div class="stat payroll-card payroll-stat" id="p4MissingBankCard">
-                    <div class="lbl label">Missing bank details</div>
-                    <div class="val value" id="p4MissingBankCount" style="color:var(--warning, #e07d10);">0</div>
-                    <div class="hint sub" id="p4MissingBankSub">Payment can still be recorded</div>
+                    <div class="val value" id="p4RecipientsVal"><span id="p4MissingBankCount">0</span> of <span id="p4Headcount">0</span> flagged</div>
+                    <div class="hint sub" id="p4RecipientsSub">missing bank details · payment can still be recorded</div>
                   </div>
                 </div>
 
-                <div class="payroll-table-wrap">
-                  <table class="payroll-worksheet responsive-card-table" id="payrollPaymentPreviewTable">
-                    <thead>
-                      <tr>
-                        <th class="col-id payroll-id-th">ID</th>
-                        <th class="payroll-name-th">Employee</th>
-                        <th>Bank / Routing</th>
-                        <th class="num payroll-num-th">External (USD)</th>
-                        <th class="num payroll-num-th">Internal (USD)</th>
-                        <th class="num payroll-num-th">Total disbursement</th>
-                      </tr>
-                    </thead>
-                    <tbody id="payrollPaymentPreviewTableBody"></tbody>
-                    <tfoot>
-                      <tr>
-                        <td colspan="2" style="font-weight:800;">Totals</td>
-                        <td></td>
-                        <td class="num payroll-num" id="p4TotExt">-</td>
-                        <td class="num payroll-num" id="p4TotInt">-</td>
-                        <td class="num payroll-num strong accent" id="p4TotNet" style="font-weight:800;">-</td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
+                <section class="pv-s4-card">
+                  <div class="pv-s4-card-header">
+                    <h2>Who gets paid</h2>
+                    <button type="button" class="btn btn-outline" id="btnP4ExportCsv" onclick="PayrollApp.exportRunCsv()" style="height: 32px; padding: 0 12px; border-radius: 8px; font-weight: 600; font-size: 13px;">Export CSV</button>
+                  </div>
 
-                <div class="footer payroll-footer-actions">
-                  <div class="left-info" style="display:none;">Step 4 of 6 — Review disbursement allocations. Click Next to perform payment funding confirmation.</div>
-                  <button class="btn btn-ghost" id="btnP4Back" onclick="PayrollApp.setStep(2)"><i class="fa-solid fa-arrow-left"></i> Back</button>
-                  <button class="btn btn-outline" id="btnP4ExportCsv" onclick="PayrollApp.exportRunCsv()"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
+                  <div class="payroll-table-wrap">
+                    <table class="payroll-worksheet responsive-card-table" id="payrollPaymentPreviewTable" style="width: 100%; border-collapse: collapse;">
+                      <thead>
+                        <tr>
+                          <th class="col-id payroll-id-th sr-only" style="display:none;">ID</th>
+                          <th scope="col" class="payroll-name-th" style="text-align: left; padding: 11px 16px;">Employee</th>
+                          <th scope="col" style="text-align: left; padding: 11px 12px;">Employee bank account</th>
+                          <th scope="col" class="num payroll-num-th" style="text-align: right; padding: 11px 12px;">External, USD</th>
+                          <th scope="col" class="num payroll-num-th" style="text-align: right; padding: 11px 12px;">Internal, USD</th>
+                          <th scope="col" class="num payroll-num-th" style="text-align: right; padding: 11px 16px;">Net pay</th>
+                        </tr>
+                      </thead>
+                      <tbody id="payrollPaymentPreviewTableBody"></tbody>
+                      <tfoot>
+                        <tr style="background: var(--fv-canvas);">
+                          <td class="col-id payroll-id-th sr-only" style="display:none;"></td>
+                          <td id="p4TotalsLabel" style="padding: 10px 16px; font-weight: 700; color: var(--ink-strong);" colspan="2">Totals</td>
+                          <td class="num payroll-num" id="p4TotExt" style="padding: 10px 12px; text-align: right; font-weight: 700; color: var(--ink-strong);">-</td>
+                          <td class="num payroll-num" id="p4TotInt" style="padding: 10px 12px; text-align: right; font-weight: 700; color: var(--ink-strong);">-</td>
+                          <td class="num payroll-num strong accent" id="p4TotNet" style="padding: 10px 16px; text-align: right; font-family: var(--font-display, Sora, sans-serif); font-weight: 700; color: var(--brand-text);">-</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </section>
+
+                <div class="footer payroll-footer-actions pv-s4-footer">
+                  <button class="btn btn-ghost" id="btnP4Back" onclick="PayrollApp.setStep(2)">Back</button>
                   <button class="btn btn-fill" id="btnP4Next" onclick="PayrollApp.setStep(4)">
-                    Next: Confirm Payment <i class="fa-solid fa-arrow-right"></i>
+                    Next: confirm payment
                   </button>
                 </div>
               </div>

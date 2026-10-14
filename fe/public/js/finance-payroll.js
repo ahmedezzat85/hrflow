@@ -1670,45 +1670,72 @@
         }
 
         let bankBadgeHtml = '';
+        const empBankHref = `${Router.hrefFor('a-employee-detail', 'admin')}/${encodeURIComponent(r.id)}/bank`;
         if (isMissingBank) {
-          bankBadgeHtml = `<a class="pill-danger badge-pill p-badge b-amber payroll-missing-bank-link" style="font-size:0.75rem;" href="${Router.hrefFor('a-employee-detail', 'admin')}/${encodeURIComponent(r.id)}/bank" data-action="open-employee-bank" data-employee-id="${escapeHtml(r.id)}" title="Open this employee's bank section"><i class="fa-solid fa-triangle-exclamation"></i> Missing bank details</a>`;
+          bankBadgeHtml = `
+            <a class="pv-pill pv-pill--open payroll-missing-bank-link" href="${empBankHref}" data-action="open-employee-bank" data-employee-id="${escapeHtml(r.id)}" style="display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600; text-decoration:none; background:var(--warning-soft); color:var(--warning-text, var(--warning));">
+              <span class="pv-dot" style="width:7px; height:7px; border-radius:50%; background:currentColor;"></span>Missing bank details
+            </a>
+            <div class="pv-emp-sub" style="font-size:12px; color:var(--ink-muted); margin-top:2px;">Pay outside HRFlow and record it here</div>
+          `;
         } else if (hasExternal) {
-          const bankDisplay = (r.bank_name ? `${escapeHtml(r.bank_name)} ${escapeHtml(r.bank_account_masked || '')}` : 'Bank details on file');
-          bankBadgeHtml = `<span class="p-badge b-gray badge-pill" style="font-size:0.75rem;"><i class="fa-solid fa-building-columns"></i> ${bankDisplay}</span>`;
+          const bankName = r.bank_name || 'Bank';
+          const maskedIban = r.bank_account_masked || (r.bank_account_id ? '•••• ' + String(r.bank_account_id).slice(-4) : '•••• on file');
+          const swift = r.swift || r.swift_code || '';
+          bankBadgeHtml = `
+            <span style="color:var(--ink-strong); font-weight:500;">${escapeHtml(bankName)} · ${escapeHtml(maskedIban)}</span>
+            ${swift ? `<div class="pv-emp-sub" style="font-size:12px; color:var(--ink-muted); margin-top:2px;">SWIFT ${escapeHtml(swift)}</div>` : ''}
+          `;
         } else {
-          bankBadgeHtml = `<span class="p-badge b-gray badge-pill" style="font-size:0.75rem;"><i class="fa-solid fa-building-columns"></i> None (Internal only)</span>`;
+          bankBadgeHtml = `<span style="color:var(--ink-muted); font-size:12.5px;">None (Internal only)</span>`;
         }
 
         const inits = this.getInitials(r.name);
+        const empProfileHref = `${Router.hrefFor('a-employee-detail', 'admin').replace(/\/?$/, '')}/${encodeURIComponent(r.id)}`;
 
         rowsHtml += `
-          <tr class="${isMissingBank ? 'warnrow' : ''}">
-            <td class="col-id payroll-id-th" data-label="ID">${r.id}</td>
-            <td class="payroll-name-th">
-              <div class="tname">
-                <span class="avatar">${inits}</span>
-                <a class="payroll-emp-link" href="${Router.hrefFor('a-employee-detail', 'admin').replace(/\/?$/, '')}/${encodeURIComponent(r.id)}" data-action="open-employee-profile" data-employee-id="${escapeHtml(r.id)}"><strong>${escapeHtml(r.name)}</strong></a>
-              </div>
+          <tr class="${isMissingBank ? 'warnrow' : ''}" style="${isMissingBank ? 'background: color-mix(in srgb, var(--warning-soft) 40%, transparent);' : ''}">
+            <td class="col-id payroll-id-th sr-only" style="display:none;" data-label="ID">${r.id}</td>
+            <td class="payroll-name-th" data-label="Employee" style="padding:9px 16px;">
+              <span style="display:flex; align-items:center; gap:10px;">
+                <span class="avatar" style="width:32px; height:32px; flex:none; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; background:var(--brand-wash); color:var(--brand-text);">${inits}</span>
+                <a class="payroll-emp-link" href="${empProfileHref}" data-action="open-employee-profile" data-employee-id="${escapeHtml(r.id)}" style="color:var(--ink-strong); font-weight:600; text-decoration:none;"><strong>${escapeHtml(r.name)}</strong></a>
+              </span>
             </td>
-            <td data-label="Bank / Routing">${bankBadgeHtml}</td>
-            <td class="num payroll-num" data-label="External (USD)">${this.money(extVal)}</td>
-            <td class="num payroll-num" data-label="Internal (USD)">${this.money(intVal)}</td>
-            <td class="num payroll-num strong accent" data-label="Total Disbursement" style="font-weight:800; color:var(--accent-text);">${this.money(netVal)}</td>
+            <td data-label="Employee bank account" style="padding:9px 12px;">${bankBadgeHtml}</td>
+            <td class="num payroll-num" data-label="External, USD" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${this.money(extVal)}</td>
+            <td class="num payroll-num" data-label="Internal, USD" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${this.money(intVal)}</td>
+            <td class="num payroll-num strong accent" data-label="Net pay" style="padding:9px 16px; text-align:right; font-weight:700; color:var(--ink-strong); font-variant-numeric:tabular-nums;">${this.money(netVal)}</td>
           </tr>
         `;
       });
       tbody.innerHTML = rowsHtml;
 
-      if (bMissing) {
-        bMissing.textContent = missingBankCount;
-        bMissing.style.color = missingBankCount > 0 ? 'var(--warning, #e07d10)' : 'var(--text2, #7a8ea8)';
+      const rCard = document.getElementById('p4RecipientsCard');
+      const rVal = document.getElementById('p4RecipientsVal');
+      const rSub = document.getElementById('p4RecipientsSub');
+      if (rVal) {
+        if (missingBankCount > 0) {
+          if (rCard) {
+            rCard.classList.add('pv-stat-tile--flagged');
+            rCard.style.borderColor = 'color-mix(in srgb, var(--warning) 40%, transparent)';
+          }
+          rVal.style.color = 'var(--warning-text, var(--warning))';
+          rVal.innerHTML = `<span id="p4MissingBankCount">${missingBankCount}</span> of <span id="p4Headcount">${this.rows.length}</span> flagged`;
+          if (rSub) rSub.textContent = 'missing bank details · payment can still be recorded';
+        } else {
+          if (rCard) {
+            rCard.classList.remove('pv-stat-tile--flagged');
+            rCard.style.borderColor = '';
+          }
+          rVal.style.color = 'var(--ink-strong)';
+          rVal.innerHTML = `<span id="p4MissingBankCount" style="display:none;">0</span><span id="p4Headcount">${this.rows.length}</span> recipients`;
+          if (rSub) rSub.textContent = 'all recipients ready';
+        }
       }
 
-      const recSub = document.getElementById('p4RecipientsSub');
-      if (recSub) {
-        recSub.textContent = missingBankCount > 0 ? `${missingBankCount} missing bank details` : 'All recipients ready';
-        if (missingBankCount > 0) recSub.style.color = 'var(--warning, #e07d10)';
-      }
+      const p4Lbl = document.getElementById('p4TotalsLabel');
+      if (p4Lbl) p4Lbl.textContent = `Totals \u00b7 ${this.rows.length} ${this.rows.length === 1 ? 'recipient' : 'recipients'}`;
 
       const fExt = document.getElementById('p4TotExt');
       const fInt = document.getElementById('p4TotInt');

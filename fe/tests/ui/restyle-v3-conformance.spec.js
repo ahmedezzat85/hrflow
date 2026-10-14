@@ -990,6 +990,60 @@ for (const theme of ['light', 'dark']) {
       await expect(s3.locator('.pv-s3-footer-hint')).toHaveText('Estimates only. The government portals stay authoritative.');
       await expect(page.locator('#btnP3Next')).toContainText('Next: payment preview');
     });
+
+    test(`S4.5 Step 4 Pay-Run-Preview in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+      await page.evaluate(() => showSection('a-finance-payroll', 'admin'));
+      await page.click('#btnOpenCurrentCycle');
+      await page.evaluate(() => PayrollApp.setStep(3));
+
+      const s4 = page.locator('#payrollScreen4');
+      await expect(s4).toBeVisible();
+
+      // 1. Four KPI tiles
+      const tiles = s4.locator('.pv-stat-tile');
+      await expect(tiles).toHaveCount(4);
+      await expect(tiles.nth(0).locator('.label')).toHaveText('External payment');
+      await expect(page.locator('#p4ExtBankTotal')).toBeVisible();
+      await expect(tiles.nth(1).locator('.label')).toHaveText('Internal net payment');
+      await expect(page.locator('#p4IntCashTotal')).toBeVisible();
+      await expect(tiles.nth(2).locator('.label')).toHaveText('Total net pay');
+      await expect(page.locator('#p4TotalNet')).toBeVisible();
+      await expect(tiles.nth(3).locator('.label')).toHaveText('Recipients');
+      await expect(page.locator('#p4RecipientsVal')).toBeVisible();
+
+      // 2. Card header with Who gets paid and Export CSV
+      const card = s4.locator('.pv-s4-card');
+      await expect(card).toBeVisible();
+      await expect(card.locator('h2')).toHaveText('Who gets paid');
+      await expect(page.locator('#btnP4ExportCsv')).toHaveText('Export CSV');
+
+      // 3. Table headers (visible headers: Employee, Employee bank account, External, USD, Internal, USD, Net pay)
+      const visibleThs = page.locator('#payrollPaymentPreviewTable thead th:not([style*="display:none"]):not([style*="display: none"])');
+      await expect(visibleThs).toHaveCount(5);
+      await expect(visibleThs.nth(0)).toHaveText('Employee');
+      await expect(visibleThs.nth(1)).toHaveText('Employee bank account');
+      await expect(visibleThs.nth(2)).toHaveText('External, USD');
+      await expect(visibleThs.nth(3)).toHaveText('Internal, USD');
+      await expect(visibleThs.nth(4)).toHaveText('Net pay');
+
+      // 4. Employee first cell with link and avatar
+      const firstRow = page.locator('#payrollPaymentPreviewTableBody tr').first();
+      await expect(firstRow).toBeVisible();
+      await expect(firstRow.locator('.payroll-emp-link')).toBeVisible();
+
+      // 5. Totals row
+      await expect(page.locator('#p4TotalsLabel')).toContainText('Totals ·');
+      await expect(page.locator('#p4TotNet')).toBeVisible();
+
+      // 6. Footer buttons
+      await expect(page.locator('#btnP4Back')).toHaveText('Back');
+      await expect(page.locator('#btnP4Next')).toContainText('Next: confirm payment');
+
+      // 7. Style assertions
+      await expectStyle(card, { borderRadius: '14px' });
+      await expectStyle(tiles.first(), { borderRadius: '14px' });
+    });
   });
 }
 

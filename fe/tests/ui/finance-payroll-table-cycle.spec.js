@@ -288,18 +288,18 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     const s4 = page.locator('#payrollScreen4');
     await expect(s4).toBeVisible();
 
-    // Verify all 5 summary cards on Screen 4 have payroll-card and payroll-stat classes
+    // Verify all 4 summary cards on Screen 4 have payroll-card and payroll-stat classes (restyle v3 S4.5)
     const s4Cards = s4.locator('.payroll-stats .payroll-stat');
-    await expect(s4Cards).toHaveCount(5);
+    await expect(s4Cards).toHaveCount(4);
 
     const p4Card = page.locator('#p4TotalNet').locator('xpath=ancestor::div[contains(@class, "payroll-stat")][1]');
     await expect(p4Card).toHaveClass(/payroll-card/);
     await expect(p4Card).toHaveClass(/payroll-stat/);
 
     // Check inner structure
-    await expect(p4Card.locator('.label')).toHaveText('Total Net Disbursal');
+    await expect(p4Card.locator('.label')).toHaveText('Total net pay');
     await expect(p4Card.locator('.value')).toBeVisible();
-    await expect(p4Card.locator('.sub')).toHaveText('Total employee net cash & wire');
+    await expect(p4Card.locator('.sub')).toHaveText('cash and transfer');
 
     // Check computed styles on Screen 4 card
     const p4CardBorder = await p4Card.evaluate((el) => window.getComputedStyle(el).borderStyle);
