@@ -839,7 +839,7 @@ for (const theme of ['light', 'dark']) {
       await expect(page.locator('#payrollViewRun')).toBeVisible();
       await expect(page.locator('#adminPageTitle')).toContainText('Payroll runs /');
       await expect(page.locator('#payrollStatusBadge')).toBeVisible();
-      await expect(page.locator('#payrollFxStrip')).toBeVisible();
+      await expect(page.locator('#payrollFxStrip')).toBeHidden();
 
       // Stepper 6 steps
       const steps = page.locator('#payrollStepper .payroll-step-pill');

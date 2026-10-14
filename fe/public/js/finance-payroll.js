@@ -2440,16 +2440,23 @@
       this.redraw();
     },
 
-    // Run page chrome lives in the top bar (mock Pay-Run-*): 'Payroll runs / September 2026', status pill, FX text.
+    // Run page chrome lives in the top bar (mock Pay-Run-*): 'Payroll runs / September 2026', status pill.
     syncRunChrome(page) {
       const onRun = page === 'run';
-      ['payrollStatusBadge', 'payrollFxStrip'].forEach(id => { const el = document.getElementById(id); if (el) el.hidden = !onRun; });
+      const statusBadge = document.getElementById('payrollStatusBadge');
+      if (statusBadge) statusBadge.hidden = !onRun;
+      const fxEl = document.getElementById('payrollFxStrip');
+      if (fxEl) fxEl.hidden = true;
+      const areaEl = document.getElementById('adminAreaName');
+      if (areaEl && onRun) areaEl.hidden = true;
+
       const titleEl = document.getElementById('adminPageTitle');
       if (!titleEl) return;
       if (onRun) {
         const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
         const m = /^(\d{4})-(\d{2})/.exec(String(this.month || ''));
-        titleEl.textContent = `Payroll runs / ${m ? MONTHS[+m[2] - 1] + ' ' + m[1] : this.month}`;
+        const monthLabel = m ? `${MONTHS[+m[2] - 1]} ${m[1]}` : this.month;
+        titleEl.innerHTML = `<a href="#" onclick="PayrollApp.showPage('list'); return false;" class="topbar-crumb">Payroll runs</a> <span class="topbar-crumb-sep">/</span> <span class="topbar-crumb-cur">${monthLabel}</span>`;
       } else if (page === 'list') {
         titleEl.textContent = 'Payroll runs';
       } else if (page === 'settings') {

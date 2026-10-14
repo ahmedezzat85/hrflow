@@ -179,10 +179,68 @@
 }
 #a-finance-payroll .payroll-screen-view { background: none; padding: 0; }
 
-/* Run header: slim row above the stepper (title, FX chip, status) - suppressed per design */
+/* Run header & topbar chrome: breadcrumbs, status pill, FX strip suppressed per design */
 #a-finance-payroll .runhead,
-#a-finance-payroll #payrollFxControls { display: none !important; }
+#a-finance-payroll #payrollFxControls,
+#payrollFxStrip,
+.topbar-fx { display: none !important; }
 #a-finance-payroll .runtitle { font-size: 18px; }
+
+.topbar h1 .topbar-crumb {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-label);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.topbar h1 .topbar-crumb:hover {
+  color: var(--brand);
+}
+.topbar h1 .topbar-crumb-sep {
+  color: var(--ink-muted);
+  font-weight: 400;
+  margin: 0 4px;
+  font-size: 14px;
+}
+.topbar h1 .topbar-crumb-cur {
+  font-family: var(--font-display, Sora, sans-serif);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--ink-strong);
+}
+
+#payrollStatusBadge.topbar-run-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-label);
+  border: 1px dashed var(--fv-line-strong);
+  background: transparent;
+  box-shadow: none;
+  line-height: 1.4;
+}
+#payrollStatusBadge.topbar-run-status::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-muted);
+  flex: none;
+}
+#payrollStatusBadge.topbar-run-status.b-green,
+#payrollStatusBadge.topbar-run-status.pill-success {
+  color: var(--success);
+  border: 1px solid var(--success);
+  background: var(--success-soft);
+}
+#payrollStatusBadge.topbar-run-status.b-green::before,
+#payrollStatusBadge.topbar-run-status.pill-success::before {
+  background: var(--success);
+}
 
 /* Stepper card with check circles joined by lines */
 #a-finance-payroll .payroll-stepper {
