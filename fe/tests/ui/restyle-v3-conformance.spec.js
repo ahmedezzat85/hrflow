@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { submitAndApprove } from './helpers/payroll.js';
 
 // Restyle v3 conformance test suite (S0.5 skeleton)
 // Validates computed styles against the approved restyle-v3 mocks in both light and dark themes.
@@ -1043,6 +1044,69 @@ for (const theme of ['light', 'dark']) {
       // 7. Style assertions
       await expectStyle(card, { borderRadius: '14px' });
       await expectStyle(tiles.first(), { borderRadius: '14px' });
+    });
+
+    test(`S4.6 Step 5 Pay-Run-Confirm and Record paid dialog in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+      await page.evaluate(() => showSection('a-finance-payroll', 'admin'));
+      await page.click('#btnOpenCurrentCycle');
+      const intSelect = page.locator('#p1IntAccount');
+      const intUsd = intSelect.locator('option:has-text("USD")').first();
+      if (await intUsd.count() > 0) {
+        const val = await intUsd.getAttribute('value');
+        if (val) await intSelect.selectOption(val);
+      }
+      await page.click('#btnP1Proceed');
+      await submitAndApprove(page);
+      await page.click('#btnP3Next');
+      await page.click('#btnP4Next');
+
+      const s5 = page.locator('#payrollScreen5');
+      await expect(s5).toBeVisible();
+
+      // 1. Two rail cards (Internal salaries, External salaries)
+      const cards = s5.locator('.pv-s5-card');
+      await expect(cards).toHaveCount(2);
+      await expect(cards.nth(0).locator('h2')).toHaveText('Internal salaries');
+      await expect(page.locator('#p5IntTotal')).toBeVisible();
+      await expect(cards.nth(1).locator('h2')).toHaveText('External salaries');
+      await expect(page.locator('#p5ExtTotal')).toBeVisible();
+
+      // Check inner tiles on cards
+      await expect(page.locator('#p5IntPayDate')).toBeVisible();
+      await expect(page.locator('#p5IntAccount')).toBeVisible();
+      await expect(page.locator('#p5IntRecipientsCount')).toBeVisible();
+      await expect(page.locator('#p5ExtPayDate')).toBeVisible();
+      await expect(page.locator('#p5ExtAccount')).toBeVisible();
+      await expect(page.locator('#p5ExtRecipientsCount')).toBeVisible();
+
+      // 2. Footer elements
+      await expect(page.locator('#btnP5Back')).toHaveText('Back');
+      await expect(page.locator('#btnP5ExportCsv')).toHaveText('Export CSV');
+      await expect(page.locator('#p5ConfirmHint')).toBeVisible();
+      await expect(page.locator('#btnP5ConfirmDisburse')).toHaveText('Confirm and record as paid');
+
+      // 3. Trigger Confirm dialog and test restyled Dlg-RecordPaid elements
+      await page.click('#btnP5ConfirmDisburse');
+      const modal = page.locator('#financeConfirmModal');
+      await expect(modal).toBeVisible();
+      await expect(modal.locator('#financeConfirmTitle')).toContainText('Record');
+      await expect(modal.locator('#financeConfirmTitle')).toContainText('as paid?');
+      await expect(modal.locator('#financeConfirmSubtitle')).toHaveText('Records the payment in HRFlow. No money is sent.');
+
+      // 3 tiles in modal
+      const modalTiles = modal.locator('#financeConfirmTiles > div');
+      await expect(modalTiles).toHaveCount(3);
+      await expect(modalTiles.nth(0)).toContainText('Total net pay');
+      await expect(modalTiles.nth(1)).toContainText('Recipients');
+      await expect(modalTiles.nth(2)).toContainText('Missing bank details');
+
+      // Dismiss dialog
+      await page.click('#financeConfirmCancelBtn');
+      await expect(modal).not.toBeVisible();
+
+      // 4. Style assertions
+      await expectStyle(cards.first(), { borderRadius: '14px' });
     });
   });
 }

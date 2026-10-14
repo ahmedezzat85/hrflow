@@ -1810,9 +1810,15 @@
                 <i class="fa-solid ${isWarn ? 'fa-triangle-exclamation' : 'fa-circle-xmark'}"></i>
                 <span><strong>${label}:</strong> ${escapeHtml(text)}</span>
               </div>`;
-          const missingHtml = missingBankExc.length
-            ? alertHtml(true, 'Warning', `bank details missing for ${missingBankExc.length} employee${missingBankExc.length === 1 ? '' : 's'}. Payment can still be recorded.`)
-            : '';
+          let missingHtml = '';
+          if (missingBankExc.length > 0) {
+            const missingNames = missingBankExc.map(exc => {
+              const row = (this.rows || []).find(r => String(r.id) === String(exc.employee_id));
+              return row ? row.name : `Employee #${exc.employee_id}`;
+            });
+            const nameStr = missingNames.length > 0 ? missingNames.join(', ') : `${missingBankExc.length} employee${missingBankExc.length === 1 ? '' : 's'}`;
+            missingHtml = alertHtml(true, 'Warning', `${nameStr} has no employee bank account on file (bank details missing for ${missingBankExc.length} employee${missingBankExc.length === 1 ? '' : 's'}). Flagged only; this does not block recording the payment. Payment can still be recorded.`);
+          }
           excStrip.innerHTML = missingHtml + otherExc.map(exc => {
             const isWarn = exc.severity === 'warning';
             return alertHtml(isWarn, isWarn ? 'Warning' : 'Blocking exception', exc.details || exc.message || 'Exception reported for this run.');
@@ -1842,7 +1848,7 @@
         if (jCard) jCard.classList.add('payroll-hidden');
         if (btnDisburse) {
           btnDisburse.disabled = false;
-          btnDisburse.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Confirm and record as paid';
+          btnDisburse.textContent = 'Confirm and record as paid';
         }
         this.applyConfirmState();
       }
@@ -1862,11 +1868,26 @@
       const totals = this.paymentTotals();
       const recipients = this.rows.length;
       const missing = this.missingBankCount();
+
+      const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      const mMatch = /^(\d{4})-(\d{2})/.exec(String(this.month || ''));
+      const monthTitle = mMatch ? `${MONTHS[+mMatch[2] - 1]} ${mMatch[1]}` : this.month;
+
+      const extBankName = (this.banks.find(b => String(b.id) === String(this.selectedExternalAccountId)) || {}).name || 'Voyance Operating USD';
+      const intBankName = (this.banks.find(b => String(b.id) === String(this.selectedInternalAccountId)) || {}).name || 'CIB EGP Operating';
+      const paidOn = (run && (run.paid_at || run.payment_date)) || this.payDate;
+
       const confirmed = await FinanceCommand.confirmAction({
-        title: 'Record payroll as paid',
-        consequence: `Record ${this.money(totals.net)} as paid to ${recipients} employee${recipients === 1 ? '' : 's'} for ${this.month}. `
-          + `${missing} ${missing === 1 ? 'employee has' : 'employees have'} missing bank details. `
-          + 'This posts the payroll journal and cannot be undone from here.',
+        title: `Record ${monthTitle} as paid?`,
+        subtitle: 'Records the payment in HRFlow. No money is sent.',
+        tone: 'violet',
+        iconSvg: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18v10H3zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5"></path></svg>',
+        tiles: [
+          { label: 'Total net pay', value: this.money(totals.net) },
+          { label: 'Recipients', value: `${recipients} ${recipients === 1 ? 'employee' : 'employees'}` },
+          { label: 'Missing bank details', value: `${missing} ${missing === 1 ? 'employee' : 'employees'}`, tone: missing > 0 ? 'amber' : 'neutral' },
+        ],
+        consequence: `Internal salaries ${this.money(totals.int)} from ${intBankName} and external salaries ${this.money(totals.ext)} from ${extBankName} for ${recipients} employees, dated ${fmtDateShort(paidOn)} (missing bank details do not block this).`,
         actionLabel: 'Confirm and record as paid',
         actionClass: 'btn btn-fill',
         severity: 'warning',
@@ -1916,8 +1937,8 @@
       if (paid || status === 'partially_paid') this.showRecordedAsPaid(btn);
       else btn.disabled = !ready;
       if (hint) {
-        hint.hidden = ready || paid;
-        hint.textContent = ready || paid ? '' : 'Payment can be recorded once the run is approved and finalized.';
+        hint.hidden = false;
+        hint.textContent = ready || paid ? 'Records the payment in HRFlow. No money is sent from here.' : 'Payment can be recorded once the run is approved and finalized.';
       }
     },
 

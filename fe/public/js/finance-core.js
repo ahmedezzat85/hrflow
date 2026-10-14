@@ -734,11 +734,35 @@ const FinanceCommand = {
       const titleEl = document.getElementById("financeConfirmTitle");
       if (titleEl) titleEl.textContent = options.title || "Confirm Action";
 
+      const subEl = document.getElementById("financeConfirmSubtitle");
+      if (subEl) {
+        if (options.subtitle) {
+          subEl.textContent = options.subtitle;
+          subEl.style.display = "block";
+        } else {
+          subEl.textContent = "";
+          subEl.style.display = "none";
+        }
+      }
+
+      if (options.tone) {
+        modal.classList.remove("fv-area-slate", "fv-area-danger", "fv-area-violet");
+        modal.classList.add(`fv-area-${options.tone}`);
+      } else {
+        modal.classList.remove("fv-area-violet");
+        modal.classList.add("fv-area-slate");
+      }
+
       const iconEl = document.getElementById("financeConfirmIcon");
       if (iconEl) {
-        const iconClass = options.icon || (options.severity === "warning" ? "fa-solid fa-triangle-exclamation" : "fa-solid fa-circle-exclamation");
-        iconEl.className = `fv-tile fv-tile--lg ${options.severity === "warning" ? "fv-tile--warning" : "fv-tile--danger"}`;
-        iconEl.innerHTML = `<i class="${iconClass}"></i>`;
+        if (options.iconSvg) {
+          iconEl.className = `fv-tile fv-tile--lg ${options.tone ? "fv-tile--" + options.tone : "fv-tile--violet"}`;
+          iconEl.innerHTML = options.iconSvg;
+        } else {
+          const iconClass = options.icon || (options.severity === "warning" ? "fa-solid fa-triangle-exclamation" : "fa-solid fa-circle-exclamation");
+          iconEl.className = `fv-tile fv-tile--lg ${options.severity === "warning" ? "fv-tile--warning" : "fv-tile--danger"}`;
+          iconEl.innerHTML = `<i class="${iconClass}"></i>`;
+        }
       }
 
       const summaryEl = document.getElementById("financeConfirmTargetSummary");
@@ -748,6 +772,23 @@ const FinanceCommand = {
           summaryEl.style.display = "block";
         } else {
           summaryEl.style.display = "none";
+        }
+      }
+
+      const tilesEl = document.getElementById("financeConfirmTiles");
+      if (tilesEl) {
+        if (Array.isArray(options.tiles) && options.tiles.length > 0) {
+          tilesEl.style.display = "grid";
+          const safe = (v) => (typeof escapeHtml === "function" ? escapeHtml(v) : String(v));
+          tilesEl.innerHTML = options.tiles.map(t => `
+            <div style="padding: 10px 12px; border-radius: 12px; background: ${t.tone === 'amber' ? 'var(--warning-soft)' : 'var(--fv-canvas)'};">
+              <div style="font-size: 12px; color: ${t.tone === 'amber' ? 'var(--warning-text, var(--warning))' : 'var(--ink-muted)'};">${safe(t.label)}</div>
+              <div style="font-weight: 700; color: var(--ink-strong); font-size: 14px;">${safe(t.value)}</div>
+            </div>
+          `).join('');
+        } else {
+          tilesEl.style.display = "none";
+          tilesEl.innerHTML = "";
         }
       }
 

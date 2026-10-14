@@ -1,18 +1,20 @@
 <!-- Finance Confirm / High-Risk Command Modal (Story 0.4) -->
 <div class="modal-overlay fv fv-dialog fv-area-slate" id="financeConfirmModal" role="dialog" aria-modal="true" aria-labelledby="financeConfirmTitle" aria-describedby="financeConfirmDescription" style="display:none;">
-  <div class="modal modal-md fv-confirm">
+  <div class="modal modal-md fv-confirm" style="width: 540px; max-width: 95vw;">
     <div class="modal-head">
       <span id="financeConfirmIcon" class="fv-tile fv-tile--lg fv-tile--danger" aria-hidden="true"><i class="fa-solid fa-triangle-exclamation"></i></span>
       <div class="modal-head-text">
         <h3 id="financeConfirmTitle">Confirm Action</h3>
+        <div id="financeConfirmSubtitle" class="modal-head-sub" style="display:none; font-size:12.5px; color:var(--ink-muted);"></div>
       </div>
       <button type="button" class="modal-close" onclick="FinanceCommand.handleConfirmCancel()" aria-label="Close confirmation dialog">
-        <i class="fa-solid fa-xmark"></i>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>
       </button>
     </div>
 
     <div class="modal-body">
       <div id="financeConfirmTargetSummary" class="fv-summary" style="display:none;"></div>
+      <div id="financeConfirmTiles" class="fv-confirm-tiles" style="display:none; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px;"></div>
 
       <p id="financeConfirmDescription" class="fv-confirm__text"></p>
 
@@ -35,3 +37,4 @@
     </div>
   </div>
 </div>
+

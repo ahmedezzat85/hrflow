@@ -915,13 +915,70 @@
   border: 1px solid var(--fv-line);
 }
 
+/* S4.6 Step 5 Payment confirmation */
+#a-finance-payroll #payrollScreen5 {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+#a-finance-payroll #payrollScreen5.payroll-hidden {
+  display: none !important;
+}
+#a-finance-payroll #payrollScreen5 .pv-s5-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+#a-finance-payroll #payrollScreen5 .pv-s5-card {
+  background: var(--fv-surface);
+  border: 1px solid var(--fv-line);
+  border-radius: var(--pv-r, 14px);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+#a-finance-payroll #payrollScreen5 .pv-s5-card h2 {
+  margin: 0;
+  font-family: var(--font-display, Sora, sans-serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink-strong);
+}
+#a-finance-payroll #payrollScreen5 .pv-tile-cell {
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: var(--fv-surface-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+#a-finance-payroll #payrollScreen5 .pv-tile-cell .k {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+#a-finance-payroll #payrollScreen5 .pv-tile-cell .v {
+  font-weight: 700;
+  color: var(--ink-strong);
+}
+#a-finance-payroll #payrollScreen5 .pv-s5-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: var(--fv-surface);
+  border: 1px solid var(--fv-line);
+}
+
 
 /* Phone: keep the compact "Step N of 6" stepper and let banners/footers wrap */
 @media (max-width: 768px) {
   #a-finance-payroll #payrollScreen1 .pv-s1-grid,
   #a-finance-payroll #payrollScreen1 .pv-s1-period-grid,
   #a-finance-payroll #payrollScreen1 .pv-p1-stats,
-  #a-finance-payroll #payrollScreen4 .pv-s4-stats {
+  #a-finance-payroll #payrollScreen4 .pv-s4-stats,
+  #a-finance-payroll #payrollScreen5 .pv-s5-grid {
     grid-template-columns: minmax(0, 1fr);
   }
   #a-finance-payroll .payroll-step-pill { display: none; }

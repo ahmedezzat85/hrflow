@@ -327,85 +327,78 @@
               <!-- ==================== SCREEN 5: PAYMENT CONFIRMATION ==================== -->
               <div class="payroll-screen-view screen payroll-hidden" id="payrollScreen5">
                 <div class="title-row">
-                  <div class="section-title"><i class="fa-solid fa-paper-plane"></i> Payment confirmation</div>
+                  <div class="section-title">Payment confirmation</div>
                   <div style="display:flex; align-items:center; gap:8px;">
                     <span class="p-badge b-green" id="p5RunStatusBadge" style="display:none;">Salaries paid</span>
                     <span class="p-badge b-gray" id="p5StatutoryBadge" style="display:none;">Statutory not recorded</span>
                   </div>
                 </div>
-
-                <div class="disburse-grid">
-                  <!-- Rail Card 1: Internal Salaries -->
-                  <div class="disburse-card internal">
-                    <div class="stripe"></div>
-                    <div class="disburse-card-body">
-                      <div class="disburse-head">
-                        <div class="disburse-title"><i class="fa-solid fa-vault"></i> Internal salaries</div>
-                        <span class="disburse-rail-badge" id="p5IntRecipients">0 recipients</span>
-                      </div>
-                      <div class="disburse-amount-lbl">Total amount (USD)</div>
-                      <div class="disburse-amount accent" id="p5IntTotal">$0.00</div>
-                      <div class="disburse-meta">
-                        <div class="disburse-row">
-                          <span class="k"><i class="fa-solid fa-calendar-day"></i> Payment date</span>
-                          <span class="v" id="p5IntPayDate">-</span>
-                        </div>
-                        <div class="disburse-row">
-                          <span class="k"><i class="fa-solid fa-building-columns"></i> Company funding account</span>
-                          <span class="v" id="p5IntAccount">—</span>
-                        </div>
-                        <div class="disburse-row">
-                          <span class="k"><i class="fa-solid fa-users"></i> Recipients</span>
-                          <span class="v" id="p5IntRecipientsCount">0 employees</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Rail Card 2: External Salaries -->
-                  <div class="disburse-card external">
-                    <div class="stripe"></div>
-                    <div class="disburse-card-body">
-                      <div class="disburse-head">
-                        <div class="disburse-title"><i class="fa-solid fa-plane-departure"></i> External salaries</div>
-                        <span class="disburse-rail-badge" id="p5ExtRecipients">0 recipients</span>
-                      </div>
-                      <div class="disburse-amount-lbl">Total amount (USD)</div>
-                      <div class="disburse-amount" style="color:var(--success)" id="p5ExtTotal">$0.00</div>
-                      <div class="disburse-meta">
-                        <div class="disburse-row">
-                          <span class="k"><i class="fa-solid fa-calendar-day"></i> Payment date</span>
-                          <span class="v" id="p5ExtPayDate">-</span>
-                        </div>
-                        <div class="disburse-row">
-                          <span class="k"><i class="fa-solid fa-building-columns"></i> Company funding account</span>
-                          <span class="v" id="p5ExtAccount">—</span>
-                        </div>
-                        <div class="disburse-row">
-                          <span class="k"><i class="fa-solid fa-users"></i> Recipients</span>
-                          <span class="v" id="p5ExtRecipientsCount">0 employees</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Hidden legacy selectors for backwards-compatibility -->
                 <div style="display:none;">
                   <span id="accExternal">-</span>
                   <span id="accInternal">-</span>
                 </div>
 
-                <div class="summary-row" id="p5ExceptionsWrap">
+                <div class="disburse-grid pv-s5-grid" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px;">
+                  <!-- Rail Card 1: Internal Salaries -->
+                  <section class="disburse-card internal pv-s5-card" style="background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: var(--pv-r, 14px); padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;">
+                    <div style="display: flex; align-items: baseline; justify-content: space-between;">
+                      <h2 style="margin: 0; font-family: var(--font-display, Sora, sans-serif); font-size: 15px; font-weight: 700; color: var(--ink-strong);">Internal salaries</h2>
+                      <span style="font-family: var(--font-display, Sora, sans-serif); font-weight: 700; font-size: 20px; color: var(--ink-strong);" id="p5IntTotal">$0.00</span>
+                    </div>
+                    <div class="disburse-meta" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;">
+                      <div class="disburse-row pv-tile-cell" style="padding: 9px 12px; border-radius: 12px; background: var(--fv-surface-soft);">
+                        <span class="k" style="display:block; font-size: 12px; color: var(--ink-muted);">Payment date</span>
+                        <div class="v" style="font-weight: 700; color: var(--ink-strong);" id="p5IntPayDate">-</div>
+                      </div>
+                      <div class="disburse-row pv-tile-cell" style="padding: 9px 12px; border-radius: 12px; background: var(--fv-surface-soft);">
+                        <span class="k" style="display:block; font-size: 12px; color: var(--ink-muted);">Company funding account</span>
+                        <div class="v" style="font-weight: 700; color: var(--ink-strong);" id="p5IntAccount">—</div>
+                      </div>
+                      <div class="disburse-row pv-tile-cell" style="padding: 9px 12px; border-radius: 12px; background: var(--fv-surface-soft);">
+                        <span class="k" style="display:block; font-size: 12px; color: var(--ink-muted);">Recipients</span>
+                        <div class="v" style="font-weight: 700; color: var(--ink-strong);" id="p5IntRecipientsCount">0 employees</div>
+                        <span id="p5IntRecipients" style="display:none;"></span>
+                      </div>
+                    </div>
+                  </section>
+
+                  <!-- Rail Card 2: External Salaries -->
+                  <section class="disburse-card external pv-s5-card" style="background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: var(--pv-r, 14px); padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;">
+                    <div style="display: flex; align-items: baseline; justify-content: space-between;">
+                      <h2 style="margin: 0; font-family: var(--font-display, Sora, sans-serif); font-size: 15px; font-weight: 700; color: var(--ink-strong);">External salaries</h2>
+                      <span style="font-family: var(--font-display, Sora, sans-serif); font-weight: 700; font-size: 20px; color: var(--ink-strong);" id="p5ExtTotal">$0.00</span>
+                    </div>
+                    <div class="disburse-meta" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;">
+                      <div class="disburse-row pv-tile-cell" style="padding: 9px 12px; border-radius: 12px; background: var(--fv-surface-soft);">
+                        <span class="k" style="display:block; font-size: 12px; color: var(--ink-muted);">Payment date</span>
+                        <div class="v" style="font-weight: 700; color: var(--ink-strong);" id="p5ExtPayDate">-</div>
+                      </div>
+                      <div class="disburse-row pv-tile-cell" style="padding: 9px 12px; border-radius: 12px; background: var(--fv-surface-soft);">
+                        <span class="k" style="display:block; font-size: 12px; color: var(--ink-muted);">Company funding account</span>
+                        <div class="v" style="font-weight: 700; color: var(--ink-strong);" id="p5ExtAccount">—</div>
+                      </div>
+                      <div class="disburse-row pv-tile-cell" style="padding: 9px 12px; border-radius: 12px; background: var(--fv-surface-soft);">
+                        <span class="k" style="display:block; font-size: 12px; color: var(--ink-muted);">Recipients</span>
+                        <div class="v" style="font-weight: 700; color: var(--ink-strong);" id="p5ExtRecipientsCount">0 employees</div>
+                        <span id="p5ExtRecipients" style="display:none;"></span>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+
+                <div role="status" class="summary-row" id="p5ExceptionsWrap" style="display:none; padding: 10px 14px; border-radius: 12px; background: var(--warning-soft); border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent); color: var(--warning-text, var(--warning)); font-size: 13px; font-weight: 600;">
                   <div class="payroll-exceptions-strip" id="payrollExceptionList"></div>
                 </div>
 
-                <div style="padding:0 20px 14px">
-                  <button type="button" class="btn btn-outline" id="btnP5ExportCsv" onclick="PayrollApp.exportRunCsv()"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
-                  <button type="button" class="btn btn-fill" id="btnP5ConfirmDisburse" onclick="PayrollApp.confirmDisbursement()">
-                    <i class="fa-solid fa-paper-plane"></i> Confirm and record as paid
-                  </button>
-                  <p class="payroll-subtitle" id="p5ConfirmHint" hidden></p>
+                <div class="footer payroll-footer-actions pv-s5-footer">
+                  <button class="btn btn-ghost" id="btnP5Back" onclick="PayrollApp.setStep(3)">Back</button>
+                  <div style="display: flex; align-items: center; gap: 14px;">
+                    <button type="button" class="btn btn-outline" id="btnP5ExportCsv" onclick="PayrollApp.exportRunCsv()" style="height: 34px; padding: 0 14px; border-radius: 9px; font-weight: 600; font-size: 13px;">Export CSV</button>
+                    <span id="p5ConfirmHint" style="font-size: 12.5px; color: var(--ink-muted);">Records the payment in HRFlow. No money is sent from here.</span>
+                    <button type="button" class="btn btn-fill" id="btnP5ConfirmDisburse" onclick="PayrollApp.confirmDisbursement()">
+                      Confirm and record as paid
+                    </button>
+                  </div>
                 </div>
 
                 <!-- Per-line Disbursal Results Table (Shown when Disbursed) -->
@@ -452,9 +445,9 @@
 
                 <div class="footer payroll-footer-actions">
                   <div class="left-info" style="display:none;">Step 5 of 6 — Disbursement execution complete. Proceed to statutory tax and social insurance reconciliation.</div>
-                  <button class="btn btn-ghost" id="btnP5Back" onclick="PayrollApp.setStep(3)"><i class="fa-solid fa-arrow-left"></i> Back</button>
+                  <button class="btn btn-ghost" onclick="PayrollApp.setStep(3)">Back</button>
                   <button class="btn btn-fill" id="btnP5ProceedStatutory" onclick="PayrollApp.setStep(5)">
-                    Next: Statutory Payments <i class="fa-solid fa-arrow-right"></i>
+                    Next: Statutory payments
                   </button>
                 </div>
               </div>
