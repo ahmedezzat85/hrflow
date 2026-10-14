@@ -238,6 +238,15 @@ function renderEmployeePortal() {
   const emp = employees.find(e => e.id === window.LOGGED_IN_EMPLOYEE_ID) || currentLoggedInEmployee;
   if (!emp) return;
 
+  // Greeting
+  const elGreeting = document.getElementById('empDashGreeting');
+  if (elGreeting) {
+    const firstName = (emp.name || '').split(' ')[0] || 'there';
+    const hour = new Date().getHours();
+    const greet = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+    elGreeting.textContent = `${greet}, ${firstName}`;
+  }
+
   const totalMonthlyUsd = (emp.internalSalaryUsd || 0) + (emp.externalSalaryUsd || 0) || emp.salary || 0;
   const elSalary = document.getElementById('empDashSalary');
   if (elSalary) elSalary.textContent = fmtUSD(totalMonthlyUsd);
@@ -252,22 +261,50 @@ function renderEmployeePortal() {
   const elRaiseNote = document.getElementById('empNextRaiseNote');
   const hasRaise = emp.nextRaise && emp.nextRaise !== '—' && !isNaN(new Date(emp.nextRaise).getTime());
   if (elRaise) elRaise.textContent = hasRaise ? fmtDateShort(emp.nextRaise) : '—';
-  if (elRaiseNote) elRaiseNote.textContent = hasRaise ? 'Scheduled review date.' : 'No raise date scheduled yet.';
+  if (elRaiseNote) {
+    if (hasRaise) {
+      const diffMs = new Date(emp.nextRaise) - new Date();
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      const inDays = diffDays > 0 ? `in ${diffDays} days` : diffDays === 0 ? 'today' : `${Math.abs(diffDays)} days ago`;
+      const prevRaise = (emp.salaryHistory || [])[0];
+      const prevNote = prevRaise && prevRaise.date ? ` · last raise on ${prevRaise.date}` : '';
+      elRaiseNote.textContent = `${inDays}${prevNote}`;
+    } else {
+      elRaiseNote.textContent = 'No raise date scheduled yet.';
+    }
+  }
 
   // Dynamic Vacation Days Left
-  const vacLeft = Math.max(0, (emp.vacTotal || 21) - (emp.vacUsed || 0));
+  const vacTotal = emp.vacTotal || 21;
+  const vacUsed = emp.vacUsed || 0;
+  const vacLeft = Math.max(0, vacTotal - vacUsed);
   const elVacDays = document.getElementById('empDashVacDays');
   if (elVacDays) elVacDays.textContent = vacLeft;
+  const elVacTotal = document.getElementById('empDashVacTotal');
+  if (elVacTotal) elVacTotal.textContent = `of ${vacTotal}`;
+  const elVacFoot = document.getElementById('empDashVacUsedFoot');
+  if (elVacFoot) elVacFoot.textContent = `${vacUsed} days used in ${new Date().getFullYear()}`;
 
   // Dynamic WFH Count
   const wfhCount = empVacationHistory.filter(v => v.type === 'Work From Home' || v.type === 'WFH').length;
   const elWfh = document.getElementById('empDashWfh');
   if (elWfh) elWfh.textContent = wfhCount;
+  const elWfhFoot = document.getElementById('empDashWfhFoot');
+  if (elWfhFoot) {
+    const curMonth = new Intl.DateTimeFormat('en-US', { month: 'long' }).format(new Date());
+    elWfhFoot.textContent = `days in ${curMonth}`;
+  }
 
   // Dynamic Pending Claims
-  const pendingClaimsCount = empInsuranceHistory.filter(c => c.status === 'Pending').length;
+  const pendingClaims = empInsuranceHistory.filter(c => c.status === 'Pending' || c.status === 'Waiting');
+  const pendingClaimsCount = pendingClaims.length;
   const elEmpClaims = document.getElementById('empDashClaims');
   if (elEmpClaims) elEmpClaims.textContent = pendingClaimsCount;
+  const elClaimsFoot = document.getElementById('empDashClaimsFoot');
+  if (elClaimsFoot) {
+    const pendingTotal = pendingClaims.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+    elClaimsFoot.textContent = pendingClaimsCount > 0 ? `${fmtMoney(pendingTotal)} waiting` : 'Waiting for review';
+  }
 
   // Timeline entries from real data
   const timeline = document.getElementById('empTimeline');
@@ -276,28 +313,63 @@ function renderEmployeePortal() {
     empVacationHistory.slice(0, 3).forEach(v => {
       const datesStr = v.dates || (v.startDate && v.endDate ? `${v.startDate} to ${v.endDate}` : (v.start_date && v.end_date ? `${v.start_date} to ${v.end_date}` : v.date || ''));
       entries.push({
-        ic: 'fa-solid fa-umbrella-beach',
-        c: 'accent',
-        t: `${escapeHtml(v.type)} (${v.status})`,
-        d: datesStr ? `${datesStr} • ${v.days} days` : `${v.days} days`
+        type: 'vacation',
+        title: `${escapeHtml(v.type)} · ${v.days} day${v.days === 1 ? '' : 's'}`,
+        sub: datesStr,
+        status: v.status
       });
     });
     empInsuranceHistory.slice(0, 2).forEach(c => {
       entries.push({
-        ic: 'fa-solid fa-briefcase-medical',
-        c: 'warning',
-        t: `Medical Claim: ${escapeHtml(c.category)}`,
-        d: `${fmtMoney(c.amount)} • ${c.status}`
+        type: 'insurance',
+        title: `${escapeHtml(c.category || 'Medical')} claim · ${fmtMoney(c.amount)}`,
+        sub: c.date ? `submitted ${c.date}` : '',
+        status: c.status
       });
     });
     if (!entries.length) {
-      timeline.innerHTML = `<li><div class="txt" style="color:var(--text2);font-size:13px;padding:8px 0;">No recent activity recorded.</div></li>`;
+      timeline.innerHTML = '<div style="padding: 16px; color: var(--ink-muted); font-size: 13px;">No recent activity recorded.</div>';
     } else {
-      timeline.innerHTML = entries.map(x => `
-        <li>
-          <div class="ic" style="background:var(--${x.c === 'accent' ? 'accent-soft' : 'surface2'});color:var(--${x.c});"><i class="${x.ic}"></i></div>
-          <div class="txt"><strong>${x.t}</strong><p>${x.d}</p></div>
-        </li>`).join('');
+      timeline.innerHTML = entries.map(x => {
+        const isApp = x.status === 'Approved';
+        const isWait = x.status === 'Pending' || x.status === 'Waiting';
+        const pillBg = isApp ? '#e3f5ec' : isWait ? '#fdf0e1' : 'var(--fv-surface-soft)';
+        const pillColor = isApp ? '#06703f' : isWait ? '#9c5000' : 'var(--ink-muted)';
+        const label = isWait ? 'Waiting' : escapeHtml(x.status);
+        const iconSvg = x.type === 'insurance'
+          ? '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-8-5.2-8-10.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5C20 14.8 12 20 12 20z"></path></svg>'
+          : '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 0 1 9 9H3a9 9 0 0 1 9-9M12 12v7a2 2 0 0 0 4 0"></path></svg>';
+        return `
+          <div style="display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--fv-line);">
+            <span style="width: 32px; height: 32px; flex: none; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; background: var(--teal-soft, #e0f4f1); color: var(--teal-ink, #0b7a6d);">${iconSvg}</span>
+            <span style="flex: 1; min-width: 0;">
+              <span style="display: block; font-weight: 600; color: var(--ink-strong); font-size: 13.5px;">${x.title}</span>
+              <span style="font-size: 12px; color: var(--ink-muted);">${x.sub}</span>
+            </span>
+            <span style="padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; color: ${pillColor}; background: ${pillBg};">${label}</span>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  // Salary Page KPI cards
+  const elSalaryMonthly = document.getElementById('empSalaryMonthly');
+  if (elSalaryMonthly) elSalaryMonthly.textContent = fmtUSD(totalMonthlyUsd);
+  const elSalaryExternal = document.getElementById('empSalaryExternal');
+  if (elSalaryExternal) elSalaryExternal.textContent = fmtUSD(emp.externalSalaryUsd || 0);
+  const elSalaryInternal = document.getElementById('empSalaryInternal');
+  if (elSalaryInternal) elSalaryInternal.textContent = fmtUSD(emp.internalSalaryUsd || 0);
+  const elSalaryNextRaise = document.getElementById('empSalaryNextRaise');
+  if (elSalaryNextRaise) elSalaryNextRaise.textContent = hasRaise ? fmtDateShort(emp.nextRaise) : '—';
+  const elSalaryNextRaiseSub = document.getElementById('empSalaryNextRaiseSub');
+  if (elSalaryNextRaiseSub) {
+    if (hasRaise) {
+      const diffMs = new Date(emp.nextRaise) - new Date();
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      elSalaryNextRaiseSub.textContent = diffDays > 0 ? `in ${diffDays} days` : diffDays === 0 ? 'today' : `${Math.abs(diffDays)} days ago`;
+    } else {
+      elSalaryNextRaiseSub.textContent = 'None scheduled';
     }
   }
 
@@ -309,30 +381,73 @@ function renderEmployeePortal() {
       const prevInternal = older ? older.newInternal : (s.prevInternal || 0);
       const prevExternal = older ? older.newExternal : (s.prevExternal || 0);
       const d = computeRowDeltas(prevInternal, prevExternal, s.newInternal, s.newExternal);
-      return `<tr><td data-label="Effective Date">${s.date}</td><td data-label="Internal">${fmtUSD(s.newInternal)}</td><td data-label="External">${fmtUSD(s.newExternal)}</td><td data-label="Total">${fmtUSD(s.newInternal + s.newExternal)}</td><td data-label="Internal Δ">${fmtDelta(d.internalAmt, d.internalPct)}</td><td data-label="External Δ">${fmtDelta(d.externalAmt, d.externalPct)}</td><td data-label="Total Δ"><span class="badge-pill pill-success">${fmtDelta(d.totalAmt, d.totalPct)}</span></td><td data-label="Reason">${escapeHtml(s.reason)}</td></tr>`;
-    }).join('') || renderEmptyTableRow(8, 'No raise history yet.', 'fa-solid fa-sack-dollar');
+      const changePill = d.totalAmt > 0
+        ? `<span style="display:inline-flex; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #06703f; background: #e3f5ec; white-space: nowrap;">+${fmtUSD(d.totalAmt)} · ${fmtDelta(0, d.totalPct)}</span>`
+        : `<span style="display:inline-flex; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #4b5c92; background: #eef1f8; white-space: nowrap;">Starting pay</span>`;
+      return `
+        <tr>
+          <td data-label="Effective" style="padding: 9px 16px; border-bottom: 1px solid var(--fv-line); font-weight: 600; color: var(--ink-strong);">${s.date}</td>
+          <td data-label="Internal USD" style="padding: 9px 12px; border-bottom: 1px solid var(--fv-line); text-align: right; color: var(--ink-body);">${fmtUSD(s.newInternal)}</td>
+          <td data-label="External USD" style="padding: 9px 12px; border-bottom: 1px solid var(--fv-line); text-align: right; color: var(--ink-body);">${fmtUSD(s.newExternal)}</td>
+          <td data-label="Monthly total" style="padding: 9px 12px; border-bottom: 1px solid var(--fv-line); text-align: right; font-weight: 700; color: var(--ink-strong);">${fmtUSD(s.newInternal + s.newExternal)}</td>
+          <td data-label="Change" style="padding: 9px 12px; border-bottom: 1px solid var(--fv-line);">${changePill}</td>
+          <td data-label="Reason" style="padding: 9px 16px; border-bottom: 1px solid var(--fv-line); color: var(--ink-body);">${escapeHtml(s.reason)}</td>
+        </tr>
+      `;
+    }).join('') || renderEmptyTableRow(6, 'No raise history yet.', 'fa-solid fa-sack-dollar');
   }
-  document.getElementById('empVacationBody').innerHTML = empVacationHistory.map(v => {
-    const datesStr = v.dates || (v.startDate && v.endDate ? `${v.startDate} to ${v.endDate}` : (v.start_date && v.end_date ? `${v.start_date} to ${v.end_date}` : v.date || '—'));
-    return `<tr><td data-label="Type">${escapeHtml(v.type)}</td><td data-label="Dates">${datesStr}</td><td data-label="Days">${v.days}</td><td data-label="Status">${statusPill(v.status)}</td></tr>`;
-  }).join('') || renderEmptyTableRow(4, 'No vacation history yet.', 'fa-solid fa-umbrella-beach');
+  const vacTbody = document.getElementById('empVacationBody');
+  if (vacTbody) {
+    vacTbody.innerHTML = empVacationHistory.map(v => {
+      const datesStr = v.dates || (v.startDate && v.endDate ? `${v.startDate} to ${v.endDate}` : (v.start_date && v.end_date ? `${v.start_date} to ${v.end_date}` : v.date || '—'));
+      const isWfh = v.type === 'Work from home' || v.type === 'Work From Home' || v.type === 'WFH';
+      const dotBg = isWfh ? '#3f98d0' : '#1f9d8e';
+      const isApp = v.status === 'Approved';
+      const pillBg = isApp ? '#e3f5ec' : 'var(--fv-surface-soft)';
+      const pillColor = isApp ? '#06703f' : 'var(--ink-muted)';
+      return `
+        <tr>
+          <td data-label="Type" style="padding: 10px 16px; border-bottom: 1px solid var(--fv-line);">
+            <span style="display: inline-flex; align-items: center; gap: 7px; font-weight: 600; color: var(--ink-strong);">
+              <span style="width: 8px; height: 8px; border-radius: 3px; display: inline-block; background: ${dotBg};"></span>
+              ${escapeHtml(v.type)}
+            </span>
+          </td>
+          <td data-label="Dates" style="padding: 10px 12px; border-bottom: 1px solid var(--fv-line); white-space: nowrap; color: var(--ink-body);">${datesStr}</td>
+          <td data-label="Days" style="padding: 10px 12px; border-bottom: 1px solid var(--fv-line); text-align: right; color: var(--ink-strong);">${v.days}</td>
+          <td data-label="Status" style="padding: 10px 16px; border-bottom: 1px solid var(--fv-line);">
+            <span class="badge" style="display: inline-flex; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: ${pillColor}; background: ${pillBg};">${escapeHtml(v.status)}</span>
+          </td>
+        </tr>
+      `;
+    }).join('') || renderEmptyTableRow(4, 'No vacation history yet.', 'fa-solid fa-umbrella-beach');
+  }
   
   // Dynamic employee vacation stat cards
   const vacEntitlement = emp.vacTotal || 21;
-  const vacUsed = emp.vacUsed || 0;
   const vacRemaining = Math.max(0, vacEntitlement - vacUsed);
   const elEnt = document.getElementById('empStatVacEntitlement');
   const elUsed = document.getElementById('empStatVacUsed');
   const elRem = document.getElementById('empStatVacRemaining');
-  const elTrend = document.getElementById('empStatVacUsedTrend');
+  const elProgress = document.getElementById('empVacUsedProgress');
   if (elEnt) elEnt.textContent = `${vacEntitlement} days`;
   if (elUsed) elUsed.textContent = `${vacUsed} days`;
   if (elRem) elRem.textContent = `${vacRemaining} days`;
-  if (elTrend) {
-    const pct = vacEntitlement ? Math.round((vacUsed / vacEntitlement) * 100) : 0;
-    elTrend.innerHTML = `<i class="fa-solid fa-hourglass-half"></i> ${pct}% of quota`;
+  if (elProgress) {
+    const pct = vacEntitlement ? Math.min(Math.round((vacUsed / vacEntitlement) * 100), 100) : 0;
+    elProgress.style.width = `${pct}%`;
   }
 
-  document.getElementById('empInsuranceBody').innerHTML = empInsuranceHistory.map(c => `<tr><td data-label="Category">${escapeHtml(c.category)}</td><td data-label="Provider">${escapeHtml(c.provider)}</td><td data-label="Amount">${fmtMoney(c.amount)}</td><td data-label="Date">${c.date}</td><td data-label="Status">${statusPill(c.status)}</td><td data-label="Document">${c.document_url ? `<button type="button" class="icon-action" title="View supporting document" data-action="view-own-claim-receipt" data-index="${escapeHtml(empInsuranceHistory.indexOf(c))}"><i class="fa-solid fa-paperclip"></i></button>` : '<span style="color:var(--text3);">—</span>'}</td></tr>`).join('') || renderEmptyTableRow(6, 'No insurance claims yet.', 'fa-solid fa-briefcase-medical');
+  const elInsBody = document.getElementById('empInsuranceBody');
+  if (elInsBody) {
+    elInsBody.innerHTML = empInsuranceHistory.map((c, idx) => `<tr>
+      <td data-label="Category" style="padding: 10px 16px; font-weight: 600; color: var(--ink-strong);">${escapeHtml(c.category)}</td>
+      <td data-label="Provider" style="padding: 10px 12px; color: var(--ink-muted);">${escapeHtml(c.provider || 'Not given')}</td>
+      <td data-label="Date" style="padding: 10px 12px; color: var(--ink-strong);">${escapeHtml(c.date)}</td>
+      <td data-label="Status" style="padding: 10px 12px;">${statusPill(c.status)}</td>
+      <td data-label="Amount" style="padding: 10px 12px; text-align: right; font-weight: 700; color: var(--ink-strong);">${fmtMoney(c.amount)}</td>
+      <td data-label="Receipt" style="padding: 10px 16px; text-align: right;">${c.document_url ? `<button type="button" class="icon-action" title="View supporting document" data-action="view-own-claim-receipt" data-index="${idx}" aria-label="View receipt" style="width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-muted); display: inline-flex; align-items: center; justify-content: center;"><i class="fa-solid fa-paperclip"></i></button>` : '<span style="color:var(--ink-muted);">—</span>'}</td>
+    </tr>`).join('') || renderEmptyTableRow(6, 'No insurance claims yet.', 'fa-solid fa-briefcase-medical');
+  }
   renderEmployeeInsuranceHighlights();
 }

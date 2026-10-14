@@ -1,39 +1,61 @@
         <section class="page-section fv" id="e-salary">
-          <div class="grid g-2-1 hv-mb-14">
-            <div class="card">
-              <div class="card-head">
-                <h3 class="hv-card-title">Salary growth</h3>
-              </div>
-              <div class="chart-wrap"><canvas id="chartSalary"></canvas></div>
+          <!-- 4 KPI cards -->
+          <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 14px;">
+            <div class="card" style="display: flex; flex-direction: column; gap: 8px; padding: 14px 18px; border-radius: 14px; border: 1px solid var(--fv-line); background: var(--fv-surface); box-shadow: var(--fv-shadow-card);">
+              <span style="font-size: 12.5px; font-weight: 600; color: var(--ink-label);">Monthly pay</span>
+              <span id="empSalaryMonthly" style="font-family: var(--font-display, Sora, sans-serif); font-weight: 700; font-size: 24px; line-height: 1.1; color: var(--brand);">$12,500</span>
+              <span style="font-size: 12.5px; color: var(--ink-muted);">per month, USD</span>
+              <span id="empPkgBase" style="display: none;">—</span>
+              <span id="empPkgTotal" style="display: none;">—</span>
             </div>
-            <div class="card">
-              <div class="card-head">
-                <h3 class="hv-card-title">Current package</h3>
-              </div>
-              <div class="info-item hv-mb-12"><span>Base salary</span><b id="empPkgBase">—</b></div>
-              <div class="info-item"><span>Total annual compensation</span><b id="empPkgTotal">—</b></div>
+            <div class="card" style="display: flex; flex-direction: column; gap: 8px; padding: 14px 18px; border-radius: 14px; border: 1px solid var(--fv-line); background: var(--fv-surface); box-shadow: var(--fv-shadow-card);">
+              <span style="font-size: 12.5px; font-weight: 600; color: var(--ink-label);">External USD</span>
+              <span id="empSalaryExternal" style="font-family: var(--font-display, Sora, sans-serif); font-weight: 700; font-size: 24px; line-height: 1.1; color: var(--ink-strong);">$7,500</span>
+              <span style="font-size: 12.5px; color: var(--ink-muted);">US transfer</span>
+            </div>
+            <div class="card" style="display: flex; flex-direction: column; gap: 8px; padding: 14px 18px; border-radius: 14px; border: 1px solid var(--fv-line); background: var(--fv-surface); box-shadow: var(--fv-shadow-card);">
+              <span style="font-size: 12.5px; font-weight: 600; color: var(--ink-label);">Internal USD cash</span>
+              <span id="empSalaryInternal" style="font-family: var(--font-display, Sora, sans-serif); font-weight: 700; font-size: 24px; line-height: 1.1; color: var(--ink-strong);">$5,000</span>
+              <span style="font-size: 12.5px; color: var(--ink-muted);">paid locally</span>
+            </div>
+            <div class="card" style="display: flex; flex-direction: column; gap: 8px; padding: 14px 18px; border-radius: 14px; border: 1px solid var(--fv-line); background: var(--fv-surface); box-shadow: var(--fv-shadow-card);">
+              <span style="font-size: 12.5px; font-weight: 600; color: var(--ink-label);">Next raise</span>
+              <span id="empSalaryNextRaise" style="font-family: var(--font-display, Sora, sans-serif); font-weight: 700; font-size: 24px; line-height: 1.1; color: var(--ink-strong);">—</span>
+              <span id="empSalaryNextRaiseSub" style="font-size: 12.5px; color: var(--ink-muted);">—</span>
             </div>
           </div>
-          <div class="card fv-table-card">
-            <div class="card-head hv-card-head-plain">
-              <h3 class="hv-card-title">Raise history</h3>
+
+          <!-- Monthly pay over time -->
+          <section class="card" style="background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: 14px; padding: 14px 16px; box-shadow: var(--fv-shadow-card); margin-bottom: 14px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+              <h2 style="margin: 0; font-family: var(--font-display, Sora, sans-serif); font-size: 15px; color: var(--ink-strong);">Monthly pay over time</h2>
+              <span style="display: flex; gap: 14px; font-size: 12.5px; color: var(--ink-label);">
+                <span class="hv-legend-item"><span class="hv-legend-dot hv-dot-blue"></span>External USD</span>
+                <span class="hv-legend-item"><span class="hv-legend-dot hv-dot-green"></span>Internal USD cash</span>
+              </span>
+            </div>
+            <div class="chart-wrap" style="height: 220px; position: relative;"><canvas id="chartSalary"></canvas></div>
+          </section>
+
+          <!-- Raise history -->
+          <section class="card fv-table-card" style="background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: 14px; overflow: hidden; box-shadow: var(--fv-shadow-card);">
+            <div style="padding: 12px 16px; border-bottom: 1px solid var(--fv-line);">
+              <h2 style="margin: 0; font-family: var(--font-display, Sora, sans-serif); font-size: 15px; color: var(--ink-strong);">Raise history</h2>
             </div>
             <div class="fv-table-scroll">
-              <table class="responsive-card-table fv-table">
+              <table class="responsive-card-table fv-table" style="width: 100%; border-collapse: collapse;">
                 <thead>
                   <tr>
-                    <th>Effective date</th>
-                    <th class="hv-right">New internal</th>
-                    <th class="hv-right">New external</th>
-                    <th class="hv-right">New total</th>
-                    <th class="hv-right">Internal Δ</th>
-                    <th class="hv-right">External Δ</th>
-                    <th class="hv-right">Total Δ</th>
-                    <th>Reason</th>
+                    <th scope="col" style="text-align: left; padding: 11px 16px; font-size: 12px; font-weight: 600; color: var(--ink-label); border-bottom: 1px solid var(--fv-line);">Effective</th>
+                    <th scope="col" style="text-align: right; padding: 11px 12px; font-size: 12px; font-weight: 600; color: var(--ink-label); border-bottom: 1px solid var(--fv-line);">Internal USD</th>
+                    <th scope="col" style="text-align: right; padding: 11px 12px; font-size: 12px; font-weight: 600; color: var(--ink-label); border-bottom: 1px solid var(--fv-line);">External USD</th>
+                    <th scope="col" style="text-align: right; padding: 11px 12px; font-size: 12px; font-weight: 600; color: var(--ink-label); border-bottom: 1px solid var(--fv-line);">Monthly total</th>
+                    <th scope="col" style="text-align: left; padding: 11px 12px; font-size: 12px; font-weight: 600; color: var(--ink-label); border-bottom: 1px solid var(--fv-line);">Change</th>
+                    <th scope="col" style="text-align: left; padding: 11px 16px; font-size: 12px; font-weight: 600; color: var(--ink-label); border-bottom: 1px solid var(--fv-line);">Reason</th>
                   </tr>
                 </thead>
                 <tbody id="salaryHistoryBody"></tbody>
               </table>
             </div>
-          </div>
+          </section>
         </section>

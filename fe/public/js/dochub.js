@@ -158,11 +158,51 @@ function renderCompanyDocumentsAdmin(filter=''){
   }).join('') || renderEmptyTableRow(4, 'No company documents uploaded yet.', 'fa-solid fa-folder-open');
   setTableFoot('dochubTableBody', list.length, 'documents');
 }
+let currentEmpDochubCategory = 'all';
+
+function renderEmpDochubCategoryPills() {
+  const group = document.getElementById('empDochubCategoryFilterGroup');
+  if (!group) return;
+  const docs = typeof companyDocuments !== 'undefined' && Array.isArray(companyDocuments) ? companyDocuments : [];
+  const knownCats = ['Policy', 'Handbook', 'Form', 'General', 'Announcement'];
+  const dataCats = docs.map(d => d.category).filter(Boolean);
+  const cats = Array.from(new Set([...dataCats, ...knownCats]));
+  const allCount = docs.length;
+  let html = `<button type="button" class="filter-tab fv-pill${currentEmpDochubCategory === 'all' ? ' active' : ''}" data-doc-cat="all" aria-pressed="${currentEmpDochubCategory === 'all'}">All <span class="tab-count hv-count">${allCount}</span></button>`;
+  cats.forEach(c => {
+    const count = docs.filter(d => (d.category || '').toLowerCase() === c.toLowerCase()).length;
+    const isMuted = count === 0 ? ' style="opacity:.55;"' : '';
+    html += `<button type="button" class="filter-tab fv-pill${currentEmpDochubCategory.toLowerCase() === c.toLowerCase() ? ' active' : ''}" data-doc-cat="${escapeHtml(c)}" aria-pressed="${currentEmpDochubCategory.toLowerCase() === c.toLowerCase()}"${isMuted}>${escapeHtml(c)} <span class="tab-count hv-count" style="opacity:.75;">${count}</span></button>`;
+  });
+  group.innerHTML = html;
+  if (!group.dataset.bound) {
+    group.dataset.bound = '1';
+    group.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-doc-cat]');
+      if (!btn) return;
+      currentEmpDochubCategory = btn.dataset.docCat;
+      group.querySelectorAll('[data-doc-cat]').forEach(b => {
+        const active = b.dataset.docCat.toLowerCase() === currentEmpDochubCategory.toLowerCase();
+        b.classList.toggle('active', active);
+        b.setAttribute('aria-pressed', active);
+      });
+      const searchVal = document.getElementById('empDochubSearch') ? document.getElementById('empDochubSearch').value : '';
+      renderCompanyDocumentsEmployee(searchVal);
+    });
+  }
+}
+
 function renderCompanyDocumentsEmployee(filter=''){
   const body = document.getElementById('empDochubTableBody');
   if(!body) return;
+  renderEmpDochubCategoryPills();
   const f = (filter||'').toLowerCase();
-  const list = (typeof companyDocuments !== 'undefined' ? companyDocuments : []).filter(d => (d.name||'').toLowerCase().includes(f) || (d.category||'').toLowerCase().includes(f));
+  const catFilter = currentEmpDochubCategory;
+  const list = (typeof companyDocuments !== 'undefined' ? companyDocuments : []).filter(d => {
+    const matchesCat = catFilter === 'all' || (d.category || '').toLowerCase() === catFilter.toLowerCase();
+    const matchesSearch = !f || (d.name||'').toLowerCase().includes(f) || (d.category||'').toLowerCase().includes(f);
+    return matchesCat && matchesSearch;
+  });
   body.innerHTML = list.map(d=>{
     const ext = (d.file_type === 'image' ? 'IMG' : (d.file_type || 'PDF')).toUpperCase();
     const meta = d.file_size ? `${ext} · ${typeof formatFileSize === 'function' ? formatFileSize(d.file_size) : (d.file_size/1024).toFixed(0) + ' KB'}` : ext;
@@ -178,13 +218,14 @@ function renderCompanyDocumentsEmployee(filter=''){
         </div>
       </td>
       <td data-label="Category"><span class="hv-catdot" data-cat="${escapeHtml(d.category||'General')}">${escapeHtml(d.category||'General')}</span></td>
-      <td data-label="Uploaded" style="white-space:nowrap;">${dateFormatted}</td>
+      <td data-label="Published" style="white-space:nowrap;">${dateFormatted}</td>
       <td class="col-actions">
         <button type="button" class="btn btn-sm btn-outline" data-action="preview-company-doc" data-id="${escapeHtml(d.id)}" data-name="${escapeHtml(d.name || '')}" data-type="${escapeHtml(d.file_type || '')}">Preview</button>
         <button type="button" class="icon-action" aria-label="Download ${escapeHtml(d.name || '')}" onclick="downloadCompanyDocument(${d.id})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M4 20h16"></path></svg></button>
       </td>
     </tr>`;
   }).join('') || renderEmptyTableRow(4, 'No company documents available yet.', 'fa-solid fa-folder-open');
+  setTableFoot('empDochubTableBody', list.length, 'documents');
 }
 const dochubSearchEl = document.getElementById('dochubSearch');
 if(dochubSearchEl) dochubSearchEl.addEventListener('input', e=>renderCompanyDocumentsAdmin(e.target.value));

@@ -234,14 +234,32 @@ function renderEmployeeInsuranceHighlights(){
   const dashGrid = document.getElementById('empDashInsuranceCategoryChips');
   const pageGrid = document.getElementById('empInsuranceCategoryGrid');
   const totalEl = document.getElementById('empInsuranceTotalConsumed');
+  const dashSub = document.getElementById('empDashInsuranceSub');
   if(!consumption){
     if(dashGrid) dashGrid.innerHTML = getEmptyStateHtml('No insurance data available yet.', 'fa-solid fa-briefcase-medical');
     if(pageGrid) pageGrid.innerHTML = getEmptyStateHtml('No insurance data available yet.', 'fa-solid fa-briefcase-medical');
     return;
   }
-  const chips = consumption.categories.map(renderCategoryChip).join('');
-  if(dashGrid) dashGrid.innerHTML = chips;
-  if(pageGrid) pageGrid.innerHTML = chips;
+  if (dashSub) {
+    const pendingList = (typeof empInsuranceHistory !== 'undefined' && Array.isArray(empInsuranceHistory)) ? empInsuranceHistory.filter(c => c.status === 'Pending' || c.status === 'Waiting') : [];
+    dashSub.textContent = `EGP ${consumption.total_consumed.toLocaleString()} used in ${new Date().getFullYear()} · ${pendingList.length} claim${pendingList.length === 1 ? '' : 's'} waiting`;
+  }
+  const dashChips = consumption.categories.map(cat => {
+    const pct = cat.limit > 0 ? Math.min(Math.round((cat.consumed / cat.limit) * 100), 100) : 0;
+    return `
+      <div style="padding: 10px 12px; border-radius: 12px; background: var(--fv-surface-soft);">
+        <div style="display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 7px;">
+          <span style="color: var(--ink-label); font-weight: 600;">${escapeHtml(cat.category)}</span>
+          <span style="color: var(--ink-strong); font-weight: 700;">EGP ${cat.consumed.toLocaleString()} of ${cat.limit.toLocaleString()}</span>
+        </div>
+        <span style="height: 6px; border-radius: 999px; background: var(--fv-line); display: block; overflow: hidden;">
+          <span style="display: block; height: 6px; border-radius: 999px; background: #1f9d8e; width: ${pct}%;"></span>
+        </span>
+      </div>
+    `;
+  }).join('');
+  if(dashGrid) dashGrid.innerHTML = dashChips;
+  if(pageGrid) pageGrid.innerHTML = consumption.categories.map(renderCategoryChip).join('');
   if(totalEl) totalEl.textContent = `${fmtMoney(consumption.total_consumed)} of ${fmtMoney(consumption.total_limit)}`;
 }
 async function submitClaim(evt){

@@ -1,13 +1,11 @@
         <section class="page-section fv" id="e-payslips">
-          <div class="toolbar">
-            <div class="section-title-group">
-              <h2 class="section-title"><i class="fa-solid fa-file-invoice-dollar"></i> My payslips</h2>
-              <p class="section-subtitle">Official records of monthly payroll distributions and compensation breakdown.</p>
-            </div>
-          </div>
-          <div class="card hv-empty">
-            <div class="hv-empty-icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
-            <h3 class="hv-mb-8">Coming soon</h3>
-            <p class="hv-empty-text">Official digital payslips are being rolled out. In the meantime, you can review your compensation and raise history in the Salary section.</p>
-          </div>
+          <h2 class="section-title sr-only" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); font-size: 18px;">My payslips</h2>
+          <section class="card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; height: 380px; background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: 14px; box-shadow: var(--fv-shadow-card); text-align: center; padding: 24px;">
+            <span style="width: 56px; height: 56px; border-radius: 16px; background: var(--fv-area-violet-bg); color: var(--fv-area-violet-ink); display: inline-flex; align-items: center; justify-content: center;">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"></path></svg>
+            </span>
+            <h3 style="margin: 0; font-family: var(--font-display, Sora, sans-serif); font-size: 20px; font-weight: 700; color: var(--ink-strong);">Payslips are coming soon</h3>
+            <p style="margin: 0; max-width: 460px; color: var(--ink-muted); font-size: 14px;">You will find a payslip here for every paid payroll month. Until then, ask HR for a copy.</p>
+            <button type="button" class="btn btn-outline" onclick="showSection('e-salary','employee')" style="display: inline-flex; align-items: center; height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--fv-input-border); color: var(--brand-ink); font-weight: 600; font-size: 13px; text-decoration: none; background: transparent; cursor: pointer;">See salary and raises</button>
+          </section>
         </section>

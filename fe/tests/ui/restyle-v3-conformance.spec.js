@@ -1308,6 +1308,147 @@ for (const theme of ['light', 'dark']) {
       await page.click('#assignRolesCancelBtn');
       await expect(assignModal).not.toHaveClass(/active/);
     });
+
+    test(`S6.1 Employee Dashboard in ${theme}`, async ({ page }) => {
+      await openEmployee(page, theme);
+      await expect(page.locator('#e-dashboard')).toBeVisible();
+
+      // Greeting & action buttons
+      await expect(page.locator('#empDashGreeting')).toBeVisible();
+      await expect(page.locator('#e-dashboard button:has-text("Submit a claim")')).toBeVisible();
+      await expect(page.locator('#e-dashboard button:has-text("Request vacation")')).toBeVisible();
+
+      // 4 KPI cards
+      const heroStats = page.locator('#e-dashboard .hero-stats .hero-card');
+      await expect(heroStats).toHaveCount(4);
+      await expect(page.locator('#empDashVacDays')).toBeVisible();
+      await expect(page.locator('#empDashSalary')).toBeVisible();
+      await expect(page.locator('#empDashWfh')).toBeVisible();
+      await expect(page.locator('#empDashClaims')).toBeVisible();
+
+      // Gradient tile styles on first card
+      await expectStyle(heroStats.first(), {
+        borderRadius: '14px',
+      });
+
+      // 2-column layout: Recent requests & Next raise
+      await expect(page.locator('#empTimeline')).toBeVisible();
+      await expect(page.locator('#empNextRaiseDate')).toBeVisible();
+
+      // Bottom medical insurance card
+      await expect(page.locator('#empDashInsuranceSub')).toBeVisible();
+      await expect(page.locator('#empDashInsuranceCategoryChips')).toBeVisible();
+    });
+
+    test(`S6.2 Employee Salary and raises in ${theme}`, async ({ page }) => {
+      await openEmployee(page, theme);
+      await page.click('#empSidebar [data-page="e-salary"]');
+      await expect(page.locator('#e-salary')).toBeVisible();
+
+      // 4 KPI cards
+      await expect(page.locator('#empSalaryMonthly')).toBeVisible();
+      await expect(page.locator('#empSalaryExternal')).toBeVisible();
+      await expect(page.locator('#empSalaryInternal')).toBeVisible();
+      await expect(page.locator('#empSalaryNextRaise')).toBeVisible();
+
+      // Chart card
+      await expect(page.locator('#chartSalary')).toBeAttached();
+
+      // Raise history table
+      const headers = page.locator('#e-salary table thead th');
+      await expect(headers).toHaveCount(6);
+      await expect(headers.nth(0)).toHaveText('Effective');
+      await expect(headers.nth(1)).toHaveText('Internal USD');
+      await expect(headers.nth(2)).toHaveText('External USD');
+      await expect(headers.nth(3)).toHaveText('Monthly total');
+      await expect(headers.nth(4)).toHaveText('Change');
+      await expect(headers.nth(5)).toHaveText('Reason');
+      await expect(page.locator('#salaryHistoryBody tr')).toHaveCount(3);
+    });
+
+    test(`S6.3 Employee Payslips in ${theme}`, async ({ page }) => {
+      await openEmployee(page, theme);
+      await page.click('#empSidebar [data-page="e-payslips"]');
+      await expect(page.locator('#e-payslips')).toBeVisible();
+
+      const card = page.locator('#e-payslips .card');
+      await expect(card).toContainText('Payslips are coming soon');
+      await expect(card.locator('button:has-text("See salary and raises")')).toBeVisible();
+      await expectStyle(card, { borderRadius: '14px' });
+    });
+
+    test(`S6.4 Employee Vacations in ${theme}`, async ({ page }) => {
+      await openEmployee(page, theme);
+      await page.click('#empSidebar [data-page="e-vacations"]');
+      await expect(page.locator('#e-vacations')).toBeVisible();
+
+      // 3 KPI cards
+      await expect(page.locator('#empStatVacEntitlement')).toBeVisible();
+      await expect(page.locator('#empStatVacUsed')).toBeVisible();
+      await expect(page.locator('#empStatVacRemaining')).toBeVisible();
+
+      // Form controls
+      await expect(page.locator('#empVacationForm')).toBeVisible();
+      await expect(page.locator('#vacType')).toBeVisible();
+      await expect(page.locator('#vacDuration')).toBeVisible();
+      await expect(page.locator('#vacStart')).toBeVisible();
+      await expect(page.locator('#vacEnd')).toBeVisible();
+      await expect(page.locator('#btnSubmitVacation')).toBeVisible();
+
+      // History table
+      const rows = page.locator('#empVacationBody tr');
+      await expect(rows.first()).toBeVisible();
+    });
+
+    test(`S6.5 Employee Medical insurance in ${theme}`, async ({ page }) => {
+      await openEmployee(page, theme);
+      await page.click('#empSidebar [data-page="e-insurance"]');
+      await expect(page.locator('#e-insurance')).toBeVisible();
+
+      // Left card
+      await expect(page.locator('#empInsuranceTotalConsumed')).toBeVisible();
+      await expect(page.locator('#empInsuranceCategoryGrid')).toBeVisible();
+
+      // Submit claim form
+      await expect(page.locator('#empClaimForm')).toBeVisible();
+      await expect(page.locator('#claimCategory')).toBeVisible();
+      await expect(page.locator('#claimAmount')).toBeVisible();
+
+      // Table
+      const headers = page.locator('#e-insurance table thead th');
+      await expect(headers).toHaveCount(6);
+      await expect(headers.nth(0)).toHaveText('Category');
+      await expect(headers.nth(1)).toHaveText('Provider');
+      await expect(headers.nth(2)).toHaveText('Date ↓');
+      await expect(headers.nth(3)).toHaveText('Status');
+      await expect(headers.nth(4)).toHaveText('Amount');
+
+      await expect(page.locator('#empInsuranceBody tr')).toHaveCount(1);
+    });
+
+    test(`S6.6 Employee Document hub in ${theme}`, async ({ page }) => {
+      await openEmployee(page, theme);
+      await page.click('#empSidebar [data-page="e-dochub"]');
+      await expect(page.locator('#e-dochub')).toBeVisible();
+
+      // Category filter pills
+      const filterGroup = page.locator('#empDochubCategoryFilterGroup');
+      await expect(filterGroup).toBeVisible();
+      await expect(filterGroup.locator('button').first()).toContainText('All');
+
+      // Search
+      await expect(page.locator('#empDochubSearch')).toBeVisible();
+
+      // Table & headers
+      const headers = page.locator('#e-dochub table thead th');
+      await expect(headers).toHaveCount(4);
+      await expect(headers.nth(0)).toHaveText('Document');
+      await expect(headers.nth(1)).toHaveText('Category');
+      await expect(headers.nth(2)).toHaveText('Published ↓');
+
+      // Footer
+      await expect(page.locator('#empDochubTableFooter')).toBeVisible();
+    });
   });
 }
 

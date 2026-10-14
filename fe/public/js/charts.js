@@ -144,35 +144,42 @@ function initCharts(){
     });
   }
 
-  // 3. Line Chart: Employee Compensation Growth
+  // 3. Stacked Bar Chart: Employee Compensation Growth
   const emp = (Array.isArray(employees) ? employees.find(e => e.id === window.LOGGED_IN_EMPLOYEE_ID) : null) || currentLoggedInEmployee;
   const ctx3 = document.getElementById('chartSalary');
   if (ctx3 && emp && emp.salaryHistory && emp.salaryHistory.length) {
     if (window._charts.salary) {
       window._charts.salary.destroy();
     }
+    const sorted = emp.salaryHistory.slice().sort((a, b) => new Date(a.date) - new Date(b.date));
     window._charts.salary = new Chart(ctx3, {
-      type: 'line',
+      type: 'bar',
       data: {
-        labels: emp.salaryHistory.map(s => s.date ? s.date.slice(0, 7) : '—'),
-        datasets: [{
-          label: 'Salary Progression (USD)',
-          data: emp.salaryHistory.map(s => (s.newInternal || 0) + (s.newExternal || 0) || s.next || 0),
-          borderColor: c.accent,
-          backgroundColor: 'rgba(32, 86, 232, 0.12)',
-          fill: true,
-          tension: 0.4,
-          pointBackgroundColor: c.accent,
-          pointRadius: 5
-        }]
+        labels: sorted.map(s => s.date ? s.date.slice(0, 7) : '—'),
+        datasets: [
+          {
+            label: 'External USD',
+            data: sorted.map(s => s.newExternal || 0),
+            backgroundColor: '#4f80f2',
+            borderRadius: 5,
+            stack: 'pay'
+          },
+          {
+            label: 'Internal USD cash',
+            data: sorted.map(s => s.newInternal || 0),
+            backgroundColor: '#4fa24c',
+            borderRadius: 5,
+            stack: 'pay'
+          }
+        ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
-          x: { grid: { display: false }, ticks: { color: c.text } },
-          y: { grid: { color: c.grid }, ticks: { color: c.text }, beginAtZero: false }
+          x: { stacked: true, grid: { display: false }, ticks: { color: c.text } },
+          y: { stacked: true, grid: { color: c.grid }, ticks: { color: c.text }, beginAtZero: true }
         }
       }
     });

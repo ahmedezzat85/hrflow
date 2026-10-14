@@ -1,19 +1,25 @@
         <section class="page-section fv" id="e-dochub">
-          <div class="toolbar">
-            <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="empDochubSearch" aria-label="Search documents"
-                placeholder="Search documents..."></div>
+          <div class="hv-toolbar">
+            <div role="group" aria-label="Filter by category" class="filter-tab-group fv-pills" id="empDochubCategoryFilterGroup"></div>
+            <div class="search-box hv-w-220">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input id="empDochubSearch" aria-label="Search documents" placeholder="Search documents" oninput="renderCompanyDocumentsEmployee(this.value)">
+            </div>
           </div>
-          <div class="card">
-            <table>
-              <thead>
-                <tr>
-                  <th>Document</th>
-                  <th>Category</th>
-                  <th>Uploaded</th>
-                  <th class="hv-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="empDochubTableBody"></tbody>
-            </table>
+          <div class="card fv-table-card">
+            <div class="fv-table-scroll">
+              <table class="responsive-card-table fv-table">
+                <thead>
+                  <tr>
+                    <th>Document</th>
+                    <th>Category</th>
+                    <th style="color:var(--brand);">Published ↓</th>
+                    <th class="col-actions"><span class="sr-only">Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody id="empDochubTableBody"></tbody>
+              </table>
+            </div>
+            <div class="card-footer fv-tablefoot fv-table-foot" id="empDochubTableFooter"><span id="empDochubTableFoot"></span><span class="fv-table-page">Page 1 of 1</span></div>
           </div>
         </section>

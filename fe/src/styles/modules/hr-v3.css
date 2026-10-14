@@ -1064,6 +1064,8 @@
 .fv .hv-dot-teal { background: var(--id-teal); }
 .fv .hv-dot-sky { background: var(--id-sky); }
 .fv .hv-dot-pink { background: var(--id-pink); }
+.fv .hv-dot-green { background: var(--id-green); }
+.fv .hv-dot-blue { background: var(--id-blue); }
 
 .fv .hv-request-type-card {
   display: flex;
