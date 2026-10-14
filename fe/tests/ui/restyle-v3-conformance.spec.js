@@ -946,8 +946,53 @@ for (const theme of ['light', 'dark']) {
       // 8. Style assertions
       await expectStyle(card, { borderRadius: '14px' });
     });
+
+    test(`S4.4 Step 3 Statutory processing in ${theme}`, async ({ page }) => {
+      await openAdmin(page, theme);
+      await page.evaluate(() => showSection('a-finance-payroll', 'admin'));
+      await page.click('#btnOpenCurrentCycle');
+      await page.evaluate(() => PayrollApp.setStep(2));
+
+      const s3 = page.locator('#payrollScreen3');
+      await expect(s3).toBeVisible();
+
+      // 1. Lock banner
+      await expect(s3.locator('.pv-s3-lock-banner')).toContainText('Finalized snapshot');
+
+      // 2. Card header & subtitle
+      const card = s3.locator('.pv-s3-card');
+      await expect(card).toBeVisible();
+      await expect(card.locator('h2')).toHaveText('Statutory processing');
+      await expect(card.locator('.pv-s3-sub')).toContainText('HRFlow estimates of social insurance and income tax');
+      await expect(card.locator('.pv-pill')).toHaveText('Estimates');
+
+      // 3. Table headers
+      const ths = page.locator('#payrollProcessingTable thead th');
+      await expect(ths.nth(0)).toHaveText('Employee');
+      await expect(ths.nth(1)).toHaveText('Insured base, EGP');
+      await expect(ths.nth(2)).toHaveText('Employee SI, EGP');
+      await expect(ths.nth(3)).toHaveText('Employer SI, EGP');
+      await expect(ths.nth(4)).toHaveText('Total SI, EGP');
+      await expect(ths.nth(5)).toHaveText('Income tax, EGP');
+      await expect(ths.nth(6)).toHaveText('Internal net payment');
+
+      // 4. Employee first cell two-line structure
+      const firstRow = page.locator('#payrollProcessingTableBody tr').first();
+      await expect(firstRow).toBeVisible();
+      await expect(firstRow.locator('strong')).toBeVisible();
+      await expect(firstRow.locator('.pv-emp-sub')).toBeVisible();
+
+      // 5. Totals row
+      await expect(page.locator('#p3TotalsLabel')).toContainText('Totals ·');
+      await expect(page.locator('#p3TotNetUsd')).toBeVisible();
+
+      // 6. Footer hint and button
+      await expect(s3.locator('.pv-s3-footer-hint')).toHaveText('Estimates only. The government portals stay authoritative.');
+      await expect(page.locator('#btnP3Next')).toContainText('Next: payment preview');
+    });
   });
 }
+
 
 
 

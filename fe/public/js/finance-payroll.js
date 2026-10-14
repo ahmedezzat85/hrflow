@@ -1433,7 +1433,7 @@
       const rate = this.resolvedFxRate || 50.0;
 
       let rowsHtml = '';
-      let totEmpSi = 0, totEmprSi = 0, totSi = 0, totTax = 0, totNetEgp = 0, totNetUsd = 0;
+      let totInsuredBase = 0, totEmpSi = 0, totEmprSi = 0, totSi = 0, totTax = 0, totNetEgp = 0, totNetUsd = 0;
 
       if (lines.length > 0) {
         // Group and deduplicate lines by employee_id (employees may have multiple split payment lines)
@@ -1475,6 +1475,7 @@
         const employeeEntries = Array.from(empMap.values());
 
         employeeEntries.forEach(l => {
+          const insBase = Number(l.insured_base_egp_snapshot || 0);
           const empSi = Number(l.employee_social_insurance_egp || 0);
           const emprSi = Number(l.employer_social_insurance_egp || 0);
           const tSi = Number(l.total_social_insurance_egp || (empSi + emprSi));
@@ -1482,6 +1483,7 @@
           const netEgp = Number(l.final_internal_net_egp || 0);
           const netUsd = Number(l.net_pay || l.amount || (netEgp / rate));
 
+          totInsuredBase += insBase;
           totEmpSi += empSi;
           totEmprSi += emprSi;
           totSi += tSi;
@@ -1494,19 +1496,22 @@
 
           rowsHtml += `
             <tr>
-              <td class="col-id payroll-id-th">${l.employee_id}</td>
-              <td class="payroll-name-th">
-                <div class="tname">
-                  <span class="avatar">${inits}</span>
-                  <strong>${empName}</strong>
-                </div>
+              <td class="payroll-name-th" data-label="Employee" style="padding:9px 16px;">
+                <span class="col-id sr-only">${l.employee_id}</span>
+                <span style="display:flex; align-items:center; gap:10px;">
+                  <span class="avatar" style="width:32px; height:32px; flex:none; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; background:var(--brand-wash); color:var(--brand-text);">${inits}</span>
+                  <span style="display:block;">
+                    <strong style="color:var(--ink-strong); font-weight:600;">${escapeHtml(empName)}</strong>
+                    <span class="pv-emp-sub" style="display:block; font-size:12px; color:var(--ink-muted);">${escapeHtml(l.role || l.dept || 'Employee')}</span>
+                  </span>
+                </span>
               </td>
-              <td class="num payroll-num">${Number(l.insured_base_egp_snapshot || 0).toFixed(2)}</td>
-              <td class="num payroll-num">${empSi.toFixed(2)}</td>
-              <td class="num payroll-num">${emprSi.toFixed(2)}</td>
-              <td class="num payroll-num" style="font-weight:700;">${tSi.toFixed(2)}</td>
-              <td class="num payroll-num" style="font-weight:700;">${tax.toFixed(2)}</td>
-              <td class="num payroll-num strong accent" style="font-weight:800; color:var(--accent-text);">${this.money(netUsd)}</td>
+              <td class="num payroll-num" data-label="Insured base, EGP" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${insBase.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td class="num payroll-num" data-label="Employee SI, EGP" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${empSi.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td class="num payroll-num" data-label="Employer SI, EGP" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${emprSi.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td class="num payroll-num" data-label="Total SI, EGP" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${tSi.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td class="num payroll-num" data-label="Income tax, EGP" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${tax.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td class="num payroll-num strong accent" data-label="Internal net payment" style="padding:9px 16px; text-align:right; font-weight:700; color:var(--ink-strong); font-variant-numeric:tabular-nums;">${this.money(netUsd)}</td>
             </tr>
           `;
         });
@@ -1522,6 +1527,7 @@
           const netEgp = Math.max(0, insuredEgp - empSi);
           const netUsd = Math.round((netEgp / rate) * 100) / 100;
 
+          totInsuredBase += insuredEgp;
           totEmpSi += empSi;
           totEmprSi += emprSi;
           totSi += tSi;
@@ -1533,19 +1539,22 @@
 
           rowsHtml += `
             <tr>
-              <td class="col-id payroll-id-th">${r.id}</td>
-              <td class="payroll-name-th">
-                <div class="tname">
-                  <span class="avatar">${inits}</span>
-                  <strong>${r.name}</strong>
-                </div>
+              <td class="payroll-name-th" data-label="Employee" style="padding:9px 16px;">
+                <span class="col-id sr-only">${r.id}</span>
+                <span style="display:flex; align-items:center; gap:10px;">
+                  <span class="avatar" style="width:32px; height:32px; flex:none; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; background:var(--brand-wash); color:var(--brand-text);">${inits}</span>
+                  <span style="display:block;">
+                    <strong style="color:var(--ink-strong); font-weight:600;">${escapeHtml(r.name)}</strong>
+                    <span class="pv-emp-sub" style="display:block; font-size:12px; color:var(--ink-muted);">${escapeHtml(r.role || r.dept || 'Employee')}</span>
+                  </span>
+                </span>
               </td>
-              <td class="num payroll-num">${insuredEgp.toFixed(2)}</td>
-              <td class="num payroll-num">${empSi.toFixed(2)}</td>
-              <td class="num payroll-num">${emprSi.toFixed(2)}</td>
-              <td class="num payroll-num" style="font-weight:700;">${tSi.toFixed(2)}</td>
-              <td class="num payroll-num" style="font-weight:700;">${tax.toFixed(2)}</td>
-              <td class="num payroll-num strong accent" style="font-weight:800; color:var(--accent-text);">${this.money(netUsd)}</td>
+              <td class="num payroll-num" data-label="Insured base, EGP" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${insuredEgp.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td class="num payroll-num" data-label="Employee SI, EGP" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${empSi.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td class="num payroll-num" data-label="Employer SI, EGP" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${emprSi.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td class="num payroll-num" data-label="Total SI, EGP" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${tSi.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td class="num payroll-num" data-label="Income tax, EGP" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${tax.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td class="num payroll-num strong accent" data-label="Internal net payment" style="padding:9px 16px; text-align:right; font-weight:700; color:var(--ink-strong); font-variant-numeric:tabular-nums;">${this.money(netUsd)}</td>
             </tr>
           `;
         });
@@ -1559,14 +1568,20 @@
       const p3Tax = document.getElementById('p3TotTax');
       const p3Egp = document.getElementById('p3TotNetEgp');
       const p3Usd = document.getElementById('p3TotNetUsd');
+      const p3Ins = document.getElementById('p3TotInsuredBase');
+      const p3Lbl = document.getElementById('p3TotalsLabel');
 
-      if (p3Emp) p3Emp.textContent = totEmpSi.toFixed(2) + ' EGP';
-      if (p3Empr) p3Empr.textContent = totEmprSi.toFixed(2) + ' EGP';
-      if (p3Si) p3Si.textContent = totSi.toFixed(2) + ' EGP';
-      if (p3Tax) p3Tax.textContent = totTax.toFixed(2) + ' EGP';
+      const count = (lines.length > 0) ? new Set(lines.map(l => l.employee_id)).size : this.rows.length;
+      if (p3Lbl) p3Lbl.textContent = `Totals \u00b7 ${count} ${count === 1 ? 'employee' : 'employees'}`;
+      if (p3Ins) p3Ins.textContent = totInsuredBase.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      if (p3Emp) p3Emp.textContent = totEmpSi.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      if (p3Empr) p3Empr.textContent = totEmprSi.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      if (p3Si) p3Si.textContent = totSi.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      if (p3Tax) p3Tax.textContent = totTax.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       if (p3Egp) p3Egp.textContent = totNetEgp.toFixed(2) + ' EGP';
       if (p3Usd) p3Usd.textContent = this.money(totNetUsd);
     },
+
 
     /* ==================== SCREEN 4: PAYMENT PREVIEW ==================== */
     // Per-employee external/internal payment amounts, shared by screens 4 and 5 and the journal

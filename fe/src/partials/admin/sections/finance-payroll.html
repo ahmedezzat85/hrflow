@@ -205,44 +205,57 @@
 
               <!-- ==================== SCREEN 3: PROCESSING (STATUTORY SNAPSHOTS) ==================== -->
               <div class="payroll-screen-view screen payroll-hidden" id="payrollScreen3">
-                <div class="title-row">
-                  <div class="section-title"><i class="fa-solid fa-shield-halved"></i> Statutory processing</div>
-                  <span class="pill-info badge-pill p-badge b-blue"><i class="fa-solid fa-lock"></i> Finalized snapshot</span>
+                <div class="pv-s3-lock-banner">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
+                  <span><strong>Finalized snapshot.</strong> Pay lines are read-only. Revert to draft to change them.</span>
                 </div>
 
-                <div class="payroll-table-wrap">
-                  <table class="payroll-worksheet" id="payrollProcessingTable">
-                    <thead>
-                      <tr>
-                        <th class="col-id payroll-id-th">ID</th>
-                        <th class="payroll-name-th">Employee</th>
-                        <th class="num payroll-num-th">Insured Base (EGP)</th>
-                        <th class="num payroll-num-th">Emp SI (EGP)</th>
-                        <th class="num payroll-num-th">Empr SI (EGP)</th>
-                        <th class="num payroll-num-th">Total SI (EGP)</th>
-                        <th class="num payroll-num-th">Tax (EGP)</th>
-                        <th class="num payroll-num-th">Internal net payment</th>
-                      </tr>
-                    </thead>
-                    <tbody id="payrollProcessingTableBody"></tbody>
-                    <tfoot>
-                      <tr>
-                        <td colspan="3" style="font-weight:800;">Totals</td>
-                        <td class="num payroll-num" id="p3TotEmpSi">-</td>
-                        <td class="num payroll-num" id="p3TotEmprSi">-</td>
-                        <td class="num payroll-num" id="p3TotSi" style="font-weight:700;">-</td>
-                        <td class="num payroll-num" id="p3TotTax" style="font-weight:700;">-</td>
-                        <td class="num payroll-num strong accent" id="p3TotNetUsd" style="font-weight:800;">-</td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
+                <section class="pv-s3-card">
+                  <div class="pv-s3-card-header">
+                    <div>
+                      <h2>Statutory processing</h2>
+                      <div class="pv-s3-sub">HRFlow estimates of social insurance and income tax for this run. The portal amounts are recorded in step 6.</div>
+                    </div>
+                    <span class="pv-pill pv-pill--neutral" style="padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--ink-label); background: var(--fv-canvas);">Estimates</span>
+                  </div>
 
-                <div class="footer payroll-footer-actions">
-                  <button class="btn btn-ghost" id="btnP3Back" onclick="PayrollApp.setStep(1)"><i class="fa-solid fa-arrow-left"></i> Back</button>
-                  <button class="btn btn-fill" id="btnP3Next" onclick="PayrollApp.setStep(3)">
-                    Next: Payment Preview <i class="fa-solid fa-arrow-right"></i>
-                  </button>
+                  <div class="payroll-table-wrap">
+                    <table class="payroll-worksheet" id="payrollProcessingTable" style="width: 100%; border-collapse: collapse;">
+                      <thead>
+                        <tr>
+                          <th scope="col" class="payroll-name-th" style="text-align: left; padding: 11px 16px;">Employee</th>
+                          <th scope="col" class="num payroll-num-th" style="text-align: right; padding: 11px 12px;">Insured base, EGP</th>
+                          <th scope="col" class="num payroll-num-th" style="text-align: right; padding: 11px 12px;">Employee SI, EGP</th>
+                          <th scope="col" class="num payroll-num-th" style="text-align: right; padding: 11px 12px;">Employer SI, EGP</th>
+                          <th scope="col" class="num payroll-num-th" style="text-align: right; padding: 11px 12px;">Total SI, EGP</th>
+                          <th scope="col" class="num payroll-num-th" style="text-align: right; padding: 11px 12px;">Income tax, EGP</th>
+                          <th scope="col" class="num payroll-num-th" style="text-align: right; padding: 11px 16px;">Internal net payment</th>
+                        </tr>
+                      </thead>
+                      <tbody id="payrollProcessingTableBody"></tbody>
+                      <tfoot>
+                        <tr style="background: var(--fv-canvas);">
+                          <td id="p3TotalsLabel" style="padding: 10px 16px; font-weight: 700; color: var(--ink-strong);">Totals</td>
+                          <td class="num payroll-num" id="p3TotInsuredBase" style="padding: 10px 12px; text-align: right; font-weight: 700; color: var(--ink-strong);">-</td>
+                          <td class="num payroll-num" id="p3TotEmpSi" style="padding: 10px 12px; text-align: right; font-weight: 700; color: var(--ink-strong);">-</td>
+                          <td class="num payroll-num" id="p3TotEmprSi" style="padding: 10px 12px; text-align: right; font-weight: 700; color: var(--ink-strong);">-</td>
+                          <td class="num payroll-num" id="p3TotSi" style="padding: 10px 12px; text-align: right; font-weight: 700; color: var(--ink-strong);">-</td>
+                          <td class="num payroll-num" id="p3TotTax" style="padding: 10px 12px; text-align: right; font-weight: 700; color: var(--ink-strong);">-</td>
+                          <td class="num payroll-num strong accent" id="p3TotNetUsd" style="padding: 10px 16px; text-align: right; font-family: var(--font-display, Sora, sans-serif); font-weight: 700; color: var(--brand-text);">-</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </section>
+
+                <div class="footer payroll-footer-actions pv-s3-footer">
+                  <button class="btn btn-ghost" id="btnP3Back" onclick="PayrollApp.setStep(1)">Back</button>
+                  <div style="display: flex; align-items: center; gap: 14px;">
+                    <span class="pv-s3-footer-hint">Estimates only. The government portals stay authoritative.</span>
+                    <button class="btn btn-fill" id="btnP3Next" onclick="PayrollApp.setStep(3)">
+                      Next: payment preview
+                    </button>
+                  </div>
                 </div>
               </div>
 
