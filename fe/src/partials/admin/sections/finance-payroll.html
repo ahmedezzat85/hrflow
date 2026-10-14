@@ -3,33 +3,21 @@
 
             <!-- ===================== 1. RUNS LIST / HISTORY PAGE ===================== -->
             <div class="payroll-card card" id="payrollViewList">
-              <div class="card-pad" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                <div>
-                  <div class="section-title"><i class="fa-solid fa-clock-rotate-left"></i> Payroll runs</div>
-                  <div class="payroll-subtitle" style="font-size:12px; color:var(--text2); margin-top:2px;">Every cycle is saved automatically on each action. Click a run to reopen it exactly where it was left.</div>
-                </div>
-                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                  <span style="color:var(--text2); font-size:12px;" id="payrollRunsCount">Loading cycles...</span>
-                  <button class="btn btn-outline" id="btnStartNewRun" onclick="PayrollApp.startNewRun()">
-                    <i class="fa-solid fa-plus"></i> New payroll run
-                  </button>
-                  <button class="btn btn-fill" id="btnOpenCurrentCycle" onclick="PayrollApp.openRun('current')">
-                    <i class="fa-solid fa-play"></i> Open current cycle
-                  </button>
-                </div>
-              </div>
               <a class="pv-banner" id="payrollCycleBanner" hidden></a>
-              <div class="pv-filterrow"><div class="pv-fpgroup" id="payrollRunsFilter" role="group" aria-label="Filter by status"></div></div>
+              <div class="pv-filterrow">
+                <div class="pv-fpgroup" id="payrollRunsFilter" role="group" aria-label="Filter by status"></div>
+                <button type="button" class="btn btn-outline" id="btnStartNewRun" onclick="PayrollApp.startNewRun()">New payroll run</button>
+              </div>
               <div class="payroll-table-wrap">
                 <table class="runs-table responsive-card-table" id="payrollRunsTable">
                   <thead>
                     <tr>
-                      <th>Period</th>
+                      <th class="pv-sorted">Period ↓</th>
                       <th>Salaries</th>
                       <th>Statutory</th>
                       <th class="num">Employees</th>
-                      <th class="num">Total disbursement</th>
-                      <th>Last updated</th>
+                      <th class="num">Net pay</th>
+                      <th>Last saved</th>
                       <th class="col-actions"><span class="sr-only">Actions</span></th>
                     </tr>
                   </thead>
@@ -42,22 +30,10 @@
             <!-- ===================== 2. ACTUAL RUN PAGE ===================== -->
             <div class="payroll-card card payroll-hidden" id="payrollViewRun">
               <div class="runhead">
-                <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-                  <div>
-                    <div class="runtitle">
-                      Payroll cycle — <span id="payrollPeriodLabel">2026-09</span>
-                    </div>
-                  </div>
-                </div>
                 <div class="runhead-right">
-                  <div class="fxbox payroll-fx-strip" id="payrollFxStrip">
-                    <i class="fa-solid fa-coins"></i>
-                    <span>
-                      FX rate: 1 USD = <strong id="payrollFxRateBadge" style="font-variant-numeric:tabular-nums;">50.0000</strong> EGP,
-                      <span id="payrollFxRateSourceBadge" class="payroll-fx-source">system fallback rate</span>
-                    </span>
+                  <div class="payroll-fx-controls" id="payrollFxControls">
                     <button type="button" class="editbtn btn-ghost" id="btnToggleFxOverride" onclick="PayrollApp.toggleFxOverride()" title="Change FX rate">
-                      <i class="fa-solid fa-pencil"></i>
+                      <i class="fa-solid fa-pencil"></i> Change FX rate
                     </button>
                     <div id="payrollFxOverrideForm" style="display:none; align-items:center; gap:6px;">
                       <input type="number" step="0.0001" min="1" id="payrollFxRateInput" style="width:90px; padding:2px 6px; font-size:11px;" placeholder="50.0000" />
@@ -65,7 +41,6 @@
                       <button type="button" class="btn sm btn-ghost" id="btnResetFxRate" onclick="PayrollApp.resetFxOverride()" style="padding:3px 8px; font-size:11px;">Reset</button>
                     </div>
                   </div>
-                  <span class="badge-pill pill-neutral p-badge b-gray" id="payrollStatusBadge">Draft</span>
                   <button class="btn sm btn-ghost" id="payrollRevertBtn" onclick="PayrollApp.openRevertModal()" style="display:none;">
                     <i class="fa-solid fa-rotate-left"></i> Revert to draft
                   </button>

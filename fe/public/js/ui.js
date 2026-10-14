@@ -310,6 +310,9 @@ function showSection(pageId, portal, params){
     }
     document.getElementById(portal==='admin'?'adminPageTitle':'empPageTitle').textContent = pageTitleText;
   }
+  if (portal === 'admin' && !String(pageId).startsWith('a-finance-payroll')) {
+    ['payrollStatusBadge', 'payrollFxStrip'].forEach(id => { const el = document.getElementById(id); if (el) el.hidden = true; });
+  }
   if (typeof applyFinanceAreaChrome === 'function') applyFinanceAreaChrome(pageId, portal);
   // An error toast belongs to the page that raised it: drop it when the user moves to another page.
   if (showSection.lastPage !== undefined && showSection.lastPage !== pageId) clearErrorToasts();

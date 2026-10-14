@@ -23,12 +23,12 @@
 
   const FLOW = ['initiation', 'approve', 'processing', 'preview', 'confirmation', 'statutory'];
   const STEP_META = {
-    initiation: { label: '1. Initiation', hint: 'Step 1 of 6 — Confirm payroll schedule, target funding accounts, and currency exchange rate.' },
-    approve: { label: '2. Approve', hint: 'Step 2 of 6 — Review base compensation and dynamic bonus/commission additions. Submit & approve run.' },
-    processing: { label: '3. Processing', hint: 'Step 3 of 6 — Review frozen backend statutory snapshots. Idempotently finalized upon entry.' },
-    preview: { label: '4. Payment Preview', hint: 'Step 4 of 6 — Preview the payment breakdown by salary type before recording payment.' },
-    confirmation: { label: '5. Confirm Disbursal', hint: 'Step 5 of 6 — Disburse funds and auto-post general ledger journal entries.' },
-    statutory: { label: '6. Statutory Payments', hint: 'Step 6 of 6 — Reconcile portal liabilities and record/settle statutory obligations.' }
+    initiation: { label: 'Set up', hint: 'Step 1 of 6 — Confirm payroll schedule, target funding accounts, and currency exchange rate.' },
+    approve: { label: 'Review pay', hint: 'Step 2 of 6 — Review base compensation and dynamic bonus/commission additions. Submit & approve run.' },
+    processing: { label: 'Statutory', hint: 'Step 3 of 6 — Review frozen backend statutory snapshots. Idempotently finalized upon entry.' },
+    preview: { label: 'Payment preview', hint: 'Step 4 of 6 — Preview the payment breakdown by salary type before recording payment.' },
+    confirmation: { label: 'Confirm payment', hint: 'Step 5 of 6 — Disburse funds and auto-post general ledger journal entries.' },
+    statutory: { label: 'Statutory payments', hint: 'Step 6 of 6 — Reconcile portal liabilities and record/settle statutory obligations.' }
   };
   const DONE_HINT = 'Cycle complete — payroll is Paid and statutory obligations are reconciled.';
 
@@ -373,28 +373,35 @@
       const dot = '<span class="pv-dot"></span>';
       const pill = (cls, text) => `<span class="pv-pill ${cls}">${dot}${text}</span>`;
       const rows = [];
+      const stampText = (v) => {
+        const p = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?:\s*([AP]M))?/i.exec(String(v || ''));
+        if (!p) return null;
+        let hh = +p[4];
+        if (p[6]) { const pm = p[6].toUpperCase() === 'PM'; if (pm && hh < 12) hh += 12; if (!pm && hh === 12) hh = 0; }
+        return `${+p[3]} ${SHORT[+p[2] - 1]} ${p[1]}, ${String(hh).padStart(2, '0')}:${p[5]}`;
+      };
       const rowHtml = (o) => `
         <tr class="clickable" data-cat="${o.cat}" data-stat-open="${o.statOpen ? 1 : 0}" onclick="PayrollApp.openRun('${o.arg}')">
           <td data-label="Period"><strong class="pv-period">${escapeHtml(o.period)}</strong><span class="pv-period-sub">${rangeText(o.start, o.end)}</span></td>
           <td data-label="Salaries">${o.salaries}</td>
           <td data-label="Statutory">${o.statutory}</td>
           <td data-label="Employees" class="num">${o.hc}</td>
-          <td data-label="Total Disbursement" class="payroll-num num">${o.net}</td>
-          <td data-label="Last updated">${o.upd}</td>
-          <td data-label="Actions" class="col-actions"><button type="button" class="btn btn-sm btn-outline" onclick="event.stopPropagation(); PayrollApp.openRun('${o.arg}')">${o.action}</button></td>
+          <td data-label="Net pay" class="payroll-num num">${o.net}${o.projected ? '<div class="pv-sub">projected</div>' : ''}</td>
+          <td data-label="Last saved">${o.upd}</td>
+          <td data-label="Actions" class="col-actions"><button type="button" class="btn btn-sm ${o.primary ? 'btn-fill' : 'btn-outline'}" onclick="event.stopPropagation(); PayrollApp.openRun('${o.arg}')">${o.action}</button></td>
         </tr>`;
-      const salaryPill = (key, label) => {
-        if (key === 'draft') return `<span class="pv-pill pv-pill--draft">${dot}${label}</span>`;
+      const salaryPill = (key, label, stepNo) => {
+        if (key === 'draft') return `<span class="pv-pill pv-pill--draft">${dot}${label} \u00b7 step ${stepNo} of 6</span>`;
         if (key === 'paid') return pill('pv-pill--paid', label);
         if (key === 'partially_paid' || key === 'processing') return pill('pv-pill--part', label);
         return pill('pv-pill--open', label);
       };
       if (!savedCurrent) {
         rows.push({
-          arg: 'current', cat: 'draft', statOpen: false, period: this.month, start: this.start, end: this.end,
-          salaries: salaryPill(currentStatus, statusMap[currentStatus] ? statusMap[currentStatus][0] : 'Draft'),
-          statutory: pill('pv-pill--none', 'Not started'), hc: this.rows.length, net: this.money(t.net),
-          upd: this.audit[0] ? this.audit[0].when : '&mdash;', action: 'Continue', primary: true
+          arg: 'current', cat: 'draft', statOpen: false, period: monthName(this.month), start: this.start, end: this.end,
+          salaries: salaryPill(currentStatus, statusMap[currentStatus] ? statusMap[currentStatus][0] : 'Draft', this.stepIndex + 1),
+          statutory: pill('pv-pill--none', 'Not started'), hc: this.rows.length, net: this.money(t.net), projected: true,
+          upd: (this.audit[0] && stampText(this.audit[0].when)) || 'Not saved yet', action: 'Continue', primary: true
         });
       }
 
@@ -404,11 +411,12 @@
         const sBadge = statusMap[sKey] || ['Draft', 'b-gray'];
         const netVal = r.total_net !== undefined ? r.total_net : (r.net || 0);
         const hc = r.headcount !== undefined ? r.headcount : (r.employees || (r.lines ? r.lines.length : 0));
-        const upd = r.paid_at || r.updated_at || r.created_at || '—';
-        const displayUpd = upd.length > 16 ? upd.slice(0, 16).replace('T', ' ') : upd;
+        const upd = r.paid_at || r.updated_at || r.created_at || '';
+        const displayUpd = stampText(upd) || 'Not saved yet';
         let statutory = pill('pv-pill--none', 'Not started');
         let statOpen = false;
         let action = sKey === 'draft' ? 'Continue' : 'Open';
+        let primary = sKey === 'draft';
         if (sKey === 'paid' || sKey === 'partially_paid') {
           const obls = (this.allObligations || []).filter(o =>
             (r.id !== undefined && r.id !== null && (o.source_id === r.id || String(o.source_id) === String(r.id))) ||
@@ -422,12 +430,13 @@
             statOpen = !settled;
             statutory = pill(partial ? 'pv-pill--part' : (settled ? 'pv-pill--paid' : 'pv-pill--open'), resolved.badge);
             action = partial ? 'Reconcile' : (settled ? 'Open' : 'Record statutory');
+            primary = partial;
           }
         }
         rows.push({
           arg: String(r.id || r.period_label), cat: (sKey === 'paid' || sKey === 'partially_paid') ? 'paid' : 'draft', statOpen,
-          period: r.period_label, start: r.period_start || (r.period_label + '-01'), end: r.period_end || (r.period_label + '-30'),
-          salaries: salaryPill(sKey, sBadge[0]), statutory, hc, net: this.money(netVal), upd: displayUpd, action, primary: sKey === 'draft'
+          period: monthName(r.period_label), start: r.period_start || (r.period_label + '-01'), end: r.period_end || (r.period_label + '-30'),
+          salaries: salaryPill(sKey, sBadge[0], this.resolvePayrollRunState(r, []).stepIndex + 1), statutory, hc, net: this.money(netVal), upd: displayUpd, action, primary
         });
       });
 
@@ -435,7 +444,7 @@
       const total = rows.length;
       if (countEl) countEl.textContent = `${total} runs total`;
       const foot = document.getElementById('payrollRunsFoot');
-      if (foot) foot.textContent = `Showing ${total ? '1–' + total : '0'} of ${total} runs`;
+      if (foot) foot.innerHTML = `<span>Showing <strong>${total ? '1\u2013' + total : '0'}</strong> of <strong>${total}</strong> runs \u00b7 every action is saved, open a run to continue where it stopped</span><span>Page 1 of 1</span>`;
 
       // Status filter pills (All / Draft / Salaries paid / Statutory open)
       const filterEl = document.getElementById('payrollRunsFilter');
@@ -465,9 +474,12 @@
       // Current-cycle banner
       const banner = document.getElementById('payrollCycleBanner');
       if (banner) {
+        const STEP_NAMES = ['set up', 'review pay', 'statutory', 'payment preview', 'confirm payment', 'statutory payments'];
+        const savedForMonth = (this.serverRuns || []).find(r => r.period_label === this.month);
+        const stepNo = (savedForMonth ? this.resolvePayrollRunState(savedForMonth, []).stepIndex : this.stepIndex) + 1;
         banner.hidden = false;
         banner.innerHTML = `
-          <span class="pv-banner-main"><span class="pv-banner-kicker">Current cycle</span><span class="pv-banner-title">${escapeHtml(monthName(this.month))}</span><span class="pv-banner-sub">Pay date ${dayText(this.payDate)} &middot; ${this.rows.length} employees eligible &middot; saved automatically</span></span>
+          <span class="pv-banner-main"><span class="pv-banner-kicker">Current cycle \u00b7 step ${stepNo} of 6, ${STEP_NAMES[stepNo - 1] || ''}</span><span class="pv-banner-title">${escapeHtml(monthName(this.month))}</span><span class="pv-banner-sub">Pay date ${dayText(this.payDate)} &middot; ${this.rows.length} employees eligible &middot; saved automatically</span></span>
           <span class="pv-banner-net"><span class="pv-banner-kicker">Projected net pay</span><span class="pv-banner-amt">${this.money(t.net)}</span></span>
           <span class="pv-banner-btn">Continue run</span>`;
         banner.onclick = () => PayrollApp.openRun('current');
@@ -669,7 +681,7 @@
       if (!container) return;
       const doneThrough = this.completedThroughIndex();
 
-      const stepNames = FLOW.map((k, i) => (STEP_META[k] ? STEP_META[k].label : `${i + 1}. Step`));
+      const stepNames = FLOW.map((k, i) => `${i + 1}. ${STEP_META[k] ? STEP_META[k].label : 'Step'}`);
       const compact = `
         <div class="payroll-step-compact">
           <strong>Step ${this.stepIndex + 1} of ${FLOW.length}</strong>
@@ -678,7 +690,7 @@
           </select>
         </div>`;
       container.innerHTML = compact + FLOW.map((stepKey, idx) => {
-        const meta = STEP_META[stepKey] || { label: `${idx + 1}. Step` };
+        const meta = STEP_META[stepKey] || { label: 'Step' };
         const isActive = idx === this.stepIndex;
         const isDone = idx < this.stepIndex || idx <= doneThrough;
         const cls = isActive ? 'active' : (isDone ? 'done' : '');
@@ -2251,7 +2263,7 @@
         if (isManual) {
           srcEl.textContent = 'manual override';
         } else if (isFallback) {
-          srcEl.textContent = 'system fallback rate';
+          srcEl.textContent = 'fallback rate';
         } else {
           srcEl.textContent = 'from transfer history';
         }
@@ -2301,7 +2313,25 @@
       this.redraw();
     },
 
+    // Run page chrome lives in the top bar (mock Pay-Run-*): 'Payroll runs / September 2026', status pill, FX text.
+    syncRunChrome(page) {
+      const onRun = page === 'run';
+      ['payrollStatusBadge', 'payrollFxStrip'].forEach(id => { const el = document.getElementById(id); if (el) el.hidden = !onRun; });
+      const titleEl = document.getElementById('adminPageTitle');
+      if (!titleEl) return;
+      if (onRun) {
+        const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        const m = /^(\d{4})-(\d{2})/.exec(String(this.month || ''));
+        titleEl.textContent = `Payroll runs / ${m ? MONTHS[+m[2] - 1] + ' ' + m[1] : this.month}`;
+      } else if (page === 'list') {
+        titleEl.textContent = 'Payroll runs';
+      } else if (page === 'settings') {
+        titleEl.textContent = 'Payroll settings';
+      }
+    },
+
     drawPeriodLabel() {
+      if (this.currentPage === 'run') this.syncRunChrome('run');
       const lbl = document.getElementById('payrollPeriodLabel');
       const sub = document.getElementById('payrollPeriodSubtitle');
       if (lbl) lbl.textContent = this.month;
@@ -2459,6 +2489,8 @@
         window.AdminNav.syncFromPage(page === 'settings' ? 'a-finance-payroll-settings' : 'a-finance-payroll-runs');
       }
 
+      this.currentPage = page;
+      this.syncRunChrome(page);
       if (page === 'list') {
         this.drawRunsList();
       } else if (page === 'run') {
