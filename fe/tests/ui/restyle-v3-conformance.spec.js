@@ -525,7 +525,8 @@ for (const theme of ['light', 'dark']) {
 
       // Table row actions
       const firstRow = page.locator('#employeesTableBody tr').first();
-      await expect(firstRow.locator('button:has-text("View")')).toBeVisible();
+      await expect(firstRow.locator('button:has-text("View")')).toHaveCount(0);
+      await expect(firstRow.locator('td.tname a')).toBeVisible();
       await expect(firstRow.locator('button[title="Edit"]')).toBeVisible();
       await expect(firstRow.locator('button[title="Generate salary payment doc"]')).toBeVisible();
     });

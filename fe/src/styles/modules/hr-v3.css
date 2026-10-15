@@ -241,7 +241,7 @@
    ===================================================================== */
 #a-employees .filter-tab[data-emp-status="Active"] { background: var(--success-soft); color: var(--success); }
 #a-employees .filter-tab[data-emp-status="On leave"] { background: color-mix(in srgb, var(--id-sky) var(--fv-status-tint-pct), transparent); color: var(--id-sky-ink); }
-#a-employees .filter-tab[data-emp-status="Inactive"] { background: var(--fv-canvas); color: var(--ink-faint); }
+#a-employees .filter-tab[data-emp-status="Inactive"] { background: var(--fv-closed-bg); color: var(--ink-label); }
 #a-employees .filter-tab[data-emp-status="all"].active { background: var(--brand); color: var(--fv-on-brand); }
 #a-employees .filter-tab[data-emp-status="all"] .hv-count-fade { background: rgba(255, 255, 255, .22); opacity: 1; padding: 0 7px; margin-left: 6px; }
 #a-employees .filter-tab[data-emp-status] .hv-dot { background: currentColor; }
@@ -250,6 +250,10 @@
 #a-employees table th { padding: 12px 12px; }
 #a-employees table th:first-child, #a-employees table td:first-child { padding-left: 16px; }
 #a-employees table th:last-child, #a-employees table td:last-child { padding-right: 16px; }
+#a-employees table th:first-child, #a-employees table td:first-child { padding-right: 16px; }
+#a-employees table th:last-child, #a-employees table td:last-child { padding-left: 16px; }
+#a-employees .search-box input { border-color: var(--fv-line-strong); }
+#a-employees td.col-actions .icon-action:not(.btn) { width: 30px; height: 30px; }
 #a-employees table td.col-id { color: var(--ink-label); font-weight: 600; }
 #a-employees table td.tname { display: table-cell; }
 #a-employees table td.tname .avatar {

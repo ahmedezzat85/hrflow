@@ -18,7 +18,7 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
     // Click on the first employee row to view detail
     const firstRow = page.locator('#employeesTableBody tr').first();
     await expect(firstRow).toBeVisible();
-    await firstRow.locator('.icon-action[title="View Profile"]').click();
+    await firstRow.locator('td.tname a').click();
 
     // Verify detail page is visible
     await expect(page.locator('#a-employee-detail')).toBeVisible();
@@ -42,7 +42,7 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
     await openAdminPage(page, 'a-employees');
     const firstRow = page.locator('#employeesTableBody tr').first();
     await expect(firstRow).toBeVisible();
-    await firstRow.locator('.icon-action[title="View Profile"]').click();
+    await firstRow.locator('td.tname a').click();
     await expect(page.locator('#a-employee-detail')).toBeVisible();
 
     // Click edit action on Social Insurance card
@@ -53,7 +53,7 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
     // Modal should appear
     const modal = page.locator('#socialInsuranceModal');
     await expect(modal).toBeVisible();
-    await expect(modal.locator('#socialInsuranceModalTitle')).toContainText('Social Insurance Configuration');
+    await expect(modal.locator('#socialInsuranceModalTitle')).toContainText('Social insurance');
     await expect(modal.locator('#fSocialInsBaseContainer label')).toContainText('(EGP)');
 
     // Attempt to set a future date
@@ -138,7 +138,7 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
 
     const firstRow = page.locator('#employeesTableBody tr').first();
     await expect(firstRow).toBeVisible();
-    await firstRow.locator('.icon-action[title="View Profile"]').click();
+    await firstRow.locator('td.tname a').click();
 
     await expect(page.locator('#a-employee-detail')).toBeVisible();
 

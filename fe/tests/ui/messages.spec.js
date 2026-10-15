@@ -70,7 +70,7 @@ test.describe('R1 Messages', () => {
       await page.goto('/?mock=admin', { waitUntil: 'domcontentloaded' });
       await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 15000 });
       await openAdminPage(page, 'a-employees');
-      await page.locator('#employeesTableBody tr').first().locator('.icon-action[title="View Profile"]').click();
+      await page.locator('#employeesTableBody tr').first().locator('td.tname a').click();
       await expect(page.locator('#a-employee-detail')).toBeVisible();
     });
 
