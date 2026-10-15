@@ -521,6 +521,9 @@
 
 /* Dashboard tiles and insurance details */
 #a-dashboard .hero-card:not(.hero-card-accent) .hero-card-label { color: var(--ink-label); }
+#a-dashboard .hero-card { font-size: 14px; line-height: 1.45; }
+#a-dashboard .hero-card-badge.fv-badge-orange { color: var(--id-orange-ink); }
+#a-dashboard .hero-card-badge.fv-badge-teal { color: var(--id-teal-ink); }
 #a-insurance .empty-state { width: 100%; }
 
 /* ==================== Dashboard V3 Scoped Alignment & Spacing ==================== */

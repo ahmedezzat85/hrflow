@@ -60,6 +60,7 @@ async function collectVisibleLabels(locator) {
       if (node.matches('label')) {
         clone.querySelectorAll('input, select, textarea').forEach((control) => control.remove());
       }
+      clone.querySelectorAll('*').forEach((el) => el.after(' '));
       return clone.textContent.replace(/\*/g, '').replace(/\s+/g, ' ').trim();
     };
     const visible = (node) => node.getClientRects().length > 0;

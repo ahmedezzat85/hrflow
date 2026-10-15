@@ -209,7 +209,7 @@ export const PARITY_MAP = {
       keptLabels: ['Benefits & records'],
       pairs: [
         { name: 'dashboard hero headcount', mockSelector: 'main a[href="HR-Employees.html"]', appSelector: '#a-dashboard .hero-stats .hero-card:first-child' },
-        { name: 'requests chart card', mockSelector: 'main > div:nth-of-type(2) > div:first-child', appSelector: '#a-dashboard .dash-chart-card:first-child' },
+        { name: 'requests chart card', mockSelector: 'main > div:nth-of-type(2) > div:first-child', appSelector: '#a-dashboard .grid.g-2-1 > .card:first-child' },
         { name: 'waiting requests table', mockSelector: 'table', appSelector: '#a-dashboard .card:has(#dashPendingBody) table', props: ['fontSize', 'backgroundColor', 'borderRadius', 'borderColor'] }
       ]
     }
