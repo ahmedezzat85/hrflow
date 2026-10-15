@@ -715,16 +715,21 @@
 }
 #a-dashboard table thead th:first-child,
 #a-dashboard table tbody td:first-child {
-  padding-left: 22px;
+  padding-left: 16px;
 }
 #a-dashboard table thead th:last-child,
 #a-dashboard table tbody td:last-child {
-  padding-right: 22px;
+  padding-right: 16px;
 }
 #a-dashboard table tbody td {
-  padding: 11px 14px;
+  padding: 9px 16px;
+  font-size: 14px;
+  line-height: 1.45;
   border-bottom: 1px solid var(--fv-line-row, var(--border));
   vertical-align: middle;
+}
+#a-dashboard table thead th {
+  padding: 10px 16px;
 }
 #a-dashboard #dashPendingBody tr:last-child td {
   border-bottom: none;
