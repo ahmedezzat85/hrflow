@@ -113,9 +113,9 @@
   --fv-surface: #ffffff;
   --fv-surface-soft: #f7f9ff;
   --fv-dialog-foot: #fbfcff;
-  --fv-line: rgba(32, 86, 232, .10);
-  --fv-line-strong: rgba(32, 86, 232, .12);
-  --fv-line-row: rgba(32, 86, 232, .07);
+  --fv-line: rgba(32, 86, 232, .12);
+  --fv-line-strong: rgba(32, 86, 232, .16);
+  --fv-line-row: rgba(32, 86, 232, .10);
   --fv-input-border: rgba(32, 86, 232, .18);
   --fv-outline: rgba(32, 86, 232, .22);
   --brand: #2056e8;

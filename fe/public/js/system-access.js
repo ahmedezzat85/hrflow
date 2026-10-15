@@ -281,22 +281,22 @@
         <tr data-role-id="${rid}">
           <td data-label="Role" style="padding: 10px 16px; white-space: nowrap;">
             <span style="display: flex; align-items: center; gap: 10px;">
-              <span style="width: 32px; height: 32px; flex: none; border-radius: 10px; background: var(--pink-soft, #fbe7f0); color: var(--pink-text, #ad3469); display: inline-flex; align-items: center; justify-content: center;">
+              <span style="width: 32px; height: 32px; flex: none; border-radius: 10px; background: var(--fv-area-pink-bg); color: var(--fv-area-pink-ink); display: inline-flex; align-items: center; justify-content: center;">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"></path></svg>
               </span>
               <span>
-                <span style="display: block; font-weight: 600; color: var(--ink-strong);">${escHtml(role.name)}</span>
-                <span style="font-size: 12px; color: var(--ink-muted);">${isSystem ? 'Built-in role' : 'Custom role'} <span class="badge" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">${isSystem ? 'System' : ''}</span></span>
+                <span style="display: block; font-weight: 600; font-size: 14px; line-height: 1.45; color: var(--ink-strong);">${escHtml(role.name)}</span>
+                <span style="display: block; font-size: 12px; font-weight: 400; line-height: 1.45; color: var(--ink-muted); margin-top: 2px;">${isSystem ? 'Built-in role' : 'Custom role'} <span class="badge" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">${isSystem ? 'System' : ''}</span></span>
               </span>
             </span>
           </td>
           <td data-label="Description" style="padding: 10px 12px; color: var(--ink-body); font-size: 13.5px;">${escHtml(role.description) || '—'}</td>
-          <td data-label="Users" style="padding: 10px 12px; text-align: right; font-weight: 600; color: var(--ink-strong);">${escHtml(role.user_count ?? (role.users ? role.users.length : 0))}</td>
+          <td data-label="Users" style="padding: 10px 12px; text-align: right; font-weight: 600; color: var(--ink-strong); font-variant-numeric: tabular-nums;">${escHtml(role.user_count ?? (role.users ? role.users.length : 0))}</td>
           <td data-label="Permissions" style="padding: 10px 12px;">
             <span style="padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--brand-dark, #1a46bd); background: var(--brand-soft, #e8eeff); white-space: nowrap;">${escHtml(permText)}</span>
           </td>
           <td data-label="Actions" class="col-actions" style="padding: 10px 16px; text-align: right; white-space: nowrap;">
-            <button class="btn btn-sm btn-outline btn-edit-role" onclick="openEditRoleModal(${rid})" title="${isLocked ? 'View role permissions (read-only)' : 'Edit role permissions'}" style="display: inline-flex; align-items: center; box-sizing: border-box; height: 28px; padding: 0 11px; border-radius: 8px; border: 1px solid var(--fv-line); background: var(--fv-surface); color: var(--brand-dark, #1a46bd); font-weight: 600; font-size: 12.5px; vertical-align: middle;">
+            <button class="btn btn-sm btn-outline btn-edit-role" onclick="openEditRoleModal(${rid})" title="${isLocked ? 'View role permissions (read-only)' : 'Edit role permissions'}" style="display: inline-flex; align-items: center; box-sizing: border-box; height: 28px; padding: 0 11px; border-radius: 8px; border: 1px solid var(--fv-outline); background: var(--fv-surface); color: var(--brand-dark, #1a46bd); font-weight: 600; font-size: 12.5px; vertical-align: middle;">
               ${isLocked ? 'View' : 'Edit'}
             </button>
             <button class="btn-delete-role" onclick="${noDelete ? '' : `deleteRole(${rid})`}" ${noDelete ? 'disabled' : ''} title="${escHtml(deleteTitle)}" aria-label="${escHtml(deleteTitle)}" style="display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; margin-left: 2px; border: 0; background: transparent; border-radius: 8px; color: var(--ink-muted, #5d6b8f); vertical-align: middle; cursor: ${noDelete ? 'not-allowed' : 'pointer'}; opacity: ${noDelete ? '0.45' : '1'};">
@@ -664,7 +664,7 @@
         actions = '<span style="color:var(--ink-muted); font-size:12.5px;">—</span>';
       } else {
         actions = `
-            <button class="btn btn-sm btn-outline btn-assign-roles" onclick="openAssignRolesModal(${uid})" ${isSelf ? `disabled title="${selfTitle}" style="display: inline-flex; align-items: center; box-sizing: border-box; height: 28px; padding: 0 11px; border-radius: 8px; border: 1px solid var(--fv-line); background: var(--fv-surface); color: var(--brand-dark, #1a46bd); font-weight: 600; font-size: 12.5px; vertical-align: middle; opacity: 0.4; cursor: not-allowed;"` : 'title="Assign role" style="display: inline-flex; align-items: center; box-sizing: border-box; height: 28px; padding: 0 11px; border-radius: 8px; border: 1px solid var(--fv-line); background: var(--fv-surface); color: var(--brand-dark, #1a46bd); font-weight: 600; font-size: 12.5px; vertical-align: middle;"'}>
+            <button class="btn btn-sm btn-outline btn-assign-roles" onclick="openAssignRolesModal(${uid})" ${isSelf ? `disabled title="${selfTitle}" style="display: inline-flex; align-items: center; box-sizing: border-box; height: 28px; padding: 0 11px; border-radius: 8px; border: 1px solid var(--fv-outline); background: var(--fv-surface); color: var(--brand-dark, #1a46bd); font-weight: 600; font-size: 12.5px; vertical-align: middle; opacity: 0.4; cursor: not-allowed;"` : 'title="Assign role" style="display: inline-flex; align-items: center; box-sizing: border-box; height: 28px; padding: 0 11px; border-radius: 8px; border: 1px solid var(--fv-outline); background: var(--fv-surface); color: var(--brand-dark, #1a46bd); font-weight: 600; font-size: 12.5px; vertical-align: middle;"'}>
               Change role
             </button>
             <button class="btn-archive-user" onclick="${isSelf ? '' : `archiveUser(${uid})`}" ${isSelf ? `disabled title="${selfTitle}" style="display: inline-flex; width: 30px; height: 30px; margin-left: 2px; border: 0; background: transparent; opacity: 0; pointer-events: none; vertical-align: middle; cursor: default;"` : `title="Archive user account" aria-label="Archive ${escHtml(u.name || u.email)}" style="display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; margin-left: 2px; border: 0; background: transparent; border-radius: 8px; color: var(--ink-muted, #5d6b8f); vertical-align: middle; cursor: pointer;"`}>
@@ -676,21 +676,21 @@
 
       return `
         <tr data-user-id="${uid}">
-          <td data-label="User" class="tname" style="padding: 9px 16px;">
+          <td data-label="User" class="tname" style="padding: 10px 16px;">
             <span style="display: flex; align-items: center; gap: 10px;">
               <span class="avatar" style="width: 32px; height: 32px; flex: none; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; ${avatarStyle}">${escHtml(initials(u.name || u.email))}</span>
               <span>
-                <span style="display: block; font-weight: 600; color: var(--ink-strong);">${escHtml(u.name || 'External User')}</span>
-                <span style="font-size: 12px; color: var(--ink-muted);">
-                  ${u.employee_id ? `Employee EMP${String(u.employee_id).padStart(3, '0')}${isSelf ? ' · you' : ''}` : `<span class="badge" style="font-size: 12px; color: var(--ink-muted); background: transparent; padding: 0; border: 0; font-weight: normal;">External user</span>`}
+                <span style="display: block; font-weight: 600; font-size: 14px; line-height: 1.45; color: var(--ink-strong);">${escHtml(u.name || 'External User')}</span>
+                <span style="display: block; font-size: 12px; font-weight: 400; line-height: 1.45; color: var(--ink-muted); margin-top: 2px;">
+                  ${u.employee_id ? `Employee EMP${String(u.employee_id).padStart(3, '0')}${isSelf ? ' · you' : ''}` : `<span class="badge" style="font-size: 12px; color: var(--ink-muted); background: transparent; padding: 0; border: 0; font-weight: 400;">External user</span>`}
                 </span>
               </span>
             </span>
           </td>
-          <td data-label="Email" style="padding: 9px 12px; color: var(--ink-body); font-size: 13.5px;">${escHtml(u.email)}</td>
-          <td data-label="Role" style="padding: 9px 12px; font-weight: 600; color: var(--ink-strong);">${isArchived ? '<span style="color:var(--ink-muted); font-size:12px;">—</span>' : roleBadges}</td>
-          <td data-label="Status" style="padding: 9px 12px;">${statusPill}</td>
-          <td data-label="Actions" class="col-actions" style="padding: 9px 16px; text-align: right; white-space: nowrap;">${actions}</td>
+          <td data-label="Email" style="padding: 10px 12px; color: var(--ink-body); font-size: 13.5px;">${escHtml(u.email)}</td>
+          <td data-label="Role" style="padding: 10px 12px; font-weight: 600; color: var(--ink-strong);">${isArchived ? '<span style="color:var(--ink-muted); font-size:12px;">—</span>' : roleBadges}</td>
+          <td data-label="Status" style="padding: 10px 12px;">${statusPill}</td>
+          <td data-label="Actions" class="col-actions" style="padding: 10px 16px; text-align: right; white-space: nowrap;">${actions}</td>
         </tr>
       `;
     }).join('');

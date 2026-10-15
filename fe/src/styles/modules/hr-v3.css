@@ -145,12 +145,12 @@
 :is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table th {
   font-size: 12px;
   font-weight: 600;
-  padding: 11px 12px;
+  padding: 12px 12px;
   text-transform: none !important;
   letter-spacing: 0;
   color: var(--ink-label);
   background: var(--surface);
-  border-bottom: 1px solid var(--fv-line, var(--border));
+  border-bottom: 1px solid var(--fv-line-strong, var(--border));
   white-space: nowrap;
 }
 :is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table th:first-child,
@@ -163,13 +163,26 @@
 }
 :is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table td {
   font-size: 13.5px;
-  padding: 9px 12px;
+  line-height: 1.45;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--fv-line-row, var(--border));
   color: var(--ink-body, var(--text));
   vertical-align: middle;
 }
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table th.hv-th-active,
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table th[data-sort-active="true"] {
+  color: var(--brand) !important;
+}
 :is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table tbody tr:hover {
   background: var(--surface2);
+}
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table td .cell-sub,
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table td span[style*="font-size: 12px"],
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table td div[style*="font-size:12px"],
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table td div[style*="font-size: 12px"] {
+  font-weight: 400 !important;
+  color: var(--ink-muted) !important;
+  line-height: 1.45;
 }
 :is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table .avatar,
 :is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) td.tname .avatar {
@@ -233,8 +246,10 @@
 #a-employees .filter-tab[data-emp-status="all"] .hv-count-fade { background: rgba(255, 255, 255, .22); opacity: 1; padding: 0 7px; margin-left: 6px; }
 #a-employees .filter-tab[data-emp-status] .hv-dot { background: currentColor; }
 #a-employees .filter-tab[data-emp-status]:not([data-emp-status="all"]).active { box-shadow: inset 0 0 0 1.5px currentColor; }
-#a-employees table td { padding: 9px 12px; }
-#a-employees table th { padding: 12px; }
+#a-employees table td { padding: 10px 12px; line-height: 1.45; }
+#a-employees table th { padding: 12px 12px; }
+#a-employees table th:first-child, #a-employees table td:first-child { padding-left: 16px; }
+#a-employees table th:last-child, #a-employees table td:last-child { padding-right: 16px; }
 #a-employees table td.col-id { color: var(--ink-label); font-weight: 600; }
 #a-employees table td.tname { display: table-cell; }
 #a-employees table td.tname .avatar {

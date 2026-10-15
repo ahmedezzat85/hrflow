@@ -596,7 +596,6 @@
   position: absolute; top: auto; right: auto; bottom: 14px; left: 8px; width: auto; height: 32px; padding: 0 10px; gap: 8px;
   border: 0; border-radius: 9px; background: transparent; color: var(--ink-muted); font-size: 12.5px; font-weight: 600; z-index: 5;
 }
-.sidebar.dual-rail:not(.panel-collapsed):not(.collapsed) .collapse-btn::after { content: "Collapse"; }
 .sidebar.dual-rail .collapse-btn svg { transition: transform .22s ease; }
 .sidebar.dual-rail.panel-collapsed .collapse-btn svg, .sidebar.dual-rail.collapsed .collapse-btn svg { transform: rotate(180deg); }
 .sidebar.dual-rail:not(.panel-collapsed):not(.collapsed) .collapse-btn.sidebar-collapse-btn { background: transparent; box-shadow: none; border: 0; }

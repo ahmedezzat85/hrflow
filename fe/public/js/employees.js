@@ -43,8 +43,8 @@ function renderEmployeesTable(filter = '') {
     list = list.filter(e => (e.status || '').toLowerCase() === currentEmpStatusFilter.toLowerCase());
   }
   body.innerHTML = list.map(e => `<tr>
-    <td data-label="Employee" class="tname"><div class="avatar">${initials(e.name)}</div><div><div><a href="#" onclick="viewProfile('${e.id}'); return false;" style="font-weight:600;color:var(--ink-strong);line-height:1.2;text-decoration:none;">${escapeHtml(e.name)}</a></div><div style="font-size:12px;color:var(--ink-muted);font-weight:400;line-height:1.2;margin-top:2px;">${e.id ? `${/^\d+$/.test(String(e.id)) ? 'EMP' + String(e.id).padStart(3, '0') : escapeHtml(String(e.id))} · ` : ''}${escapeHtml(e.email)}</div></div></td>
-    <td data-label="Role"><div style="color:var(--ink-strong);">${escapeHtml(e.role)}</div>${(e.dept || e.department) ? `<div style="font-size:12px;color:var(--ink-muted);">${escapeHtml(e.dept || e.department)}</div>` : ''}</td>
+    <td data-label="Employee" class="tname"><div class="avatar">${initials(e.name)}</div><div><div><a href="#" onclick="viewProfile('${e.id}'); return false;" style="display:block;font-weight:600;font-size:14px;color:var(--ink-strong);line-height:1.45;text-decoration:none;">${escapeHtml(e.name)}</a></div><div style="font-size:12px;color:var(--ink-muted);font-weight:400;line-height:1.45;margin-top:2px;">${e.id ? `${/^\d+$/.test(String(e.id)) ? 'EMP' + String(e.id).padStart(3, '0') : escapeHtml(String(e.id))} · ` : ''}${escapeHtml(e.email)}</div></div></td>
+    <td data-label="Role"><div style="color:var(--ink-strong);line-height:1.45;">${escapeHtml(e.role)}</div>${(e.dept || e.department) ? `<div style="font-size:12px;color:var(--ink-muted);line-height:1.45;margin-top:2px;">${escapeHtml(e.dept || e.department)}</div>` : ''}</td>
     <td data-label="Employment">${e.employment_state || 'Full-time'}</td>
     <td style="display:none;">${fmtUSD(e.salary)}</td>
     <td data-label="Next Raise">${(e.nextRaise && e.nextRaise !== 'undefined' && e.nextRaise !== '—') ? escapeHtml(fmtDateShort(e.nextRaise) || e.nextRaise) : '<span style="color:var(--ink-muted);">Not scheduled</span>'}</td>
