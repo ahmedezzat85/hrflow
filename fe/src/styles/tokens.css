@@ -164,6 +164,10 @@
   --fv-area-orange-ink: var(--id-orange-ink);
   --fv-area-danger-bg: #fde8e8;
   --fv-area-danger-ink: var(--danger);
+  --pink-soft: var(--fv-area-pink-bg);
+  --pink-text: var(--fv-area-pink-ink);
+  --violet-soft: var(--fv-area-violet-bg);
+  --violet-ink: var(--fv-area-violet-ink);
 }
 
 [data-theme="dark"] {
@@ -270,5 +274,9 @@
   --fv-area-orange-ink: var(--id-orange-ink);
   --fv-area-danger-bg: var(--danger-soft);
   --fv-area-danger-ink: var(--danger);
+  --pink-soft: var(--fv-area-pink-bg);
+  --pink-text: var(--fv-area-pink-ink);
+  --violet-soft: var(--fv-area-violet-bg);
+  --violet-ink: var(--fv-area-violet-ink);
 }
 
