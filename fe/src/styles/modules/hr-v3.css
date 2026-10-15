@@ -700,11 +700,11 @@
   margin: 0;
 }
 #a-dashboard table thead tr {
-  height: 44px;
+  height: 38px;
 }
 #a-dashboard table thead th {
-  padding: 13px 14px;
-  height: 44px;
+  padding: 10px 16px;
+  height: 38px;
   font-size: 12px;
   font-weight: 600;
   line-height: 1.4;
@@ -727,9 +727,6 @@
   line-height: 1.45;
   border-bottom: 1px solid var(--fv-line-row, var(--border));
   vertical-align: middle;
-}
-#a-dashboard table thead th {
-  padding: 10px 16px;
 }
 #a-dashboard #dashPendingBody tr:last-child td {
   border-bottom: none;
