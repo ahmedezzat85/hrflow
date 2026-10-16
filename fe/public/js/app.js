@@ -266,8 +266,8 @@ function renderEmployeePortal() {
       const diffMs = new Date(emp.nextRaise) - new Date();
       const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
       const inDays = diffDays > 0 ? `in ${diffDays} days` : diffDays === 0 ? 'today' : `${Math.abs(diffDays)} days ago`;
-      const prevRaise = (emp.salaryHistory || [])[0];
-      const prevNote = prevRaise && prevRaise.date ? ` · last raise on ${prevRaise.date}` : '';
+      const prevRaise = (emp.salaryHistory || []).slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))[0];
+      const prevNote = prevRaise && prevRaise.date ? ` · last raise on ${fmtDateShort(prevRaise.date)}${prevRaise.pct ? ', ' + prevRaise.pct : ''}` : '';
       elRaiseNote.textContent = `${inDays}${prevNote}`;
     } else {
       elRaiseNote.textContent = 'No raise date scheduled yet.';
@@ -311,7 +311,7 @@ function renderEmployeePortal() {
   if (timeline) {
     const entries = [];
     empVacationHistory.slice(0, 3).forEach(v => {
-      const datesStr = v.dates || (v.startDate && v.endDate ? fmtDateRange(v.startDate, v.endDate) : (v.start_date && v.end_date ? fmtDateRange(v.start_date, v.end_date) : v.date || ''));
+      const datesStr = (v.startDate && v.endDate ? fmtDateRange(v.startDate, v.endDate) : v.dates || (v.start_date && v.end_date ? fmtDateRange(v.start_date, v.end_date) : v.date || ''));
       entries.push({
         type: 'vacation',
         title: `${escapeHtml(v.type)} · ${v.days} day${v.days === 1 ? '' : 's'}`,
@@ -323,7 +323,7 @@ function renderEmployeePortal() {
       entries.push({
         type: 'insurance',
         title: `${escapeHtml(c.category || 'Medical')} claim · ${fmtMoney(c.amount)}`,
-        sub: c.date ? `submitted ${c.date}` : '',
+        sub: c.date ? `submitted ${fmtDateShort(c.date)}` : '',
         status: c.status
       });
     });
@@ -399,7 +399,7 @@ function renderEmployeePortal() {
   const vacTbody = document.getElementById('empVacationBody');
   if (vacTbody) {
     vacTbody.innerHTML = empVacationHistory.map(v => {
-      const datesStr = v.dates || (v.startDate && v.endDate ? fmtDateRange(v.startDate, v.endDate) : (v.start_date && v.end_date ? fmtDateRange(v.start_date, v.end_date) : v.date || '—'));
+      const datesStr = (v.startDate && v.endDate ? fmtDateRange(v.startDate, v.endDate) : v.dates || (v.start_date && v.end_date ? fmtDateRange(v.start_date, v.end_date) : v.date || '—'));
       const isWfh = v.type === 'Work from home' || v.type === 'Work From Home' || v.type === 'WFH';
       const dotBg = isWfh ? '#3f98d0' : '#1f9d8e';
       const isApp = v.status === 'Approved';

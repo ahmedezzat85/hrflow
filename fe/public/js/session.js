@@ -112,15 +112,23 @@ function initMockAdminData(){
   ];
 
   requests = [
-    { id: 'REQ-101', employee_id: 'EMP001', employee_name: 'Sarah Connor', type: 'Vacation', status: 'Approved', date: getPastDate(0, 5), startDate: getPastDate(0, 2), endDate: getFutureDate(3), days: 5 },
-    { id: 'REQ-102', employee_id: 'EMP002', employee_name: 'John Doe', type: 'Work From Home', status: 'Pending', date: getPastDate(0, 8), startDate: getFutureDate(1), endDate: getFutureDate(2), days: 2 },
-    { id: 'REQ-103', employee_id: 'EMP003', employee_name: 'Alex Rivera', type: 'Vacation', status: 'Pending', date: getPastDate(0, 10), startDate: getFutureDate(5), endDate: getFutureDate(10), days: 5 },
+    { id: 'REQ-101', employee_id: 'EMP001', employee_name: 'Sarah Connor', type: 'Vacation', status: 'Approved', date: getPastDate(0, 5), startDate: getPastDate(0, 2), endDate: getPastDate(0, 6), days: 5 },
+    { id: 'REQ-102', employee_id: 'EMP002', employee_name: 'John Doe', type: 'Work From Home', status: 'Pending', date: getPastDate(0, 8), startDate: getPastDate(0, 8), endDate: getPastDate(0, 8), days: 1 },
+    { id: 'REQ-103', employee_id: 'EMP003', employee_name: 'Alex Rivera', type: 'Vacation', status: 'Pending', date: getPastDate(0, 10), startDate: getPastDate(0, 10), endDate: getPastDate(0, 14), days: 5 },
     { id: 'REQ-104', employee_id: 'EMP004', employee_name: 'Elena Rostova', type: 'WFH', status: 'Approved', date: getPastDate(1, 12), days: 1 },
     { id: 'REQ-105', employee_id: 'EMP001', employee_name: 'Sarah Connor', type: 'Vacation', status: 'Approved', date: getPastDate(2, 14), days: 3 },
     { id: 'REQ-106', employee_id: 'EMP002', employee_name: 'John Doe', type: 'Vacation', status: 'Approved', date: getPastDate(3, 20), days: 4 },
     { id: 'REQ-107', employee_id: 'EMP005', employee_name: 'Marcus Vance', type: 'WFH', status: 'Approved', date: getPastDate(4, 18), days: 2 },
     { id: 'REQ-108', employee_id: 'EMP003', employee_name: 'Alex Rivera', type: 'Vacation', status: 'Approved', date: getPastDate(5, 22), days: 2 }
   ];
+  // Mock data only: requests without explicit dates cover `days` days starting on the submitted date
+  requests.forEach(r => {
+    if (r.startDate) return;
+    const [y, m, day] = r.date.split('-').map(Number);
+    const end = new Date(y, m - 1, day + Math.max(0, (r.days || 1) - 1));
+    r.startDate = r.date;
+    r.endDate = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
+  });
 
   insuranceClaims = [
     { id: 'CLM-201', employee_id: 'EMP001', employee_name: 'Sarah Connor', service: 'Dental Routine Checkup', category: 'Dental', amount: 180, status: 'Pending', date: getPastDate(0, 7) },
@@ -182,6 +190,10 @@ function initMockEmployeeData(){
     const d = new Date(today.getFullYear(), today.getMonth() - monthsAgo, day);
     return d.toISOString().slice(0, 10);
   };
+  const getFutureDate = (daysAhead) => {
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + daysAhead);
+    return d.toISOString().slice(0, 10);
+  };
 
   currentLoggedInEmployee = {
     id: 'EMP001',
@@ -192,21 +204,41 @@ function initMockEmployeeData(){
     status: 'Active',
     hireDate: '2023-01-15',
     salary: 12500,
+    internalSalaryUsd: 5000,
+    externalSalaryUsd: 7500,
+    vacTotal: 21,
+    vacUsed: 8,
+    nextRaise: getFutureDate(45),
     phone: '+1 555-0101',
-    annualLeaveBalance: 16,
+    annualLeaveBalance: 13,
     annualLeaveTotal: 21,
     salaryHistory: [
-      { date: '2023-01-15', salary: 11000 },
-      { date: '2023-07-01', salary: 11800 },
-      { date: '2024-01-15', salary: 12500 }
+      { date: '2023-01-15', salary: 11000, newInternal: 4500, newExternal: 6500, prevInternal: 4500, prevExternal: 6500, reason: 'Hire package' },
+      { date: '2024-01-15', salary: 12500, pct: '+13.6%', newInternal: 5000, newExternal: 7500, prevInternal: 4500, prevExternal: 6500, reason: 'Annual performance raise' }
     ]
   };
   window.LOGGED_IN_EMPLOYEE_ID = currentLoggedInEmployee.id;
 
   empVacationHistory = [
-    { id: 'REQ-101', type: 'Vacation', status: 'Approved', startDate: getPastDate(0, 2), endDate: getPastDate(0, -3), dates: `${getPastDate(0, 2)} to ${getPastDate(0, -3)}`, days: 5 },
-    { id: 'REQ-105', type: 'Vacation', status: 'Approved', startDate: getPastDate(2, 14), endDate: getPastDate(2, 17), dates: `${getPastDate(2, 14)} to ${getPastDate(2, 17)}`, days: 3 }
+    { id: 'REQ-101', type: 'Vacation', status: 'Approved', startDate: getPastDate(0, 2), endDate: getPastDate(0, 6), days: 5 },
+    { id: 'REQ-105', type: 'Vacation', status: 'Approved', startDate: getPastDate(2, 14), endDate: getPastDate(2, 16), days: 3 }
   ];
+
+  insuranceCategories = [
+    { id: 1, name: 'Dental', annual_limit: 2000 },
+    { id: 2, name: 'Optical', annual_limit: 1500 },
+    { id: 3, name: 'Physical therapy', annual_limit: 3000 }
+  ];
+  insuranceConsumption = [{
+    employee_id: 'EMP001',
+    total_consumed: 180,
+    total_limit: 6500,
+    categories: [
+      { category: 'Dental', consumed: 180, limit: 2000 },
+      { category: 'Optical', consumed: 0, limit: 1500 },
+      { category: 'Physical therapy', consumed: 0, limit: 3000 }
+    ]
+  }];
 
   empInsuranceHistory = [
     { id: 'CLM-201', category: 'Dental', service: 'Dental Routine Checkup', amount: 180, status: 'Pending', date: getPastDate(0, 7) }
