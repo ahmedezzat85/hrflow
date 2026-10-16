@@ -174,7 +174,7 @@ function renderAdminPortal() {
         <td data-label="Request">${typeof getRequestTypeBadge === 'function' ? getRequestTypeBadge(r.type) : r.type}</td>
         <td data-label="Dates">
           <div style="font-size:12.5px;color:var(--ink-strong);font-weight:500;">
-            ${escapeHtml(r.dates || r.date || '—')}
+            ${escapeHtml(fmtDateRange(r.startDate || r.start_date || r.date, r.endDate || r.end_date || r.startDate || r.start_date || r.date) || r.dates || '—')}
             ${r.days ? `<div style="font-size:12px;color:var(--ink-muted);font-weight:400;">${r.days} day${r.days === 1 ? '' : 's'}</div>` : ''}
           </div>
         </td>

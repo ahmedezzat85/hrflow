@@ -4,6 +4,13 @@
 
 let currentRequestsFilter = 'all';
 
+// Display label for a request type (stored values are unchanged)
+function requestTypeLabel(type) {
+  if (type === 'Work From Home' || type === 'WFH') return 'Work from home';
+  if (type === 'Medical Insurance') return 'Medical claim';
+  return type || '';
+}
+
 function getRequestTypeBadge(type) {
   const map = {
     'Vacation': { icon: 'fa-umbrella-beach', cls: 'pill-info' },
@@ -11,7 +18,17 @@ function getRequestTypeBadge(type) {
     'Medical Insurance': { icon: 'fa-briefcase-medical', cls: 'pill-success' }
   };
   const conf = map[type] || { icon: 'fa-file-lines', cls: 'pill-neutral' };
-  return `<span class="badge-pill ${conf.cls}"><i class="fa-solid ${conf.icon}"></i> ${type}</span>`;
+  return `<span class="badge-pill ${conf.cls}"><i class="fa-solid ${conf.icon}"></i> ${escapeHtml(requestTypeLabel(type))}</span>`;
+}
+
+// "7 Oct 2026 - 1 day": the days the request covers, then how long
+function requestWhenLine(r) {
+  const start = r.startDate || r.start_date || r.date;
+  const end = r.endDate || r.end_date || start;
+  const range = start ? fmtDateRange(start, end) : '';
+  const days = Number(r.days);
+  const len = days > 0 ? `${days} ${days === 1 ? 'day' : 'days'}` : '';
+  return [range, len].filter(Boolean).join(' · ');
 }
 
 function updateRequestFilterCounts() {
@@ -88,16 +105,17 @@ function renderRequestsTable(filter) {
             ${matchedEmp && matchedEmp.dept ? `<div style="font-size:12px;color:var(--ink-muted);">${escapeHtml(matchedEmp.dept)}</div>` : ''}
           </div>
         </td>
-        <td data-label="Type">${getRequestTypeBadge(r.type)}</td>
-        <td data-label="Details">
+        <td data-label="Request">
+          ${getRequestTypeBadge(r.type)}
+          ${requestWhenLine(r) ? `<div class="hv-sub-line">${escapeHtml(requestWhenLine(r))}</div>` : ''}
+        </td>
+        <td data-label="Reason">
           <div class="request-details-cell">
-            <div class="request-details-title">${r.details || 'No details provided'}</div>
+            <div class="request-details-title">${r.details || r.reason ? escapeHtml(r.details || r.reason) : '<span class="hv-muted">No reason given</span>'}</div>
           </div>
         </td>
-        <td data-label="Date">
-          <div style="font-size:12.5px;color:var(--text2);display:inline-flex;align-items:center;gap:6px;">
-            <i class="fa-regular fa-calendar" style="color:var(--text3);"></i> ${r.date || '—'}
-          </div>
+        <td data-label="Submitted">
+          <div style="font-size:13px;color:var(--ink-strong);white-space:nowrap;">${r.date ? escapeHtml(fmtDateShort(r.date)) : '—'}</div>
         </td>
         <td data-label="Status">${statusPill(r.status)}</td>
         <td data-label="Actions" class="col-actions">

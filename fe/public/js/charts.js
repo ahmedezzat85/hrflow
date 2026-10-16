@@ -81,6 +81,7 @@ function initCharts(){
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        layout: { padding: { top: 22 } },
         plugins: {
           legend: {
             display: false
@@ -94,12 +95,32 @@ function initCharts(){
           },
           y: {
             stacked: true,
-            grid: { color: c.grid },
-            ticks: { color: c.text, stepSize: 1, precision: 0 },
+            display: false,
             beginAtZero: true
           }
         }
-      }
+      },
+      plugins: [{
+        // Request count above each stacked month bar (HR dashboard mock)
+        id: 'stackTotals',
+        afterDatasetsDraw(chart) {
+          const { ctx, data } = chart;
+          const top = chart.getDatasetMeta(data.datasets.length - 1);
+          ctx.save();
+          ctx.font = '600 12px Inter, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = chartColors().text;
+          const lastVisible = (i) => {
+            for (let d = data.datasets.length - 1; d >= 0; d--) { if (Number(data.datasets[d].data[i]) > 0) return chart.getDatasetMeta(d).data[i]; }
+            return top.data[i];
+          };
+          top.data.forEach((_, i) => {
+            const total = data.datasets.reduce((sum, d) => sum + (Number(d.data[i]) || 0), 0);
+            if (total > 0) { const bar = lastVisible(i); ctx.fillText(String(total), bar.x, bar.y - 6); }
+          });
+          ctx.restore();
+        }
+      }]
     });
   }
 

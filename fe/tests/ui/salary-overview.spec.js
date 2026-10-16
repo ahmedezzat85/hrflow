@@ -86,6 +86,6 @@ test.describe('H2: Salary and Raises overview (restyle v3)', () => {
     await expect(page.locator('#statAvgRaise')).toHaveText('+15.0%');
     await expect(page.locator('#companyRaiseHistoryBody tr')).toHaveCount(3);
     // Last raise is the newest by date, not the last array element
-    await expect(page.locator('#salaryTableBody tr[data-employee-id="1"]')).toContainText(`${year}-02-01`);
+    await expect(page.locator('#salaryTableBody tr[data-employee-id="1"]')).toContainText(`1 Feb ${year}`);
   });
 });

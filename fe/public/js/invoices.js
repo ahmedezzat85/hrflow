@@ -617,19 +617,19 @@ function renderGroupedInvoiceHistory(){
 
     const rowsHtml = sortedInvoices.map(inv => `<tr>
       <td class="tname"><div class="avatar">${initials(inv.employee_name)}</div>${escapeHtml(inv.employee_name)}</td>
-      <td><strong>${escapeHtml(inv.invoice_number)}</strong></td>
+      <td><button type="button" class="hv-link-btn" title="Preview ${escapeHtml(inv.invoice_number)}" data-action="preview-salary-doc" data-id="${escapeHtml(inv.id)}" data-number="${escapeHtml(inv.invoice_number)}"><strong>${escapeHtml(inv.invoice_number)}</strong></button></td>
       <td>${fmtUSD(Number(inv.amount_usd))}</td>
-      <td><span class="badge-pill ${_invoiceStatusPill(inv.status)}">${inv.status}</span></td>
+      <td><span class="badge-pill ${_invoiceStatusPill(inv.status)}">${escapeHtml(typeof sentenceCase === 'function' ? sentenceCase(inv.status) : inv.status)}</span></td>
       <td>
         ${inv.drive_web_url ? `<a href="${inv.drive_web_url}" target="_blank" rel="noopener" style="font-size:12px;"><i class="fa-solid fa-file-word"></i> Word</a>` : '—'}
       </td>
       <td>
         <div style="display:flex;gap:6px;align-items:center;">
           <button class="btn btn-sm btn-outline" title="Preview PDF salary payment doc" data-action="preview-salary-doc" data-id="${escapeHtml(inv.id)}" data-number="${escapeHtml(inv.invoice_number)}">
-            <i class="fa-solid fa-file-pdf"></i> Preview PDF
+            Preview
           </button>
-          <button class="btn btn-sm btn-outline" style="font-size:11.5px;padding:4px 8px;" title="Regenerate this doc" data-action="regenerate-salary-doc" data-employee-id="${escapeHtml(inv.employee_id)}" data-name="${escapeHtml(inv.employee_name)}" data-year="${escapeHtml(inv.payment_year)}" data-month="${escapeHtml(inv.payment_month)}" data-number="${escapeHtml(inv.invoice_number)}">
-            <i class="fa-solid fa-arrows-rotate"></i> Regenerate
+          <button class="icon-action" aria-label="Regenerate this doc" title="Regenerate this doc" data-action="regenerate-salary-doc" data-employee-id="${escapeHtml(inv.employee_id)}" data-name="${escapeHtml(inv.employee_name)}" data-year="${escapeHtml(inv.payment_year)}" data-month="${escapeHtml(inv.payment_month)}" data-number="${escapeHtml(inv.invoice_number)}">
+            <i class="fa-solid fa-arrows-rotate"></i>
           </button>
         </div>
       </td>

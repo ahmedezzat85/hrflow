@@ -82,7 +82,6 @@ function renderCategoriesTable(){
       <button type="button" class="icon-action" title="Remove ${escapeHtml(c.name)}" onclick="deleteCategory(${c.id})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"></path></svg></button>
     </td>
   </tr>`).join('') || renderEmptyTableRow(3, 'No categories configured yet.', 'fa-solid fa-list');
-  setTableFoot('categoriesTableBody', insuranceCategories.length, 'categories');
 }
 function openCategoryModal(id=null){
   currentEditCategoryId = id;
@@ -212,7 +211,6 @@ function renderInsuranceTable(){
   const elTot = document.getElementById('statClaimsTotal');
   if (elTot) elTot.innerHTML = `<i class="fa-solid fa-arrow-down"></i> ${fmtMoney(approvedTotal)} total`;
 
-  setTableFoot('insuranceTableBody', insuranceClaims.length, 'claims');
 }
 async function actionClaim(claimId, status){
   const approving = status === 'Approved';

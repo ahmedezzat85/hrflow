@@ -1223,3 +1223,8 @@
   background-repeat: no-repeat;
   background-position: right 13px center;
 }
+.hv-muted { color: var(--ink-muted); }
+
+/* Salary payment docs: doc number opens the preview (link button), muted regenerate icon */
+#a-invoices .hv-link-btn { border: 0; background: none; padding: 0; font: inherit; color: var(--brand-text); cursor: pointer; text-align: left; }
+#a-invoices .hv-link-btn:hover { color: var(--brand-ink); text-decoration: underline; }

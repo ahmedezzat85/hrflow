@@ -72,8 +72,8 @@ function renderSalaryPage(filter=''){
     const intCash = Number(e.internalSalaryUsd || 0);
     const total = ext + intCash;
     const profileHref = Router.hrefFor('a-employee-detail', 'admin').replace(/\/?$/, '') + '/' + encodeURIComponent(e.id);
-    const lastStr = last ? `${last.date} · ${last.pct || ''}` : '<span style="color:var(--ink-muted);">No raise yet</span>';
-    const nextStr = e.nextRaise || '<span style="color:var(--ink-muted);">Not scheduled</span>';
+    const lastStr = last ? `${fmtDateShort(last.date)} · ${last.pct || ''}` : '<span style="color:var(--ink-muted);">No raise yet</span>';
+    const nextStr = (e.nextRaise && e.nextRaise !== '—' ? fmtDateShort(e.nextRaise) : '') || '<span style="color:var(--ink-muted);">Not scheduled</span>';
     const actionsHtml = canWrite ? `
       <button type="button" class="btn btn-outline btn-xs" onclick="openRaiseModal('${escapeHtml(e.id)}')">Raise</button>
       <button type="button" class="icon-action" aria-label="Edit pay plan for ${escapeHtml(e.name)}" onclick="openCompPlanModal('${escapeHtml(e.id)}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"></path></svg></button>
@@ -123,7 +123,7 @@ function renderSalaryPage(filter=''){
 
     return `<tr>
       <td class="tname"><div class="avatar">${initials(h.emp)}</div><span>${escapeHtml(h.emp)}</span></td>
-      <td>${escapeHtml(h.date || '—')}</td>
+      <td>${escapeHtml(fmtDateShort(h.date))}</td>
       <td class="hv-right" style="font-variant-numeric:tabular-nums;">${fmtUSD(newInternal)}<div class="hv-sub-line">${intSub}</div></td>
       <td class="hv-right" style="font-variant-numeric:tabular-nums;">${fmtUSD(newExternal)}<div class="hv-sub-line">${extSub}</div></td>
       <td class="hv-right" style="font-variant-numeric:tabular-nums;"><strong style="color:var(--ink-strong);">${fmtUSD(newInternal+newExternal)}</strong></td>

@@ -4,7 +4,7 @@
               <button class="filter-tab active hv-tab" data-reqfilter="all">All requests <span class="tab-count hv-count hv-count--brand" id="countReqAll">0</span></button>
               <button class="filter-tab hv-tab" data-reqfilter="Vacation"><i class="fa-solid fa-umbrella-beach"></i> Vacation <span class="tab-count hv-count" id="countReqVacation">0</span></button>
               <button class="filter-tab hv-tab" data-reqfilter="Work From Home"><i class="fa-solid fa-house-laptop"></i> Work from home <span class="tab-count hv-count" id="countReqWFH">0</span></button>
-              <button class="filter-tab hv-tab" data-reqfilter="Medical Insurance"><i class="fa-solid fa-briefcase-medical"></i> Medical insurance <span class="tab-count hv-count" id="countReqInsurance">0</span></button>
+              <button class="filter-tab hv-tab" data-reqfilter="Medical Insurance"><i class="fa-solid fa-briefcase-medical"></i> Medical claims <span class="tab-count hv-count" id="countReqInsurance">0</span></button>
             </nav>
             <div class="hv-row-8 hv-pb-8">
               <div class="search-box hv-w-210"><i class="fa-solid fa-magnifying-glass"></i><input id="requestsSearch" placeholder="Search requests..." oninput="if(typeof filterRequests==='function')filterRequests(this.value)"></div>
@@ -18,11 +18,11 @@
                 <thead>
                   <tr>
                     <th>Employee</th>
-                    <th>Type</th>
-                    <th>Details &amp; reason</th>
+                    <th>Request</th>
+                    <th>Reason</th>
                     <th>Submitted</th>
                     <th>Status</th>
-                    <th class="hv-right">Actions</th>
+                    <th class="hv-right"><span class="sr-only">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody id="requestsTableBody"></tbody>
