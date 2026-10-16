@@ -155,13 +155,18 @@ function initCharts(){
     window._charts.salary = new Chart(ctx3, {
       type: 'bar',
       data: {
-        labels: sorted.map(s => s.date ? s.date.slice(0, 7) : '—'),
+        labels: sorted.map((s, i) => {
+          if (!s.date) return '—';
+          if (i === sorted.length - 1 && new Date(s.date) <= new Date()) return 'Today';
+          return new Date(s.date + 'T00:00:00').toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+        }),
         datasets: [
           {
             label: 'External USD',
             data: sorted.map(s => s.newExternal || 0),
             backgroundColor: '#4f80f2',
             borderRadius: 5,
+            maxBarThickness: 44,
             stack: 'pay'
           },
           {
@@ -169,6 +174,7 @@ function initCharts(){
             data: sorted.map(s => s.newInternal || 0),
             backgroundColor: '#4fa24c',
             borderRadius: 5,
+            maxBarThickness: 44,
             stack: 'pay'
           }
         ]
@@ -176,12 +182,30 @@ function initCharts(){
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        layout: { padding: { top: 22 } },
         plugins: { legend: { display: false } },
         scales: {
           x: { stacked: true, grid: { display: false }, ticks: { color: c.text } },
-          y: { stacked: true, grid: { color: c.grid }, ticks: { color: c.text }, beginAtZero: true }
+          y: { stacked: true, display: false, beginAtZero: true }
         }
-      }
+      },
+      plugins: [{
+        // Monthly total above each stacked bar (Employee Salary mock)
+        id: 'stackTotals',
+        afterDatasetsDraw(chart) {
+          const { ctx, data } = chart;
+          const last = chart.getDatasetMeta(data.datasets.length - 1);
+          ctx.save();
+          ctx.font = '600 12px Inter, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = chartColors().text;
+          last.data.forEach((bar, i) => {
+            const total = data.datasets.reduce((sum, d) => sum + (Number(d.data[i]) || 0), 0);
+            ctx.fillText('$' + total.toLocaleString('en-US'), bar.x, bar.y - 6);
+          });
+          ctx.restore();
+        }
+      }]
     });
   }
 }

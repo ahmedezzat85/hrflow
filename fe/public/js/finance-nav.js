@@ -40,12 +40,12 @@ const APP_AREA_BY_PAGE = {
   "a-system-users": { name: "System · Access and security", hue: "pink", icon: "fa-users-gear" },
 
   // Employee Portal
-  "e-dashboard": { name: "Workspace", hue: "blue", icon: "fa-grip" },
-  "e-salary": { name: "Workspace", hue: "green", icon: "fa-arrow-trend-up" },
-  "e-payslips": { name: "Workspace", hue: "violet", icon: "fa-file-invoice-dollar" },
-  "e-vacations": { name: "Workspace", hue: "teal", icon: "fa-umbrella-beach" },
-  "e-insurance": { name: "Workspace", hue: "teal", icon: "fa-briefcase-medical" },
-  "e-dochub": { name: "Workspace", hue: "ochre", icon: "fa-folder-open" },
+  "e-dashboard": { name: "My workspace", hue: "blue", icon: "fa-grip" },
+  "e-salary": { name: "My workspace", hue: "green", icon: "fa-arrow-trend-up" },
+  "e-payslips": { name: "My workspace", hue: "violet", icon: "fa-file-invoice-dollar" },
+  "e-vacations": { name: "My workspace", hue: "teal", icon: "fa-umbrella-beach" },
+  "e-insurance": { name: "My workspace", hue: "teal", icon: "fa-briefcase-medical" },
+  "e-dochub": { name: "My workspace", hue: "ochre", icon: "fa-folder-open" },
 };
 
 // Outline icon set from the approved mocks for the page-title tile (paths only).

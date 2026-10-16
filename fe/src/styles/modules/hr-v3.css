@@ -885,16 +885,16 @@
 :is(#a-employees, #a-dochub) .ed-title { font-size: 14px; font-weight: 600; color: var(--ink-strong); line-height: 1.3; }
 :is(#a-employees, #a-dochub) .ed-sub { font-size: 12px; color: var(--ink-muted); margin-top: 1px; }
 #a-employees td[data-label="Role"] .ed-title { font-weight: 400; color: var(--ink-strong); }
-#a-dochub .doc-name-cell { display: flex; align-items: center; gap: 10px; }
-#a-dochub .doc-type-icon { width: 32px; height: 32px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; flex: none; background: color-mix(in srgb, var(--id-ochre) var(--fv-tint-pct), transparent); color: var(--id-ochre-ink); }
-#a-dochub .doc-name-text { display: block; font-weight: 600; color: var(--ink-strong); }
-#a-dochub .doc-name-meta { font-size: 12px; color: var(--ink-muted); display: block; margin-top: 1px; }
-#a-dochub .hv-catdot { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-body); }
-#a-dochub .hv-catdot::before { content: ""; width: 8px; height: 8px; border-radius: 3px; display: inline-block; background: var(--id-blue); }
-#a-dochub .hv-catdot[data-cat="Policy"]::before { background: var(--id-sky); }
-#a-dochub .hv-catdot[data-cat="Handbook"]::before { background: var(--id-violet); }
-#a-dochub .hv-catdot[data-cat="Form"]::before { background: var(--id-ochre); }
-#a-dochub .hv-catdot[data-cat="General"]::before { background: var(--id-blue); }
+:is(#a-dochub, #e-dochub) .doc-name-cell { display: flex; align-items: center; gap: 10px; }
+:is(#a-dochub, #e-dochub) .doc-type-icon { width: 32px; height: 32px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; flex: none; background: color-mix(in srgb, var(--id-ochre) var(--fv-tint-pct), transparent); color: var(--id-ochre-ink); }
+:is(#a-dochub, #e-dochub) .doc-name-text { display: block; font-weight: 600; color: var(--ink-strong); }
+:is(#a-dochub, #e-dochub) .doc-name-meta { font-size: 12px; color: var(--ink-muted); display: block; margin-top: 1px; }
+:is(#a-dochub, #e-dochub) .hv-catdot { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-body); }
+:is(#a-dochub, #e-dochub) .hv-catdot::before { content: ""; width: 8px; height: 8px; border-radius: 3px; display: inline-block; background: var(--id-blue); }
+:is(#a-dochub, #e-dochub) .hv-catdot[data-cat="Policy"]::before { background: var(--id-sky); }
+:is(#a-dochub, #e-dochub) .hv-catdot[data-cat="Handbook"]::before { background: var(--id-violet); }
+:is(#a-dochub, #e-dochub) .hv-catdot[data-cat="Form"]::before { background: var(--id-ochre); }
+:is(#a-dochub, #e-dochub) .hv-catdot[data-cat="General"]::before { background: var(--id-blue); }
 #a-dochub td:last-child { text-align: right; white-space: nowrap; }
 #a-dochub td:last-child > * { vertical-align: middle; }
 #a-employees tbody td { white-space: nowrap; }
@@ -947,25 +947,12 @@
 #e-vacations .stat-card .stat-val.hv-text-success { color: var(--brand-text); }
 #e-vacations .stat-card .stat-trend { background: none; padding: 0; border-radius: 0; font-size: 12.5px; font-weight: 400; color: var(--ink-muted); }
 #e-vacations .stat-card .stat-trend i { display: none; }
-/* request form left, history right */
-#e-vacations.active { display: grid; grid-template-columns: 420px minmax(0, 1fr); gap: 14px; align-items: start; }
-#e-vacations > .grid { grid-column: 1 / -1; margin: 0; }
-#e-vacations > .card { margin: 0; }
 #e-vacations .time-off-head h3 i { display: none; }
 #e-vacations .time-off-body .form-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
 #e-vacations .form-field label { font-size: 12.5px; font-weight: 600; color: var(--ink-label); }
 #e-vacations .form-field input, #e-vacations .form-field select { height: 36px; border-radius: 9px; border: 1px solid var(--fv-input-border); font-size: 14px; }
 #e-vacations .time-off-summary-bar { background: var(--fv-surface-soft); border-radius: 10px; }
-@media (max-width: 1100px) { #e-vacations.active { grid-template-columns: minmax(0, 1fr); } }
 
-/* insurance: consumption + claim form side by side, plan card under consumption, history full width */
-#e-insurance.active { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 14px; align-items: start; }
-#e-insurance > .card, #e-insurance .g-2-1 > .card { margin: 0; }
-#e-insurance .g-2-1 { display: contents; }
-#e-insurance > .card:first-child { grid-column: 1; grid-row: 1; }
-#e-insurance .g-2-1 > .card:first-child { grid-column: 1; grid-row: 2; }
-#e-insurance .g-2-1 > .card:last-child { grid-column: 2; grid-row: 1 / span 2; }
-#e-insurance > .card:last-child { grid-column: 1 / -1; grid-row: 3; }
 #e-insurance .form-field label { font-size: 12.5px; font-weight: 600; color: var(--ink-label); }
 #e-insurance .form-field input:not([type="file"]), #e-insurance .form-field select { height: 36px; border-radius: 9px; border: 1px solid var(--fv-input-border); font-size: 14px; }
 #e-insurance input[type="file"] {
@@ -975,10 +962,6 @@
 #e-insurance input[type="file"]::file-selector-button {
   height: 30px; margin-right: 10px; padding: 0 12px; border: 1px solid var(--fv-outline); border-radius: 8px; background: var(--fv-surface);
   color: var(--brand-ink); font-weight: 600; font-size: 12.5px; cursor: pointer;
-}
-@media (max-width: 1100px) {
-  #e-insurance.active { grid-template-columns: minmax(0, 1fr); }
-  #e-insurance > .card:first-child, #e-insurance .g-2-1 > .card, #e-insurance > .card:last-child { grid-column: 1; grid-row: auto; }
 }
 
 /* dashboard tiles */

@@ -56,7 +56,7 @@ async function loadEmployeeData() {
     employees = rawEmployees.map(e => normalizeEmployee(e, rawSalaryHistory.filter(h => String(h.employee_id) === String(e.id))));
     currentLoggedInEmployee = employees.find(e => String(e.id) === String(myId)) || employees[0];
     window.LOGGED_IN_EMPLOYEE_ID = currentLoggedInEmployee.id;
-    empVacationHistory = rawVacHistory.map(v => ({ type: v.type, dates: `${v.start_date} to ${v.end_date}`, days: v.days, status: v.status }));
+    empVacationHistory = rawVacHistory.map(v => ({ type: v.type, dates: fmtDateRange(v.start_date, v.end_date), days: v.days, status: v.status }));
     empInsuranceHistory = rawClaims.map(c => ({ category: c.category, provider: c.provider, amount: Number(c.amount), date: c.date, status: c.status, document_url: c.document_url }));
     insuranceCategories = rawCategories;
     insuranceConsumption = rawConsumption;
@@ -311,7 +311,7 @@ function renderEmployeePortal() {
   if (timeline) {
     const entries = [];
     empVacationHistory.slice(0, 3).forEach(v => {
-      const datesStr = v.dates || (v.startDate && v.endDate ? `${v.startDate} to ${v.endDate}` : (v.start_date && v.end_date ? `${v.start_date} to ${v.end_date}` : v.date || ''));
+      const datesStr = v.dates || (v.startDate && v.endDate ? fmtDateRange(v.startDate, v.endDate) : (v.start_date && v.end_date ? fmtDateRange(v.start_date, v.end_date) : v.date || ''));
       entries.push({
         type: 'vacation',
         title: `${escapeHtml(v.type)} · ${v.days} day${v.days === 1 ? '' : 's'}`,
@@ -399,7 +399,7 @@ function renderEmployeePortal() {
   const vacTbody = document.getElementById('empVacationBody');
   if (vacTbody) {
     vacTbody.innerHTML = empVacationHistory.map(v => {
-      const datesStr = v.dates || (v.startDate && v.endDate ? `${v.startDate} to ${v.endDate}` : (v.start_date && v.end_date ? `${v.start_date} to ${v.end_date}` : v.date || '—'));
+      const datesStr = v.dates || (v.startDate && v.endDate ? fmtDateRange(v.startDate, v.endDate) : (v.start_date && v.end_date ? fmtDateRange(v.start_date, v.end_date) : v.date || '—'));
       const isWfh = v.type === 'Work from home' || v.type === 'Work From Home' || v.type === 'WFH';
       const dotBg = isWfh ? '#3f98d0' : '#1f9d8e';
       const isApp = v.status === 'Approved';
@@ -443,8 +443,8 @@ function renderEmployeePortal() {
     elInsBody.innerHTML = empInsuranceHistory.map((c, idx) => `<tr>
       <td data-label="Category" style="padding: 10px 16px; font-weight: 600; color: var(--ink-strong);">${escapeHtml(c.category)}</td>
       <td data-label="Provider" style="padding: 10px 12px; color: var(--ink-muted);">${escapeHtml(c.provider || 'Not given')}</td>
-      <td data-label="Date" style="padding: 10px 12px; color: var(--ink-strong);">${escapeHtml(c.date)}</td>
-      <td data-label="Status" style="padding: 10px 12px;">${statusPill(c.status)}</td>
+      <td data-label="Date" style="padding: 10px 12px; color: var(--ink-strong);">${escapeHtml(fmtDateShort(c.date))}</td>
+      <td data-label="Status" style="padding: 10px 12px;">${statusPill(c.status === 'Pending' ? 'Waiting' : c.status)}</td>
       <td data-label="Amount" style="padding: 10px 12px; text-align: right; font-weight: 700; color: var(--ink-strong);">${fmtMoney(c.amount)}</td>
       <td data-label="Receipt" style="padding: 10px 16px; text-align: right;">${c.document_url ? `<button type="button" class="icon-action" title="View supporting document" data-action="view-own-claim-receipt" data-index="${idx}" aria-label="View receipt" style="width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-muted); display: inline-flex; align-items: center; justify-content: center;"><i class="fa-solid fa-paperclip"></i></button>` : '<span style="color:var(--ink-muted);">—</span>'}</td>
     </tr>`).join('') || renderEmptyTableRow(6, 'No insurance claims yet.', 'fa-solid fa-briefcase-medical');

@@ -211,13 +211,14 @@ test.describe('R3 one button set', () => {
     expect([...seen.finance].filter((v) => v !== '8px')).toEqual([]);
   });
 
-  test('R3-3: the named screens each show exactly one primary button; Salary and Raises is read-only and has none', async ({ page }) => {
+  test('R3-3: the named screens each show exactly one primary button; Salary and raises has Apply raise only', async ({ page }) => {
     const res = await visitAll(page, () => [...document.querySelectorAll('#admin-app .btn-fill')]
       .filter((b) => b.offsetParent !== null).map((b) => b.textContent.trim().slice(0, 30)));
     for (const id of ['a-invoices', 'a-finance-dashboard', 'a-finance-payroll-runs']) {
       expect(res[id], id).toHaveLength(1);
     }
-    expect(res['a-salary'], 'a-salary').toHaveLength(0);
+    // The v3 mock (HR-Salary) shows "Apply raise" as the page's single solid primary button
+    expect(res['a-salary'], 'a-salary').toEqual(['Apply raise']);
   });
 
   test('R3-4: a disabled primary uses the neutral surface, not the accent', async ({ page }) => {

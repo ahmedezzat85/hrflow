@@ -245,12 +245,12 @@ const titles = {
   'a-finance-statutory':['Statutory Obligations','Track and remit government tax and social insurance liabilities.'],
   'a-system-roles':['Roles and permissions','Manage system roles, descriptions, and fine-grained permission assignments.'],
   'a-system-users':['User accounts','Manage user identity, assigned RBAC roles, and account access status.'],
-  'e-dashboard':['My Dashboard','Welcome back, here is your snapshot.'],
-  'e-salary':['Salary & Raises','Your compensation history and growth.'],
-  'e-payslips':['My Payslips','Your monthly payslip history and compensation breakdown.'],
+  'e-dashboard':['My dashboard','Welcome back, here is your snapshot.'],
+  'e-salary':['Salary and raises','Your compensation history and growth.'],
+  'e-payslips':['My payslips','Your monthly payslip history and compensation breakdown.'],
   'e-vacations':['Vacations','Your balance, requests and history.'],
-  'e-insurance':['Medical Insurance','Your plan, category limits and claims history.'],
-  'e-dochub':['Document Hub','Company documents and policies.'],
+  'e-insurance':['Medical insurance','Your plan, category limits and claims history.'],
+  'e-dochub':['Document hub','Company documents and policies.'],
 };
 function showSection(pageId, portal, params){
   const appSel = portal==='admin' ? '#admin-app' : '#employee-app';
@@ -464,14 +464,29 @@ function initials(name){ return name.split(' ').map(n=>n[0]).join('').substring(
 // (up to 2 decimals, trailing zeros trimmed on whole numbers).
 function fmtMoney(n){ return FinanceFormat.formatMoney(n, 'EGP', { decimals: 2, minDecimals: 0 }); }
 function fmtUSD(n){ return FinanceFormat.formatMoney(n, 'USD', { decimals: 2, minDecimals: 0 }); }
+const _MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function _parseDay(d){
+  const dt = new Date(String(d).slice(0, 10) + 'T00:00:00');
+  return isNaN(dt.getTime()) ? null : dt;
+}
+// "7 Oct 2026" (the format the approved mocks use for table and card dates)
 function fmtDateShort(d){
   if(!d || d === '—') return '—';
-  const dt = new Date(String(d).slice(0, 10) + 'T00:00:00');
-  return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  const dt = _parseDay(d);
+  return dt ? `${dt.getDate()} ${_MON[dt.getMonth()]} ${dt.getFullYear()}` : d;
+}
+// "4-6 Oct 2026", "30 Sep - 2 Oct 2026" or "30 Dec 2026 - 2 Jan 2027"
+function fmtDateRange(a, b){
+  const s = a ? _parseDay(a) : null, e = b ? _parseDay(b) : null;
+  if(!s || !e) return [a, b].filter(Boolean).join(' to ');
+  if(s.getTime() === e.getTime()) return fmtDateShort(a);
+  if(s.getFullYear() !== e.getFullYear()) return `${fmtDateShort(a)} – ${fmtDateShort(b)}`;
+  if(s.getMonth() !== e.getMonth()) return `${s.getDate()} ${_MON[s.getMonth()]} – ${e.getDate()} ${_MON[e.getMonth()]} ${e.getFullYear()}`;
+  return `${s.getDate()}–${e.getDate()} ${_MON[e.getMonth()]} ${e.getFullYear()}`;
 }
 function statusPill(status){
-  const map = {Pending:'pill-warning',Approved:'pill-success','Active':'pill-success',Rejected:'pill-danger','On Leave':'pill-info','On leave':'pill-info',Suspended:'pill-danger'};
-  const dotMap = {Pending:'hv-dot--warning',Approved:'hv-dot--success','Active':'hv-dot--success',Rejected:'hv-dot--danger','On Leave':'hv-dot--info','On leave':'hv-dot--info',Suspended:'hv-dot--danger'};
+  const map = {Waiting:'pill-warning',Pending:'pill-warning',Approved:'pill-success','Active':'pill-success',Rejected:'pill-danger','On Leave':'pill-info','On leave':'pill-info',Suspended:'pill-danger'};
+  const dotMap = {Waiting:'hv-dot--warning',Pending:'hv-dot--warning',Approved:'hv-dot--success','Active':'hv-dot--success',Rejected:'hv-dot--danger','On Leave':'hv-dot--info','On leave':'hv-dot--info',Suspended:'hv-dot--danger'};
   return `<span class="badge-pill ${map[status]||'pill-neutral'}"><span class="hv-dot ${dotMap[status]||'hv-dot--muted'}"></span>${status === 'On Leave' ? 'On leave' : status}</span>`;
 }
 /**
