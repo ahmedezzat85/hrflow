@@ -821,7 +821,6 @@
 #a-employee-detail .ed-kpi .esc-comp-total .esc-amount { font-size: 20px; color: var(--brand-text); }
 #a-employee-detail .ed-kpi .esc-comp-total .esc-unit { font-family: var(--font-body); font-size: 12px; font-weight: 400; color: var(--ink-muted); }
 #a-employee-detail .ed-kpi-s { font-size: 12px; color: var(--ink-muted); }
-#a-employee-detail .ed-kpi #compDetailsLink { display: inline-flex; height: auto; padding: 0; margin-top: 2px; border: 0; background: none; font-size: 12px; font-weight: 600; color: var(--brand-ink); }
 
 #a-employee-detail .ed-grid { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 14px; align-items: start; }
 #a-employee-detail .ed-main, #a-employee-detail .ed-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
@@ -1198,3 +1197,29 @@
 }
 
 
+
+/* Employee detail v3: KPI accent, card meta, text link buttons, missing bank alert, unset values (HR-EmployeeDetail) */
+#a-employee-detail .ed-kpi-v--brand { color: var(--brand-text); }
+#a-employee-detail .ed-unset { color: var(--ink-muted); font-weight: 400; }
+#a-employee-detail .ed-card-meta { margin-left: auto; font-size: 12.5px; color: var(--ink-muted); white-space: nowrap; }
+#a-employee-detail .ed-link-btn {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--brand-text);
+  cursor: pointer;
+}
+#a-employee-detail .ed-link-btn:hover { color: var(--brand-ink); text-decoration: underline; }
+#a-employee-detail .employee-bank-card .status-line.is-missing {
+  margin: 10px 16px 14px;
+  padding: 12px 14px;
+  border: 1px dashed var(--warning);
+  border-radius: 12px;
+  background: var(--warning-soft);
+}
+#a-employee-detail .employee-bank-card .status-line.is-missing { display: block; }
+#a-employee-detail .employee-bank-card .status-line.is-missing .btn { height: 30px; padding: 0 12px; }
+#a-employee-detail .ed-alert-text { margin: 0 0 8px; font-size: 12.5px; color: var(--ink-body); }

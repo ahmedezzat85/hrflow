@@ -30,7 +30,7 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
     // Check Social Insurance card exists in Sensitive Data section
     const socialInsCard = page.locator('#socialInsuranceCard');
     await expect(socialInsCard).toBeVisible();
-    await expect(socialInsCard.locator('h3')).toContainText('Social Insurance');
+    await expect(socialInsCard.locator('h3')).toContainText('Social insurance');
     await expect(socialInsCard.locator('#socialInsurancePill')).toBeVisible();
     await expect(socialInsCard.locator('#socialInsCoverage')).toBeVisible();
     await expect(socialInsCard.locator('#socialInsBase')).toBeVisible();
@@ -152,7 +152,7 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
     const infoGrid = page.locator('#detailInfoGrid');
     await expect(infoGrid).toBeVisible();
     await expect(infoGrid.locator('.esc-body')).toBeVisible();
-    await expect(infoGrid).toContainText('Monthly Compensation');
+    await expect(infoGrid).toContainText('Monthly total');
   });
 
   test('Regression fix: Employee edit button in table opens edit modal with prefilled data', async ({ page }) => {

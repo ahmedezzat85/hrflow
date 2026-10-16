@@ -151,21 +151,25 @@ function canWriteSalary() { return typeof SessionInfo === 'undefined' || Session
 // Profile head, left zone: monthly total only. The split, raises and actions live in the Compensation card.
 function compZoneInnerHtml(e) {
   if (!canReadSalary()) {
-    return `<div class="esc-zone-label">Monthly Compensation</div>
-      <p class="helper">Not available for your role.</p>`;
+    return `<div class="ed-kpi-k">Monthly total</div>
+      <div class="ed-kpi-s">Not available for your role.</div>`;
   }
   const total = Number(e.internalSalaryUsd || 0) + Number(e.externalSalaryUsd || 0);
-  return `<div class="esc-zone-label">Monthly Compensation</div>
-    <div class="esc-comp-total">
-      <span class="esc-amount">${fmtUSD(total)}</span>
-      <span class="esc-unit">/ month total</span>
-    </div>
-    <button type="button" class="btn btn-quiet btn-sm" id="compDetailsLink" onclick="scrollToCompensationCard()">See compensation details <i class="fa-solid fa-arrow-down"></i></button>`;
+  return `<div class="ed-kpi-k">Monthly total</div>
+    <div class="ed-kpi-v ed-kpi-v--brand">${fmtUSD(total)}</div>
+    <div class="ed-kpi-s">per month, USD</div>`;
 }
 
-function scrollToCompensationCard() {
-  const card = document.getElementById('employeeCompensationCard');
-  if (card) card.scrollIntoView({ block: 'start', behavior: 'smooth' });
+// "EMP001" style code shown on the profile header (same format as the Employees table)
+function empCodeLabel(id) {
+  if (id === undefined || id === null || id === '') return '';
+  return /^\d+$/.test(String(id)) ? 'EMP' + String(id).padStart(3, '0') : String(id);
+}
+
+// "Full-Time" becomes "Full-time" for pills (the stored value is unchanged)
+function sentenceCase(s) {
+  const v = String(s || '');
+  return v ? v.charAt(0).toUpperCase() + v.slice(1).toLowerCase() : v;
 }
 
 // Compensation card on the employee profile: split, next and last raise, and this employee's raise history.
@@ -189,7 +193,7 @@ function renderCompensationCard(e) {
     const d = computeRowDeltas(prevInternal, prevExternal, newInternal, newExternal);
     const change = (prevInternal + prevExternal) > 0
       ? `<span class="badge-pill pill-success">${fmtDelta(d.totalAmt, d.totalPct)}</span>`
-      : '<span class="compensation-sub">First record</span>';
+      : '<span class="badge-pill pill-neutral">Starting pay</span>';
     return { h, d, html: `<tr>
       <td data-label="Effective">${escapeHtml(fmtDateShort(h.date))}</td>
       <td data-label="Internal">${fmtUSD(newInternal)}</td>
@@ -255,7 +259,7 @@ async function viewProfile(id, section) {
 
   renderCompensationCard(e);
   const vacRemaining = (e.vacTotal || 21) - (e.vacUsed || 0);
-  const address = [e.address_line_1, e.address_line_2].filter(Boolean).join(', ') || '—';
+  const address = [e.address_line_1, e.address_line_2].filter(Boolean).join(', ');
 
   const canWriteEmp = typeof SessionInfo !== 'undefined' ? SessionInfo.hasPermission('hr.employee.write') : true;
   document.getElementById('detailProfileHead').innerHTML = `
@@ -265,11 +269,11 @@ async function viewProfile(id, section) {
         <div class="ed-name">
           <h4>${escapeHtml(e.name)}</h4>
           <span class="esc-pill ${e.status === 'Active' ? 'esc-pill-active' : 'esc-pill-neutral'}"><span class="hv-dot"></span>${e.status}</span>
-          <span class="esc-pill esc-pill-neutral">${e.employment_state || 'Full-Time'}</span>
+          <span class="esc-pill esc-pill-neutral">${escapeHtml(sentenceCase(e.employment_state || 'Full-Time'))}</span>
         </div>
         <div class="esc-meta">
-          <span>${escapeHtml(e.role)}</span><span class="esc-dot"></span>
-          <span>${escapeHtml(e.dept)}</span>${e.join ? `<span class="esc-dot"></span><span>Joined ${fmtDateShort(e.join)}</span>` : ''}${e.email ? `<span class="esc-dot"></span><span>${escapeHtml(e.email)}</span>` : ''}
+          ${empCodeLabel(e.id) ? `<span>${escapeHtml(empCodeLabel(e.id))}</span><span class="esc-dot"></span>` : ''}<span>${escapeHtml(e.role)}</span><span class="esc-dot"></span>
+          <span>${escapeHtml(e.dept)}</span>${e.email ? `<span class="esc-dot"></span><span>${escapeHtml(e.email)}</span>` : ''}
         </div>
       </div>
       <div class="ed-actions">
@@ -289,14 +293,14 @@ async function viewProfile(id, section) {
   document.getElementById('detailInfoGrid').innerHTML = `
     <div class="esc-body ed-kpis">
       <div class="ed-kpi ed-kpi--total" id="detailCompZone">${compZoneInnerHtml(e)}</div>
-      ${canReadSalary() ? kpi('Internal USD cash', fmtUSD(Number(e.internalSalaryUsd || 0))) + kpi('External USD', fmtUSD(Number(e.externalSalaryUsd || 0))) + kpi('Next raise', escapeHtml(fmtDateShort(e.nextRaise)), nextRaiseDays) : ''}
-      ${kpi('Vacation', `<span id="detailVacRemaining">${vacRemaining} / ${e.vacTotal || 21} days</span>`)}
+      ${canReadSalary() ? kpi('Internal USD cash', fmtUSD(Number(e.internalSalaryUsd || 0)), 'paid locally') + kpi('External USD', fmtUSD(Number(e.externalSalaryUsd || 0)), 'US transfer') + kpi('Next raise', escapeHtml(fmtDateShort(e.nextRaise)), nextRaiseDays) : ''}
+      ${kpi('Vacation left', `<span id="detailVacRemaining">${vacRemaining} / ${e.vacTotal || 21}</span>`, `<span id="detailVacUsedSub">days, ${e.vacUsed || 0} used in ${new Date().getFullYear()}</span>`)}
     </div>`;
   document.getElementById('detailMetaBody').innerHTML = `
     ${escRow('fa-envelope', 'Email', e.email, { title: e.email })}
     ${e.join ? escRow('fa-calendar', 'Joined', fmtDateShort(e.join)) : ''}
-    ${escRow('fa-hashtag', 'Payment doc ID', e.invoice_id || '\u2014')}
-    ${escRow('fa-location-dot', 'Address', address, { wrap: true, title: address })}`;
+    ${escRow('fa-hashtag', 'Payment doc ID', e.invoice_id ? escapeHtml(String(e.invoice_id)) : '<span class="ed-unset">Not set</span>')}
+    ${escRow('fa-location-dot', 'Address', address ? escapeHtml(address) : '<span class="ed-unset">Not set</span>', { wrap: true, title: escapeHtml(address) })}`;
     const consumption = insuranceConsumption.find(c => String(c.employee_id) === String(id));
     document.getElementById('detailInsuranceGrid').innerHTML = consumption && consumption.categories.length ? consumption.categories.map(renderCategoryChip).join('') : '<p style="color:var(--text2);font-size:13px;">No insurance consumption data available.</p>';
     document.getElementById('detailInsuranceTotal').innerHTML = consumption ? `${fmtMoney(consumption.total_consumed)} <span style="font-size:12px;color:var(--text2);font-weight:500">of ${fmtMoney(consumption.total_limit)}</span>` : '—';
@@ -323,10 +327,14 @@ async function viewProfile(id, section) {
         .reduce((sum, v) => sum + (Number(v.days) || 0), 0);
       const totalVacDays = e.vacTotal || 21;
       const remainingVacDays = Math.max(0, totalVacDays - usedVacDays);
+      const leaveMetaEl = document.getElementById('detailLeaveMeta');
+      if (leaveMetaEl) leaveMetaEl.textContent = `${remainingVacDays} of ${totalVacDays} days left`;
       const vacRemainingEl = document.getElementById('detailVacRemaining');
       if (vacRemainingEl) {
-        vacRemainingEl.textContent = `${remainingVacDays} / ${totalVacDays} days`;
+        vacRemainingEl.textContent = `${remainingVacDays} / ${totalVacDays}`;
       }
+      const vacUsedSubEl = document.getElementById('detailVacUsedSub');
+      if (vacUsedSubEl) vacUsedSubEl.textContent = `days, ${totalVacDays - remainingVacDays} used in ${new Date().getFullYear()}`;
 
       if (freshConsumption) {
         if (Array.isArray(freshConsumption)) {
@@ -348,6 +356,14 @@ async function viewProfile(id, section) {
         const st = c.status || c.Status || 'Pending';
         return `<tr><td data-label="Category"><div class="ed-title">${cat} \u00b7 ${fmtMoney(amt)}</div><div class="ed-sub">${dt}</div></td><td data-label="Status" class="ed-status">${statusPill(st)}</td></tr>`;
       }).join('') || renderEmptyTableRow(2, 'No insurance claims yet.', 'fa-solid fa-briefcase-medical');
+      const claimsMetaEl = document.getElementById('detailClaimsMeta');
+      if (claimsMetaEl) {
+        const yr = String(new Date().getFullYear());
+        const claimedThisYear = empClaims
+          .filter(c => String(c.date || c.Date || '').startsWith(yr))
+          .reduce((s, c) => s + (Number(c.amount !== undefined ? c.amount : c.Amount) || 0), 0);
+        claimsMetaEl.textContent = empClaims.length ? `${fmtMoney(claimedThisYear)} this year` : '';
+      }
       renderNotesList(notes);
       await loadEmployeeDocuments(id);
       await loadBankAccountStatus(id);
@@ -804,6 +820,13 @@ async function loadBankAccountStatus(empId) {
   const nameEl = document.getElementById('bankDetailName');
   const ibanEl = document.getElementById('bankDetailIban');
   const swiftEl = document.getElementById('bankDetailSwift');
+  const statusLine = document.getElementById('bankAccountStatusLine');
+  const statusText = document.getElementById('bankAccountStatusText');
+  const detailsBody = document.getElementById('bankAccountDetailsBody');
+  if (statusText) statusText.hidden = true;
+  if (btn) btn.hidden = false;
+  if (statusLine) statusLine.classList.remove('is-missing');
+  if (detailsBody) detailsBody.hidden = false;
   if (!pill) return;
   pill.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading...';
   pill.style.cssText = 'background:var(--surface2);color:var(--text2);';
@@ -817,19 +840,24 @@ async function loadBankAccountStatus(empId) {
       pill.innerHTML = '<i class="fa-solid fa-circle-check"></i> On file';
       pill.style.cssText = 'background:var(--success-soft);color:var(--success);';
       if (btn) {
-        btn.innerHTML = '<i class="fa-solid fa-pen"></i>';
-        btn.title = 'Edit Bank Details';
+        btn.textContent = 'Edit';
+        btn.title = 'Edit bank details';
       }
       if (nameEl) nameEl.textContent = data.bank_name || '—';
       if (ibanEl) ibanEl.textContent = data.iban || '—';
       if (swiftEl) swiftEl.textContent = data.swift_code || '—';
     } else {
-      pill.innerHTML = '<i class="fa-solid fa-circle-minus"></i> Not set up';
-      pill.style.cssText = 'background:var(--surface2);color:var(--text2);';
-      setCardStatusAction('bankAccountStatusActionBtn', 'Set up', () => openBankAccountModal());
+      // Missing bank details are a visible flag only; payroll is never blocked (payroll policy R4)
+      pill.innerHTML = '<span class="hv-dot"></span> Missing';
+      pill.style.cssText = 'background:var(--danger-soft);color:var(--danger);';
+      setCardStatusAction('bankAccountStatusActionBtn', 'Add bank details', () => openBankAccountModal());
+      if (statusText) statusText.hidden = false;
+      if (statusLine) statusLine.classList.add('is-missing');
+      if (detailsBody) detailsBody.hidden = true;
       if (btn) {
-        btn.innerHTML = '<i class="fa-solid fa-plus"></i>';
-        btn.title = 'Add Bank Details';
+        btn.textContent = 'Add';
+        btn.title = 'Add bank details';
+        btn.hidden = true; // the alert below carries the action
       }
       if (nameEl) nameEl.textContent = 'Not configured';
       if (ibanEl) ibanEl.textContent = 'Not configured';
@@ -953,8 +981,8 @@ async function loadSocialInsuranceStatus(empId) {
     const isLegacyUSD = isCovered && curr === 'USD';
 
     if (btn) {
-      btn.innerHTML = '<i class="fa-solid fa-pen"></i>';
-      btn.title = 'Edit Social Insurance';
+      btn.textContent = 'Edit';
+      btn.title = 'Edit social insurance';
     }
 
     if (isLegacyUSD) {
