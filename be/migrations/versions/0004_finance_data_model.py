@@ -64,7 +64,7 @@ def upgrade() -> None:
             sa.Column('currency', sa.String(length=10), nullable=False, server_default='USD'),
             sa.Column('opening_balance', sa.Float(), nullable=False, server_default='0.0'),
             sa.Column('current_balance', sa.Float(), nullable=False, server_default='0.0'),
-            sa.Column('is_active', sa.Boolean(), nullable=False, server_default='1'),
+            sa.Column('is_active', sa.Boolean(), nullable=False, server_default=sa.true()),
             sa.Column('created_at', sa.DateTime(), nullable=True),
             sa.PrimaryKeyConstraint('id')
         )
@@ -182,8 +182,8 @@ def upgrade() -> None:
             sa.Column('currency', sa.String(length=10), nullable=False, server_default='USD'),
             sa.Column('billing_cycle', sa.String(length=20), nullable=False, server_default='monthly'),
             sa.Column('next_renewal_date', sa.String(length=20), nullable=False),
-            sa.Column('auto_generate_bill', sa.Boolean(), nullable=False, server_default='1'),
-            sa.Column('is_active', sa.Boolean(), nullable=False, server_default='1'),
+            sa.Column('auto_generate_bill', sa.Boolean(), nullable=False, server_default=sa.true()),
+            sa.Column('is_active', sa.Boolean(), nullable=False, server_default=sa.true()),
             sa.Column('created_at', sa.DateTime(), nullable=True),
             sa.ForeignKeyConstraint(['vendor_id'], ['finance_vendors.id'], ondelete='RESTRICT'),
             sa.PrimaryKeyConstraint('id')

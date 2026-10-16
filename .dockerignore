@@ -23,6 +23,5 @@ test-results
 logs
 docs
 !docs/templates
-deploy
 *.csv
 .env*
