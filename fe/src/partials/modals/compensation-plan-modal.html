@@ -39,18 +39,18 @@
         <div class="form-section">
           <div class="form-grid">
             <div class="form-field">
-              <label for="compPlanComponentType">Component Type <span class="req">*</span></label>
+              <label for="compPlanComponentType">Component Type</label>
               <select id="compPlanComponentType" onchange="onCompPlanTypeChange()">
                 <option value="external_usd">External USD (US Transfer)</option>
                 <option value="internal_usd_cash">Internal USD Cash (Local Cash)</option>
               </select>
             </div>
             <div class="form-field">
-              <label for="compPlanAmount">New Amount <span class="opt">USD</span> <span class="req">*</span></label>
+              <label for="compPlanAmount">New Amount <span class="opt">USD</span></label>
               <input inputmode="decimal" type="number" id="compPlanAmount" step="0.01" min="0.01" placeholder="e.g. 2500">
             </div>
             <div class="form-field" id="compPlanSalaryBasisContainer" style="display:none;">
-              <label for="compPlanSalaryBasis">Salary Basis <span class="req">*</span></label>
+              <label for="compPlanSalaryBasis">Salary Basis</label>
               <select id="compPlanSalaryBasis">
                 <option value="NET" selected>NET (Target Net Pay Protected)</option>
                 <option value="GROSS">GROSS (Local Statutory Deductions Apply)</option>
@@ -60,7 +60,7 @@
               </span>
             </div>
             <div class="form-field">
-              <label for="compPlanStartDate">Effective Start Date <span class="req">*</span></label>
+              <label for="compPlanStartDate">Effective Start Date</label>
               <input type="date" id="compPlanStartDate">
             </div>
             <div class="form-field">

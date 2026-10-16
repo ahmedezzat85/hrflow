@@ -54,7 +54,7 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
     const modal = page.locator('#socialInsuranceModal');
     await expect(modal).toBeVisible();
     await expect(modal.locator('#socialInsuranceModalTitle')).toContainText('Social insurance');
-    await expect(modal.locator('#fSocialInsBaseContainer label')).toContainText('(EGP)');
+    await expect(modal.locator('#fSocialInsBaseContainer label')).toContainText('Insured base');
 
     // Attempt to set a future date
     await modal.locator('#fSocialInsFlag').check();
@@ -170,7 +170,7 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
     // Expect modal to be open and prefilled
     const modal = page.locator('#employeeModal');
     await expect(modal).toBeVisible();
-    await expect(modal.locator('#empModalTitle')).toContainText('Edit Employee');
+    await expect(modal.locator('#empModalTitle')).toContainText('Edit employee');
     await expect(modal.locator('#fEmpName')).not.toBeEmpty();
 
     // Close modal cleanly

@@ -61,7 +61,7 @@ document.getElementById('empSearch').addEventListener('input', e => renderEmploy
 function openEmployeeModal(id = null) {
   const numId = id !== null ? Number(id) : null;
   currentEditId = (numId !== null && !isNaN(numId)) ? numId : id;
-  document.getElementById('empModalTitle').textContent = id ? 'Edit Employee' : 'Add Employee';
+  document.getElementById('empModalTitle').textContent = id ? 'Edit employee' : 'Add employee';
   if (id) {
     const e = employees.find(x => String(x.id) === String(id));
     if (!e) return;
