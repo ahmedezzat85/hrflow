@@ -1,6 +1,6 @@
 # HRFlow Production Deployment Plan
 
-Status: plan agreed, not yet implemented. Owner: Ahmed Ezzat.
+Status: Phase A (build/run), most of B, backup/restore (C15) implemented and verified locally on 2026-10-16; see deploy/prod/RUNBOOK.md. Remaining: see section 7. Owner: Ahmed Ezzat.
 Scope of this document: how to run HRFlow as a **production** environment (Docker, PostgreSQL) next to the existing **development** environment (local folder, SQLite), from one codebase.
 
 ## 1. Decisions
@@ -36,7 +36,7 @@ On the host (not committed), `D:/services/hrflow-prod/`:
 ```
 .env                # real secrets (SECRET_KEY, POSTGRES_PASSWORD, ...)
 certs/              # local TLS certificate and key
-data/postgres/      # database files
+(PostgreSQL data lives in the Docker named volume hrflow-prod_pgdata; bind mounts to NTFS are unreliable for Postgres)
 data/documents/     # uploaded files (LOCAL_STORAGE_PATH)
 data/logs/          # application logs
 backups/            # dumps + documents archives
@@ -106,3 +106,9 @@ Compose is run from the repo but reads env file and data paths from the host fol
 
 - Which Google account owns the backup Drive folder (personal vs company), and its folder name.
 - Where the encryption key is kept.
+
+## 7. Implementation status (2026-10-16)
+
+Done and verified: images build; empty PostgreSQL migrates to head (needed fixes: wide alembic_version column, Boolean defaults, SQLAlchemy<2.1); admin bootstrap; API docs off; mock mode blocked at nginx; login rate limit (429 after burst); non-root, read-only app container; encrypted backup + restore drill.
+
+Still open: real Google Sign-In test at http://localhost (needs origin added in Google Console); set BACKUP_DRIVE_DIR and schedule nightly backup; dependency/image scans; run full backend and UI suites; Windows auto-start; Cloudflare Tunnel (later); Sheets/Drive cleanup (deferred).
