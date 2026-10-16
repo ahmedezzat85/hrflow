@@ -1373,3 +1373,10 @@
   #a-finance-payroll .bonus-cell, #a-finance-payroll .payroll-bonus-col { flex-wrap: wrap; max-width: 100%; }
   #a-finance-payroll .payroll-screen-view, #a-finance-payroll #payrollViewRun { overflow-x: clip; }
 }
+
+/* Native selects in payroll keep their chevron (Pay-Run-Setup, Pay-Settings); the shared field rule resets `background` */
+#a-finance-payroll select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%239ca3af' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 13px center;
+}

@@ -794,10 +794,10 @@
       const extSelect = document.getElementById('p1ExtAccount');
       const intSelect = document.getElementById('p1IntAccount');
       if (extSelect) {
-        extSelect.innerHTML = (this.banks || []).map(b => `<option value="${b.id}" ${String(b.id) === String(this.selectedExternalAccountId) ? 'selected' : ''}>${b.name} (${b.currency} ${b.number})</option>`).join('');
+        extSelect.innerHTML = (this.banks || []).map(b => `<option value="${b.id}" ${String(b.id) === String(this.selectedExternalAccountId) ? 'selected' : ''}>${this.fundingAccountLabel(b)}</option>`).join('');
       }
       if (intSelect) {
-        intSelect.innerHTML = (this.banks || []).map(b => `<option value="${b.id}" ${String(b.id) === String(this.selectedInternalAccountId) ? 'selected' : ''}>${b.name} (${b.currency} ${b.number})</option>`).join('');
+        intSelect.innerHTML = (this.banks || []).map(b => `<option value="${b.id}" ${String(b.id) === String(this.selectedInternalAccountId) ? 'selected' : ''}>${this.fundingAccountLabel(b)}</option>`).join('');
       }
 
       this.drawFxRate();
@@ -2073,7 +2073,7 @@
       const siDateInput = document.getElementById('p6SiPaymentDate');
       const taxDateInput = document.getElementById('p6TaxPaymentDate');
 
-      const bankOptionsHtml = (this.banks || []).map(b => `<option value="${b.id}" ${String(b.id) === String(this.selectedExternalAccountId) ? 'selected' : ''}>${b.name} (${b.currency} ${b.number})</option>`).join('');
+      const bankOptionsHtml = (this.banks || []).map(b => `<option value="${b.id}" ${String(b.id) === String(this.selectedExternalAccountId) ? 'selected' : ''}>${this.fundingAccountLabel(b)}</option>`).join('');
       if (siAccountSelect) siAccountSelect.innerHTML = bankOptionsHtml;
       if (taxAccountSelect) taxAccountSelect.innerHTML = bankOptionsHtml;
 
@@ -2375,6 +2375,20 @@
       }
     },
 
+    // Funding account option text per the mocks: "Name · •••• 1234" (currency appended only when the name lacks it)
+    fundingAccountLabel(b) {
+      const numStr = String(b.number || '').trim();
+      let masked = '';
+      if (numStr) {
+        masked = (typeof FinanceFormat !== 'undefined' && typeof FinanceFormat.formatMaskedAccountNumber === 'function')
+          ? FinanceFormat.formatMaskedAccountNumber(numStr)
+          : (numStr.length > 4 ? `•••• ${numStr.slice(-4)}` : numStr);
+      }
+      const cur = String(b.currency || '');
+      const name = cur && !String(b.name || '').toUpperCase().includes(cur.toUpperCase()) ? `${b.name} ${cur}` : String(b.name || '');
+      return masked ? `${name} · ${masked}` : name;
+    },
+
     drawFxRate() {
       const rateEl = document.getElementById('payrollFxRateBadge');
       const srcEl = document.getElementById('payrollFxRateSourceBadge');
@@ -2497,15 +2511,8 @@
       const selExt = document.getElementById('payrollTargetExternalAccount');
       const selInt = document.getElementById('payrollTargetInternalAccount');
       const formatOpt = (b, selectedId) => {
-        let numStr = (b.number || '').trim();
-        let masked = numStr;
-        if (typeof FinanceFormat !== 'undefined' && typeof FinanceFormat.formatMaskedAccountNumber === 'function') {
-          masked = FinanceFormat.formatMaskedAccountNumber(numStr);
-        } else if (numStr.length > 4) {
-          masked = `•••• ${numStr.slice(-4)}`;
-        }
         const isSel = String(b.id) === String(selectedId) ? 'selected' : '';
-        return `<option value="${b.id}" ${isSel}>${b.name} (${b.currency} ${masked})</option>`;
+        return `<option value="${b.id}" ${isSel}>${this.fundingAccountLabel(b)}</option>`;
       };
       if (selExt) {
         selExt.innerHTML = this.banks.map(b => formatOpt(b, this.selectedExternalAccountId)).join('');

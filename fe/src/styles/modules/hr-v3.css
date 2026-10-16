@@ -1233,3 +1233,10 @@
   color: var(--ink-muted);
 }
 #a-insurance .icon-action.text-danger { color: var(--danger); }
+
+/* User accounts filters keep the select chevron */
+#a-system-users select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%239ca3af' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 13px center;
+}
