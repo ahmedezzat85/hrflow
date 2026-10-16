@@ -308,9 +308,20 @@ function generateBulkInvoices(evt){
 
   const chk = document.getElementById('bulkRegenerateExisting');
   if (chk) chk.checked = false;
+  updateBulkGenerateLabel();
 
   const modal = document.getElementById('bulkInvoiceModal');
   if (modal) modal.classList.add('active');
+}
+
+// Button text shows how many docs the batch will write: ready ones, plus existing ones when regenerating
+function updateBulkGenerateLabel(){
+  const btn = document.getElementById('btnConfirmBulkGenerate');
+  if (!btn) return;
+  const chk = document.getElementById('bulkRegenerateExisting');
+  const n = Number((document.getElementById('bulkEligibleCount') || {}).textContent || 0)
+    + (chk && chk.checked ? Number((document.getElementById('bulkExistingCount') || {}).textContent || 0) : 0);
+  btn.textContent = n > 0 ? `Generate ${n} ${n === 1 ? 'doc' : 'docs'}` : 'Generate docs';
 }
 
 async function executeBulkGenerateInvoices(evt){

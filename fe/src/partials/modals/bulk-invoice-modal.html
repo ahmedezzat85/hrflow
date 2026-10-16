@@ -11,31 +11,26 @@
       <div class="modal-body">
         <div class="form-field full hv-mb-12">
           <label>Period</label>
-          <div class="hv-bold" id="bulkModalPeriod">—</div>
+          <div class="fv-dialog-readonly" id="bulkModalPeriod">—</div>
         </div>
         <div class="hv-grid hv-grid-2 hv-mb-12">
-          <div class="fv-dialog-tile">
+          <div class="fv-dialog-tile fv-dialog-tile--brand">
             <div class="fv-dialog-tile__label">Ready to generate</div>
             <div class="fv-dialog-tile__value" id="bulkEligibleCount">0</div>
           </div>
-          <div class="fv-dialog-tile">
+          <div class="fv-dialog-tile fv-dialog-tile--ok">
             <div class="fv-dialog-tile__label">Already generated</div>
             <div class="fv-dialog-tile__value" id="bulkExistingCount">0</div>
           </div>
         </div>
-        <div class="form-field full" style="margin-bottom:6px;">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:500;color:var(--ink-strong);">
-            <input type="checkbox" id="bulkRegenerateExisting" style="width:16px;height:16px;accent-color:var(--brand);">
-            <span>Regenerate and overwrite already-existing docs</span>
-          </label>
-          <span style="font-size:11.5px;color:var(--ink-muted);margin-left:24px;display:block;margin-top:2px;">
-            If unchecked, already-generated docs will be preserved.
-          </span>
-        </div>
+        <label class="fv-dialog-check" for="bulkRegenerateExisting">
+          <input type="checkbox" id="bulkRegenerateExisting" onchange="updateBulkGenerateLabel()">
+          <span><strong>Regenerate docs that already exist</strong><span>Overwrites them with current salary and address details</span></span>
+        </label>
       </div>
       <div class="modal-foot">
         <button class="btn" onclick="closeModal('bulkInvoiceModal')">Cancel</button>
-        <button class="btn btn-fill" id="btnConfirmBulkGenerate" onclick="executeBulkGenerateInvoices(event)">Generate batch</button>
+        <button class="btn btn-fill" id="btnConfirmBulkGenerate" onclick="executeBulkGenerateInvoices(event)">Generate docs</button>
       </div>
     </div>
   </div>

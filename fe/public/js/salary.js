@@ -245,6 +245,7 @@ async function openCompPlanModal(empId, preselectType = null) {
   if (!emp) return;
 
   document.getElementById('compPlanEmpName').textContent = `${emp.name} — ${emp.job_role || emp.role || ''}`;
+  document.getElementById('compPlanModalTitle').textContent = `Pay plan · ${emp.name}`;
   document.getElementById('compPlanActiveExternal').textContent = fmtUSD(emp.externalSalaryUsd || 0);
   document.getElementById('compPlanActiveInternal').textContent = fmtUSD(emp.internalSalaryUsd || 0);
   document.getElementById('compPlanTotalBadge').textContent = `${fmtUSD((emp.externalSalaryUsd || 0) + (emp.internalSalaryUsd || 0))} / month`;
@@ -295,21 +296,22 @@ async function reloadCompPlanData(empId) {
     if (plan) {
       if (plan.external_usd) {
         document.getElementById('compPlanActiveExternal').textContent = fmtUSD(plan.external_usd.amount);
-        document.getElementById('compPlanExtEffective').textContent = `Effective: ${plan.external_usd.effective_start_date}`;
+        document.getElementById('compPlanExtEffective').textContent = fmtDateShort(plan.external_usd.effective_start_date);
       } else {
         document.getElementById('compPlanActiveExternal').textContent = '$0.00';
-        document.getElementById('compPlanExtEffective').textContent = 'No active plan';
+        document.getElementById('compPlanExtEffective').textContent = '—';
       }
 
       if (plan.internal_usd_cash) {
         const basisLabel = (plan.internal_usd_cash.salary_basis || 'NET').toUpperCase();
-        document.getElementById('compPlanActiveInternal').textContent = `${fmtUSD(plan.internal_usd_cash.amount)} (${basisLabel})`;
-        document.getElementById('compPlanIntEffective').textContent = `Effective: ${plan.internal_usd_cash.effective_start_date}`;
+        document.getElementById('compPlanActiveInternal').textContent = fmtUSD(plan.internal_usd_cash.amount);
+        document.getElementById('compPlanIntBasis').textContent = basisLabel === 'GROSS' ? 'Gross' : 'Net';
+        document.getElementById('compPlanIntEffective').textContent = fmtDateShort(plan.internal_usd_cash.effective_start_date);
         const basisSelect = document.getElementById('compPlanSalaryBasis');
         if (basisSelect) basisSelect.value = basisLabel;
       } else {
         document.getElementById('compPlanActiveInternal').textContent = '$0.00';
-        document.getElementById('compPlanIntEffective').textContent = 'No active plan';
+        document.getElementById('compPlanIntEffective').textContent = '—';
       }
 
       document.getElementById('compPlanTotalBadge').textContent = `${fmtUSD(plan.total_monthly_usd || 0)} / month`;

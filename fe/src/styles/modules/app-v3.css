@@ -925,3 +925,82 @@
   background-repeat: no-repeat;
   background-position: right 13px center;
 }
+
+/* Dialog extras per Dlg-Raise, Dlg-SalaryDocs, Dlg-CompPlan, Dlg-AssignRole */
+#raiseModal .modal-body > .form-section:first-child { margin-bottom: 12px; }
+#raiseModal .fv-dialog-tile {
+  background: var(--fv-surface-soft);
+  border: 0;
+}
+.fv-dialog .fv-dialog-readonly {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  border: 1px solid var(--fv-input-border);
+  border-radius: 9px;
+  background: var(--fv-surface);
+  font-size: 14px;
+  color: var(--ink-strong);
+}
+#bulkInvoiceModal .fv-dialog-tile {
+  padding: 12px 14px;
+  border: 0;
+}
+#bulkInvoiceModal .fv-dialog-tile--brand { background: var(--brand-tint); }
+#bulkInvoiceModal .fv-dialog-tile--ok { background: var(--success-soft); }
+#bulkInvoiceModal .fv-dialog-tile__label {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+#bulkInvoiceModal .fv-dialog-tile--brand .fv-dialog-tile__label { color: var(--brand-ink); }
+#bulkInvoiceModal .fv-dialog-tile--ok .fv-dialog-tile__label { color: var(--success); }
+#bulkInvoiceModal .fv-dialog-tile__value {
+  font-family: var(--font-head);
+  font-size: 22px;
+}
+.fv-dialog .fv-dialog-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--fv-surface-soft);
+  font-size: 13.5px;
+  color: var(--ink-strong);
+  cursor: pointer;
+}
+.fv-dialog .fv-dialog-check input { margin-top: 3px; accent-color: var(--brand); }
+.fv-dialog .fv-dialog-check span span {
+  display: block;
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+.fv-dialog .fv-plan-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+.fv-dialog .fv-plan-table {
+  border: 1px solid var(--fv-line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.fv-dialog .fv-plan-table table { width: 100%; font-size: 13px; }
+.fv-dialog .fv-plan-table th { text-align: left; }
+.fv-dialog .fv-plan-table th.fv-num,
+.fv-dialog .fv-plan-table td.fv-num { text-align: right; font-variant-numeric: tabular-nums; }
+#assignRolesModal [role="radiogroup"] > label {
+  border-radius: 12px !important;
+  padding: 10px 12px !important;
+  color: var(--ink-strong);
+}
+/* Tall dialogs (Pay plan, Employee) scroll inside; header and footer stay visible */
+.fv-dialog .modal { max-height: 90vh; }
+.fv-dialog .modal .modal-body { overflow-y: auto; min-height: 0; flex: 1 1 auto; }

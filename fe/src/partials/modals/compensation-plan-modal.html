@@ -3,78 +3,77 @@
       <div class="modal-head">
         <span class="modal-head-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18v10H3zM7 7v10M17 7v10"></path></svg></span>
         <div class="modal-head-text">
-          <h3 id="compPlanModalTitle">Employee Compensation Plan</h3>
-          <p>Manage recurring effective-dated external USD and internal USD cash components.</p>
+          <h3 id="compPlanModalTitle">Pay plan</h3>
+          <p>Effective-dated external USD and internal USD cash amounts</p>
         </div>
         <button class="modal-close" onclick="closeModal('compensationPlanModal')" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
       </div>
       <div class="modal-body">
-        <!-- Current Active Plan Summary -->
+        <!-- Current active plan: one row per part (mock Dlg-CompPlan) -->
         <div class="form-section">
-          <div style="background:var(--fv-surface-soft); border:1px solid var(--fv-line); border-radius:12px; padding:14px 16px; margin-bottom:10px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-              <span style="font-weight:600; font-size:14px;" id="compPlanEmpName">—</span>
-              <span class="badge-pill pill-primary" id="compPlanTotalBadge">$0.00 / month</span>
-            </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-              <div style="background:var(--fv-surface); padding:10px 12px; border-radius:8px; border:1px solid var(--fv-line);">
-                <div style="font-size:11px; font-weight:600; color:var(--ink-muted); text-transform:uppercase; margin-bottom:4px;">
-                  <i class="fa-solid fa-building-columns"></i> External USD
-                </div>
-                <div style="font-size:15px; font-weight:700;" id="compPlanActiveExternal">$0.00</div>
-                <div style="font-size:11px; color:var(--ink-muted); margin-top:2px;" id="compPlanExtEffective">Effective: —</div>
-              </div>
-              <div style="background:var(--fv-surface); padding:10px 12px; border-radius:8px; border:1px solid var(--fv-line);">
-                <div style="font-size:11px; font-weight:600; color:var(--ink-muted); text-transform:uppercase; margin-bottom:4px;">
-                  <i class="fa-solid fa-money-bill-wave"></i> Internal USD Cash
-                </div>
-                <div style="font-size:15px; font-weight:700;" id="compPlanActiveInternal">$0.00</div>
-                <div style="font-size:11px; color:var(--ink-muted); margin-top:2px;" id="compPlanIntEffective">Effective: —</div>
-              </div>
-            </div>
+          <div class="fv-plan-summary">
+            <span id="compPlanEmpName">—</span>
+            <span class="badge-pill pill-primary" id="compPlanTotalBadge">$0.00 / month</span>
+          </div>
+          <div class="fv-plan-table">
+            <table>
+              <thead>
+                <tr><th>Part</th><th class="fv-num">Amount</th><th>Basis</th><th>From</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>External USD</strong></td>
+                  <td class="fv-num" id="compPlanActiveExternal">$0.00</td>
+                  <td>Net</td>
+                  <td id="compPlanExtEffective">—</td>
+                </tr>
+                <tr>
+                  <td><strong>Internal USD cash</strong></td>
+                  <td class="fv-num" id="compPlanActiveInternal">$0.00</td>
+                  <td id="compPlanIntBasis">Net</td>
+                  <td id="compPlanIntEffective">—</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
-        <!-- Set Component Form -->
+        <!-- Add a change -->
         <div class="form-section">
+          <div class="fv-dialog-section-title">Add a change</div>
           <div class="form-grid">
             <div class="form-field">
-              <label for="compPlanComponentType">Component Type</label>
+              <label for="compPlanComponentType">Part</label>
               <select id="compPlanComponentType" onchange="onCompPlanTypeChange()">
-                <option value="external_usd">External USD (US Transfer)</option>
-                <option value="internal_usd_cash">Internal USD Cash (Local Cash)</option>
+                <option value="external_usd">External USD, US transfer</option>
+                <option value="internal_usd_cash">Internal USD cash, paid locally</option>
               </select>
             </div>
             <div class="form-field">
-              <label for="compPlanAmount">New Amount <span class="opt">USD</span></label>
-              <input inputmode="decimal" type="number" id="compPlanAmount" step="0.01" min="0.01" placeholder="e.g. 2500">
+              <label for="compPlanAmount">New amount, USD</label>
+              <input inputmode="decimal" type="number" id="compPlanAmount" step="0.01" min="0.01" placeholder="0.00" style="text-align: right;">
             </div>
             <div class="form-field" id="compPlanSalaryBasisContainer" style="display:none;">
-              <label for="compPlanSalaryBasis">Salary Basis</label>
+              <label for="compPlanSalaryBasis">Salary basis</label>
               <select id="compPlanSalaryBasis">
-                <option value="NET" selected>NET (Target Net Pay Protected)</option>
-                <option value="GROSS">GROSS (Local Statutory Deductions Apply)</option>
+                <option value="NET" selected>Net, target net pay protected</option>
+                <option value="GROSS">Gross, local statutory deductions apply</option>
               </select>
-              <span style="font-size:11px;color:var(--ink-muted);margin-top:2px;display:block;">
-                NET guarantees configured USD payout; GROSS deducts employee statutory SI from base.
-              </span>
             </div>
             <div class="form-field">
-              <label for="compPlanStartDate">Effective Start Date</label>
+              <label for="compPlanStartDate">Effective from</label>
               <input type="date" id="compPlanStartDate">
             </div>
-            <div class="form-field">
-              <label for="compPlanNotes">Notes / Rationale</label>
-              <input type="text" id="compPlanNotes" placeholder="e.g. Compensation adjustment">
+            <div class="form-field full">
+              <label for="compPlanNotes">Notes, optional</label>
+              <textarea id="compPlanNotes" rows="2" placeholder="Why this changes"></textarea>
             </div>
-          </div>
-          <div style="margin-top:14px; display:flex; justify-content:flex-end;">
-            <button class="btn btn-fill" id="compPlanSaveBtn" onclick="saveCompPlanComponent(event)">Save Component</button>
           </div>
         </div>
 
-        <!-- Effective-Dated History -->
+        <!-- Effective-dated history (real feature, kept after the mock sections) -->
         <div class="form-section">
+          <div class="fv-dialog-section-title">History</div>
           <div style="max-height:220px; overflow-y:auto; border:1px solid var(--fv-line); border-radius:10px;">
             <table class="responsive-card-table" style="font-size:12.5px;">
               <thead>
@@ -82,8 +81,8 @@
                   <th>Component</th>
                   <th>Basis</th>
                   <th>Amount</th>
-                  <th>Start Date</th>
-                  <th>End Date</th>
+                  <th>Start date</th>
+                  <th>End date</th>
                   <th>Status</th>
                   <th>Notes</th>
                 </tr>
@@ -95,6 +94,7 @@
       </div>
       <div class="modal-foot">
         <button class="btn" id="compPlanCloseBtn" onclick="closeModal('compensationPlanModal')">Close</button>
+        <button class="btn btn-fill" id="compPlanSaveBtn" onclick="saveCompPlanComponent(event)">Add change</button>
       </div>
     </div>
   </div>
