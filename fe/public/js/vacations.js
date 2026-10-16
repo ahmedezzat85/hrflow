@@ -101,8 +101,8 @@ function renderVacationBalances() {
             <div class="hv-sub-line">${escapeHtml(roleDept)}</div>
           </div>
         </td>
-        <td class="hv-right" style="font-weight:600;font-variant-numeric:tabular-nums;">${total}</td>
-        <td class="hv-right" style="font-weight:600;font-variant-numeric:tabular-nums;">${used}</td>
+        <td class="hv-right" style="font-variant-numeric:tabular-nums;">${total}</td>
+        <td class="hv-right" style="font-variant-numeric:tabular-nums;">${used}</td>
         <td class="hv-right" style="font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink-strong);">${remaining}</td>
         <td style="width:240px;">
           <div style="display:flex;align-items:center;gap:10px;">
@@ -119,9 +119,6 @@ function renderVacationBalances() {
       </tr>
     `;
   }).join('');
-
-  const countEl = document.getElementById('vacTableFootCount');
-  if (countEl) countEl.textContent = `Showing 1–${filtered.length} of ${filtered.length} employees`;
 }
 
 function calculateVacationDays(start, end, durationType) {

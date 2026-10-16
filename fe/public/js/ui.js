@@ -472,7 +472,7 @@ function fmtDateShort(d){
 function statusPill(status){
   const map = {Pending:'pill-warning',Approved:'pill-success','Active':'pill-success',Rejected:'pill-danger','On Leave':'pill-info','On leave':'pill-info',Suspended:'pill-danger'};
   const dotMap = {Pending:'hv-dot--warning',Approved:'hv-dot--success','Active':'hv-dot--success',Rejected:'hv-dot--danger','On Leave':'hv-dot--info','On leave':'hv-dot--info',Suspended:'hv-dot--danger'};
-  return `<span class="badge-pill ${map[status]||'pill-neutral'}"><span class="hv-dot ${dotMap[status]||'hv-dot--muted'}"></span>${status}</span>`;
+  return `<span class="badge-pill ${map[status]||'pill-neutral'}"><span class="hv-dot ${dotMap[status]||'hv-dot--muted'}"></span>${status === 'On Leave' ? 'On leave' : status}</span>`;
 }
 /**
  * Accessible Modal Controller (Story 0.3)

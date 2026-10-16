@@ -597,9 +597,8 @@ for (const theme of ['light', 'dark']) {
       await expect(payThs.nth(4)).toHaveText('Next raise ↑');
       await expect(payThs.nth(5)).toHaveText('Last raise');
 
-      const payFoot = page.locator('#salaryTableFooter');
-      await expect(payFoot).toContainText('Showing');
-      await expect(payFoot).toContainText('Page 1 of 1');
+      // The mock has no footer on the current pay table
+      await expect(page.locator('#salaryTableFooter')).toHaveCount(0);
 
       // Raise history card & table
       await expect(page.locator('#a-salary .card:has(#companyRaiseHistoryBody) h3')).toHaveText('Raise history');
@@ -614,9 +613,7 @@ for (const theme of ['light', 'dark']) {
       await expect(histThs.nth(5)).toHaveText('Change');
       await expect(histThs.nth(6)).toHaveText('Reason');
 
-      const histFoot = page.locator('#raiseHistoryFooter');
-      await expect(histFoot).toContainText('Showing');
-      await expect(histFoot).toContainText('Page 1 of 1');
+      await expect(page.locator('#raiseHistoryFooter')).toHaveCount(0);
 
       // Raise modal tiles and headers
       await page.evaluate(() => openRaiseModal());
@@ -702,9 +699,7 @@ for (const theme of ['light', 'dark']) {
       await expect(firstRow).toBeVisible();
       await expect(firstRow.locator('button:has-text("Record leave")')).toBeVisible();
 
-      const foot = page.locator('#vacTableFooter');
-      await expect(foot).toContainText('Showing');
-      await expect(foot).toContainText('Page 1 of 1');
+      await expect(page.locator('#vacTableFooter')).toHaveCount(0);
 
       // Behalf vacation modal
       await page.evaluate(() => openBehalfVacationModal());

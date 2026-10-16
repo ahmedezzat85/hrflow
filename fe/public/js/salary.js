@@ -90,9 +90,6 @@ function renderSalaryPage(filter=''){
     </tr>`;
   }).join('') || renderEmptyTableRow(7, f ? `No employees match "${f}".` : 'No employee records found.', 'fa-solid fa-user-slash');
 
-  const countEl = document.getElementById('salaryTableFootCount');
-  if (countEl) countEl.textContent = `Showing 1–${filteredEmps.length} of ${filteredEmps.length} employees`;
-
   const histBody = document.getElementById('companyRaiseHistoryBody');
   const yearFilter = document.getElementById('raiseHistoryYearFilter');
   if (yearFilter && yearFilter.options.length <= 1) {
@@ -136,8 +133,6 @@ function renderSalaryPage(filter=''){
   }).join('') || renderEmptyTableRow(7, 'No raises recorded yet.', 'fa-solid fa-sack-dollar');
 
   const histCountEl = document.getElementById('raiseHistoryFooter');
-  const histCountSpan = document.getElementById('raiseHistoryFootCount');
-  if (histCountSpan) histCountSpan.textContent = `Showing 1–${filteredHist.length} of ${filteredHist.length} raises`;
 }
 document.getElementById('salarySearch').addEventListener('input', e=>renderSalaryPage(e.target.value));
 // Overview only: a row click opens the employee's profile, where pay is changed (links and buttons keep their own click handlers)
