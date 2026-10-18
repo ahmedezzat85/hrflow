@@ -203,6 +203,21 @@ Plans: [../finance-module/21-finance-ui-restyle-v2.md](../finance-module/21-fina
 
 ---
 
+## 3E. Finance Expansion: Overseas Book, Products, Revenue Sources, Subscriptions v2, Cheque Scans (accepted October 18, 2026)
+
+Plan: [../finance-module/23-finance-expansion-plan.md](../finance-module/23-finance-expansion-plan.md). Decisions D-028 to D-032.
+
+| Slice | Scope | Size | Depends on |
+| :--- | :--- | :--- | :--- |
+| X1 | Cheque scans (attachments) and entry shortcuts | S | — |
+| X2 | Books, account visibility, balance checkpoints, inter-book transfers, view switcher | L | — |
+| X3 | Product catalog, `product_id` on invoice lines | S | — |
+| X4 | Revenue receipts by source, invoice book, revenue reports by book/product/source | M | X2, X3 |
+| X5 | Subscriptions v2: expected charges, settle, proof tracking, in-app reminders | M | X2 |
+| X6 | Analytics pass and Excel exports | M | X2–X5 |
+
+---
+
 ## 4. Deferred Until Decision
 
 The following initiatives remain on hold until formally decided in [04-decision-log.md](04-decision-log.md):
