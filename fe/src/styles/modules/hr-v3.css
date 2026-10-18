@@ -1228,3 +1228,11 @@
 /* Salary payment docs: doc number opens the preview (link button), muted regenerate icon */
 #a-invoices .hv-link-btn { border: 0; background: none; padding: 0; font: inherit; color: var(--brand-text); cursor: pointer; text-align: left; }
 #a-invoices .hv-link-btn:hover { color: var(--brand-ink); text-decoration: underline; }
+
+/* Request type: colour square + plain label, sub line under it (HR-Requests, HR-Dashboard mocks) */
+.fv .hv-reqtype { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-strong); font-weight: 500; }
+.fv .hv-reqtype__dot { width: 8px; height: 8px; border-radius: 3px; display: inline-block; flex: none; background: var(--ink-muted); }
+.fv .hv-reqtype__dot--teal { background: var(--id-teal); }
+.fv .hv-reqtype__dot--sky { background: var(--id-sky); }
+.fv .hv-reqtype__dot--pink { background: var(--id-pink); }
+#a-requests td[data-label="Request"] .hv-sub-line { margin-top: 0; }

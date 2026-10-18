@@ -12,13 +12,9 @@ function requestTypeLabel(type) {
 }
 
 function getRequestTypeBadge(type) {
-  const map = {
-    'Vacation': { icon: 'fa-umbrella-beach', cls: 'pill-info' },
-    'Work From Home': { icon: 'fa-house-laptop', cls: 'pill-warning' },
-    'Medical Insurance': { icon: 'fa-briefcase-medical', cls: 'pill-success' }
-  };
-  const conf = map[type] || { icon: 'fa-file-lines', cls: 'pill-neutral' };
-  return `<span class="badge-pill ${conf.cls}"><i class="fa-solid ${conf.icon}"></i> ${escapeHtml(requestTypeLabel(type))}</span>`;
+  // Plain label with a small colour square (HR-Requests mock): vacation teal, work from home sky, medical claim pink
+  const tone = { 'Vacation': 'teal', 'Work From Home': 'sky', 'WFH': 'sky', 'Medical Insurance': 'pink' }[type] || 'muted';
+  return `<span class="hv-reqtype"><span class="hv-reqtype__dot hv-reqtype__dot--${tone}"></span>${escapeHtml(requestTypeLabel(type))}</span>`;
 }
 
 // "7 Oct 2026 - 1 day": the days the request covers, then how long
