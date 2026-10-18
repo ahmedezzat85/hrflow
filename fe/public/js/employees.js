@@ -884,7 +884,8 @@ async function openBankAccountModal(evt) {
     revealBtn.style.display = canRevealBank ? '' : 'none';
     revealBtn.innerHTML = '<i class="fa-solid fa-eye"></i>';
   }
-  titleEl.textContent = _bankAccountHasDetails ? 'Edit employee bank account' : 'Add employee bank account';
+  const bankEmp = (typeof employees !== 'undefined' ? employees : []).find(x => String(x.id) === String(currentDetailEmployeeId));
+  titleEl.textContent = bankEmp && bankEmp.name ? `Employee bank account · ${bankEmp.name}` : 'Employee bank account';
   if (_bankAccountHasDetails) {
     try {
       const data = await Api.getBankAccount(currentDetailEmployeeId);
@@ -1022,6 +1023,10 @@ async function openSocialInsuranceModal() {
   const flagInput = document.getElementById('fSocialInsFlag');
   const baseInput = document.getElementById('fSocialInsBase');
   const effInput = document.getElementById('fSocialInsEffectiveDate');
+
+  const siEmp = (typeof employees !== 'undefined' ? employees : []).find(x => String(x.id) === String(currentDetailEmployeeId));
+  const siTitle = document.getElementById('socialInsuranceModalTitle');
+  if (siTitle) siTitle.textContent = siEmp && siEmp.name ? `Social insurance · ${siEmp.name}` : 'Social insurance';
 
   flagInput.checked = false;
   baseInput.value = '';

@@ -1004,3 +1004,28 @@
 /* Tall dialogs (Pay plan, Employee) scroll inside; header and footer stay visible */
 .fv-dialog .modal { max-height: 90vh; }
 .fv-dialog .modal .modal-body { overflow-y: auto; min-height: 0; flex: 1 1 auto; }
+
+/* Number fields: no browser spin arrows anywhere (typed values, as in the mocks) */
+input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* Checkbox row drawn as a tinted bar with the checkbox on the right (Dlg-SocialInsurance) */
+.fv-dialog .form-field label.fv-dialog-check--bar {
+  display: flex;
+  margin-bottom: 0;
+  font-size: 13.5px;
+  font-weight: 400;
+  color: var(--ink-strong);
+  background: var(--fv-surface-soft);
+  border-radius: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 14px;
+  font-size: 13.5px;
+}
+.fv-dialog .fv-dialog-check--bar input { margin: 0; width: 16px; height: 16px; flex: none; }
+
+/* Dialog drop zone (Dlg-Claim, Dlg-CompanyDoc): taller, bold brand text */
+.fv-dialog .doc-drop-zone.compact { min-height: 64px; padding: 18px 14px; background: var(--fv-surface-soft); border-color: var(--fv-outline); }
+.fv-dialog .doc-drop-zone.compact .doc-drop-empty span { font-size: 13.5px; font-weight: 600; color: var(--brand-text); }
