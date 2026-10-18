@@ -333,7 +333,7 @@ class FinanceChequeDB(Base):
     posting_policy = Column(String(30), default="at_issue", nullable=False)  # at_issue | at_clearing
     signer_name = Column(String(255), nullable=True)
     authorized_by = Column(String(255), nullable=True)
-    attachment_url = Column(String(500), nullable=True)
+    attachment_url = Column(String(500), nullable=True)  # DEPRECATED (D-032, migration 0036): scans live in finance_attachments.cheque_id; no longer written
     exception_reason = Column(Text, nullable=True)
     exception_evidence = Column(String(255), nullable=True)
     replacement_cheque_id = Column(Integer, ForeignKey("finance_cheques.id", ondelete="SET NULL", use_alter=True), nullable=True)
@@ -358,6 +358,7 @@ class FinanceChequeDB(Base):
     ledger_transactions = relationship("LedgerTransactionDB", foreign_keys="[LedgerTransactionDB.linked_cheque_id]", back_populates="linked_cheque")
     replacement_cheque = relationship("FinanceChequeDB", foreign_keys=[replacement_cheque_id], remote_side=[id], post_update=True)
     replaced_cheque = relationship("FinanceChequeDB", foreign_keys=[replaced_cheque_id], remote_side=[id], post_update=True)
+    attachments = relationship("FinanceAttachmentDB", back_populates="cheque", cascade="all, delete-orphan", passive_deletes=True)
 
 
 # Alias for clean domain referencing
@@ -578,6 +579,7 @@ class FinanceAttachmentDB(Base):
     subscription_charge_id = Column(Integer, ForeignKey("finance_subscription_charges.id", ondelete="CASCADE"), nullable=True, index=True)
     statement_import_id = Column(Integer, ForeignKey("finance_statement_imports.id", ondelete="CASCADE"), nullable=True, index=True)
     ledger_transaction_id = Column(Integer, ForeignKey("finance_ledger_transactions.id", ondelete="CASCADE"), nullable=True, index=True)
+    cheque_id = Column(Integer, ForeignKey("finance_cheques.id", ondelete="CASCADE"), nullable=True, index=True)
     file_name = Column(String(255), nullable=False)
     file_size = Column(Integer, default=0, nullable=False)
     mime_type = Column(String(100), default="application/octet-stream", nullable=False)
@@ -588,6 +590,7 @@ class FinanceAttachmentDB(Base):
     subscription_charge = relationship("SubscriptionChargeDB", back_populates="attachments")
     statement_import = relationship("BankStatementImportDB", back_populates="attachments")
     ledger_transaction = relationship("LedgerTransactionDB")
+    cheque = relationship("FinanceChequeDB", back_populates="attachments")
 
 
 

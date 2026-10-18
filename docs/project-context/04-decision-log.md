@@ -440,7 +440,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-032 — Cheque Scans and Manual Entry; No Extraction
 
-- **Status:** Accepted by owner, October 18, 2026. Resolves Q-015. Not implemented (slice X1).
+- **Status:** Accepted by owner, October 18, 2026. Resolves Q-015. Implemented on `feature/finance-expansion` (slice X1, migration 0036). Scans use the finance-attachment local store (same as subscription charges); read/write use `finance.account.read` / `finance.account.write`, the existing cheque-register permissions.
 - **Decision:** No external OCR or AI service and no extraction. Cheques get one or more stored scans (front, back, bank stamp) through `finance_attachments` (`cheque_id`), with a "scan missing" flag and filter; existing `attachment_url` values are migrated and the column deprecated. Entry shortcuts: next cheque number suggested per account; payee, amount and currency prefilled from a linked bill.
 - **Rationale:** The owner will not subscribe to an external service; free local OCR cannot read handwritten cheques reliably.
 

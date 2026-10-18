@@ -449,6 +449,11 @@
             <div class="fv-pills-row">
               <div class="fv-pills" id="financeChequeStatusTabs" role="group" aria-label="Cheque status"></div>
               <div class="fv-pills-selects">
+                <select id="financeChequeScanFilter" class="fv-select" aria-label="Scan status" onchange="loadFinanceCheques()">
+                  <option value="">All scans</option>
+                  <option value="false">Scan missing</option>
+                  <option value="true">Has scan</option>
+                </select>
                 <select id="financeChequeFiscalYearFilter" class="fv-select" aria-label="Fiscal year" onchange="loadFinanceCheques()">
                   <option value="">All Fiscal Years</option>
                   <option value="2026" selected>FY 2026</option>

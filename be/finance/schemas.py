@@ -1125,6 +1125,8 @@ class ChequeResponse(ChequeBase):
     signer_name: Optional[str] = None
     authorized_by: Optional[str] = None
     attachment_url: Optional[str] = None
+    attachment_count: int = 0
+    has_scan: bool = False
     exception_reason: Optional[str] = None
     exception_evidence: Optional[str] = None
     replacement_cheque_id: Optional[int] = None
@@ -1145,6 +1147,26 @@ class ChequeResponse(ChequeBase):
 # ==========================================
 # Subscription & Attachment Schemas (Phase 6)
 # ==========================================
+class ChequeAttachmentResponse(BaseModel):
+    """Cheque scan metadata. Never exposes the storage path (AGENTS.md non-negotiables)."""
+    id: int
+    cheque_id: int
+    file_name: str
+    file_size: int = 0
+    mime_type: str = "application/octet-stream"
+    uploaded_at: Optional[datetime] = None
+    uploaded_by: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class NextChequeNumberResponse(BaseModel):
+    account_id: int
+    next_cheque_number: Optional[str] = None
+    last_cheque_number: Optional[str] = None
+
+
 class FinanceAttachmentResponse(BaseModel):
     id: int
     subscription_charge_id: Optional[int] = None
