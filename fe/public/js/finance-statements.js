@@ -1280,7 +1280,7 @@ async function openCreateEntryForLine(lineId) {
   const ptSel = document.getElementById("reconcileEntryPaymentType");
   if (catSel && catSel.options.length <= 1) {
     try {
-      const cats = await FinanceApi.listCategories();
+      const cats = await FinanceApi.getCategories();
       catSel.innerHTML = '<option value="">— Select Category —</option>';
       cats.forEach((c) => {
         if (c.is_active) {
@@ -1294,7 +1294,7 @@ async function openCreateEntryForLine(lineId) {
   }
   if (ptSel && ptSel.options.length <= 1) {
     try {
-      const pts = await FinanceApi.listPaymentTypes();
+      const pts = await FinanceApi.getPaymentTypes();
       ptSel.innerHTML = '<option value="">— Select Payment Type —</option>';
       pts.forEach((p) => {
         if (p.is_active) {
