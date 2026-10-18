@@ -2497,3 +2497,27 @@
 .fv .fv-scan-item__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fv .fv-scan-item__size { color: var(--ink-muted); font-size: 12px; }
 .fv .fv-lines__prod { width: 20%; }
+
+/* Book view switcher (X2, D-028) */
+.fv .fv-book-switch {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface, transparent);
+}
+.fv .fv-book-switch__btn {
+  border: 0;
+  background: none;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.fv .fv-book-switch__btn + .fv-book-switch__btn { border-left: 1px solid var(--border); }
+.fv .fv-book-switch__btn.is-active { background: var(--brand-soft, var(--border)); color: var(--ink, inherit); }
+.fv .fv-book-chip { font-size: 11.5px; font-weight: 600; color: var(--ink-muted); }
+.fv .fv-book-chip--overseas { color: var(--brand, inherit); }
+

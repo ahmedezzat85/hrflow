@@ -20,8 +20,30 @@
     { id: 2, account_name: "Voyance Treasury Reserve", account_type: "bank", bank_name: "Silicon Valley Bank", account_number: "******9102", raw_account_number: "98765432109102", country: "United States", currency: "USD", opening_balance: 500000.0, opening_balance_date: "2025-01-01", current_balance: 500000.0, is_active: true },
     { id: 3, account_name: "CIB EGP Operating", account_type: "bank", bank_name: "Commercial International Bank", account_number: "******3319", raw_account_number: "55443322113319", country: "Egypt", currency: "EGP", opening_balance: 450000.0, opening_balance_date: "2025-01-01", current_balance: 450000.0, is_active: true },
     { id: 4, account_name: "Cairo Office Petty Cash Drawer", account_type: "cash", bank_name: null, account_number: "CASH-CAIRO-01", raw_account_number: "CASH-CAIRO-01", country: "Egypt", currency: "EGP", opening_balance: 20000.0, opening_balance_date: "2025-01-01", current_balance: 20000.0, is_active: true },
+    // Overseas book (X2, D-028): a USD account whose movements are only partly recorded
+    { id: 5, account_name: "Voyance Overseas USD", account_type: "bank", bank_name: "Mercury", account_number: "******7744", raw_account_number: "40001122337744", country: "United States", currency: "USD", opening_balance: 30000.0, opening_balance_date: "2026-01-01", current_balance: 30000.0, is_active: true, book_id: 2, book_code: "overseas", book_name: "Overseas", visibility: "partial" },
   ];
+    FinanceMockState.accounts.forEach((a) => {
+      if (!a.book_id) Object.assign(a, { book_id: 1, book_code: "local", book_name: "Local", visibility: "full" });
+    });
   }
+
+  if (!FinanceMockState.books) {
+    FinanceMockState.books = [
+      { id: 1, code: "local", name: "Local", is_default: true },
+      { id: 2, code: "overseas", name: "Overseas", is_default: false },
+    ];
+  }
+  if (!FinanceMockState.accountCheckpoints) {
+    FinanceMockState.accountCheckpoints = [
+      { id: 1, account_id: 5, date: "2026-09-30", balance: 31250.0, note: "From the overseas bank portal", has_attachment: false, attachment_name: null, created_by: "admin@voyance.health" },
+    ];
+  }
+  const _checkpointView = (cp) => {
+    const acc = FinanceMockState.accounts.find((a) => a.id === cp.account_id);
+    const computed = acc ? Number(acc.current_balance || 0) : 0;
+    return { ...cp, computed_balance: computed, unrecorded_difference: Math.round((Number(cp.balance) - computed) * 100) / 100 };
+  };
 
   if (!FinanceMockState.categories) {
     FinanceMockState.categories = [
@@ -105,15 +127,19 @@
 // Bank Accounts
   async getAccounts(params) {
     if (_isMock()) {
-      let list = [...FinanceMockState.accounts].map((a) => {
+      let list = [...FinanceMockState.accounts]
+        .filter((a) => !(params && params.book) || params.book === "consolidated" || a.book_code === params.book)
+        .map((a) => {
         const book = Number(a.current_balance || a.opening_balance || 0);
         const hasPostings = (FinanceMockState.transactions || []).some((t) => t.account_id === a.id) || (FinanceMockState.cheques || []).some((c) => c.account_id === a.id);
         const uncleared = (FinanceMockState.cheques || [])
           .filter((c) => c.account_id === a.id && (c.status === "issued" || c.status === "outstanding"))
           .reduce((sum, c) => sum + Number(c.amount || 0), 0);
         const available = book;
+        const cps = (FinanceMockState.accountCheckpoints || []).filter((c) => c.account_id === a.id).sort((x, y) => (y.date.localeCompare(x.date)) || (y.id - x.id));
         return {
           ...a,
+          latest_checkpoint: a.visibility === "partial" && cps.length ? _checkpointView(cps[0]) : null,
           book_balance: book,
           bank_balance: Math.round((book + uncleared) * 100) / 100,
           available_balance: available,
@@ -188,9 +214,11 @@
   async createAccount(payload) {
     if (_isMock()) {
       const rawNum = payload.account_number || "";
+      const bk = FinanceMockState.books.find((b) => b.id === Number(payload.book_id)) || FinanceMockState.books.find((b) => b.is_default);
       const newAcc = {
-        id: FinanceMockState.accounts.length + 1,
+        id: Math.max(0, ...FinanceMockState.accounts.map((a) => a.id)) + 1,
         ...payload,
+        book_id: bk.id, book_code: bk.code, book_name: bk.name, visibility: payload.visibility || "full",
         current_balance: payload.opening_balance || 0,
         raw_account_number: rawNum,
         account_number: `******${rawNum.slice(-4)}`,
@@ -213,10 +241,41 @@
           throw new Error("Currency cannot be modified after transactions have been posted to this account.");
         }
       }
-      Object.assign(acc, payload);
+      if (payload.book_id && payload.book_id !== acc.book_id) {
+        const hasPostings = (FinanceMockState.transactions || []).some((t) => t.account_id === acc.id) || (FinanceMockState.cheques || []).some((c) => c.account_id === acc.id);
+        if (hasPostings) throw new Error("The book cannot be changed after transactions have been posted to this account.");
+        const bk = FinanceMockState.books.find((b) => b.id === Number(payload.book_id));
+        if (bk) Object.assign(acc, { book_id: bk.id, book_code: bk.code, book_name: bk.name });
+      }
+      const { book_id: _b, ...rest } = payload;
+      Object.assign(acc, rest);
       return acc;
     }
     return apiRequest("PUT", `/api/finance/accounts/${id}`, payload);
+  },
+  async getBooks() {
+    if (_isMock()) return [...FinanceMockState.books];
+    return apiRequest("GET", "/api/finance/accounts/books");
+  },
+  async getAccountCheckpoints(accountId) {
+    if (_isMock()) {
+      return (FinanceMockState.accountCheckpoints || [])
+        .filter((c) => c.account_id === parseInt(accountId, 10))
+        .sort((x, y) => (y.date.localeCompare(x.date)) || (y.id - x.id))
+        .map(_checkpointView);
+    }
+    return apiRequest("GET", `/api/finance/accounts/${accountId}/checkpoints`);
+  },
+  async createAccountCheckpoint(accountId, payload) {
+    if (_isMock()) {
+      const acc = FinanceMockState.accounts.find((a) => a.id === parseInt(accountId, 10));
+      if (!acc) throw new Error("Account not found");
+      if (acc.visibility !== "partial") throw new Error("Balance checkpoints are for partial-visibility accounts. Set the account visibility to partial first.");
+      const cp = { id: Math.max(0, ...FinanceMockState.accountCheckpoints.map((c) => c.id)) + 1, account_id: acc.id, date: payload.date, balance: Number(payload.balance), note: payload.note || null, has_attachment: false, attachment_name: null, created_by: "admin@voyance.health" };
+      FinanceMockState.accountCheckpoints.push(cp);
+      return _checkpointView(cp);
+    }
+    return apiRequest("POST", `/api/finance/accounts/${accountId}/checkpoints`, payload);
   },
   async deleteAccount(id) {
     if (_isMock()) {

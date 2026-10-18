@@ -1611,6 +1611,16 @@ async function loadReportProfitAndLoss() {
         `).join("");
       }
     }
+
+    // Inter-book movements (X2, D-028): shown apart, never operating revenue or spend
+    const prevIb = document.getElementById("reportPnlInterBook");
+    if (prevIb) prevIb.remove();
+    if (expTbody && Array.isArray(data.inter_book_items) && data.inter_book_items.length) {
+      const tbl = expTbody.closest("table");
+      if (tbl) {
+        tbl.insertAdjacentHTML("afterend", `<div id="reportPnlInterBook" class="fv-sub" style="margin:10px 4px;"><strong>Inter-book movements (not operating):</strong> ${data.inter_book_items.map((it) => `${_esc(it.label)} ${FinanceFormat.formatMoney(it.amount, curr)}`).join(" &middot; ")}</div>`);
+      }
+    }
   } catch (err) {
     console.error("Failed to load Profit & Loss report:", err);
     showToast(describeLoadFailure("Profit & Loss report", err), "error");

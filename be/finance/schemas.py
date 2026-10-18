@@ -26,6 +26,8 @@ class BankAccountBase(BaseModel):
 
 class BankAccountCreate(BankAccountBase):
     account_number: str = Field(..., min_length=4, max_length=50, description="Full bank account number")
+    book_id: Optional[int] = Field(None, description="Book the account belongs to; defaults to the default (Local) book")
+    visibility: str = Field("full", description="full | partial (partial = not every movement is recorded; use balance checkpoints)")
 
 
 class BankAccountUpdate(BaseModel):
@@ -38,10 +40,47 @@ class BankAccountUpdate(BaseModel):
     account_type: Optional[str] = Field(None, description="Account type: bank or cash")
     country: Optional[str] = Field(None, description="Country location")
     is_active: Optional[bool] = None
+    book_id: Optional[int] = None
+    visibility: Optional[str] = None
+
+
+class BalanceCheckpointCreate(BaseModel):
+    date: str = Field(..., description="Date the balance was observed (YYYY-MM-DD)")
+    balance: float = Field(..., description="Balance the owner observed on that date")
+    note: Optional[str] = Field(None, max_length=1000)
+
+
+class BalanceCheckpointResponse(BaseModel):
+    id: int
+    account_id: int
+    date: str
+    balance: float
+    note: Optional[str] = None
+    computed_balance: Optional[float] = None  # ledger balance on the checkpoint date
+    unrecorded_difference: Optional[float] = None  # checkpoint balance minus computed balance; never auto-adjusted
+    has_attachment: bool = False
+    attachment_name: Optional[str] = None
+    created_at: Optional[datetime] = None
+    created_by: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class BookResponse(BaseModel):
+    id: int
+    code: str
+    name: str
+    is_default: bool = False
 
 
 class BankAccountResponse(BankAccountBase):
     id: int
+    book_id: Optional[int] = None
+    book_code: Optional[str] = None
+    book_name: Optional[str] = None
+    visibility: str = "full"
+    latest_checkpoint: Optional[BalanceCheckpointResponse] = None  # partial accounts only
     account_number: str = Field(..., description="Masked or revealed account number")
     current_balance: float
     is_active: bool
@@ -326,6 +365,7 @@ class CustomerBase(BaseModel):
     default_currency: Optional[str] = Field("USD", max_length=10)
     payment_terms_days: Optional[int] = Field(30, ge=0)
     withholding_tax_rate: Optional[float] = Field(0.0, ge=0.0, le=100.0, description="Default withholding tax percent copied to new invoices (normally 0)")
+    is_intercompany: bool = Field(False, description="The overseas entity or another group company: receipts are eliminated in the Consolidated view (D-028)")
     owner: Optional[str] = Field(None, max_length=255)
     notes: Optional[str] = None
 
@@ -336,6 +376,7 @@ class CustomerCreate(CustomerBase):
 
 class CustomerUpdate(BaseModel):
     withholding_tax_rate: Optional[float] = Field(None, ge=0.0, le=100.0)
+    is_intercompany: Optional[bool] = None
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     legal_name: Optional[str] = Field(None, max_length=255)
     contact_email: Optional[str] = Field(None, max_length=255)
@@ -1884,6 +1925,8 @@ class ProfitAndLossResponse(BaseModel):
     net_margin_pct: float = 0.0
     basis_note: Optional[str] = None  # accrual view is labelled partial until payroll, statutory and bank fees are included
     by_currency: List[Dict[str, Any]] = []  # currency "ALL": one statement per currency, never added together
+    book: Optional[str] = None  # local | overseas | consolidated; None = every account (legacy)
+    inter_book_items: List[Dict[str, Any]] = []  # inter-book movements, shown apart from operating revenue and spend (D-028)
 
 
 class BalanceSheetSectionItem(BaseModel):

@@ -14,6 +14,7 @@ from fastapi import HTTPException, status
 from finance.bill_status import OPEN_STATUSES, SPEND_STATUSES
 from finance import invoice_status as inv_status
 from finance import cash_basis
+from finance import books
 from finance.models import (
     FinanceBankAccountDB,
     LedgerTransactionDB,
@@ -55,6 +56,19 @@ class ReportsService:
         self.db = db
 
     # ------------------------------------------------------------------
+    # Book views (D-028). book omitted = legacy behaviour (all accounts)
+    # ------------------------------------------------------------------
+    def _scope(self, book: Optional[str]) -> "books.BookScope":
+        return books.resolve(self.db, book)
+
+    @staticmethod
+    def _invoice_in_scope(scope: "books.BookScope", inv) -> bool:
+        return books.invoice_in_scope(scope, inv)
+
+    def _filter_bills(self, scope: "books.BookScope", bills: List[Any]) -> List[Any]:
+        return books.filter_bills(self.db, scope, bills)
+
+    # ------------------------------------------------------------------
     # 0. Executive Finance Summary & Trustworthy KPIs
     # ------------------------------------------------------------------
     def get_finance_summary(
@@ -63,7 +77,9 @@ class ReportsService:
         period: str = "MTD",
         basis: str = "cash",
         currency: str = "USD",
+        book: Optional[str] = None,
     ) -> Dict[str, Any]:
+        scope = self._scope(book)
         today = datetime.utcnow().date()
         period_norm = (period or "MTD").upper()
         basis_norm = (basis or "cash").lower()
@@ -86,6 +102,7 @@ class ReportsService:
 
         # 1. Total Cash Balance (Book Cash)
         acc_q = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.is_active == True)
+        acc_q = scope.filter(acc_q, FinanceBankAccountDB.id)
         if curr_norm != "ALL":
             acc_q = acc_q.filter(FinanceBankAccountDB.currency == curr_norm)
         if entity_norm.lower() != "all":
@@ -110,6 +127,8 @@ class ReportsService:
         def _bucket(cur: Optional[str]) -> Dict[str, float]:
             return per_cur.setdefault((cur or "USD").upper(), {"revenue": 0.0, "spend": 0.0})
 
+        inter_book_lines: Dict[Tuple[str, str, str], float] = {}
+
         if basis_norm == "accrual":
             inv_q = self.db.query(SalesInvoiceDB).filter(
                 SalesInvoiceDB.status != "void",
@@ -122,6 +141,8 @@ class ReportsService:
             if curr_norm != "ALL":
                 inv_q = inv_q.filter(SalesInvoiceDB.currency == curr_norm)
             for i in inv_q.all():
+                if not self._invoice_in_scope(scope, i):
+                    continue
                 _bucket(i.currency)["revenue"] += float(i.subtotal or 0.0)  # net of VAT (D-023)
 
             bill_q = self.db.query(BillDB).filter(BillDB.status.in_(SPEND_STATUSES))
@@ -131,7 +152,7 @@ class ReportsService:
                 bill_q = bill_q.filter(BillDB.issue_date <= end_date)
             if curr_norm != "ALL":
                 bill_q = bill_q.filter(BillDB.currency == curr_norm)
-            for b in bill_q.all():
+            for b in self._filter_bills(scope, bill_q.all()):
                 _bucket(b.currency)["spend"] += float(b.total or 0.0)
         else:
             # Cash basis: ledger transactions, classified by finance.cash_basis (D-026)
@@ -140,6 +161,7 @@ class ReportsService:
                 .join(FinanceBankAccountDB, LedgerTransactionDB.account_id == FinanceBankAccountDB.id)
                 .outerjoin(TransactionCategoryDB, LedgerTransactionDB.category_id == TransactionCategoryDB.id)
             )
+            tx_q = scope.filter(tx_q, LedgerTransactionDB.account_id)
             if start_date:
                 tx_q = tx_q.filter(LedgerTransactionDB.date >= start_date)
             if end_date:
@@ -156,10 +178,14 @@ class ReportsService:
                     )
                 )
             for t, kind in tx_q.all():
-                cls = cash_basis.classify(t, kind, has_category=t.category_id is not None)
+                cls = cash_basis.classify_view(t, kind, has_category=t.category_id is not None, scope=scope)
                 if cls:
-                    side, signed = cls
-                    _bucket(t.currency)[side] += signed
+                    side, signed, label = cls
+                    if side in (cash_basis.REVENUE, cash_basis.SPEND):
+                        _bucket(t.currency)[side] += signed
+                    if label:
+                        key = ((t.currency or "USD").upper(), side, label)
+                        inter_book_lines[key] = inter_book_lines.get(key, 0.0) + signed
 
         def _rounded(cur: str, key: str) -> float:
             return round(per_cur.get(cur, {}).get(key, 0.0), 2)
@@ -316,6 +342,11 @@ class ReportsService:
             "unpaid_bills_count": unpaid_bills_count,
             "active_subscriptions_count": active_sub_count,
             "generated_at": now_iso,
+            "book": scope.view,
+            "inter_book_lines": [
+                {"currency": cur, "side": side, "label": label, "amount": round(amt, 2)}
+                for (cur, side, label), amt in sorted(inter_book_lines.items())
+            ],
             "kpis": kpis,
         }
 
@@ -333,7 +364,9 @@ class ReportsService:
         search: Optional[str] = None,
         payee_type: Optional[str] = None,
         include_internal: bool = True,
+        book: Optional[str] = None,
     ) -> Dict[str, Any]:
+        scope = self._scope(book)
         q = (
             self.db.query(LedgerTransactionDB)
             .join(FinanceBankAccountDB, LedgerTransactionDB.account_id == FinanceBankAccountDB.id)
@@ -341,6 +374,7 @@ class ReportsService:
             .outerjoin(PaymentTypeDB, LedgerTransactionDB.payment_type_id == PaymentTypeDB.id)
         )
 
+        q = scope.filter(q, LedgerTransactionDB.account_id)
         if date_from:
             q = q.filter(LedgerTransactionDB.date >= date_from)
         if date_to:
@@ -426,6 +460,7 @@ class ReportsService:
         date_to: Optional[str] = None,
         currency: Optional[str] = None,
         include_internal: bool = True,
+        book: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Category spend rollup mirroring the monthly SPENT block.
@@ -442,6 +477,7 @@ class ReportsService:
             .outerjoin(TransactionCategoryDB, LedgerTransactionDB.category_id == TransactionCategoryDB.id)
             .filter(LedgerTransactionDB.direction == "out")
         )
+        q = self._scope(book).filter(q, LedgerTransactionDB.account_id)
 
         if date_from:
             q = q.filter(LedgerTransactionDB.date >= date_from)
@@ -491,6 +527,7 @@ class ReportsService:
         period_group: str = "month",
         currency: Optional[str] = None,
         include_internal: bool = True,
+        book: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Generates an annual category spend matrix.
@@ -533,6 +570,7 @@ class ReportsService:
         if not include_internal:
             q = q.filter(or_(LedgerTransactionDB.payee_type != "employee", LedgerTransactionDB.payee_type.is_(None)))
 
+        q = self._scope(book).filter(q, LedgerTransactionDB.account_id)
         records = q.all()
 
         # Build map: category_id -> { "category_name": ..., "periods": { "Jan": 0.0, ... }, "total": 0.0 }
@@ -588,12 +626,14 @@ class ReportsService:
     # ------------------------------------------------------------------
     # 4. Point-in-Time Balances Report
     # ------------------------------------------------------------------
-    def get_point_in_time_balances(self, as_of_date: str) -> Dict[str, Any]:
+    def get_point_in_time_balances(self, as_of_date: str, book: Optional[str] = None) -> Dict[str, Any]:
         """
         Computes the balance of each bank/cash account as of a given date (inclusive).
         Transactions after as_of_date are excluded.
         """
-        accounts = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.is_active == True).all()
+        scope = self._scope(book)
+        acc_q = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.is_active == True)
+        accounts = scope.filter(acc_q, FinanceBankAccountDB.id).all()
 
         accounts_list = []
         currency_totals: Dict[str, float] = {}
@@ -643,6 +683,8 @@ class ReportsService:
                 "country": country,
                 "opening_balance": opening,
                 "balance_as_of_date": balance,
+                "book_code": scope.book_of(acc.id),
+                "visibility": acc.visibility or "full",
             })
 
         accounts_list.sort(key=lambda a: (a["currency"], a["account_name"]))
@@ -662,6 +704,7 @@ class ReportsService:
         fiscal_year: int,
         account_id: Optional[int] = None,
         status: Optional[str] = None,
+        book: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Retrieves fiscal year cheque register with status breakdown and totals.
@@ -671,6 +714,7 @@ class ReportsService:
             .join(FinanceBankAccountDB, FinanceChequeDB.account_id == FinanceBankAccountDB.id)
             .filter(FinanceChequeDB.fiscal_year == fiscal_year)
         )
+        q = self._scope(book).filter(q, FinanceChequeDB.account_id)
 
         if account_id:
             q = q.filter(FinanceChequeDB.account_id == account_id)
@@ -1090,11 +1134,13 @@ class ReportsService:
         date_to: Optional[str] = None,
         currency: Optional[str] = None,
         entity: Optional[str] = None,
+        book: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Fetches the granular contributing ledger transactions or documents
         for a clicked total, cell, or category in any report without losing context.
         """
+        scope = self._scope(book)
         records = []
         target_title = f"{report_key} - {drilldown_type}"
         total_amount = 0.0
@@ -1124,6 +1170,7 @@ class ReportsService:
 
             # Operational outflows
             q = q.filter(LedgerTransactionDB.direction == "out")
+            q = scope.filter(q, LedgerTransactionDB.account_id)
             txs = q.order_by(LedgerTransactionDB.date.desc(), LedgerTransactionDB.id.desc()).limit(150).all()
 
             for t in txs:
@@ -1151,6 +1198,7 @@ class ReportsService:
                     target_title = f"Account: {acc.account_name}"
             if date_to:
                 q = q.filter(LedgerTransactionDB.date <= date_to)
+            q = scope.filter(q, LedgerTransactionDB.account_id)
 
             txs = q.order_by(LedgerTransactionDB.date.desc(), LedgerTransactionDB.id.desc()).limit(150).all()
             for t in txs:
@@ -1207,7 +1255,9 @@ class ReportsService:
         basis: str = "cash",
         currency: str = "USD",
         comparison: str = "none",
+        book: Optional[str] = None,
     ) -> Dict[str, Any]:
+        scope = self._scope(book)
         today = datetime.utcnow().date()
         d_to = date_to or today.strftime("%Y-%m-%d")
         d_from = date_from or today.replace(day=1).strftime("%Y-%m-%d")
@@ -1219,12 +1269,12 @@ class ReportsService:
             # D-026: one statement per currency, side by side; currencies are never added together
             currencies = sorted({
                 (c or "USD").upper()
-                for (c,) in self.db.query(FinanceBankAccountDB.currency).filter(FinanceBankAccountDB.is_active == True).distinct()  # noqa: E712
+                for (c,) in scope.filter(self.db.query(FinanceBankAccountDB.currency).filter(FinanceBankAccountDB.is_active == True), FinanceBankAccountDB.id).distinct()  # noqa: E712
             } | {
                 (c or "USD").upper() for (c,) in self.db.query(SalesInvoiceDB.currency).distinct()
             })
             columns = [
-                self.get_profit_and_loss(entity=entity, date_from=date_from, date_to=date_to, basis=basis, currency=c, comparison=comparison)
+                self.get_profit_and_loss(entity=entity, date_from=date_from, date_to=date_to, basis=basis, currency=c, comparison=comparison, book=book)
                 for c in currencies
             ]
             return {
@@ -1243,7 +1293,10 @@ class ReportsService:
                 "net_margin_pct": 0.0,
                 "by_currency": columns,
                 "basis_note": ACCRUAL_PARTIAL_NOTE if basis_norm == "accrual" else None,
+                "book": scope.view,
             }
+
+        inter_book_totals: Dict[str, float] = {}  # label -> amount (cash basis, single-book views only)
 
         def compute_pnl_range(start_d: str, end_d: str):
             rev_items = []
@@ -1259,7 +1312,7 @@ class ReportsService:
                 )
                 if curr_norm != "ALL":
                     inv_q = inv_q.filter(SalesInvoiceDB.currency == curr_norm)
-                invoices = inv_q.all()
+                invoices = [i for i in inv_q.all() if self._invoice_in_scope(scope, i)]
                 cust_rev = {}
                 for inv in invoices:
                     cname = (inv.customer.name if inv.customer else None) or f"Customer #{inv.customer_id}"
@@ -1281,7 +1334,7 @@ class ReportsService:
                 )
                 if curr_norm != "ALL":
                     bill_q = bill_q.filter(BillDB.currency == curr_norm)
-                bills = bill_q.all()
+                bills = self._filter_bills(scope, bill_q.all())
                 cat_exp = {}
                 for b in bills:
                     cat = (b.vendor.name if b.vendor else None) or f"Vendor #{b.vendor_id}"
@@ -1307,6 +1360,7 @@ class ReportsService:
                     LedgerTransactionDB.date >= start_d,
                     LedgerTransactionDB.date <= end_d,
                 )
+                tx_q = scope.filter(tx_q, LedgerTransactionDB.account_id)
                 if curr_norm != "ALL":
                     tx_q = tx_q.filter(LedgerTransactionDB.currency == curr_norm)
                 txs = tx_q.all()
@@ -1315,12 +1369,17 @@ class ReportsService:
                 cat_exp = {}
                 for t, cname, ckind in txs:
                     # D-026: own-account movements count nowhere, reversals reduce the side they reverse
-                    cls = cash_basis.classify(t, ckind, has_category=t.category_id is not None)
+                    cls = cash_basis.classify_view(t, ckind, has_category=t.category_id is not None, scope=scope)
                     if not cls:
                         continue
-                    side, amt = cls
+                    side, amt, label = cls
+                    if side in (cash_basis.TRANSFER_IN, cash_basis.TRANSFER_OUT):
+                        # Inter-book movement: shown on its own line, never operating revenue or spend (D-028)
+                        if (start_d, end_d) == (d_from, d_to):
+                            inter_book_totals[label] = inter_book_totals.get(label, 0.0) + amt
+                        continue
                     if side == cash_basis.REVENUE:
-                        cat_display = cname or "Sales Revenue"
+                        cat_display = label or cname or "Sales Revenue"
                         cat_rev[cat_display] = cat_rev.get(cat_display, 0.0) + amt
                         total_rev += amt
                     else:
@@ -1390,6 +1449,10 @@ class ReportsService:
             "prior_net_income": prior_net,
             "net_margin_pct": margin,
             "basis_note": ACCRUAL_PARTIAL_NOTE if basis_norm == "accrual" else None,
+            "book": scope.view,
+            "inter_book_items": [
+                {"label": label, "amount": round(amt, 2)} for label, amt in sorted(inter_book_totals.items())
+            ],
         }
 
     def get_balance_sheet(
@@ -1399,13 +1462,15 @@ class ReportsService:
         basis: str = "accrual",
         currency: str = "USD",
         comparison: str = "none",
+        book: Optional[str] = None,
     ) -> Dict[str, Any]:
+        scope = self._scope(book)
         today = datetime.utcnow().date()
         cutoff = as_of_date or today.strftime("%Y-%m-%d")
         curr_norm = (currency or "USD").upper()
 
         # 1. Cash & Bank Accounts (Point in time)
-        pit = self.get_point_in_time_balances(cutoff)
+        pit = self.get_point_in_time_balances(cutoff, book=book)
         cash_items = []
         total_cash = 0.0
         for acc in pit.get("accounts", []):
@@ -1430,6 +1495,8 @@ class ReportsService:
             ar_q = ar_q.filter(SalesInvoiceDB.currency == curr_norm)
         total_ar = 0.0
         for inv in ar_q.all():
+            if not self._invoice_in_scope(scope, inv):
+                continue
             paid_sum = inv_status.settled_amount(getattr(inv, "payments", []))
             rem = max(0.0, float(inv.total or 0.0) - paid_sum)
             if rem > 0:
@@ -1453,7 +1520,7 @@ class ReportsService:
         if curr_norm != "ALL":
             ap_q = ap_q.filter(BillDB.currency == curr_norm)
         total_ap = 0.0
-        for b in ap_q.all():
+        for b in self._filter_bills(scope, ap_q.all()):
             rem = max(0.0, float(b.total or 0.0) - float(getattr(b, "amount_paid", 0.0) or 0.0))
             if rem > 0:
                 total_ap += rem
@@ -1463,6 +1530,7 @@ class ReportsService:
             FinanceChequeDB.status == "issued",
             FinanceChequeDB.issue_date <= cutoff,
         )
+        chq_q = scope.filter(chq_q, FinanceChequeDB.account_id)
         if curr_norm != "ALL":
             chq_q = chq_q.filter(FinanceChequeDB.currency == curr_norm)
         total_chq_payable = round(sum(float(c.amount or 0.0) for c in chq_q.all()), 2)
@@ -1524,7 +1592,9 @@ class ReportsService:
         entity: Optional[str] = "all",
         as_of_date: Optional[str] = None,
         currency: str = "USD",
+        book: Optional[str] = None,
     ) -> Dict[str, Any]:
+        scope = self._scope(book)
         today = datetime.utcnow().date()
         cutoff = as_of_date or today.strftime("%Y-%m-%d")
         curr_norm = (currency or "USD").upper()
@@ -1534,7 +1604,7 @@ class ReportsService:
         total_credits = 0.0
 
         # Asset accounts (Bank / Cash)
-        pit = self.get_point_in_time_balances(cutoff)
+        pit = self.get_point_in_time_balances(cutoff, book=book)
         for acc in pit.get("accounts", []):
             if curr_norm != "ALL" and acc.get("currency") != curr_norm:
                 continue
@@ -1557,6 +1627,8 @@ class ReportsService:
             ar_q = ar_q.filter(SalesInvoiceDB.currency == curr_norm)
         total_ar = 0.0
         for inv in ar_q.all():
+            if not self._invoice_in_scope(scope, inv):
+                continue
             paid_sum = inv_status.settled_amount(getattr(inv, "payments", []))
             rem = max(0.0, float(inv.total or 0.0) - paid_sum)
             total_ar += rem
@@ -1571,7 +1643,7 @@ class ReportsService:
         )
         if curr_norm != "ALL":
             ap_q = ap_q.filter(BillDB.currency == curr_norm)
-        total_ap = sum(max(0.0, float(b.total or 0.0) - float(getattr(b, "amount_paid", 0.0) or 0.0)) for b in ap_q.all())
+        total_ap = sum(max(0.0, float(b.total or 0.0) - float(getattr(b, "amount_paid", 0.0) or 0.0)) for b in self._filter_bills(scope, ap_q.all()))
         if total_ap > 0:
             lines.append({"code": "2000-AP", "name": "Accounts Payable (Trade)", "type": "liability", "debit": 0.0, "credit": round(total_ap, 2)})
             total_credits += total_ap
@@ -1581,6 +1653,7 @@ class ReportsService:
             FinanceChequeDB.status == "issued",
             FinanceChequeDB.issue_date <= cutoff,
         )
+        chq_q = scope.filter(chq_q, FinanceChequeDB.account_id)
         if curr_norm != "ALL":
             chq_q = chq_q.filter(FinanceChequeDB.currency == curr_norm)
         total_chq = sum(float(c.amount or 0.0) for c in chq_q.all())
@@ -1615,21 +1688,23 @@ class ReportsService:
         date_from: Optional[str] = None,
         date_to: Optional[str] = None,
         currency: str = "USD",
+        book: Optional[str] = None,
     ) -> Dict[str, Any]:
+        scope = self._scope(book)
         today = datetime.utcnow().date()
         d_to = date_to or today.strftime("%Y-%m-%d")
         d_from = date_from or today.replace(day=1).strftime("%Y-%m-%d")
         curr_norm = (currency or "USD").upper()
 
         # Opening balance
-        pit_start = self.get_point_in_time_balances(d_from)
+        pit_start = self.get_point_in_time_balances(d_from, book=book)
         beg_cash = 0.0
         for acc in pit_start.get("accounts", []):
             if curr_norm == "ALL" or acc.get("currency") == curr_norm:
                 beg_cash += float(acc.get("balance_as_of_date") or 0.0)
 
         # Closing balance
-        pit_end = self.get_point_in_time_balances(d_to)
+        pit_end = self.get_point_in_time_balances(d_to, book=book)
         end_cash = 0.0
         for acc in pit_end.get("accounts", []):
             if curr_norm == "ALL" or acc.get("currency") == curr_norm:
@@ -1640,18 +1715,28 @@ class ReportsService:
             LedgerTransactionDB.date >= d_from,
             LedgerTransactionDB.date <= d_to,
         )
+        tx_q = scope.filter(tx_q, LedgerTransactionDB.account_id)
         if curr_norm != "ALL":
             tx_q = tx_q.filter(LedgerTransactionDB.currency == curr_norm)
         txs = tx_q.all()
 
         op_in = 0.0
         op_out = 0.0
+        ib_in = 0.0   # inter-book legs, split out in single-book views so the statement still reconciles
+        ib_out = 0.0
         for t in txs:
             amt = float(t.amount or 0.0)
+            inter = scope.restricts and scope.inter_book(t)
             if t.direction == "in":
-                op_in += amt
+                if inter:
+                    ib_in += amt
+                else:
+                    op_in += amt
             else:
-                op_out += amt
+                if inter:
+                    ib_out += amt
+                else:
+                    op_out += amt
 
         operating_items = [
             {"name": "Cash Receipts from Customers & Operational Inflows", "amount": round(op_in, 2), "activity_type": "operating"},
@@ -1659,7 +1744,15 @@ class ReportsService:
         ]
         net_op = round(op_in - op_out, 2)
         net_inv = 0.0
-        net_fin = 0.0
+        financing_items = []
+        if scope.restricts and (ib_in or ib_out):
+            to_label = books.TRANSFERRED_TO_OVERSEAS if scope.view == books.LOCAL else books.TRANSFERRED_TO_LOCAL
+            from_label = books.INCOME_FROM_OVERSEAS if scope.view == books.LOCAL else books.RECEIVED_FROM_LOCAL
+            if ib_in:
+                financing_items.append({"name": from_label, "amount": round(ib_in, 2), "activity_type": "financing"})
+            if ib_out:
+                financing_items.append({"name": to_label, "amount": -round(ib_out, 2), "activity_type": "financing"})
+        net_fin = round(ib_in - ib_out, 2)
         net_change = round(net_op + net_inv + net_fin, 2)
 
         return {
@@ -1672,7 +1765,7 @@ class ReportsService:
             "net_cash_operating": net_op,
             "investing_activities": [],
             "net_cash_investing": net_inv,
-            "financing_activities": [],
+            "financing_activities": financing_items,
             "net_cash_financing": net_fin,
             "net_change_in_cash": net_change,
             "beginning_cash_balance": round(beg_cash, 2),
@@ -1685,7 +1778,9 @@ class ReportsService:
         entity: Optional[str] = "all",
         as_of_date: Optional[str] = None,
         currency: str = "USD",
+        book: Optional[str] = None,
     ) -> Dict[str, Any]:
+        scope = self._scope(book)
         today = datetime.utcnow().date()
         cutoff_str = as_of_date or today.strftime("%Y-%m-%d")
         cutoff_dt = datetime.strptime(cutoff_str, "%Y-%m-%d").date()
@@ -1698,7 +1793,7 @@ class ReportsService:
         if curr_norm != "ALL":
             q = q.filter(SalesInvoiceDB.currency == curr_norm)
 
-        invoices = q.all()
+        invoices = [i for i in q.all() if self._invoice_in_scope(scope, i)]
         by_customer = {}
 
         totals = {"current": 0.0, "days_1_30": 0.0, "days_31_60": 0.0, "days_61_90": 0.0, "days_over_90": 0.0, "total": 0.0}
@@ -1778,7 +1873,9 @@ class ReportsService:
         entity: Optional[str] = "all",
         as_of_date: Optional[str] = None,
         currency: str = "USD",
+        book: Optional[str] = None,
     ) -> Dict[str, Any]:
+        scope = self._scope(book)
         today = datetime.utcnow().date()
         cutoff_str = as_of_date or today.strftime("%Y-%m-%d")
         cutoff_dt = datetime.strptime(cutoff_str, "%Y-%m-%d").date()
@@ -1791,7 +1888,7 @@ class ReportsService:
         if curr_norm != "ALL":
             q = q.filter(BillDB.currency == curr_norm)
 
-        bills = q.all()
+        bills = self._filter_bills(scope, q.all())
         by_vendor = {}
 
         totals = {"current": 0.0, "days_1_30": 0.0, "days_31_60": 0.0, "days_61_90": 0.0, "days_over_90": 0.0, "total": 0.0}
@@ -1924,6 +2021,7 @@ class ReportsService:
 
         if report_key == "profit-and-loss":
             data = self.get_profit_and_loss(
+                book=filters.get("book"),
                 entity=filters.get("entity", "all"),
                 basis=filters.get("basis", "cash"),
                 currency=filters.get("currency", "USD"),
@@ -1934,6 +2032,7 @@ class ReportsService:
             row_count = len(data.get("revenue_items", [])) + len(data.get("expense_items", []))
         elif report_key == "balance-sheet":
             data = self.get_balance_sheet(
+                book=filters.get("book"),
                 entity=filters.get("entity", "all"),
                 as_of_date=filters.get("as_of_date") or filters.get("date_to"),
                 currency=filters.get("currency", "USD"),
@@ -1946,6 +2045,7 @@ class ReportsService:
             )
         elif report_key == "trial-balance":
             data = self.get_trial_balance(
+                book=filters.get("book"),
                 entity=filters.get("entity", "all"),
                 as_of_date=filters.get("as_of_date") or filters.get("date_to"),
                 currency=filters.get("currency", "USD"),
@@ -1953,6 +2053,7 @@ class ReportsService:
             row_count = len(data.get("lines", []))
         elif report_key == "cash-flow":
             data = self.get_cash_flow_statement(
+                book=filters.get("book"),
                 entity=filters.get("entity", "all"),
                 date_from=filters.get("date_from"),
                 date_to=filters.get("date_to"),
@@ -1965,6 +2066,7 @@ class ReportsService:
             )
         elif report_key == "ar-aging":
             data = self.get_ar_aging_report(
+                book=filters.get("book"),
                 entity=filters.get("entity", "all"),
                 as_of_date=filters.get("as_of_date") or filters.get("date_to"),
                 currency=filters.get("currency", "USD"),
@@ -1972,6 +2074,7 @@ class ReportsService:
             row_count = len(data.get("rows", []))
         elif report_key == "ap-aging":
             data = self.get_ap_aging_report(
+                book=filters.get("book"),
                 entity=filters.get("entity", "all"),
                 as_of_date=filters.get("as_of_date") or filters.get("date_to"),
                 currency=filters.get("currency", "USD"),
@@ -1994,6 +2097,7 @@ class ReportsService:
             row_count = len(data.get("rows", []))
         elif report_key == "balances":
             data = self.get_point_in_time_balances(
+                book=filters.get("book"),
                 as_of_date=filters.get("as_of_date") or filters.get("date_to")
             )
             row_count = len(data.get("accounts", []))

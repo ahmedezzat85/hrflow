@@ -115,6 +115,15 @@ async getFeatureFlags() {
   }
 })(typeof window !== "undefined" ? window : globalThis);
 
+// Adds the page's book view (X2, D-028) to report params; an explicit params.book wins.
+function _withBook(params, page) {
+  const p = Object.assign({}, params || {});
+  if (!p.book && typeof FinanceBookView !== "undefined") p.book = FinanceBookView.get(page);
+  return p;
+}
+if (typeof window !== "undefined") window._withBook = _withBook;
+
+
 
 /**
  * fe/api/finance/invoices-api.js
@@ -1770,8 +1779,30 @@ async getFeatureFlags() {
     { id: 2, account_name: "Voyance Treasury Reserve", account_type: "bank", bank_name: "Silicon Valley Bank", account_number: "******9102", raw_account_number: "98765432109102", country: "United States", currency: "USD", opening_balance: 500000.0, opening_balance_date: "2025-01-01", current_balance: 500000.0, is_active: true },
     { id: 3, account_name: "CIB EGP Operating", account_type: "bank", bank_name: "Commercial International Bank", account_number: "******3319", raw_account_number: "55443322113319", country: "Egypt", currency: "EGP", opening_balance: 450000.0, opening_balance_date: "2025-01-01", current_balance: 450000.0, is_active: true },
     { id: 4, account_name: "Cairo Office Petty Cash Drawer", account_type: "cash", bank_name: null, account_number: "CASH-CAIRO-01", raw_account_number: "CASH-CAIRO-01", country: "Egypt", currency: "EGP", opening_balance: 20000.0, opening_balance_date: "2025-01-01", current_balance: 20000.0, is_active: true },
+    // Overseas book (X2, D-028): a USD account whose movements are only partly recorded
+    { id: 5, account_name: "Voyance Overseas USD", account_type: "bank", bank_name: "Mercury", account_number: "******7744", raw_account_number: "40001122337744", country: "United States", currency: "USD", opening_balance: 30000.0, opening_balance_date: "2026-01-01", current_balance: 30000.0, is_active: true, book_id: 2, book_code: "overseas", book_name: "Overseas", visibility: "partial" },
   ];
+    FinanceMockState.accounts.forEach((a) => {
+      if (!a.book_id) Object.assign(a, { book_id: 1, book_code: "local", book_name: "Local", visibility: "full" });
+    });
   }
+
+  if (!FinanceMockState.books) {
+    FinanceMockState.books = [
+      { id: 1, code: "local", name: "Local", is_default: true },
+      { id: 2, code: "overseas", name: "Overseas", is_default: false },
+    ];
+  }
+  if (!FinanceMockState.accountCheckpoints) {
+    FinanceMockState.accountCheckpoints = [
+      { id: 1, account_id: 5, date: "2026-09-30", balance: 31250.0, note: "From the overseas bank portal", has_attachment: false, attachment_name: null, created_by: "admin@voyance.health" },
+    ];
+  }
+  const _checkpointView = (cp) => {
+    const acc = FinanceMockState.accounts.find((a) => a.id === cp.account_id);
+    const computed = acc ? Number(acc.current_balance || 0) : 0;
+    return { ...cp, computed_balance: computed, unrecorded_difference: Math.round((Number(cp.balance) - computed) * 100) / 100 };
+  };
 
   if (!FinanceMockState.categories) {
     FinanceMockState.categories = [
@@ -1855,15 +1886,19 @@ async getFeatureFlags() {
 // Bank Accounts
   async getAccounts(params) {
     if (_isMock()) {
-      let list = [...FinanceMockState.accounts].map((a) => {
+      let list = [...FinanceMockState.accounts]
+        .filter((a) => !(params && params.book) || params.book === "consolidated" || a.book_code === params.book)
+        .map((a) => {
         const book = Number(a.current_balance || a.opening_balance || 0);
         const hasPostings = (FinanceMockState.transactions || []).some((t) => t.account_id === a.id) || (FinanceMockState.cheques || []).some((c) => c.account_id === a.id);
         const uncleared = (FinanceMockState.cheques || [])
           .filter((c) => c.account_id === a.id && (c.status === "issued" || c.status === "outstanding"))
           .reduce((sum, c) => sum + Number(c.amount || 0), 0);
         const available = book;
+        const cps = (FinanceMockState.accountCheckpoints || []).filter((c) => c.account_id === a.id).sort((x, y) => (y.date.localeCompare(x.date)) || (y.id - x.id));
         return {
           ...a,
+          latest_checkpoint: a.visibility === "partial" && cps.length ? _checkpointView(cps[0]) : null,
           book_balance: book,
           bank_balance: Math.round((book + uncleared) * 100) / 100,
           available_balance: available,
@@ -1938,9 +1973,11 @@ async getFeatureFlags() {
   async createAccount(payload) {
     if (_isMock()) {
       const rawNum = payload.account_number || "";
+      const bk = FinanceMockState.books.find((b) => b.id === Number(payload.book_id)) || FinanceMockState.books.find((b) => b.is_default);
       const newAcc = {
-        id: FinanceMockState.accounts.length + 1,
+        id: Math.max(0, ...FinanceMockState.accounts.map((a) => a.id)) + 1,
         ...payload,
+        book_id: bk.id, book_code: bk.code, book_name: bk.name, visibility: payload.visibility || "full",
         current_balance: payload.opening_balance || 0,
         raw_account_number: rawNum,
         account_number: `******${rawNum.slice(-4)}`,
@@ -1963,10 +2000,41 @@ async getFeatureFlags() {
           throw new Error("Currency cannot be modified after transactions have been posted to this account.");
         }
       }
-      Object.assign(acc, payload);
+      if (payload.book_id && payload.book_id !== acc.book_id) {
+        const hasPostings = (FinanceMockState.transactions || []).some((t) => t.account_id === acc.id) || (FinanceMockState.cheques || []).some((c) => c.account_id === acc.id);
+        if (hasPostings) throw new Error("The book cannot be changed after transactions have been posted to this account.");
+        const bk = FinanceMockState.books.find((b) => b.id === Number(payload.book_id));
+        if (bk) Object.assign(acc, { book_id: bk.id, book_code: bk.code, book_name: bk.name });
+      }
+      const { book_id: _b, ...rest } = payload;
+      Object.assign(acc, rest);
       return acc;
     }
     return apiRequest("PUT", `/api/finance/accounts/${id}`, payload);
+  },
+  async getBooks() {
+    if (_isMock()) return [...FinanceMockState.books];
+    return apiRequest("GET", "/api/finance/accounts/books");
+  },
+  async getAccountCheckpoints(accountId) {
+    if (_isMock()) {
+      return (FinanceMockState.accountCheckpoints || [])
+        .filter((c) => c.account_id === parseInt(accountId, 10))
+        .sort((x, y) => (y.date.localeCompare(x.date)) || (y.id - x.id))
+        .map(_checkpointView);
+    }
+    return apiRequest("GET", `/api/finance/accounts/${accountId}/checkpoints`);
+  },
+  async createAccountCheckpoint(accountId, payload) {
+    if (_isMock()) {
+      const acc = FinanceMockState.accounts.find((a) => a.id === parseInt(accountId, 10));
+      if (!acc) throw new Error("Account not found");
+      if (acc.visibility !== "partial") throw new Error("Balance checkpoints are for partial-visibility accounts. Set the account visibility to partial first.");
+      const cp = { id: Math.max(0, ...FinanceMockState.accountCheckpoints.map((c) => c.id)) + 1, account_id: acc.id, date: payload.date, balance: Number(payload.balance), note: payload.note || null, has_attachment: false, attachment_name: null, created_by: "admin@voyance.health" };
+      FinanceMockState.accountCheckpoints.push(cp);
+      return _checkpointView(cp);
+    }
+    return apiRequest("POST", `/api/finance/accounts/${accountId}/checkpoints`, payload);
   },
   async deleteAccount(id) {
     if (_isMock()) {
@@ -4310,6 +4378,7 @@ async getFeatureFlags() {
 // 10. Financial Reports & Excel Export (Phase 8)
   // ==========================================
   async getCategorySummaryReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       return {
         date_from: params.date_from || "2026-09-01",
@@ -4330,6 +4399,7 @@ async getFeatureFlags() {
   },
 
   async getCategoryMatrixReport(params = {}) {
+    params = _withBook(params, "reports");
     const yr = params.year || 2026;
     const grp = params.period_group || "month";
     if (_isMock()) {
@@ -4379,6 +4449,7 @@ async getFeatureFlags() {
   },
 
   async getBalancesReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       return {
         as_of_date: params.as_of_date || new Date().toISOString().slice(0, 10),
@@ -4408,6 +4479,7 @@ async getFeatureFlags() {
   },
 
   async getTransactionsReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       return {
         date_from: params.date_from || "2026-09-01",
@@ -4481,6 +4553,7 @@ async getFeatureFlags() {
   },
 
   async getChequesReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       const fy = params.fiscal_year || 2026;
       const list = FinanceMockState.cheques || [];
@@ -4811,6 +4884,7 @@ async getFeatureFlags() {
   },
 
   async getReportDrilldown(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       const isCat = params.drilldown_type === "category";
       return {
@@ -4849,6 +4923,21 @@ async getFeatureFlags() {
   },
 
   async getProfitAndLossReport(params = {}) {
+    params = _withBook(params, "reports");
+    if (_isMock() && params.book === "overseas" && String(params.currency || "USD").toUpperCase() !== "ALL") {
+      // Overseas book (X2, D-028): the worked example from plan 23; the inter-book transfer is not an operating expense
+      const usd = String(params.currency || "USD").toUpperCase() === "USD";
+      return {
+        report_title: "Profit & Loss Statement", entity: params.entity || "Voyance Health (Consolidated)", basis: params.basis || "cash",
+        currency: params.currency || "USD", period_start: params.date_from || "2026-09-01", period_end: params.date_to || "2026-09-30",
+        comparison_type: "none", book: "overseas",
+        revenue_items: usd ? [{ category_name: "Overseas client invoices", amount: 10000.0, percentage: 71.4 }, { category_name: "Stripe payout", amount: 4000.0, percentage: 28.6 }] : [],
+        total_revenue: usd ? 14000.0 : 0.0,
+        expense_items: usd ? [{ category_name: "External salaries", amount: 3000.0, percentage: 89.7 }, { category_name: "Tools", amount: 345.0, percentage: 10.3 }] : [],
+        total_expenses: usd ? 3345.0 : 0.0, net_income: usd ? 10655.0 : 0.0, net_margin_pct: usd ? 76.1 : 0.0,
+        inter_book_items: usd ? [{ label: "Transferred to local entity", amount: 5000.0 }] : [],
+      };
+    }
     if (_isMock()) {
       const basis = params.basis || "cash";
       const note = basis === "accrual" ? "Partial: excludes payroll, statutory and bank fees" : null;
@@ -4899,6 +4988,7 @@ async getFeatureFlags() {
   },
 
   async getBalanceSheetReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       return {
         report_title: "Balance Sheet",
@@ -4940,6 +5030,7 @@ async getFeatureFlags() {
   },
 
   async getTrialBalanceReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       return {
         report_title: "Trial Balance",
@@ -4964,6 +5055,20 @@ async getFeatureFlags() {
   },
 
   async getCashFlowReport(params = {}) {
+    params = _withBook(params, "reports");
+    if (_isMock() && params.book === "overseas") {
+      return {
+        report_title: "Statement of Cash Flows", entity: params.entity || "Voyance Health (Consolidated)", currency: params.currency || "USD",
+        date_from: params.date_from || "2026-09-01", date_to: params.date_to || "2026-09-30",
+        operating_activities: [
+          { name: "Cash Receipts from Customers & Operational Inflows", amount: 14000.0, activity_type: "operating" },
+          { name: "Cash Payments for Suppliers & Operational Outflows", amount: -3345.0, activity_type: "operating" },
+        ],
+        net_cash_operating: 10655.0, investing_activities: [], net_cash_investing: 0.0,
+        financing_activities: [{ name: "Transferred to local entity", amount: -5000.0, activity_type: "financing" }],
+        net_cash_financing: -5000.0, net_change_in_cash: 5655.0, beginning_cash_balance: 24345.0, ending_cash_balance: 30000.0, is_reconciled: true,
+      };
+    }
     if (_isMock()) {
       return {
         report_title: "Statement of Cash Flows",
@@ -4991,6 +5096,7 @@ async getFeatureFlags() {
   },
 
   async getArAgingReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       return {
         report_title: "Accounts Receivable (AR) Aging",
@@ -5021,6 +5127,7 @@ async getFeatureFlags() {
   },
 
   async getApAgingReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       return {
         report_title: "Accounts Payable (AP) Aging",
@@ -5365,8 +5472,35 @@ async getFeatureFlags() {
     FinanceMockState.attentionReviewed = new Set();
   }
 
+  // Mock mirror of the Overseas book view (X2, D-028): the worked example from plan 23, USD only.
+  const _overseasSummary = (base, params) => {
+    const cur = String(params.currency || "USD").toUpperCase();
+    const usd = cur === "USD";
+    const revenue = usd ? 14000.0 : 0.0;
+    const spend = usd ? 3345.0 : 0.0;
+    const net = Math.round((revenue - spend) * 100) / 100;
+    const balance = usd ? 30000.0 : 0.0;
+    const margin = revenue > 0 ? Math.round((net / revenue) * 1000) / 10 : null;
+    const out = JSON.parse(JSON.stringify(base));
+    Object.assign(out, { balance, revenue_mtd: revenue, cost_mtd: spend, net_mtd: net, margin_pct: margin, margin_valid: revenue > 0, book: "overseas",
+      by_currency: [], inter_book_lines: usd ? [{ currency: "USD", side: "transfer_out", label: "Transferred to local entity", amount: 5000.0 }] : [] });
+    if (out.kpis) {
+      if (out.kpis.total_cash) out.kpis.total_cash.value = balance;
+      if (out.kpis.revenue) out.kpis.revenue.value = revenue;
+      if (out.kpis.operating_spend) out.kpis.operating_spend.value = spend;
+      if (out.kpis.net_result) out.kpis.net_result.value = net;
+      if (out.kpis.operating_margin) { out.kpis.operating_margin.value = margin; out.kpis.operating_margin.is_valid = revenue > 0; }
+    }
+    return out;
+  };
+
   const FinanceDashboardApi = {
 async getFinanceSummary(params = {}) {
+    params = _withBook(params, "dashboard");
+    if (_isMock() && params.book === "overseas") {
+      const base = await FinanceDashboardApi.getFinanceSummary({ ...params, book: "local" });
+      return _overseasSummary(base, params);
+    }
     if (_isMock()) {
       const period = (params.period || "MTD").toUpperCase();
       const basis = (params.basis || "cash").toLowerCase();
@@ -5517,6 +5651,7 @@ async getFinanceSummary(params = {}) {
   },
 
   async getAttentionQueue(params = {}) {
+    params = _withBook(params, "dashboard");
     if (_isMock()) {
       const severity = (params.severity || "all").toLowerCase();
       const itemType = (params.item_type || params.type || "all").toLowerCase();
@@ -5713,12 +5848,13 @@ async getFinanceSummary(params = {}) {
   },
 
   async getCashForecast(params = {}) {
+    params = _withBook(params, "dashboard");
     if (_isMock()) {
       const currency = (params.currency || "all").toUpperCase();
       const horizonDays = parseInt(params.horizon_days || "90", 10);
       const includeExpected = params.include_expected !== false && params.include_expected !== "false";
 
-      let rawAccounts = FinanceMockState.accounts || [];
+      let rawAccounts = (FinanceMockState.accounts || []).filter((a) => !params.book || params.book === "consolidated" || a.book_code === params.book);
       if (currency !== "ALL") {
         rawAccounts = rawAccounts.filter((a) => (a.currency || "").toUpperCase() === currency);
       }

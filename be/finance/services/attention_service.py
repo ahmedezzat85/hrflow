@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from finance.bill_status import OPEN_STATUSES
 from finance import invoice_status as inv_status
+from finance import books
 from finance.models import (
     FinanceBankAccountDB,
     SalesInvoiceDB,
@@ -38,12 +39,14 @@ class AttentionQueueService:
         search: Optional[str] = None,
         include_reviewed: bool = False,
         limit: int = 50,
+        book: Optional[str] = None,
     ) -> AttentionQueueResponse:
         """
         Gathers attention exceptions across authorized finance domains,
         applying deterministic priority scoring and permission redaction.
         """
         is_admin = bool(current_user.get("is_super_admin"))
+        scope = books.resolve(self.db, book)
 
         can_invoices = is_admin or "finance.invoice.read" in user_permissions
         can_bills = is_admin or "finance.bill.read" in user_permissions
@@ -72,8 +75,10 @@ class AttentionQueueService:
         # ----------------------------------------------------
         if can_accounts:
             accounts = (
-                self.db.query(FinanceBankAccountDB)
-                .filter(FinanceBankAccountDB.is_active == True)
+                scope.filter(
+                    self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.is_active == True),
+                    FinanceBankAccountDB.id,
+                )
                 .all()
             )
             for acc in accounts:
@@ -116,8 +121,10 @@ class AttentionQueueService:
         # ----------------------------------------------------
         if can_cheques:
             bounced_cheques = (
-                self.db.query(FinanceChequeDB)
-                .filter(FinanceChequeDB.status == "bounced")
+                scope.filter(
+                    self.db.query(FinanceChequeDB).filter(FinanceChequeDB.status == "bounced"),
+                    FinanceChequeDB.account_id,
+                )
                 .all()
             )
             for chq in bounced_cheques:
@@ -162,6 +169,7 @@ class AttentionQueueService:
                 .filter(~SalesInvoiceDB.status.in_(["void", "paid", "draft"]))
                 .all()
             )
+            invoices = [i for i in invoices if books.invoice_in_scope(scope, i)]
             for inv in invoices:
                 # Sum payments
                 paid_total = inv_status.settled_amount(inv.payments)
@@ -225,6 +233,7 @@ class AttentionQueueService:
                 .filter(BillDB.status.in_(OPEN_STATUSES))
                 .all()
             )
+            bills = books.filter_bills(self.db, scope, bills)
             for bill in bills:
                 paid_total = sum((p.amount or 0.0) for p in (bill.payments or []))
                 balance = round((bill.total or 0.0) - paid_total, 2)
@@ -318,6 +327,8 @@ class AttentionQueueService:
                 .filter(AccountTransferDB.confirmed_leg != "both")
                 .all()
             )
+            if scope.restricts:
+                transfers = [t for t in transfers if scope.owns_account(t.from_account_id) or scope.owns_account(t.to_account_id)]
             for tr in transfers:
                 key = f"transfer:{tr.id}:incomplete"
                 is_rev = key in reviewed_dict
@@ -362,6 +373,11 @@ class AttentionQueueService:
                 .filter(PayrollRunDB.status == "draft")
                 .all()
             )
+            if scope.restricts:
+                payroll_drafts = [
+                    x for x in payroll_drafts
+                    if (scope.owns_account(x.external_funding_account_id or x.bank_account_id) if (x.external_funding_account_id or x.bank_account_id) else scope.owns_unattributed())
+                ]
             for run in payroll_drafts:
                 key = f"payroll:{run.id}:draft"
                 is_rev = key in reviewed_dict
@@ -404,6 +420,7 @@ class AttentionQueueService:
                 .filter(BankStatementImportDB.status.in_(["parsing", "needs_review"]))
                 .all()
             )
+            imports = [i for i in imports if scope.owns_account(i.account_id)]
             for imp in imports:
                 unmatched_lines = [l for l in (imp.lines or []) if l.status == "unmatched"]
                 unmatched_count = len(unmatched_lines) if imp.lines else max(imp.total_lines_count - imp.matched_lines_count, 1)
@@ -459,6 +476,11 @@ class AttentionQueueService:
                 .filter(SubscriptionDB.is_active == True)
                 .all()
             )
+            if scope.restricts:
+                active_subs = [
+                    x for x in active_subs
+                    if (scope.owns_account(x.payment_account_id) if getattr(x, "payment_account_id", None) else scope.owns_unattributed())
+                ]
             for sub in active_subs:
                 # 1. Renewal deadline approaching
                 if sub.next_renewal_date:
@@ -544,6 +566,8 @@ class AttentionQueueService:
                 .filter(StatutoryObligationDB.status.in_(["estimated", "accrued", "partially_remitted"]))
                 .all()
             )
+            if scope.restricts and not scope.owns_unattributed():
+                open_obligations = []  # statutory obligations belong to the default (Local) book
             for obl in open_obligations:
                 key = f"statutory:{obl.id}:{obl.status}"
                 is_rev = key in reviewed_dict

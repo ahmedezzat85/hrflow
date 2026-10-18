@@ -72,6 +72,7 @@
 // 10. Financial Reports & Excel Export (Phase 8)
   // ==========================================
   async getCategorySummaryReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       return {
         date_from: params.date_from || "2026-09-01",
@@ -92,6 +93,7 @@
   },
 
   async getCategoryMatrixReport(params = {}) {
+    params = _withBook(params, "reports");
     const yr = params.year || 2026;
     const grp = params.period_group || "month";
     if (_isMock()) {
@@ -141,6 +143,7 @@
   },
 
   async getBalancesReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       return {
         as_of_date: params.as_of_date || new Date().toISOString().slice(0, 10),
@@ -170,6 +173,7 @@
   },
 
   async getTransactionsReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       return {
         date_from: params.date_from || "2026-09-01",
@@ -243,6 +247,7 @@
   },
 
   async getChequesReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       const fy = params.fiscal_year || 2026;
       const list = FinanceMockState.cheques || [];
@@ -573,6 +578,7 @@
   },
 
   async getReportDrilldown(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       const isCat = params.drilldown_type === "category";
       return {
@@ -611,6 +617,21 @@
   },
 
   async getProfitAndLossReport(params = {}) {
+    params = _withBook(params, "reports");
+    if (_isMock() && params.book === "overseas" && String(params.currency || "USD").toUpperCase() !== "ALL") {
+      // Overseas book (X2, D-028): the worked example from plan 23; the inter-book transfer is not an operating expense
+      const usd = String(params.currency || "USD").toUpperCase() === "USD";
+      return {
+        report_title: "Profit & Loss Statement", entity: params.entity || "Voyance Health (Consolidated)", basis: params.basis || "cash",
+        currency: params.currency || "USD", period_start: params.date_from || "2026-09-01", period_end: params.date_to || "2026-09-30",
+        comparison_type: "none", book: "overseas",
+        revenue_items: usd ? [{ category_name: "Overseas client invoices", amount: 10000.0, percentage: 71.4 }, { category_name: "Stripe payout", amount: 4000.0, percentage: 28.6 }] : [],
+        total_revenue: usd ? 14000.0 : 0.0,
+        expense_items: usd ? [{ category_name: "External salaries", amount: 3000.0, percentage: 89.7 }, { category_name: "Tools", amount: 345.0, percentage: 10.3 }] : [],
+        total_expenses: usd ? 3345.0 : 0.0, net_income: usd ? 10655.0 : 0.0, net_margin_pct: usd ? 76.1 : 0.0,
+        inter_book_items: usd ? [{ label: "Transferred to local entity", amount: 5000.0 }] : [],
+      };
+    }
     if (_isMock()) {
       const basis = params.basis || "cash";
       const note = basis === "accrual" ? "Partial: excludes payroll, statutory and bank fees" : null;
@@ -661,6 +682,7 @@
   },
 
   async getBalanceSheetReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       return {
         report_title: "Balance Sheet",
@@ -702,6 +724,7 @@
   },
 
   async getTrialBalanceReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       return {
         report_title: "Trial Balance",
@@ -726,6 +749,20 @@
   },
 
   async getCashFlowReport(params = {}) {
+    params = _withBook(params, "reports");
+    if (_isMock() && params.book === "overseas") {
+      return {
+        report_title: "Statement of Cash Flows", entity: params.entity || "Voyance Health (Consolidated)", currency: params.currency || "USD",
+        date_from: params.date_from || "2026-09-01", date_to: params.date_to || "2026-09-30",
+        operating_activities: [
+          { name: "Cash Receipts from Customers & Operational Inflows", amount: 14000.0, activity_type: "operating" },
+          { name: "Cash Payments for Suppliers & Operational Outflows", amount: -3345.0, activity_type: "operating" },
+        ],
+        net_cash_operating: 10655.0, investing_activities: [], net_cash_investing: 0.0,
+        financing_activities: [{ name: "Transferred to local entity", amount: -5000.0, activity_type: "financing" }],
+        net_cash_financing: -5000.0, net_change_in_cash: 5655.0, beginning_cash_balance: 24345.0, ending_cash_balance: 30000.0, is_reconciled: true,
+      };
+    }
     if (_isMock()) {
       return {
         report_title: "Statement of Cash Flows",
@@ -753,6 +790,7 @@
   },
 
   async getArAgingReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       return {
         report_title: "Accounts Receivable (AR) Aging",
@@ -783,6 +821,7 @@
   },
 
   async getApAgingReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       return {
         report_title: "Accounts Payable (AP) Aging",

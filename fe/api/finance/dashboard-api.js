@@ -18,8 +18,35 @@
     FinanceMockState.attentionReviewed = new Set();
   }
 
+  // Mock mirror of the Overseas book view (X2, D-028): the worked example from plan 23, USD only.
+  const _overseasSummary = (base, params) => {
+    const cur = String(params.currency || "USD").toUpperCase();
+    const usd = cur === "USD";
+    const revenue = usd ? 14000.0 : 0.0;
+    const spend = usd ? 3345.0 : 0.0;
+    const net = Math.round((revenue - spend) * 100) / 100;
+    const balance = usd ? 30000.0 : 0.0;
+    const margin = revenue > 0 ? Math.round((net / revenue) * 1000) / 10 : null;
+    const out = JSON.parse(JSON.stringify(base));
+    Object.assign(out, { balance, revenue_mtd: revenue, cost_mtd: spend, net_mtd: net, margin_pct: margin, margin_valid: revenue > 0, book: "overseas",
+      by_currency: [], inter_book_lines: usd ? [{ currency: "USD", side: "transfer_out", label: "Transferred to local entity", amount: 5000.0 }] : [] });
+    if (out.kpis) {
+      if (out.kpis.total_cash) out.kpis.total_cash.value = balance;
+      if (out.kpis.revenue) out.kpis.revenue.value = revenue;
+      if (out.kpis.operating_spend) out.kpis.operating_spend.value = spend;
+      if (out.kpis.net_result) out.kpis.net_result.value = net;
+      if (out.kpis.operating_margin) { out.kpis.operating_margin.value = margin; out.kpis.operating_margin.is_valid = revenue > 0; }
+    }
+    return out;
+  };
+
   const FinanceDashboardApi = {
 async getFinanceSummary(params = {}) {
+    params = _withBook(params, "dashboard");
+    if (_isMock() && params.book === "overseas") {
+      const base = await FinanceDashboardApi.getFinanceSummary({ ...params, book: "local" });
+      return _overseasSummary(base, params);
+    }
     if (_isMock()) {
       const period = (params.period || "MTD").toUpperCase();
       const basis = (params.basis || "cash").toLowerCase();
@@ -170,6 +197,7 @@ async getFinanceSummary(params = {}) {
   },
 
   async getAttentionQueue(params = {}) {
+    params = _withBook(params, "dashboard");
     if (_isMock()) {
       const severity = (params.severity || "all").toLowerCase();
       const itemType = (params.item_type || params.type || "all").toLowerCase();
@@ -366,12 +394,13 @@ async getFinanceSummary(params = {}) {
   },
 
   async getCashForecast(params = {}) {
+    params = _withBook(params, "dashboard");
     if (_isMock()) {
       const currency = (params.currency || "all").toUpperCase();
       const horizonDays = parseInt(params.horizon_days || "90", 10);
       const includeExpected = params.include_expected !== false && params.include_expected !== "false";
 
-      let rawAccounts = FinanceMockState.accounts || [];
+      let rawAccounts = (FinanceMockState.accounts || []).filter((a) => !params.book || params.book === "consolidated" || a.book_code === params.book);
       if (currency !== "ALL") {
         rawAccounts = rawAccounts.filter((a) => (a.currency || "").toUpperCase() === currency);
       }

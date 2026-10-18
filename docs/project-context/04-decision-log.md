@@ -410,7 +410,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-028 — Books: Local and Overseas, Three Report Views
 
-- **Status:** Accepted by owner, October 18, 2026. Resolves Q-017 and Q-020. Not implemented; plan in [../finance-module/23-finance-expansion-plan.md](../finance-module/23-finance-expansion-plan.md) (slice X2).
+- **Status:** Accepted by owner, October 18, 2026. Resolves Q-017 and Q-020. Implemented on `feature/finance-expansion` (slice X2, migration 0038); plan in [../finance-module/23-finance-expansion-plan.md](../finance-module/23-finance-expansion-plan.md) (slice X2).
 - **Decision:**
   - New `finance_books`: `Local` (Egyptian entity, default; every existing account migrates here) and `Overseas` (overseas entity). Every company account has a required book and a visibility of `full` or `partial`.
   - A `partial` account (the overseas bank account) shows its balance as known movements plus owner-entered balance checkpoints; the gap is shown as "Unrecorded difference" and is never auto-adjusted.

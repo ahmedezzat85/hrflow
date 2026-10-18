@@ -39,6 +39,7 @@ class CustomerDB(Base):
     notes = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     withholding_tax_rate = Column(Float, default=0.0, nullable=False, server_default="0")  # percent; default for new invoices (D-024)
+    is_intercompany = Column(Boolean, default=False, nullable=False, server_default="0")  # the overseas entity or another group company (D-028)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     invoices = relationship("SalesInvoiceDB", back_populates="customer")
@@ -251,6 +252,30 @@ class PaymentTypeDB(Base):
     transactions = relationship("LedgerTransactionDB", back_populates="payment_type")
 
 
+def _default_book_id(context):
+    """Column default for finance_bank_accounts.book_id: the default (Local) book, created on first use.
+    Keeps every code path that inserts an account (tests, seeds, imports) valid without naming a book."""
+    from sqlalchemy import text as _text
+    conn = context.connection
+    row = conn.execute(_text("SELECT id FROM finance_books WHERE is_default = :t ORDER BY id LIMIT 1"), {"t": True}).first()
+    if row:
+        return row[0]
+    for code, name, default in (("local", "Local", True), ("overseas", "Overseas", False)):
+        if not conn.execute(_text("SELECT 1 FROM finance_books WHERE code = :c"), {"c": code}).first():
+            conn.execute(_text("INSERT INTO finance_books (code, name, is_default) VALUES (:c, :n, :d)"), {"c": code, "n": name, "d": default})
+    return conn.execute(_text("SELECT id FROM finance_books WHERE code = 'local'")).scalar()
+
+
+class FinanceBookDB(Base):
+    """Company book (D-028): Local (default) and Overseas. Every company account belongs to one book."""
+    __tablename__ = "finance_books"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(20), nullable=False, unique=True, index=True)  # local | overseas
+    name = Column(String(100), nullable=False)
+    is_default = Column(Boolean, default=False, nullable=False)
+
+
 class FinanceBankAccountDB(Base):
     __tablename__ = "finance_bank_accounts"
 
@@ -266,7 +291,10 @@ class FinanceBankAccountDB(Base):
     country = Column(String(100), default="Egypt", nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    book_id = Column(Integer, ForeignKey("finance_books.id", ondelete="RESTRICT"), nullable=False, index=True, default=_default_book_id)  # D-028; defaults to the default (Local) book
+    visibility = Column(String(20), default="full", nullable=False, server_default="full")  # full | partial (D-028)
 
+    book = relationship("FinanceBookDB")
     payments = relationship("PaymentDB", back_populates="bank_account")
     ledger_transactions = relationship(
         "LedgerTransactionDB",
@@ -592,6 +620,21 @@ FinanceStatementMappingTemplateDB = StatementMappingTemplateDB
 FinanceReconciliationRuleDB = ReconciliationRuleDB
 
 
+class AccountBalanceCheckpointDB(Base):
+    """Owner-entered balance of an account on a date (D-028). Never posts an adjustment."""
+    __tablename__ = "finance_account_balance_checkpoints"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="CASCADE"), nullable=False, index=True)
+    date = Column(String(20), nullable=False, index=True)  # YYYY-MM-DD
+    balance = Column(Float, nullable=False)
+    note = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(String(255), nullable=True)
+
+    account = relationship("FinanceBankAccountDB", backref="checkpoints")
+
+
 class FinanceAttachmentDB(Base):
     __tablename__ = "finance_attachments"
 
@@ -600,6 +643,7 @@ class FinanceAttachmentDB(Base):
     statement_import_id = Column(Integer, ForeignKey("finance_statement_imports.id", ondelete="CASCADE"), nullable=True, index=True)
     ledger_transaction_id = Column(Integer, ForeignKey("finance_ledger_transactions.id", ondelete="CASCADE"), nullable=True, index=True)
     cheque_id = Column(Integer, ForeignKey("finance_cheques.id", ondelete="CASCADE"), nullable=True, index=True)
+    checkpoint_id = Column(Integer, ForeignKey("finance_account_balance_checkpoints.id", ondelete="CASCADE"), nullable=True, index=True)
     file_name = Column(String(255), nullable=False)
     file_size = Column(Integer, default=0, nullable=False)
     mime_type = Column(String(100), default="application/octet-stream", nullable=False)

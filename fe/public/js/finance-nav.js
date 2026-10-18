@@ -328,3 +328,14 @@ const SpendTabs = {
 window.SpendTabs = SpendTabs;
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => SpendTabs.render());
 else SpendTabs.render();
+
+// Book view switchers (X2, D-028): dashboard and reports re-load when the view changes
+(function mountFinanceBookSwitchers() {
+  const go = () => {
+    FinanceBookView.mount("dashboard", "financeBookSwitcherDashboard", () => { if (typeof refreshFinanceDashboard === "function") refreshFinanceDashboard(); });
+    FinanceBookView.mount("reports", "financeBookSwitcherReports", () => { if (typeof refreshActiveReport === "function") refreshActiveReport(); });
+  };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", go);
+  else go();
+})();
+

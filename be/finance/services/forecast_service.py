@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from finance.bill_status import OPEN_STATUSES
 from finance import invoice_status as inv_status
+from finance import books
 from finance.models import (
     FinanceBankAccountDB,
     SalesInvoiceDB,
@@ -37,7 +38,9 @@ class CashForecastService:
         currency: str = "all",
         horizon_days: int = 90,
         include_expected: bool = True,
+        book: Optional[str] = None,
     ) -> CashForecastResponse:
+        scope = books.resolve(self.db, book)
         today = datetime.utcnow().date()
         today_str = today.strftime("%Y-%m-%d")
         curr_filter = currency.upper() if currency != "all" else "ALL"
@@ -46,6 +49,7 @@ class CashForecastService:
         # 1. Accounts & Current Cash Position
         # ----------------------------------------------------
         acc_query = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.is_active == True)
+        acc_query = scope.filter(acc_query, FinanceBankAccountDB.id)
         if curr_filter != "ALL":
             acc_query = acc_query.filter(FinanceBankAccountDB.currency == curr_filter)
         db_accounts = acc_query.all()
@@ -131,7 +135,7 @@ class CashForecastService:
         )
         if curr_filter != "ALL":
             inv_query = inv_query.filter(SalesInvoiceDB.currency == curr_filter)
-        invoices = inv_query.all()
+        invoices = [i for i in inv_query.all() if books.invoice_in_scope(scope, i)]
 
         for inv in invoices:
             paid_sum = inv_status.settled_amount(inv.payments)
@@ -184,7 +188,7 @@ class CashForecastService:
         )
         if curr_filter != "ALL":
             bill_query = bill_query.filter(BillDB.currency == curr_filter)
-        bills = bill_query.all()
+        bills = books.filter_bills(self.db, scope, bill_query.all())
 
         for bill in bills:
             paid_sum = sum((p.amount or 0.0) for p in (bill.payments or []))
@@ -228,7 +232,11 @@ class CashForecastService:
             sub_query = self.db.query(SubscriptionDB).filter(SubscriptionDB.is_active == True)
             if curr_filter != "ALL":
                 sub_query = sub_query.filter(SubscriptionDB.currency == curr_filter)
-            subs = sub_query.all()
+            subs = [
+                x for x in sub_query.all()
+                if (not scope.restricts)
+                or (scope.owns_account(x.payment_account_id) if getattr(x, "payment_account_id", None) else scope.owns_unattributed())
+            ]
 
             for s in subs:
                 vend_name = s.vendor.name if s.vendor else s.name
@@ -271,6 +279,11 @@ class CashForecastService:
         for run in payroll_runs:
             if curr_filter != "ALL" and curr_filter != "USD":
                 continue
+            if scope.restricts:
+                # A run is attributed to its external funding account, else its bank account, else the default book
+                funding = run.external_funding_account_id or run.bank_account_id
+                if not (scope.owns_account(funding) if funding else scope.owns_unattributed()):
+                    continue
             net_total = round(run.total_net or 0.0, 2)
             if net_total <= 0:
                 continue
