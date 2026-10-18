@@ -1063,7 +1063,7 @@ const FinanceTable = {
     });
   },
 
-  bindSortHeaders(tableOrId, onSortChange, currentSort = {}) {
+  bindSortHeaders(tableOrId, onSortChange, currentSort = {}, opts = {}) {
     const table = typeof tableOrId === "string" ? document.getElementById(tableOrId) : tableOrId;
     if (!table) return;
 
@@ -1077,6 +1077,21 @@ const FinanceTable = {
       const dir = isActive ? currentSort.sortDir : "none";
       th.setAttribute("aria-sort", dir === "none" ? "none" : dir === "asc" ? "ascending" : "descending");
 
+      if (opts.textArrows) {
+        // HR lists: one tall arrow (↑ / ↓) on the ordered column only, as in the mocks.
+        // Before the user sorts, the column named by data-sort-default shows its starting direction.
+        const shown = isActive ? currentSort.sortDir : (currentSort.sortBy == null && th.dataset.sortDefault) || "none";
+        th.dataset.sortActive = shown === "none" ? "false" : "true";
+        let arrow = th.querySelector(".sort-arrow");
+        if (!arrow) {
+          arrow = document.createElement("span");
+          arrow.className = "sort-arrow";
+          arrow.setAttribute("aria-hidden", "true");
+          th.appendChild(arrow);
+        }
+        arrow.textContent = shown === "asc" ? " ↑" : shown === "desc" ? " ↓" : "";
+        if (shown !== "none") th.setAttribute("aria-sort", shown === "asc" ? "ascending" : "descending");
+      } else {
       let icon = th.querySelector(".sort-icon");
       if (!icon) {
         icon = document.createElement("i");
@@ -1088,11 +1103,14 @@ const FinanceTable = {
       } else {
         icon.className = "sort-icon fa-solid fa-sort";
       }
+      }
 
       const handler = () => {
         let newDir = "asc";
         if (currentSort.sortBy === col) {
           newDir = currentSort.sortDir === "asc" ? "desc" : "asc";
+        } else if (opts.textArrows && currentSort.sortBy == null && th.dataset.sortDefault) {
+          newDir = th.dataset.sortDefault === "asc" ? "desc" : "asc";
         }
         if (typeof onSortChange === "function") {
           onSortChange(col, newDir);
@@ -1217,7 +1235,7 @@ const FinanceTable = {
     const heads = [...table.querySelectorAll("thead th")];
     heads.forEach((th, i) => {
       const hidden = th.style.display === "none";
-      if (!th.dataset.sort && !hidden && !th.classList.contains("col-actions") && th.textContent.trim() && !th.querySelector("input")) {
+      if (!th.dataset.sort && !hidden && !th.classList.contains("col-actions") && th.textContent.trim() && !th.querySelector("input, .sr-only")) {
         th.dataset.sort = String(i);
       }
     });
@@ -1254,7 +1272,7 @@ const FinanceTable = {
         state.page = meta.page;
         const visible = new Set(meta.items);
         rows.forEach((tr) => { tr.hidden = !visible.has(tr); });
-        self.bindSortHeaders(table, (col, dir) => { state.sortBy = col; state.sortDir = dir; state.page = 1; api.refresh(); }, state);
+        self.bindSortHeaders(table, (col, dir) => { state.sortBy = col; state.sortDir = dir; state.page = 1; api.refresh(); }, state, { textArrows: true });
         if (rows.length <= state.pageSize && state.page === 1) {
           pager.innerHTML = "";
           pager.style.display = "none";
