@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { openAdminPage } from './helpers/admin-nav.js';
 
 test.describe('Frontend Consistency — Phase C Verification (Stop CSS Leaking)', () => {
-  test('AC 1: .section-title outside Payroll renders with components.css standard (18px), while Payroll preserves 17px', async ({ page }) => {
+  test('AC 1: .section-title outside Payroll renders with components.css standard (18px), while Payroll uses its own 15px (restyle v3)', async ({ page }) => {
     await page.goto('/?mock=admin');
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 15000 });
 
@@ -24,7 +24,7 @@ test.describe('Frontend Consistency — Phase C Verification (Stop CSS Leaking)'
       const el = document.querySelector('#a-finance-payroll .section-title');
       return el ? window.getComputedStyle(el).fontSize : null;
     });
-    expect(payrollTitleSize).toBe('17px');
+    expect(payrollTitleSize).toBe('15px');
   });
 
   test('AC 2: Generic labels outside Payroll do NOT leak Payroll uppercase 10.5px styling', async ({ page }) => {
@@ -114,7 +114,7 @@ test.describe('Frontend Consistency — Phase C Verification (Stop CSS Leaking)'
     });
 
     expect(payrollBadge).not.toBeNull();
-    expect(payrollBadge.fontWeight).toBe('700');
+    expect(payrollBadge.fontWeight).toBe('600');
     expect(['inline-flex', 'flex']).toContain(payrollBadge.display);
   });
 });

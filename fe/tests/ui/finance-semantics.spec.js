@@ -128,14 +128,14 @@ test.describe('Story 0.2 — Shared Money, Date, and Status Semantics', () => {
     expect(results.void).toContain('aria-label="Status: Void"');
   });
 
-  test('Acceptance Criteria 5: Overdue is derived from due date, balance, and void status', async ({ page }) => {
+  test('Acceptance Criteria 5: Overdue is a server flag (D-016/D-022); the client keeps the server status and void/cancelled', async ({ page }) => {
     await page.goto('/?mock=admin', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 10000 });
 
     const results = await page.evaluate(() => {
       const F = window.FinanceFormat;
       return {
-        // Due date in the past, status sent => should derive overdue
+        // Due date in the past, status sent => status stays 'sent' (overdue is the separate is_overdue flag)
         pastDueSent: F.getDerivedInvoiceStatus({ status: 'sent', due_date: '2020-01-01' }),
         // Due date in the past, status paid => remains paid
         pastDuePaid: F.getDerivedInvoiceStatus({ status: 'paid', due_date: '2020-01-01' }),
@@ -143,18 +143,18 @@ test.describe('Story 0.2 — Shared Money, Date, and Status Semantics', () => {
         pastDueVoid: F.getDerivedInvoiceStatus({ status: 'void', due_date: '2020-01-01' }),
         // Future due date => remains original status
         futureDueSent: F.getDerivedInvoiceStatus({ status: 'sent', due_date: '2099-12-31' }),
-        // Bill past due unpaid => overdue
+        // Bill past due unpaid => status stays 'unpaid' (overdue is the separate is_overdue flag)
         billPastDue: F.getDerivedBillStatus({ status: 'unpaid', due_date: '2020-01-01' }),
         // Bill past due paid => paid
         billPastPaid: F.getDerivedBillStatus({ status: 'paid', due_date: '2020-01-01' }),
       };
     });
 
-    expect(results.pastDueSent).toBe('overdue');
+    expect(results.pastDueSent).toBe('sent');
     expect(results.pastDuePaid).toBe('paid');
     expect(results.pastDueVoid).toBe('void');
     expect(results.futureDueSent).toBe('sent');
-    expect(results.billPastDue).toBe('overdue');
+    expect(results.billPastDue).toBe('unpaid');
     expect(results.billPastPaid).toBe('paid');
   });
 

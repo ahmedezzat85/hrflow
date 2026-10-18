@@ -30,7 +30,7 @@ test.describe('Frontend Consistency — Phase B Verification (Payroll Settings)'
     await expect(saveBar.locator('button:has-text("Save settings")')).toBeVisible();
   });
 
-  test('AC 2: Field dimensions match modal standards (13.5px text, 10px radius, 40px height, 1px border)', async ({ page }) => {
+  test('AC 2: Field dimensions match modal standards (13.5px text, 9px radius, 36px height, 1px border (restyle v3))', async ({ page }) => {
     const inputMetrics = await page.evaluate(() => {
       const input = document.getElementById('payrollTaxEffectiveFrom');
       const select = document.getElementById('payrollTargetExternalAccount');
@@ -52,13 +52,13 @@ test.describe('Frontend Consistency — Phase B Verification (Payroll Settings)'
     });
 
     expect(inputMetrics.inputFontSize).toBe('13.5px');
-    expect(inputMetrics.inputBorderRadius).toBe('10px');
-    expect(inputMetrics.inputHeight).toBe(40);
+    expect(inputMetrics.inputBorderRadius).toBe('9px');
+    expect(inputMetrics.inputHeight).toBe(36);
     expect(inputMetrics.inputBorderWidth).toBe('1px');
 
     expect(inputMetrics.selectFontSize).toBe('13.5px');
-    expect(inputMetrics.selectBorderRadius).toBe('10px');
-    expect(inputMetrics.selectHeight).toBe(40);
+    expect(inputMetrics.selectBorderRadius).toBe('9px');
+    expect(inputMetrics.selectHeight).toBe(36);
     expect(inputMetrics.selectBorderWidth).toBe('1px');
   });
 
@@ -97,8 +97,8 @@ test.describe('Frontend Consistency — Phase B Verification (Payroll Settings)'
       };
     });
 
-    // Dark surface color #171a24 = rgb(23, 26, 36)
-    expect(darkStyles.selectBg).toBe('rgb(23, 26, 36)');
-    expect(darkStyles.cardBg).toBe('rgb(23, 26, 36)');
+    // Dark surface (restyle v3 navy) #101d44 = rgb(16, 29, 68)
+    expect(darkStyles.selectBg).toBe('rgb(16, 29, 68)');
+    expect(darkStyles.cardBg).toBe('rgb(16, 29, 68)');
   });
 });

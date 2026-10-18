@@ -179,7 +179,7 @@ function renderAdminPortal() {
           </div>
         </td>
         <td data-label="Actions" class="col-actions hv-right">
-          <button class="btn btn-sm btn-primary" onclick="showSection('a-requests','admin')" title="Review in Pending Requests Queue">
+          <button class="btn btn-sm btn-outline" onclick="showSection('a-requests','admin')" title="Review in Pending Requests Queue">
             Review
           </button>
         </td>

@@ -25,7 +25,7 @@ test.describe('Frontend Consistency — Phase A Verification', () => {
     });
 
     expect(lightTokens.primary).toBe('#2056e8');
-    expect(lightTokens.textMuted).toBe('#7a8ea8');
+    expect(lightTokens.textMuted).toBe('#556983');
     expect(lightTokens.bgSecondary).toBe('#fafbfd');
 
     // Toggle to Dark mode
@@ -42,9 +42,9 @@ test.describe('Frontend Consistency — Phase A Verification', () => {
       };
     });
 
-    expect(darkTokens.primary).toBe('#3e72f8');
-    expect(darkTokens.textMuted).toBe('#9aa0b4');
-    expect(darkTokens.bgSecondary).toBe('#1d2130');
+    expect(darkTokens.primary).toBe('#3566ef');
+    expect(darkTokens.textMuted).toBe('#9fb0dc');
+    expect(darkTokens.bgSecondary).toBe('#15275a');
   });
 
   test('A2 Payroll Dark Mode: #a-finance-payroll inherits theme tokens and renders dark background', async ({ page }) => {
@@ -65,9 +65,9 @@ test.describe('Frontend Consistency — Phase A Verification', () => {
       };
     });
 
-    expect(payrollColors.bgVar).toBe('#0f1117');
-    expect(payrollColors.surfaceVar).toBe('#171a24');
-    expect(payrollColors.textVar).toBe('#f1f2f6');
+    expect(payrollColors.bgVar).toBe('#0b1634');
+    expect(payrollColors.surfaceVar).toBe('#101d44');
+    expect(payrollColors.textVar).toBe('#e9eeff');
   });
 
   test('A3 Icon Fix: fa-shield-halved renders with visible dimensions in callout', async ({ page }) => {
