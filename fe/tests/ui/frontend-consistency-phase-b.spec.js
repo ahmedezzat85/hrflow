@@ -12,12 +12,11 @@ test.describe('Frontend Consistency — Phase B Verification (Payroll Settings)'
     await page.waitForTimeout(500);
   });
 
-  test('AC 1: Standard section-title-group header; hero & duplicate buttons removed; Save/Cancel bar preserved', async ({ page }) => {
-    // Header check
-    const headerGroup = page.locator('#payrollViewSettings .payroll-settings-header .section-title-group');
-    await expect(headerGroup).toBeVisible();
-    await expect(headerGroup.locator('.section-title')).toContainText('Payroll Settings');
-    await expect(headerGroup.locator('.section-subtitle')).toContainText('Configure disbursement funding accounts');
+  test('AC 1: One intro line (no in-page title block, restyle v3); hero & duplicate buttons removed; Save/Cancel bar preserved', async ({ page }) => {
+    // The page title lives in the top bar; the page body opens with a single intro line
+    const intro = page.locator('#payrollViewSettings .pv-settings-intro');
+    await expect(intro).toBeVisible();
+    await expect(intro).toContainText('Defaults for every new payroll run');
 
     // Hero, Configuration pill, and duplicate top buttons should NOT exist
     await expect(page.locator('#payrollViewSettings .payroll-settings-hero')).toHaveCount(0);

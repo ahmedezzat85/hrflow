@@ -70,17 +70,17 @@ test.describe('Frontend Consistency — Phase A Verification', () => {
     expect(payrollColors.textVar).toBe('#e9eeff');
   });
 
-  test('A3 Icon Fix: fa-shield-halved renders with visible dimensions in callout', async ({ page }) => {
+  test('A3 Callouts: settings callouts render as text-only pv-callout boxes (the shield icon was dropped in restyle v3)', async ({ page }) => {
     await page.click('#payrollRailBtn');
     await page.waitForTimeout(300);
     await page.click('#payrollNavSettings');
     await page.waitForTimeout(400);
 
-    const icon = page.locator('#a-finance-payroll .settings-card-callout.callout-blue i');
-    await expect(icon).toBeVisible();
-    await expect(icon).toHaveClass(/fa-shield-halved/);
+    const callout = page.locator('#payrollViewSettings .pv-callout').first();
+    await expect(callout).toBeVisible();
+    await expect(callout.locator('i, svg')).toHaveCount(0);
 
-    const box = await icon.boundingBox();
+    const box = await callout.boundingBox();
     expect(box).not.toBeNull();
     expect(box.width).toBeGreaterThan(0);
     expect(box.height).toBeGreaterThan(0);
