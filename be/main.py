@@ -77,8 +77,10 @@ logger = get_logger("main")
 # (Phase 1) and config.py's Config.validate() for details.
 Config.validate()
 
+_docs_kwargs = (dict(docs_url=None, redoc_url=None, openapi_url=None) if Config.IS_PRODUCTION else {})
 app = FastAPI(title="HRFlow API", version="2.12.0",
-              description="HR Management System backend - Google Sheets database, Google Drive document storage (employee + company documents + external-salary invoices), Sign in with Google authentication only.")
+              description="HR Management System backend - Google Sheets database, Google Drive document storage (employee + company documents + external-salary invoices), Sign in with Google authentication only.",
+              **_docs_kwargs)
 
 origins = ["*"] if Config.ALLOWED_ORIGINS == "*" else Config.ALLOWED_ORIGINS.split(",")
 app.add_middleware(

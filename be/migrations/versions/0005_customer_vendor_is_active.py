@@ -26,7 +26,7 @@ def upgrade() -> None:
     if 'is_active' not in cust_cols:
         op.add_column(
             'finance_customers',
-            sa.Column('is_active', sa.Boolean(), server_default=sa.text('1'), nullable=False)
+            sa.Column('is_active', sa.Boolean(), server_default=sa.true(), nullable=False)
         )
 
     # 2. finance_vendors.is_active
@@ -34,7 +34,7 @@ def upgrade() -> None:
     if 'is_active' not in vendor_cols:
         op.add_column(
             'finance_vendors',
-            sa.Column('is_active', sa.Boolean(), server_default=sa.text('1'), nullable=False)
+            sa.Column('is_active', sa.Boolean(), server_default=sa.true(), nullable=False)
         )
 
 

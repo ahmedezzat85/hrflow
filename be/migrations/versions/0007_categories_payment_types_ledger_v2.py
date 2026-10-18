@@ -64,9 +64,9 @@ def upgrade() -> None:
             sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
             sa.Column('name', sa.String(length=100), nullable=False),
             sa.Column('kind', sa.String(length=20), nullable=False, server_default='other'),
-            sa.Column('is_active', sa.Boolean(), nullable=False, server_default='1'),
+            sa.Column('is_active', sa.Boolean(), nullable=False, server_default=sa.true()),
             sa.Column('sort_order', sa.Integer(), nullable=False, server_default='0'),
-            sa.Column('is_petty', sa.Boolean(), nullable=False, server_default='0'),
+            sa.Column('is_petty', sa.Boolean(), nullable=False, server_default=sa.false()),
             sa.Column('created_at', sa.DateTime(), nullable=True),
             sa.PrimaryKeyConstraint('id')
         )
@@ -101,9 +101,9 @@ def upgrade() -> None:
             sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
             sa.Column('name', sa.String(length=100), nullable=False),
             sa.Column('code', sa.String(length=50), nullable=False),
-            sa.Column('requires_cheque_number', sa.Boolean(), nullable=False, server_default='0'),
-            sa.Column('requires_bank_fee_flag', sa.Boolean(), nullable=False, server_default='0'),
-            sa.Column('is_active', sa.Boolean(), nullable=False, server_default='1'),
+            sa.Column('requires_cheque_number', sa.Boolean(), nullable=False, server_default=sa.false()),
+            sa.Column('requires_bank_fee_flag', sa.Boolean(), nullable=False, server_default=sa.false()),
+            sa.Column('is_active', sa.Boolean(), nullable=False, server_default=sa.true()),
             sa.Column('created_at', sa.DateTime(), nullable=True),
             sa.PrimaryKeyConstraint('id')
         )

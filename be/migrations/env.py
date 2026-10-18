@@ -70,6 +70,15 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
+        if connection.dialect.name == "postgresql":
+            # Some revision ids exceed Alembic's default VARCHAR(32) version column; PostgreSQL
+            # enforces the length (SQLite does not), so create the table wide up front.
+            connection.exec_driver_sql(
+                "CREATE TABLE IF NOT EXISTS alembic_version ("
+                "version_num VARCHAR(255) NOT NULL, "
+                "CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num))"
+            )
+            connection.commit()
         context.configure(
             connection=connection, target_metadata=target_metadata
         )
