@@ -1107,10 +1107,20 @@ const FinanceTable = {
 
       const handler = () => {
         let newDir = "asc";
-        if (currentSort.sortBy === col) {
+        if (opts.textArrows) {
+          // HR lists cycle: first click, opposite click, then back to the original order (sort cleared).
+          // The column showing its starting arrow flips first and clears on the next click.
+          const start = th.dataset.sortDefault;
+          const flipped = start === "asc" ? "desc" : "asc";
+          if (currentSort.sortBy === col) {
+            const clearAt = start ? flipped : "desc";
+            if (currentSort.sortDir === clearAt) { if (typeof onSortChange === "function") onSortChange(null, "asc"); return; }
+            newDir = "desc";
+          } else if (currentSort.sortBy == null && start) {
+            newDir = flipped;
+          }
+        } else if (currentSort.sortBy === col) {
           newDir = currentSort.sortDir === "asc" ? "desc" : "asc";
-        } else if (opts.textArrows && currentSort.sortBy == null && th.dataset.sortDefault) {
-          newDir = th.dataset.sortDefault === "asc" ? "desc" : "asc";
         }
         if (typeof onSortChange === "function") {
           onSortChange(col, newDir);
@@ -1252,7 +1262,12 @@ const FinanceTable = {
       refresh() {
         applying = true;
         const all = [...body.children].filter((tr) => tr.tagName === "TR");
-        const rows = all.filter((tr) => !tr.querySelector(".empty-state") && !tr.classList.contains("empty-row"));
+        let rows = all.filter((tr) => !tr.querySelector(".empty-state") && !tr.classList.contains("empty-row"));
+        // Remember the order the page rendered the rows in, so a cleared sort can restore it
+        rows.forEach((tr, i) => { if (tr.dataset.origOrder === undefined) tr.dataset.origOrder = String(i); });
+        if (state.sortBy === null && rows.length > 1) {
+          rows.slice().sort((a, b) => Number(a.dataset.origOrder) - Number(b.dataset.origOrder)).forEach((tr) => body.appendChild(tr));
+        }
         if (state.sortBy !== null && rows.length > 1) {
           const col = Number(state.sortBy);
           const dir = state.sortDir === "desc" ? -1 : 1;
@@ -1268,6 +1283,8 @@ const FinanceTable = {
           });
           keyed.forEach((o) => body.appendChild(o.tr));
         }
+        // Page in the order now shown in the table
+        rows = [...body.children].filter((tr) => tr.tagName === "TR" && !tr.querySelector(".empty-state") && !tr.classList.contains("empty-row"));
         const meta = self.paginate(rows, state.page, state.pageSize);
         state.page = meta.page;
         const visible = new Set(meta.items);
