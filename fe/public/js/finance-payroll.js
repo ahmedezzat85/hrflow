@@ -1081,12 +1081,18 @@
         totTotal += (r.baseExt + r.baseInt + c.bonusTotal);
 
         const inits = this.getInitials(r.name);
-        const bonusBadges = (r.bonuses || []).map((b, bIdx) => `
-          <span class="chip p-bonus-pill" style="display:inline-flex; align-items:center; gap:4px;">
-            <span>${b.type || 'Bonus'} $${Number(b.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} · ${(b.source || 'int').toUpperCase()}</span>
-            <button type="button" onclick="PayrollApp.deleteBonus(${r.id}, ${bIdx}, ${b.id ? `'${b.id}'` : 'null'})" style="border:none; background:transparent; color:#ef4444; cursor:pointer; padding:0 2px; font-weight:800; font-size:12px; line-height:1;" title="Remove">&times;</button>
-          </span>
-        `).join('');
+        // Bonus amounts (left aligned, one line each) and their reasons (coloured tags on the same lines)
+        const reasonTone = (type) => /sales/i.test(type || '') ? 'sales' : /support/i.test(type || '') ? 'support' : 'bonus';
+        const bonusAmounts = (r.bonuses || []).map((b, bIdx) => {
+          const src = String(b.source || 'int').toLowerCase().startsWith('ext') ? 'ext' : 'int';
+          const srcLabel = src === 'ext' ? 'External (USD transfer)' : 'Internal (EGP cash)';
+          return `<div class="pv-bonus-line">
+            <span class="pv-src-dot pv-src-dot--${src}" title="${srcLabel}" aria-label="${srcLabel}"></span>
+            <span class="pv-bonus-amount">$${Number(b.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            <button type="button" class="pv-bonus-x" title="Remove this bonus" aria-label="Remove ${escapeHtml(b.type || 'bonus')}" onclick="PayrollApp.deleteBonus(${r.id}, ${bIdx}, ${b.id ? `'${b.id}'` : 'null'})">&times;</button>
+          </div>`;
+        }).join('');
+        const bonusReasons = (r.bonuses || []).map((b) => `<div class="pv-bonus-line"><span class="pv-reason-tag pv-reason-tag--${reasonTone(b.type)}">${escapeHtml(b.type || 'Bonus')}</span></div>`).join('');
 
         rowsHtml += `
           <tr>
@@ -1103,8 +1109,9 @@
             <td class="num payroll-num" data-label="External base, USD" style="padding:8px 12px; text-align:right; font-variant-numeric:tabular-nums;">${this.money(r.baseExt)}</td>
             <td class="num payroll-num" data-label="Internal base, USD" style="padding:8px 12px; text-align:right; font-variant-numeric:tabular-nums;">${this.money(r.baseInt)}</td>
             <td class="payroll-bonus-col" data-label="Bonus or commission" style="padding:8px 12px; text-align:left;">
-              ${bonusBadges || '<span class="muted" style="color:var(--ink-muted); font-size:14px;">—</span>'}
+              ${bonusAmounts || '<span class="muted" style="color:var(--ink-muted); font-size:13px;">None</span>'}
             </td>
+            <td class="payroll-reason-col" data-label="Reason" style="padding:8px 12px; text-align:left;">${bonusReasons}</td>
             <td class="num payroll-num strong" data-label="Total pay, gross" style="padding:8px 16px; text-align:right; font-weight:700; color:var(--ink-strong); font-variant-numeric:tabular-nums;">${this.money(r.baseExt + r.baseInt + c.bonusTotal)}</td>
             <td class="col-actions" style="width:40px; text-align:center; padding:8px 8px;">
               <button type="button" class="plus" id="btnPlus_${r.id}" onclick="PayrollApp.toggleInlineBonus(${r.id}, this)" title="Add bonus / commission">+</button>
@@ -1154,7 +1161,7 @@
       expandTr.className = 'expand';
       expandTr.id = `expandRow_${empId}`;
       expandTr.innerHTML = `
-        <td colspan="6">
+        <td colspan="7">
           <div class="expandbox">
             ${existingHtml}
             <div class="inlineform">
@@ -1885,7 +1892,7 @@
           { label: 'Recipients', value: `${recipients} ${recipients === 1 ? 'employee' : 'employees'}` },
           { label: 'Missing bank details', value: `${missing} ${missing === 1 ? 'employee' : 'employees'}`, tone: missing > 0 ? 'amber' : 'neutral' },
         ],
-        consequence: `Internal salaries ${this.money(totals.int)} from ${intBankName} and external salaries ${this.money(totals.ext)} from ${extBankName} for ${recipients} employees, dated ${fmtDateShort(paidOn)} (missing bank details do not block this).`,
+        consequence: `Internal salaries ${this.money(totals.int)} from ${intBankName} and external salaries ${this.money(totals.ext)} from ${extBankName}, dated ${fmtDateShort(paidOn)}. Missing bank details do not block this.`,
         actionLabel: 'Confirm and record as paid',
         actionClass: 'btn btn-fill',
         severity: 'warning',
@@ -1932,6 +1939,9 @@
       const status = this.currentRun && this.currentRun.status;
       const paid = status === 'paid';
       const ready = ['finalized', 'processing', 'partially_paid'].includes(status);
+      // "Next: Statutory payments" joins the footer once the payment is recorded
+      const nextBtn = document.getElementById('btnP5ProceedStatutory');
+      if (nextBtn) nextBtn.hidden = !(paid || status === 'partially_paid');
       if (paid || status === 'partially_paid') this.showRecordedAsPaid(btn);
       else btn.disabled = !ready;
       if (hint) {

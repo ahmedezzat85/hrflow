@@ -921,7 +921,8 @@ for (const theme of ['light', 'dark']) {
       await expect(ths.nth(1)).toHaveText('External base, USD');
       await expect(ths.nth(2)).toHaveText('Internal base, USD');
       await expect(ths.nth(3)).toHaveText('Bonus or commission');
-      await expect(ths.nth(4)).toHaveText('Total pay, gross');
+      await expect(ths.nth(4)).toHaveText('Reason');
+      await expect(ths.nth(5)).toHaveText('Total pay, gross');
 
       // 4. Employee first cell two-line structure (name + role subline)
       const firstRow = page.locator('#payrollTableBody tr').first();
@@ -1120,7 +1121,8 @@ for (const theme of ['light', 'dark']) {
       await submitAndApprove(page);
       await page.click('#btnP3Next');
       await page.click('#btnP4Next');
-      await page.click('#btnP5ProceedStatutory');
+      // "Next: Statutory payments" appears once the payment is recorded; the stepper reaches Step 6 directly
+      await page.evaluate(() => PayrollApp.setStep(5));
 
       const s6 = page.locator('#payrollScreen6');
       await expect(s6).toBeVisible();

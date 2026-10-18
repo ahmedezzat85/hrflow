@@ -124,7 +124,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     await expect(expandRow).not.toBeVisible();
 
     // Verify row displays bonus badge
-    await expect(rows.first().locator('.p-bonus-pill')).toContainText('450');
+    await expect(rows.first().locator('.pv-bonus-amount')).toContainText('450');
 
     // Save Draft
     await page.click('#btnP2SaveDraft');

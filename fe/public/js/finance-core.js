@@ -781,7 +781,7 @@ const FinanceCommand = {
           tilesEl.style.display = "grid";
           const safe = (v) => (typeof escapeHtml === "function" ? escapeHtml(v) : String(v));
           tilesEl.innerHTML = options.tiles.map(t => `
-            <div style="padding: 10px 12px; border-radius: 12px; background: ${t.tone === 'amber' ? 'var(--warning-soft)' : 'var(--fv-canvas)'};">
+            <div style="padding: 10px 12px; border-radius: 12px; background: ${t.tone === 'amber' ? 'var(--warning-soft)' : 'var(--fv-surface-soft)'};">
               <div style="font-size: 12px; color: ${t.tone === 'amber' ? 'var(--warning-text, var(--warning))' : 'var(--ink-muted)'};">${safe(t.label)}</div>
               <div style="font-weight: 700; color: var(--ink-strong); font-size: 14px;">${safe(t.value)}</div>
             </div>
