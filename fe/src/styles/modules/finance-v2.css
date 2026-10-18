@@ -2470,3 +2470,10 @@
 
 /* More breathing room in finance rows (finance mocks run 60-64 px per row; these were 51) */
 .fv .fv-table tbody td { padding-top: 13px; padding-bottom: 13px; }
+
+/* Dark theme: muted status text reached only 3.8-4.3:1 on the closed/neutral tints; lift to the muted ink (4.5:1 minimum) */
+[data-theme="dark"] .fv .fv-status--closed,
+[data-theme="dark"] .fv .fv-pill--closed,
+[data-theme="dark"] .fv .fv-pill--closed .fv-pill__count,
+[data-theme="dark"] .fv .fv-impact__tile--dir { color: var(--ink-muted); }
+[data-theme="dark"] .fv-dialog [role="radiogroup"] small { opacity: 1; }

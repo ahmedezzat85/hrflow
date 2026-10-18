@@ -11,28 +11,28 @@
             <!-- Card 1: Vacation days left (gradient) -->
             <div class="hero-card hero-card-accent" onclick="showSection('e-vacations','employee')" style="display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; border-radius: 14px; background: var(--brand-gradient); box-shadow: var(--fv-shadow-hero); text-decoration: none; color: var(--fv-on-brand); cursor: pointer;">
               <span style="font-size: 12.5px; font-weight: 600; color: var(--fv-on-brand); opacity: .88;">Vacation days left</span>
-              <span style="font-family: var(--font-display, Sora, sans-serif); font-weight: 700; font-size: 28px; line-height: 1.1;"><span id="empDashVacDays">—</span> <span id="empDashVacTotal" style="font-size: 15px; font-family: var(--font-body, Inter, sans-serif); font-weight: 500; color: var(--fv-on-brand); opacity: .85;">of 21</span></span>
+              <span style="font-family: var(--font-head, Sora, sans-serif); font-weight: 700; font-size: 28px; line-height: 1.1;"><span id="empDashVacDays">—</span> <span id="empDashVacTotal" style="font-size: 15px; font-family: var(--font-body, Inter, sans-serif); font-weight: 500; color: var(--fv-on-brand); opacity: .85;">of 21</span></span>
               <span style="display: flex; justify-content: space-between; font-size: 12.5px; color: var(--fv-on-brand); opacity: .88;"><span id="empDashVacUsedFoot">Annual leave</span><span style="font-weight: 600; color: var(--fv-on-brand);">Vacations ›</span></span>
             </div>
 
             <!-- Card 2: Monthly pay -->
             <div class="hero-card" onclick="showSection('e-salary','employee')" style="display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; border-radius: 14px; border: 1px solid var(--fv-line); background: var(--fv-surface); box-shadow: var(--fv-shadow-card); text-decoration: none; color: var(--ink-strong); cursor: pointer;">
               <span style="display: flex; align-items: center; justify-content: space-between;"><span style="font-size: 12.5px; font-weight: 600; color: var(--ink-label);">Monthly pay</span><span style="width:30px;height:30px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;background:var(--fv-area-green-bg);color:var(--fv-area-green-ink);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"></path></svg></span></span>
-              <span id="empDashSalary" style="font-family: var(--font-display, Sora, sans-serif); font-weight: 700; font-size: 28px; line-height: 1.1; color: var(--ink-strong);">—</span>
+              <span id="empDashSalary" style="font-family: var(--font-head, Sora, sans-serif); font-weight: 700; font-size: 28px; line-height: 1.1; color: var(--ink-strong);">—</span>
               <span style="display: flex; justify-content: space-between; font-size: 12.5px; color: var(--ink-muted);"><span>internal and external, USD</span><span style="color: var(--brand); font-weight: 600;">Salary ›</span></span>
             </div>
 
             <!-- Card 3: Work from home -->
             <div class="hero-card" onclick="showSection('e-vacations','employee')" style="display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; border-radius: 14px; border: 1px solid var(--fv-line); background: var(--fv-surface); box-shadow: var(--fv-shadow-card); text-decoration: none; color: var(--ink-strong); cursor: pointer;">
               <span style="display: flex; align-items: center; justify-content: space-between;"><span style="font-size: 12.5px; font-weight: 600; color: var(--ink-label);">Work from home</span><span style="width:30px;height:30px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;background:var(--accent-soft);color:var(--brand-ink);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9H3zM9 20v-6h6v6"></path></svg></span></span>
-              <span id="empDashWfh" style="font-family: var(--font-display, Sora, sans-serif); font-weight: 700; font-size: 28px; line-height: 1.1; color: var(--ink-strong);">—</span>
+              <span id="empDashWfh" style="font-family: var(--font-head, Sora, sans-serif); font-weight: 700; font-size: 28px; line-height: 1.1; color: var(--ink-strong);">—</span>
               <span style="display: flex; justify-content: space-between; font-size: 12.5px; color: var(--ink-muted);"><span id="empDashWfhFoot">days this month</span><span style="color: var(--brand); font-weight: 600;">Vacations ›</span></span>
             </div>
 
             <!-- Card 4: Open claims -->
             <div class="hero-card" onclick="showSection('e-insurance','employee')" style="display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; border-radius: 14px; border: 1px solid var(--fv-line); background: var(--fv-surface); box-shadow: var(--fv-shadow-card); text-decoration: none; color: var(--ink-strong); cursor: pointer;">
               <span style="display: flex; align-items: center; justify-content: space-between;"><span style="font-size: 12.5px; font-weight: 600; color: var(--ink-label);">Open claims</span><span style="width:30px;height:30px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;background:var(--fv-area-teal-bg);color:var(--fv-area-teal-ink);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-8-5.2-8-10.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5C20 14.8 12 20 12 20z"></path></svg></span></span>
-              <span id="empDashClaims" style="font-family: var(--font-display, Sora, sans-serif); font-weight: 700; font-size: 28px; line-height: 1.1; color: var(--ink-strong);">—</span>
+              <span id="empDashClaims" style="font-family: var(--font-head, Sora, sans-serif); font-weight: 700; font-size: 28px; line-height: 1.1; color: var(--ink-strong);">—</span>
               <span style="display: flex; justify-content: space-between; font-size: 12.5px; color: var(--ink-muted);"><span id="empDashClaimsFoot">Waiting for review</span><span style="color: var(--brand); font-weight: 600;">Insurance ›</span></span>
             </div>
           </div>
@@ -40,14 +40,14 @@
           <div style="display: grid; grid-template-columns: 1.6fr 1fr; gap: 14px; margin-bottom: 14px;">
             <!-- Recent requests -->
             <section class="card" style="background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: 14px; overflow: hidden; box-shadow: var(--fv-shadow-card);">
-              <div style="padding: 14px 16px; border-bottom: 1px solid var(--fv-line);"><h2 style="margin: 0; font-family: var(--font-display, Sora, sans-serif); font-size: 15px; color: var(--ink-strong);">My recent requests</h2></div>
+              <div style="padding: 14px 16px; border-bottom: 1px solid var(--fv-line);"><h2 style="margin: 0; font-family: var(--font-head, Sora, sans-serif); font-size: 15px; color: var(--ink-strong);">My recent requests</h2></div>
               <div id="empTimeline" style="display: flex; flex-direction: column;"></div>
             </section>
 
             <!-- Next raise -->
             <section class="card" style="background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: 14px; box-shadow: var(--fv-shadow-card); padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;">
-              <h2 style="margin: 0; font-family: var(--font-display, Sora, sans-serif); font-size: 15px; color: var(--ink-strong);">Next raise</h2>
-              <div id="empNextRaiseDate" style="font-family: var(--font-display, Sora, sans-serif); font-weight: 700; font-size: 24px; color: var(--ink-strong);">—</div>
+              <h2 style="margin: 0; font-family: var(--font-head, Sora, sans-serif); font-size: 15px; color: var(--ink-strong);">Next raise</h2>
+              <div id="empNextRaiseDate" style="font-family: var(--font-head, Sora, sans-serif); font-weight: 700; font-size: 24px; color: var(--ink-strong);">—</div>
               <div id="empNextRaiseNote" style="font-size: 13px; color: var(--ink-muted);">No raise date scheduled yet.</div>
               <button type="button" class="btn btn-outline" onclick="showSection('e-salary','employee')" style="align-self: flex-start; display: inline-flex; align-items: center; height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--fv-input-border); color: var(--brand-ink); font-weight: 600; font-size: 13px; background: transparent; cursor: pointer;">Salary history</button>
             </section>
@@ -56,7 +56,7 @@
           <!-- Medical insurance -->
           <section class="card" style="background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: 14px; padding: 14px 16px; box-shadow: var(--fv-shadow-card); display: flex; align-items: center; gap: 24px; flex-wrap: wrap;">
             <div style="flex: none;">
-              <h2 style="margin: 0; font-family: var(--font-display, Sora, sans-serif); font-size: 15px; color: var(--ink-strong);">My medical insurance</h2>
+              <h2 style="margin: 0; font-family: var(--font-head, Sora, sans-serif); font-size: 15px; color: var(--ink-strong);">My medical insurance</h2>
               <div id="empDashInsuranceSub" style="font-size: 12.5px; color: var(--ink-muted);">Insurance consumption overview</div>
             </div>
             <div id="empDashInsuranceCategoryChips" style="flex: 1; min-width: 280px; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;"></div>

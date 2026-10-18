@@ -758,7 +758,7 @@
   border: none;
 }
 #a-dashboard td.col-actions .btn:hover {
-  background: var(--brand-hover, var(--brand));
+  background: var(--brand-ink, var(--brand));
 }
 #a-insurance .grid .empty-state, #a-insurance .g4 .empty-state { grid-column: 1 / -1; width: 100%; }
 
@@ -1236,3 +1236,13 @@
 .fv .hv-reqtype__dot--sky { background: var(--id-sky); }
 .fv .hv-reqtype__dot--pink { background: var(--id-pink); }
 #a-requests td[data-label="Request"] .hv-sub-line { margin-top: 0; }
+
+[data-theme="dark"] .fv .hv-text-brand { color: var(--brand-text); }
+
+/* Phone layouts: every tap target is at least 44px (inline sizes on the role/user buttons need !important) */
+@media (max-width: 768px) {
+  #a-employees td a[onclick^="viewProfile"] { min-height: 44px; padding: 12px 0; box-sizing: border-box; }
+  #a-employee-detail .ed-link-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; }
+  #a-invoices .hv-select, #a-invoices .hv-link-btn { min-height: 44px; }
+  #a-system-roles .btn-delete-role, #a-system-users .btn-archive-user { width: 44px !important; height: 44px !important; }
+}
