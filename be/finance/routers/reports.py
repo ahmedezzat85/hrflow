@@ -140,6 +140,29 @@ def get_revenue_breakdown(
     return service.get_revenue_breakdown(date_from=date_from, date_to=date_to, currency=currency, book=book)
 
 
+@router.get("/subscription-spend", response_model=Dict[str, Any])
+def get_subscription_spend(
+    date_from: Optional[str] = Query(None, description="From billing date (YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="To billing date (YYYY-MM-DD)"),
+    currency: str = Query("ALL", description="Currency filter, or ALL for one figure per currency"),
+    book: Optional[str] = Query(None, description="Book of the paying account: local | overseas | consolidated. Omitted = all."),
+    service: ReportsService = Depends(get_reports_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+):
+    """Settled subscription charges by month, vendor, department and book (X6)."""
+    return service.get_subscription_spend(date_from=date_from, date_to=date_to, currency=currency, book=book)
+
+
+@router.get("/subscription-proofs-missing", response_model=Dict[str, Any])
+def get_subscription_proofs_missing(
+    book: Optional[str] = Query(None, description="Book of the paying account. Omitted = all."),
+    service: ReportsService = Depends(get_reports_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+):
+    """Charges whose expected proof of payment is still pending (X6)."""
+    return service.get_subscription_proofs_missing(book=book)
+
+
 @router.get("/cash-forecast", response_model=CashForecastResponse)
 def get_cash_forecast(
     currency: str = Query("all", description="Currency filter: all, USD, EGP"),

@@ -25,6 +25,7 @@ from finance.models import (
     PaymentDB,
     BillDB,
     SubscriptionDB,
+    SubscriptionChargeDB,
     FinanceSavedReportViewDB,
     FinanceExportAuditDB,
     FinanceReportScheduleDB,
@@ -45,6 +46,8 @@ from finance.services.excel_exporter import (
     export_cash_flow_xlsx,
     export_aging_xlsx,
     export_report_csv,
+    export_flat_xlsx,
+    FLAT_REPORTS,
 )
 
 
@@ -610,6 +613,110 @@ class ReportsService:
             "conversion_policy": "One figure per currency. Currencies are never added together and no converted total is shown.",
         }
 
+    # ------------------------------------------------------------------
+    # Subscription analytics (X6, D-031)
+    # ------------------------------------------------------------------
+    def get_subscription_spend(
+        self,
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
+        currency: Optional[str] = "ALL",
+        book: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """What settled subscription charges cost, by vendor, department and book (the book of the paying account)."""
+        scope = self._scope(book)
+        curr_norm = (currency or "ALL").upper()
+        q = (
+            self.db.query(SubscriptionChargeDB)
+            .join(SubscriptionDB, SubscriptionChargeDB.subscription_id == SubscriptionDB.id)
+            .filter(SubscriptionChargeDB.status == "settled")
+        )
+        if date_from:
+            q = q.filter(SubscriptionChargeDB.billing_date >= date_from)
+        if date_to:
+            q = q.filter(SubscriptionChargeDB.billing_date <= date_to)
+        if curr_norm != "ALL":
+            q = q.filter(SubscriptionChargeDB.currency == curr_norm)
+
+        agg: Dict[Tuple, List[float]] = {}
+        by_vendor: Dict[Tuple[str, str], float] = {}
+        by_department: Dict[Tuple[str, str], float] = {}
+        by_book: Dict[Tuple[str, str], float] = {}
+        totals: Dict[str, float] = {}
+        for c in q.all():
+            sub = c.subscription
+            acc_id = sub.payment_account_id
+            if scope.restricts and not (scope.owns_account(acc_id) if acc_id else scope.owns_unattributed()):
+                continue
+            cur = (c.currency or "USD").upper()
+            vendor = sub.vendor.name if sub.vendor else "Unknown vendor"
+            department = sub.department or "No department"
+            book_code = scope.book_of(acc_id)
+            paid_from = sub.payment_account.account_name if sub.payment_account else "Not set"
+            key = ((c.billing_date or "")[:7], vendor, department, sub.name, book_code, paid_from, cur)
+            cell = agg.setdefault(key, [0.0, 0.0])
+            cell[0] += float(c.amount or 0.0)
+            cell[1] += float(c.variance_amount or 0.0)
+            by_vendor[(vendor, cur)] = by_vendor.get((vendor, cur), 0.0) + float(c.amount or 0.0)
+            by_department[(department, cur)] = by_department.get((department, cur), 0.0) + float(c.amount or 0.0)
+            by_book[(book_code, cur)] = by_book.get((book_code, cur), 0.0) + float(c.amount or 0.0)
+            totals[cur] = totals.get(cur, 0.0) + float(c.amount or 0.0)
+
+        rows = [
+            {"month": k[0], "vendor": k[1], "department": k[2], "subscription": k[3], "book_code": k[4], "paid_from": k[5],
+             "currency": k[6], "amount": round(v[0], 2), "variance": round(v[1], 2)}
+            for k, v in sorted(agg.items())
+        ]
+        roll = lambda d, label: [{label: k[0], "currency": k[1], "amount": round(v, 2)} for k, v in sorted(d.items(), key=lambda kv: (-kv[1], kv[0]))]
+        return {
+            "report_title": "Subscription Spend",
+            "book": scope.view,
+            "date_from": date_from,
+            "date_to": date_to,
+            "currency": curr_norm,
+            "rows": rows,
+            "by_vendor": roll(by_vendor, "vendor"),
+            "by_department": roll(by_department, "department"),
+            "by_book": roll(by_book, "book_code"),
+            "totals_by_currency": {k: round(v, 2) for k, v in totals.items()},
+            "conversion_policy": "One figure per currency. Currencies are never added together and no converted total is shown.",
+        }
+
+    def get_subscription_proofs_missing(self, book: Optional[str] = None) -> Dict[str, Any]:
+        """Charges whose expected proof of payment is still pending."""
+        scope = self._scope(book)
+        q = (
+            self.db.query(SubscriptionChargeDB)
+            .join(SubscriptionDB, SubscriptionChargeDB.subscription_id == SubscriptionDB.id)
+            .filter(
+                SubscriptionChargeDB.proof_status == "pending",
+                SubscriptionChargeDB.status.in_(["expected", "settled"]),
+                SubscriptionDB.proof_expected == True,  # noqa: E712
+            )
+            .order_by(SubscriptionChargeDB.billing_date.desc(), SubscriptionChargeDB.id.desc())
+        )
+        rows = []
+        totals: Dict[str, float] = {}
+        for c in q.all():
+            sub = c.subscription
+            acc_id = sub.payment_account_id
+            if scope.restricts and not (scope.owns_account(acc_id) if acc_id else scope.owns_unattributed()):
+                continue
+            cur = (c.currency or "USD").upper()
+            totals[cur] = totals.get(cur, 0.0) + float(c.amount or 0.0)
+            rows.append({
+                "charge_id": c.id, "billing_date": c.billing_date, "subscription": sub.name, "vendor": sub.vendor.name if sub.vendor else "Unknown vendor",
+                "status": c.status, "currency": cur, "amount": round(float(c.amount or 0.0), 2), "proof_source": sub.proof_source or "none",
+                "billing_email": sub.billing_email or "", "book_code": scope.book_of(acc_id),
+                "paid_from": sub.payment_account.account_name if sub.payment_account else "Not set",
+            })
+        return {
+            "report_title": "Subscription Proofs Missing",
+            "book": scope.view,
+            "rows": rows,
+            "totals_by_currency": {k: round(v, 2) for k, v in totals.items()},
+        }
+
     def get_category_by_period_matrix(
         self,
         year: int,
@@ -1029,6 +1136,42 @@ class ReportsService:
                 "supported_formats": ["json"],
                 "required_permission": "finance.report.read",
                 "badge": "Payables",
+            },
+            {
+                "key": "revenue-breakdown",
+                "title": "Revenue by Product, Book and Source",
+                "category": "Performance",
+                "business_question": "Which products, sources and books does our revenue come from, per currency?",
+                "description": "Cash-basis revenue by month, book, source, product and customer, with an Untagged revenue row. One figure per currency.",
+                "icon": "fa-solid fa-sack-dollar",
+                "supported_basis": ["cash"],
+                "supported_formats": ["json", "xlsx", "csv"],
+                "required_permission": "finance.report.read",
+                "badge": "Revenue",
+            },
+            {
+                "key": "subscription-spend",
+                "title": "Subscription Spend",
+                "category": "Spend & Payables",
+                "business_question": "What do our subscriptions cost by vendor, department and book?",
+                "description": "Settled subscription charges by month, vendor, department and the book of the paying account.",
+                "icon": "fa-solid fa-repeat",
+                "supported_basis": ["cash"],
+                "supported_formats": ["json", "xlsx", "csv"],
+                "required_permission": "finance.report.read",
+                "badge": "Subscriptions",
+            },
+            {
+                "key": "subscription-proofs-missing",
+                "title": "Subscription Proofs Missing",
+                "category": "Audit & Compliance",
+                "business_question": "Which subscription charges still have no proof of payment?",
+                "description": "Charges that expect a proof and have neither a file nor a reason it is unavailable.",
+                "icon": "fa-solid fa-paperclip",
+                "supported_basis": ["cash"],
+                "supported_formats": ["json", "xlsx", "csv"],
+                "required_permission": "finance.report.read",
+                "badge": "Controls",
             },
             # Audit & Compliance
             {
@@ -2099,6 +2242,7 @@ class ReportsService:
             "entity": filters.get("entity", "Voyance Health (Consolidated)"),
             "basis": filters.get("basis", "cash"),
             "currency": filters.get("currency", "USD"),
+            "book": {"local": "Local", "overseas": "Overseas", "consolidated": "Consolidated"}.get(str(filters.get("book") or "").lower(), "All accounts"),
             "period": f"{filters.get('date_from', 'Beginning')} to {filters.get('date_to', 'Current')}" if filters.get("date_from") or filters.get("date_to") else "As Of Cutoff",
             "generated_at": now_str,
             "requesting_user": user_email or "System User",
@@ -2202,6 +2346,25 @@ class ReportsService:
                 search=filters.get("search"),
             )
             row_count = len(data.get("transactions", []))
+        elif report_key == "revenue-breakdown":
+            data = self.get_revenue_breakdown(
+                date_from=filters.get("date_from"),
+                date_to=filters.get("date_to"),
+                currency=filters.get("currency", "ALL"),
+                book=filters.get("book"),
+            )
+            row_count = len(data.get("rows", []))
+        elif report_key == "subscription-spend":
+            data = self.get_subscription_spend(
+                date_from=filters.get("date_from"),
+                date_to=filters.get("date_to"),
+                currency=filters.get("currency", "ALL"),
+                book=filters.get("book"),
+            )
+            row_count = len(data.get("rows", []))
+        elif report_key == "subscription-proofs-missing":
+            data = self.get_subscription_proofs_missing(book=filters.get("book"))
+            row_count = len(data.get("rows", []))
         elif report_key == "cheques":
             data = self.get_cheque_register(
                 fiscal_year=str(filters.get("fiscal_year", datetime.utcnow().year)),
@@ -2249,6 +2412,8 @@ class ReportsService:
                 file_bytes = export_balances_xlsx(data)
             elif report_key == "transactions":
                 file_bytes = export_transactions_xlsx(data)
+            elif report_key in FLAT_REPORTS:
+                file_bytes = export_flat_xlsx(report_key, data, metadata)
             elif report_key == "cheques":
                 file_bytes = export_cheques_xlsx(data)
             else:

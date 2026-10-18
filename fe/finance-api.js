@@ -5033,6 +5033,39 @@ if (typeof window !== "undefined") window._withBook = _withBook;
             badge: "Payables",
           },
           {
+            key: "revenue-breakdown",
+            title: "Revenue by Product, Book and Source",
+            category: "Performance",
+            business_question: "Which products, sources and books does our revenue come from, per currency?",
+            description: "Cash-basis revenue by month, book, source, product and customer, with an Untagged revenue row. One figure per currency.",
+            icon: "fa-solid fa-sack-dollar",
+            supported_basis: ["cash"],
+            supported_formats: ["json", "xlsx", "csv"],
+            badge: "Revenue",
+          },
+          {
+            key: "subscription-spend",
+            title: "Subscription Spend",
+            category: "Spend & Payables",
+            business_question: "What do our subscriptions cost by vendor, department and book?",
+            description: "Settled subscription charges by month, vendor, department and the book of the paying account.",
+            icon: "fa-solid fa-repeat",
+            supported_basis: ["cash"],
+            supported_formats: ["json", "xlsx", "csv"],
+            badge: "Subscriptions",
+          },
+          {
+            key: "subscription-proofs-missing",
+            title: "Subscription Proofs Missing",
+            category: "Audit & Compliance",
+            business_question: "Which subscription charges still have no proof of payment?",
+            description: "Charges that expect a proof and have neither a file nor a reason it is unavailable.",
+            icon: "fa-solid fa-paperclip",
+            supported_basis: ["cash"],
+            supported_formats: ["json", "xlsx", "csv"],
+            badge: "Controls",
+          },
+          {
             key: "transactions",
             title: "Continuous Transaction Ledger",
             category: "Audit & Compliance",
@@ -5216,6 +5249,51 @@ if (typeof window !== "undefined") window._withBook = _withBook;
     }
     const qs = new URLSearchParams(params).toString();
     return apiRequest("GET", `/api/finance/reports/drilldown${qs ? "?" + qs : ""}`);
+  },
+
+  async getSubscriptionSpendReport(params = {}) {
+    params = _withBook(params, "reports");
+    if (_isMock()) {
+      const settled = (FinanceMockState.subscriptionCharges || []).filter((c) => c.status === "settled");
+      const rows = {};
+      const totals = {};
+      const roll = { vendor: {}, department: {}, book_code: {} };
+      settled.forEach((c) => {
+        const sub = (FinanceMockState.subscriptions || []).find((s) => s.id === c.subscription_id) || {};
+        const acc = (FinanceMockState.accounts || []).find((a) => a.id === sub.payment_account_id);
+        const book = acc ? acc.book_code : "local";
+        if (params.book && params.book !== "consolidated" && params.book !== book) return;
+        if (params.currency && String(params.currency).toUpperCase() !== "ALL" && c.currency !== String(params.currency).toUpperCase()) return;
+        const dept = sub.department || "No department";
+        const vendor = sub.vendor_name || "Unknown vendor";
+        const key = [c.billing_date.slice(0, 7), vendor, dept, sub.name, book, c.currency].join("|");
+        rows[key] = rows[key] || { month: c.billing_date.slice(0, 7), vendor, department: dept, subscription: sub.name, book_code: book, paid_from: acc ? acc.account_name : "Not set", currency: c.currency, amount: 0, variance: 0 };
+        rows[key].amount = round(rows[key].amount + c.amount, 2);
+        rows[key].variance = round(rows[key].variance + (c.variance_amount || 0), 2);
+        totals[c.currency] = round((totals[c.currency] || 0) + c.amount, 2);
+        [["vendor", vendor], ["department", dept], ["book_code", book]].forEach(([k, v]) => { const kk = v + "|" + c.currency; roll[k][kk] = round((roll[k][kk] || 0) + c.amount, 2); });
+      });
+      const rollList = (k) => Object.entries(roll[k]).map(([kk, amount]) => { const [name, currency] = kk.split("|"); return { [k]: name, currency, amount }; }).sort((a, b) => b.amount - a.amount);
+      return { report_title: "Subscription Spend", book: params.book || null, currency: (params.currency || "ALL").toUpperCase(), rows: Object.values(rows), by_vendor: rollList("vendor"), by_department: rollList("department"), by_book: rollList("book_code"), totals_by_currency: totals, conversion_policy: "One figure per currency. Currencies are never added together and no converted total is shown." };
+    }
+    const qs = new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ""))).toString();
+    return apiRequest("GET", `/api/finance/reports/subscription-spend${qs ? "?" + qs : ""}`);
+  },
+
+  async getSubscriptionProofsMissingReport(params = {}) {
+    params = _withBook(params, "reports");
+    if (_isMock()) {
+      const charges = await FinanceApi.getSubscriptionChargesV2({ proofs_missing: true, book: params.book });
+      const totals = {};
+      const rows = charges.map((c) => {
+        totals[c.currency] = round((totals[c.currency] || 0) + c.amount, 2);
+        const sub = (FinanceMockState.subscriptions || []).find((s) => s.id === c.subscription_id) || {};
+        return { charge_id: c.id, billing_date: c.billing_date, subscription: c.subscription_name, vendor: c.vendor_name, status: c.status, currency: c.currency, amount: c.amount, proof_source: c.proof_source || "none", billing_email: sub.billing_email || "", book_code: c.book_code, paid_from: c.payment_account_name || "Not set" };
+      });
+      return { report_title: "Subscription Proofs Missing", book: params.book || null, rows, totals_by_currency: totals };
+    }
+    const qs = new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ""))).toString();
+    return apiRequest("GET", `/api/finance/reports/subscription-proofs-missing${qs ? "?" + qs : ""}`);
   },
 
   async getProfitAndLossReport(params = {}) {

@@ -199,6 +199,72 @@
                 <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="statutory-remitted" onclick="switchFinanceReportsTab('statutory-remitted', this)"><i class="fa-solid fa-landmark"></i> Statutory Remitted</button>
                 <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="withholding-credits" onclick="switchFinanceReportsTab('withholding-credits', this)"><i class="fa-solid fa-hand-holding-dollar"></i> Withholding Credits</button>
                 <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="payable-status" onclick="switchFinanceReportsTab('payable-status', this)"><i class="fa-solid fa-money-bill-transfer"></i> Payable Status</button>
+                <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="revenue-breakdown" onclick="switchFinanceReportsTab('revenue-breakdown', this)"><i class="fa-solid fa-sack-dollar"></i> Revenue</button>
+                <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="subscription-spend" onclick="switchFinanceReportsTab('subscription-spend', this)"><i class="fa-solid fa-repeat"></i> Subscription Spend</button>
+                <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="subscription-proofs-missing" onclick="switchFinanceReportsTab('subscription-proofs-missing', this)"><i class="fa-solid fa-paperclip"></i> Proofs Missing</button>
+              </div>
+            </div>
+
+            <!-- PANE: Revenue by product, book and source (X6) -->
+            <div class="fr-u8" id="reportPaneRevenueBreakdown" style="display:none;">
+              <div class="card" style="padding:12px 16px; display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between;">
+                <div class="fv-sub">Cash-basis revenue. One figure per currency; currencies are never added together.</div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                  <label for="reportRevenueGroupBy" class="fv-sub">Group by</label>
+                  <select id="reportRevenueGroupBy" class="fv-select" onchange="renderRevenueBreakdown()">
+                    <option value="product_name">Product</option>
+                    <option value="book_code">Book</option>
+                    <option value="source">Source</option>
+                    <option value="customer_name">Customer</option>
+                    <option value="month">Month</option>
+                  </select>
+                </div>
+              </div>
+              <div class="fv-table-card">
+                <div class="fv-table-scroll">
+                  <table class="fv-table responsive-card-table" id="reportRevenueTable">
+                    <thead><tr><th id="reportRevenueGroupHead">Product</th><th>Currency</th><th class="cell-money fv-num">Revenue</th></tr></thead>
+                    <tbody id="reportRevenueTableBody"></tbody>
+                    <tfoot id="reportRevenueTableFoot"></tfoot>
+                  </table>
+                </div>
+                <div class="fv-foot" id="reportRevenueUntagged"></div>
+              </div>
+              <div class="fv-table-card" style="margin-top:16px;">
+                <div style="padding:12px 16px 0; font-weight:600;">Revenue receipts</div>
+                <div class="fv-table-scroll">
+                  <table class="fv-table responsive-card-table" id="reportRevenueReceiptsTable">
+                    <thead><tr><th>Date</th><th>Source</th><th>Product</th><th>Account</th><th class="cell-money fv-num">Amount</th><th class="col-actions"><span class="fv-sr-only">Actions</span></th></tr></thead>
+                    <tbody id="reportRevenueReceiptsBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- PANE: Subscription spend (X6) -->
+            <div class="fr-u8" id="reportPaneSubscriptionSpend" style="display:none;">
+              <div class="fv-table-card">
+                <div class="fv-table-scroll">
+                  <table class="fv-table responsive-card-table" id="reportSubSpendTable">
+                    <thead><tr><th>Month</th><th>Vendor</th><th>Department</th><th>Subscription</th><th>Book</th><th>Currency</th><th class="cell-money fv-num">Amount</th></tr></thead>
+                    <tbody id="reportSubSpendBody"></tbody>
+                    <tfoot id="reportSubSpendFoot"></tfoot>
+                  </table>
+                </div>
+                <div class="fv-foot" id="reportSubSpendRollups"></div>
+              </div>
+            </div>
+
+            <!-- PANE: Subscription proofs missing (X6) -->
+            <div class="fr-u8" id="reportPaneSubscriptionProofsMissing" style="display:none;">
+              <div class="fv-table-card">
+                <div class="fv-table-scroll">
+                  <table class="fv-table responsive-card-table" id="reportProofsMissingTable">
+                    <thead><tr><th>Billing date</th><th>Subscription</th><th>Vendor</th><th>Status</th><th>Proof comes from</th><th>Book</th><th class="cell-money fv-num">Amount</th></tr></thead>
+                    <tbody id="reportProofsMissingBody"></tbody>
+                  </table>
+                </div>
+                <div class="empty-state fv-empty" id="reportProofsMissingEmpty" style="display:none;"><p>Every expected proof is in.</p></div>
               </div>
             </div>
 

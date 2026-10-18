@@ -505,9 +505,9 @@ test.describe('Finance restyle v2: Reports and Settings (S8)', () => {
     expect(await css(page, '.fv-table--reports thead th', 'backgroundColor')).toBe(await rgb(page, 'var(--fv-surface)'));
     expect(await css(page, '#reportLibraryGrid .report-catalog-card button', 'height')).toBe('28px');
     await expect(page.locator('#reportLibraryCategoryPills .fv-pill')).toHaveCount(7);
-    await expect(page.locator('#reportLibraryCategoryPills [data-domain="all"] .fv-pill__count')).toHaveText('21');
+    await expect(page.locator('#reportLibraryCategoryPills [data-domain="all"] .fv-pill__count')).toHaveText('24');
     // one row per report, a dot and the domain name, the real basis from the library data
-    await expect(page.locator('#reportLibraryGrid .report-catalog-card')).toHaveCount(21);
+    await expect(page.locator('#reportLibraryGrid .report-catalog-card')).toHaveCount(24);
     await expect(page.locator('#reportLibraryGrid .report-catalog-card').first().locator('.fv-dot')).toHaveCount(1);
     await expect(page.locator('#reportLibraryGrid')).toContainText('Cash and accrual');
     await page.click('#reportLibraryCategoryPills [data-domain="Payroll"]');

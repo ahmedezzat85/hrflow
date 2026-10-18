@@ -160,6 +160,9 @@ async function openReportFromLibrary(reportKey) {
     "statutory-remitted",
     "payable-status",
     "withholding-credits",
+    "revenue-breakdown",
+    "subscription-spend",
+    "subscription-proofs-missing",
   ];
   const subnav = document.getElementById("financeReportsSubNav");
   const placeholder = document.getElementById("reportPanePlaceholder");
@@ -188,6 +191,9 @@ async function openReportFromLibrary(reportKey) {
           "statutory-remitted": "reportPaneStatutoryRemitted",
           "payable-status": "reportPanePayableStatus",
           "withholding-credits": "reportPaneWithholdingCredits",
+          "revenue-breakdown": "reportPaneRevenueBreakdown",
+          "subscription-spend": "reportPaneSubscriptionSpend",
+          "subscription-proofs-missing": "reportPaneSubscriptionProofsMissing",
         }[t]
       );
       if (pane) pane.style.display = "none";
@@ -246,6 +252,9 @@ function switchFinanceReportsTab(tabName, btn) {
     "statutory-remitted": "reportPaneStatutoryRemitted",
     "payable-status": "reportPanePayableStatus",
     "withholding-credits": "reportPaneWithholdingCredits",
+    "revenue-breakdown": "reportPaneRevenueBreakdown",
+    "subscription-spend": "reportPaneSubscriptionSpend",
+    "subscription-proofs-missing": "reportPaneSubscriptionProofsMissing",
   };
 
   const placeholder = document.getElementById("reportPanePlaceholder");
@@ -307,6 +316,12 @@ function switchFinanceReportsTab(tabName, btn) {
     loadWithholdingCreditsReport();
   } else if (tabName === "payable-status") {
     loadPayableStatusReport();
+  } else if (tabName === "revenue-breakdown") {
+    loadRevenueBreakdownReport();
+  } else if (tabName === "subscription-spend") {
+    loadSubscriptionSpendReport();
+  } else if (tabName === "subscription-proofs-missing") {
+    loadSubscriptionProofsMissingReport();
   }
 }
 
@@ -464,6 +479,12 @@ function refreshActiveReport() {
     loadWithholdingCreditsReport();
   } else if (_currentReportsTab === "payable-status") {
     loadPayableStatusReport();
+  } else if (_currentReportsTab === "revenue-breakdown") {
+    loadRevenueBreakdownReport();
+  } else if (_currentReportsTab === "subscription-spend") {
+    loadSubscriptionSpendReport();
+  } else if (_currentReportsTab === "subscription-proofs-missing") {
+    loadSubscriptionProofsMissingReport();
   }
 }
 
@@ -758,6 +779,7 @@ function getActiveReportFilters() {
     currency: document.getElementById("reportShellCurrency")?.value || "",
     comparison: document.getElementById("reportShellComparison")?.value || "none",
     entity: document.getElementById("reportShellEntity")?.value || "all",
+    book: typeof FinanceBookView !== "undefined" ? FinanceBookView.get("reports") : "",
   };
 }
 
@@ -2543,4 +2565,129 @@ window.onCompensationEmployeeChanged = onCompensationEmployeeChanged;
 window.loadStatutoryRemittedReport = loadStatutoryRemittedReport;
 window.loadPayableStatusReport = loadPayableStatusReport;
 window.onPayableStatusScopeChanged = onPayableStatusScopeChanged;
+
+// ----------------------------------------------------------------------
+// X6 analytics: revenue by product/book/source, subscription spend, proofs missing
+// ----------------------------------------------------------------------
+let _revenueBreakdownData = null;
+
+async function loadRevenueBreakdownReport() {
+  const dFrom = document.getElementById("reportShellDateFrom")?.value || "";
+  const dTo = document.getElementById("reportShellDateTo")?.value || "";
+  const currency = document.getElementById("reportShellCurrency")?.value || "ALL";
+  try {
+    _revenueBreakdownData = await FinanceApi.getRevenueBreakdown({ date_from: dFrom || undefined, date_to: dTo || undefined, currency: currency || "ALL", book: FinanceBookView.get("reports") });
+    renderRevenueBreakdown();
+    await loadRevenueReceiptsList();
+  } catch (err) {
+    console.error("Failed to load revenue report:", err);
+    showToast(describeLoadFailure("Revenue report", err), "error");
+  }
+}
+
+function renderRevenueBreakdown() {
+  const data = _revenueBreakdownData;
+  const body = document.getElementById("reportRevenueTableBody");
+  if (!data || !body) return;
+  const groupBy = document.getElementById("reportRevenueGroupBy")?.value || "product_name";
+  const labels = { product_name: "Product", book_code: "Book", source: "Source", customer_name: "Customer", month: "Month" };
+  document.getElementById("reportRevenueGroupHead").textContent = labels[groupBy];
+  const groups = {};
+  (data.rows || []).forEach((r) => {
+    const key = `${r[groupBy]}|${r.currency}`;
+    groups[key] = (groups[key] || 0) + r.amount;
+  });
+  const list = Object.entries(groups).map(([k, amount]) => { const [name, currency] = k.split("|"); return { name, currency, amount: Math.round(amount * 100) / 100 }; })
+    .sort((a, b) => a.currency.localeCompare(b.currency) || b.amount - a.amount);
+  body.innerHTML = list.length
+    ? list.map((g) => `<tr data-group="${_esc(g.name)}"><td>${_esc(groupBy === "book_code" ? (g.name === "overseas" ? "Overseas" : "Local") : g.name)}</td><td>${_esc(g.currency)}</td><td class="cell-money fv-num">${FinanceFormat.formatMoney(g.amount, g.currency)}</td></tr>`).join("")
+    : `<tr><td colspan="3" style="text-align:center; color:var(--text-muted); padding:16px;">No revenue in this period.</td></tr>`;
+  const foot = document.getElementById("reportRevenueTableFoot");
+  if (foot) {
+    foot.innerHTML = Object.entries(data.totals_by_currency || {}).map(([cur, amt]) => `<tr class="fv-total-row"><td><strong>Total</strong></td><td>${_esc(cur)}</td><td class="cell-money fv-num"><strong>${FinanceFormat.formatMoney(amt, cur)}</strong></td></tr>`).join("");
+  }
+  const un = document.getElementById("reportRevenueUntagged");
+  if (un) {
+    const parts = Object.entries(data.untagged_by_currency || {}).map(([cur, amt]) => `${FinanceFormat.formatMoney(amt, cur)}`);
+    un.innerHTML = parts.length ? `<span data-untagged>Untagged revenue: ${parts.join(" + ")}</span>` : "Every revenue line has a product.";
+  }
+}
+
+async function loadRevenueReceiptsList() {
+  const body = document.getElementById("reportRevenueReceiptsBody");
+  if (!body) return;
+  const receipts = await FinanceApi.getRevenueReceipts({ book: FinanceBookView.get("reports") });
+  body.innerHTML = (receipts || []).length ? receipts.map((r) => `
+    <tr data-receipt-id="${r.id}">
+      <td>${_esc(FinanceUI.formatDate(r.date))}</td>
+      <td>${_esc(r.revenue_source_name || "")}${r.is_reversal ? ' <span class="fv-sub">Reversal</span>' : ""}</td>
+      <td>${_esc(r.product_name || "Untagged revenue")}</td>
+      <td>${_esc(r.account_name || "")}</td>
+      <td class="cell-money fv-num">${r.is_reversal ? "-" : ""}${FinanceFormat.formatMoney(r.amount, r.currency)}</td>
+      <td class="col-actions">${r.is_reversal ? "" : FinanceUI.rowActions({ icons: [{ icon: "fa-rotate-left", label: "Reverse receipt", className: "btn-receipt-reverse", onclick: `reverseRevenueReceipt(${r.id})` }] })}</td>
+    </tr>`).join("") : `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:16px;">No revenue receipts recorded.</td></tr>`;
+}
+
+async function reverseRevenueReceipt(id) {
+  const result = await FinanceCommand.confirmAction({
+    title: "Reverse revenue receipt",
+    summary: `Receipt #${id}`,
+    consequence: "A reversing entry is posted and the balance goes back down. The original receipt stays in the ledger.",
+    actionLabel: "Reverse receipt",
+    actionClass: "btn btn-danger",
+    requireReason: true,
+    severity: "warning",
+  });
+  if (!result.confirmed) return;
+  try {
+    await FinanceApi.reverseRevenueReceipt(id, { reason: result.reason });
+    showToast("Receipt reversed.", "success");
+    await loadRevenueBreakdownReport();
+  } catch (err) {
+    showToast(err.message || "Could not reverse the receipt", "error");
+  }
+}
+
+async function loadSubscriptionSpendReport() {
+  const dFrom = document.getElementById("reportShellDateFrom")?.value || "";
+  const dTo = document.getElementById("reportShellDateTo")?.value || "";
+  const currency = document.getElementById("reportShellCurrency")?.value || "ALL";
+  try {
+    const data = await FinanceApi.getSubscriptionSpendReport({ date_from: dFrom || undefined, date_to: dTo || undefined, currency: currency || "ALL" });
+    const body = document.getElementById("reportSubSpendBody");
+    if (body) {
+      body.innerHTML = (data.rows || []).length ? data.rows.map((r) => `<tr><td>${_esc(r.month)}</td><td>${_esc(r.vendor)}</td><td>${_esc(r.department)}</td><td>${_esc(r.subscription)}</td><td>${r.book_code === "overseas" ? "Overseas" : "Local"}</td><td>${_esc(r.currency)}</td><td class="cell-money fv-num">${FinanceFormat.formatMoney(r.amount, r.currency)}</td></tr>`).join("")
+        : `<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:16px;">No settled subscription charges in this period.</td></tr>`;
+    }
+    const foot = document.getElementById("reportSubSpendFoot");
+    if (foot) foot.innerHTML = Object.entries(data.totals_by_currency || {}).map(([cur, amt]) => `<tr class="fv-total-row"><td colspan="5"><strong>Total</strong></td><td>${_esc(cur)}</td><td class="cell-money fv-num"><strong>${FinanceFormat.formatMoney(amt, cur)}</strong></td></tr>`).join("");
+    const roll = document.getElementById("reportSubSpendRollups");
+    if (roll) {
+      const line = (label, list, key) => `<div><strong>${label}:</strong> ${(list || []).map((x) => `${_esc(x[key] === "overseas" ? "Overseas" : x[key] === "local" ? "Local" : x[key])} ${FinanceFormat.formatMoney(x.amount, x.currency)}`).join(" &middot; ") || "none"}</div>`;
+      roll.innerHTML = line("By vendor", data.by_vendor, "vendor") + line("By department", data.by_department, "department") + line("By book", data.by_book, "book_code");
+    }
+  } catch (err) {
+    console.error("Failed to load subscription spend:", err);
+    showToast(describeLoadFailure("Subscription spend report", err), "error");
+  }
+}
+
+async function loadSubscriptionProofsMissingReport() {
+  try {
+    const data = await FinanceApi.getSubscriptionProofsMissingReport({});
+    const body = document.getElementById("reportProofsMissingBody");
+    const empty = document.getElementById("reportProofsMissingEmpty");
+    const rows = data.rows || [];
+    if (body) {
+      body.innerHTML = rows.map((r) => `<tr><td>${_esc(FinanceUI.formatDate(r.billing_date))}</td><td>${_esc(r.subscription)}</td><td>${_esc(r.vendor)}</td><td>${_esc(r.status)}</td><td>${_esc((r.proof_source || "none").replace(/_/g, " "))}</td><td>${r.book_code === "overseas" ? "Overseas" : "Local"}</td><td class="cell-money fv-num">${FinanceFormat.formatMoney(r.amount, r.currency)}</td></tr>`).join("");
+    }
+    if (empty) empty.style.display = rows.length ? "none" : "block";
+  } catch (err) {
+    console.error("Failed to load proofs missing:", err);
+    showToast(describeLoadFailure("Proofs missing report", err), "error");
+  }
+}
+
+window.renderRevenueBreakdown = renderRevenueBreakdown;
+window.reverseRevenueReceipt = reverseRevenueReceipt;
 
