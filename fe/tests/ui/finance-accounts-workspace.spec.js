@@ -24,7 +24,7 @@ test.describe('Story 5.1: Account List and Account Workspace', () => {
     await expect(page.getByRole('columnheader', { name: 'Last statement', exact: true })).toBeVisible();
 
     // Click Workspace button on the first account
-    const wsBtn = page.locator('.btn-open-workspace').first();
+    const wsBtn = page.locator('#financeAccountsTableBody .fv-name-btn').first();
     await expect(wsBtn).toBeVisible();
     await wsBtn.click();
 
@@ -44,7 +44,7 @@ test.describe('Story 5.1: Account List and Account Workspace', () => {
 
   test('AC 1: Masked identifier by default and reveal permission toggle', async ({ page }) => {
     // Open workspace
-    await page.locator('.btn-open-workspace').first().click();
+    await page.locator('#financeAccountsTableBody .fv-name-btn').first().click();
     await expect(page.locator('#financeSubPaneWorkspace')).toBeVisible();
 
     const idEl = page.locator('#workspaceAccountIdentifier');
@@ -67,7 +67,7 @@ test.describe('Story 5.1: Account List and Account Workspace', () => {
   });
 
   test('AC 2: 4 separated balance cards with definitions and as-of time', async ({ page }) => {
-    await page.locator('.btn-open-workspace').first().click();
+    await page.locator('#financeAccountsTableBody .fv-name-btn').first().click();
     await expect(page.locator('#financeSubPaneWorkspace')).toBeVisible();
 
     // Verify 4 Balance Cards
@@ -85,7 +85,7 @@ test.describe('Story 5.1: Account List and Account Workspace', () => {
   });
 
   test('AC 3: Permitted actions toolbar defaults to the active account', async ({ page }) => {
-    await page.locator('.btn-open-workspace').first().click();
+    await page.locator('#financeAccountsTableBody .fv-name-btn').first().click();
     await expect(page.locator('#financeSubPaneWorkspace')).toBeVisible();
 
     // Click "Record Transaction" quick action in workspace header
@@ -114,7 +114,7 @@ test.describe('Story 5.1: Account List and Account Workspace', () => {
   });
 
   test('AC 4: Operational tabs vs Settings tab and currency lock after postings', async ({ page }) => {
-    await page.locator('.btn-open-workspace').first().click();
+    await page.locator('#financeAccountsTableBody .fv-name-btn').first().click();
     await expect(page.locator('#financeSubPaneWorkspace')).toBeVisible();
 
     // Activity tab active by default
@@ -148,7 +148,7 @@ test.describe('Story 5.1: Account List and Account Workspace', () => {
     await expect(cashRow).toBeVisible();
 
     // Click Workspace folder button for this cash account
-    await cashRow.locator('.btn-open-workspace').click();
+    await cashRow.locator('.fv-name-btn').click();
     await expect(page.locator('#financeSubPaneWorkspace')).toBeVisible();
     await expect(page.locator('#workspaceAccountName')).toContainText('Petty Cash Drawer');
     await expect(page.locator('#workspaceAccountTypeBadge')).toHaveText('CASH');

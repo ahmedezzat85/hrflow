@@ -1,24 +1,22 @@
-  <div class="modal-overlay" id="companyDocumentModal">
+  <div class="modal-overlay fv fv-dialog fv-dialog--w540 fv-area-ochre" id="companyDocumentModal">
     <div class="modal modal-v2">
       <div class="modal-head">
-        <div class="modal-head-icon"><i class="fa-solid fa-folder-plus"></i></div>
+        <span class="modal-head-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h6l2 2h10v11H3z"></path></svg></span>
         <div class="modal-head-text">
-          <h3 id="companyDocumentModalTitle">Add Company Document</h3>
-          <p>Publish shared company policies, handbooks, and documents.</p>
+          <h3 id="companyDocumentModalTitle">Add company document</h3>
+          <p>Shared policies, handbooks and forms for every employee</p>
         </div>
-        <button class="modal-close" onclick="closeModal('companyDocumentModal')"><i
-            class="fa-solid fa-xmark"></i></button>
+        <button class="modal-close" onclick="closeModal('companyDocumentModal')" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
       </div>
       <div class="modal-body">
         <div class="form-section">
-          <div class="form-section-label"><i class="fa-solid fa-file-circle-plus"></i> Document Information <span class="line"></span></div>
           <div class="form-grid">
-            <div class="form-field full">
-              <label for="dochubDocName">Document Name <span class="req">*</span></label>
-              <input id="dochubDocName" placeholder="e.g. Employee Handbook, Leave Policy">
+            <div class="form-field">
+              <label for="dochubDocName">Document name</label>
+              <input id="dochubDocName" placeholder="Employee handbook 2026">
             </div>
-            <div class="form-field full">
-              <label for="dochubDocCategory">Category <span class="req">*</span></label>
+            <div class="form-field">
+              <label for="dochubDocCategory">Category</label>
               <select id="dochubDocCategory">
                 <option>General</option>
                 <option>Policy</option>
@@ -28,13 +26,12 @@
               </select>
             </div>
             <div class="form-field full">
-              <label for="dochubFileInput">File <span class="req">*</span></label>
+              <label for="dochubFileInput">File</label>
               <div id="dochubDocDropZone" class="doc-drop-zone compact" role="button" tabindex="0" aria-label="Choose a file to upload" onclick="document.getElementById('dochubFileInput').click()">
                 <input type="file" id="dochubFileInput" accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
                 <div id="dochubDocDropZoneEmpty" class="doc-drop-empty">
-                  <i class="fa-solid fa-cloud-arrow-up"></i>
-                  <p><strong>Click to browse</strong> or drag a file here</p>
-                  <span>PDF, JPG or PNG - up to 4MB</span>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M4 15v5h16v-5"></path></svg>
+                  <span>Choose a file or drop it here</span>
                 </div>
                 <div id="dochubDocDropZoneFile" class="doc-drop-file" style="display:none;">
                   <div class="doc-file-icon" id="dochubDocFileIconWrap"><i class="fa-solid fa-file"></i></div>
@@ -60,8 +57,7 @@
       </div>
       <div class="modal-foot">
         <button class="btn" id="dochubCancelBtn" onclick="closeModal('companyDocumentModal')">Cancel</button>
-        <button class="btn btn-fill" id="dochubUploadBtn" onclick="submitCompanyDocument()"><i
-            class="fa-solid fa-check"></i> Upload</button>
+        <button class="btn btn-fill" id="dochubUploadBtn" onclick="submitCompanyDocument()">Publish document</button>
       </div>
     </div>
   </div>

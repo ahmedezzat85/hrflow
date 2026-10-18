@@ -1,62 +1,77 @@
-        <section class="page-section" id="a-insurance">
-          <div class="card" style="margin-bottom:20px;">
-            <div class="card-head">
-              <h3>Company-wide Consumption Highlights</h3>
+        <section class="page-section fv" id="a-insurance">
+          <div class="hv-grid hv-grid-4">
+            <div class="hv-stat-tile">
+              <span class="hv-stat-label">Claims in 2026</span>
+              <span class="hv-stat-value" id="statClaimsYtd">—</span>
+              <span class="hv-stat-sub" id="statClaimsYtdSub">EGP 770 claimed</span>
             </div>
-            <div class="grid g4" id="adminInsuranceCategoryHighlights"></div>
-          </div>
-          <div class="grid g4" style="margin-bottom:20px;">
-            <div class="card stat-card">
-              <div class="stat-label">Total Claims (YTD)</div>
-              <div class="stat-val" id="statClaimsYtd">—</div>
+            <div class="hv-stat-tile">
+              <span class="hv-stat-label">Approved</span>
+              <span class="hv-stat-value" id="statClaimsApproved">—</span>
+              <span class="hv-stat-sub" id="statClaimsApprovedSub">EGP 590</span>
             </div>
-            <div class="card stat-card">
-              <div class="stat-label">Approved</div>
-              <div class="stat-val" id="statClaimsApproved" style="color:var(--success)">—</div>
+            <div class="hv-stat-tile">
+              <span class="hv-stat-label">Waiting for a decision</span>
+              <span class="hv-stat-value hv-tone-warning" id="statClaimsPending">—</span>
+              <span class="hv-stat-sub" id="statClaimsPendingSub">EGP 180 · Sarah Connor</span>
             </div>
-            <div class="card stat-card">
-              <div class="stat-label">Pending Review</div>
-              <div class="stat-val" id="statClaimsPending" style="color:var(--warning)">—</div>
-            </div>
-            <div class="card stat-card">
-              <div class="stat-label">Total Reimbursed</div>
-              <div class="stat-val" id="statClaimsReimbursed">—</div>
+            <div class="hv-stat-tile">
+              <span class="hv-stat-label">Reimbursed</span>
+              <span class="hv-stat-value" id="statClaimsReimbursed">—</span>
+              <span class="hv-stat-sub">this year</span>
             </div>
           </div>
-          <div class="card" style="margin-bottom:20px;">
-            <div class="card-head">
-              <h3>Insurance Categories & Limits</h3><button class="btn btn-fill btn-sm" onclick="openCategoryModal()"><i
-                  class="fa-solid fa-plus"></i> Add Category</button>
+          <div class="hv-grid hv-grid-2">
+            <div class="card hv-pad">
+              <div class="card-head hv-mb-12">
+                <h3 class="hv-card-title">Use against annual limits</h3>
+              </div>
+              <div class="insurance-limits-list" id="adminInsuranceCategoryHighlights"></div>
             </div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Category</th>
-                  <th>Annual Limit</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="categoriesTableBody"></tbody>
-            </table>
+            <div class="card fv-table-card">
+              <div class="card-head hv-card-head">
+                <h3 class="hv-card-title">Categories and limits</h3>
+                <button type="button" class="btn btn-outline btn-sm" onclick="openCategoryModal()">Add category</button>
+              </div>
+              <div class="fv-table-scroll">
+                <table class="fv-table">
+                  <thead>
+                    <tr>
+                      <th>Category</th>
+                      <th>Annual limit</th>
+                      <th class="col-actions"><span class="sr-only">Actions</span></th>
+                    </tr>
+                  </thead>
+                  <tbody id="categoriesTableBody"></tbody>
+                </table>
+              </div>
+            </div>
           </div>
-          <div class="card">
-            <div class="card-head">
-              <h3>Claims History</h3>
-              <button class="btn btn-sm" id="insuranceExportBtn" onclick="openExportModal('insurance')" title="Export insurance claims"><i class="fa-solid fa-file-export"></i> Export</button>
+          <div class="card fv-table-card">
+            <div class="card-head hv-card-head">
+              <div>
+                <h3 class="hv-card-title">Claims</h3>
+              </div>
+              <div class="hv-row-8">
+                <button type="button" class="btn btn-outline btn-sm" id="insuranceExportBtn" onclick="openExportModal('insurance')" title="Export insurance claims">Export</button>
+                <button type="button" class="btn btn-fill btn-sm" onclick="openBehalfClaimModal()">Record claim</button>
+              </div>
             </div>
-            <table class="responsive-card-table">
-              <thead>
-                <tr>
-                  <th>Employee</th>
-                  <th>Category</th>
-                  <th>Provider</th>
-                  <th>Amount</th>
-                  <th>Date</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="insuranceTableBody"></tbody>
-            </table>
+            <div class="fv-table-scroll">
+              <table class="responsive-card-table fv-table">
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Category</th>
+                    <th>Provider</th>
+                    <th data-sort-default="desc">Date</th>
+                    <th>Status</th>
+                    <th class="hv-right">Amount</th>
+                    <th class="col-actions"><span class="sr-only">Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody id="insuranceTableBody"></tbody>
+              </table>
+            </div>
           </div>
         </section>

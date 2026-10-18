@@ -734,11 +734,35 @@ const FinanceCommand = {
       const titleEl = document.getElementById("financeConfirmTitle");
       if (titleEl) titleEl.textContent = options.title || "Confirm Action";
 
+      const subEl = document.getElementById("financeConfirmSubtitle");
+      if (subEl) {
+        if (options.subtitle) {
+          subEl.textContent = options.subtitle;
+          subEl.style.display = "block";
+        } else {
+          subEl.textContent = "";
+          subEl.style.display = "none";
+        }
+      }
+
+      if (options.tone) {
+        modal.classList.remove("fv-area-slate", "fv-area-danger", "fv-area-violet");
+        modal.classList.add(`fv-area-${options.tone}`);
+      } else {
+        modal.classList.remove("fv-area-violet");
+        modal.classList.add("fv-area-slate");
+      }
+
       const iconEl = document.getElementById("financeConfirmIcon");
       if (iconEl) {
-        const iconClass = options.icon || (options.severity === "warning" ? "fa-solid fa-triangle-exclamation" : "fa-solid fa-circle-exclamation");
-        iconEl.className = `fv-tile fv-tile--lg ${options.severity === "warning" ? "fv-tile--warning" : "fv-tile--danger"}`;
-        iconEl.innerHTML = `<i class="${iconClass}"></i>`;
+        if (options.iconSvg) {
+          iconEl.className = `fv-tile fv-tile--lg ${options.tone ? "fv-tile--" + options.tone : "fv-tile--violet"}`;
+          iconEl.innerHTML = options.iconSvg;
+        } else {
+          const iconClass = options.icon || (options.severity === "warning" ? "fa-solid fa-triangle-exclamation" : "fa-solid fa-circle-exclamation");
+          iconEl.className = `fv-tile fv-tile--lg ${options.severity === "warning" ? "fv-tile--warning" : "fv-tile--danger"}`;
+          iconEl.innerHTML = `<i class="${iconClass}"></i>`;
+        }
       }
 
       const summaryEl = document.getElementById("financeConfirmTargetSummary");
@@ -748,6 +772,23 @@ const FinanceCommand = {
           summaryEl.style.display = "block";
         } else {
           summaryEl.style.display = "none";
+        }
+      }
+
+      const tilesEl = document.getElementById("financeConfirmTiles");
+      if (tilesEl) {
+        if (Array.isArray(options.tiles) && options.tiles.length > 0) {
+          tilesEl.style.display = "grid";
+          const safe = (v) => (typeof escapeHtml === "function" ? escapeHtml(v) : String(v));
+          tilesEl.innerHTML = options.tiles.map(t => `
+            <div style="padding: 10px 12px; border-radius: 12px; background: ${t.tone === 'amber' ? 'var(--warning-soft)' : 'var(--fv-surface-soft)'};">
+              <div style="font-size: 12px; color: ${t.tone === 'amber' ? 'var(--warning-text, var(--warning))' : 'var(--ink-muted)'};">${safe(t.label)}</div>
+              <div style="font-weight: 700; color: var(--ink-strong); font-size: 14px;">${safe(t.value)}</div>
+            </div>
+          `).join('');
+        } else {
+          tilesEl.style.display = "none";
+          tilesEl.innerHTML = "";
         }
       }
 
@@ -1022,7 +1063,7 @@ const FinanceTable = {
     });
   },
 
-  bindSortHeaders(tableOrId, onSortChange, currentSort = {}) {
+  bindSortHeaders(tableOrId, onSortChange, currentSort = {}, opts = {}) {
     const table = typeof tableOrId === "string" ? document.getElementById(tableOrId) : tableOrId;
     if (!table) return;
 
@@ -1036,6 +1077,21 @@ const FinanceTable = {
       const dir = isActive ? currentSort.sortDir : "none";
       th.setAttribute("aria-sort", dir === "none" ? "none" : dir === "asc" ? "ascending" : "descending");
 
+      if (opts.textArrows !== false) {
+        // HR lists: one tall arrow (↑ / ↓) on the ordered column only, as in the mocks.
+        // Before the user sorts, the column named by data-sort-default shows its starting direction.
+        const shown = isActive ? currentSort.sortDir : (currentSort.sortBy == null && th.dataset.sortDefault) || "none";
+        th.dataset.sortActive = shown === "none" ? "false" : "true";
+        let arrow = th.querySelector(".sort-arrow");
+        if (!arrow) {
+          arrow = document.createElement("span");
+          arrow.className = "sort-arrow";
+          arrow.setAttribute("aria-hidden", "true");
+          th.appendChild(arrow);
+        }
+        arrow.textContent = shown === "asc" ? " ↑" : shown === "desc" ? " ↓" : "";
+        if (shown !== "none") th.setAttribute("aria-sort", shown === "asc" ? "ascending" : "descending");
+      } else {
       let icon = th.querySelector(".sort-icon");
       if (!icon) {
         icon = document.createElement("i");
@@ -1047,10 +1103,23 @@ const FinanceTable = {
       } else {
         icon.className = "sort-icon fa-solid fa-sort";
       }
+      }
 
       const handler = () => {
         let newDir = "asc";
-        if (currentSort.sortBy === col) {
+        if (opts.textArrows !== false) {
+          // HR lists cycle: first click, opposite click, then back to the original order (sort cleared).
+          // The column showing its starting arrow flips first and clears on the next click.
+          const start = th.dataset.sortDefault;
+          const flipped = start === "asc" ? "desc" : "asc";
+          if (currentSort.sortBy === col) {
+            const clearAt = start ? flipped : "desc";
+            if (currentSort.sortDir === clearAt) { if (typeof onSortChange === "function") onSortChange(null, "asc"); return; }
+            newDir = "desc";
+          } else if (currentSort.sortBy == null && start) {
+            newDir = flipped;
+          }
+        } else if (currentSort.sortBy === col) {
           newDir = currentSort.sortDir === "asc" ? "desc" : "asc";
         }
         if (typeof onSortChange === "function") {
@@ -1176,7 +1245,7 @@ const FinanceTable = {
     const heads = [...table.querySelectorAll("thead th")];
     heads.forEach((th, i) => {
       const hidden = th.style.display === "none";
-      if (!th.dataset.sort && !hidden && !th.classList.contains("col-actions") && th.textContent.trim() && !th.querySelector("input")) {
+      if (!th.dataset.sort && !hidden && !th.classList.contains("col-actions") && th.textContent.trim() && !th.querySelector("input, .sr-only")) {
         th.dataset.sort = String(i);
       }
     });
@@ -1193,7 +1262,12 @@ const FinanceTable = {
       refresh() {
         applying = true;
         const all = [...body.children].filter((tr) => tr.tagName === "TR");
-        const rows = all.filter((tr) => !tr.querySelector(".empty-state") && !tr.classList.contains("empty-row"));
+        let rows = all.filter((tr) => !tr.querySelector(".empty-state") && !tr.classList.contains("empty-row"));
+        // Remember the order the page rendered the rows in, so a cleared sort can restore it
+        rows.forEach((tr, i) => { if (tr.dataset.origOrder === undefined) tr.dataset.origOrder = String(i); });
+        if (state.sortBy === null && rows.length > 1) {
+          rows.slice().sort((a, b) => Number(a.dataset.origOrder) - Number(b.dataset.origOrder)).forEach((tr) => body.appendChild(tr));
+        }
         if (state.sortBy !== null && rows.length > 1) {
           const col = Number(state.sortBy);
           const dir = state.sortDir === "desc" ? -1 : 1;
@@ -1209,11 +1283,13 @@ const FinanceTable = {
           });
           keyed.forEach((o) => body.appendChild(o.tr));
         }
+        // Page in the order now shown in the table
+        rows = [...body.children].filter((tr) => tr.tagName === "TR" && !tr.querySelector(".empty-state") && !tr.classList.contains("empty-row"));
         const meta = self.paginate(rows, state.page, state.pageSize);
         state.page = meta.page;
         const visible = new Set(meta.items);
         rows.forEach((tr) => { tr.hidden = !visible.has(tr); });
-        self.bindSortHeaders(table, (col, dir) => { state.sortBy = col; state.sortDir = dir; state.page = 1; api.refresh(); }, state);
+        self.bindSortHeaders(table, (col, dir) => { state.sortBy = col; state.sortDir = dir; state.page = 1; api.refresh(); }, state, { textArrows: true });
         if (rows.length <= state.pageSize && state.page === 1) {
           pager.innerHTML = "";
           pager.style.display = "none";
@@ -1723,9 +1799,13 @@ window.sumColumn = sumColumn;
 // HR tables: sortable headers and paging (U7)
 (function attachHrTables() {
   const ids = ['employeesTableBody', 'salaryTableBody', 'companyRaiseHistoryBody', 'vacationBalanceBody',
-    'insuranceTableBody', 'requestsTableBody', 'dochubTableBody'];
+    'insuranceTableBody', 'requestsTableBody', 'dochubTableBody', 'financeAccountsTableBody'];
   const run = () => {
     ids.forEach((id) => FinanceTable.attach({ bodyId: id }));
+    // Banking and System lists: same sorter, 25 rows a page so long ledgers still read as one list
+    ['workspaceLedgerTableBody', 'workspaceStatementsTableBody', 'financeLedgerTableBody', 'financeTransfersTableBody',
+      'financeChequesTableBody', 'statementImportsTableBody', 'rolesTableBody', 'systemUsersTableBody']
+      .forEach((id) => FinanceTable.attach({ bodyId: id, pageSize: 25 }));
     ['empSearch', 'salarySearch', 'vacBalanceSearch', 'dochubSearch'].forEach((id) => FinanceTable.bindSearchChip(id));
     FinanceTable.autoCards(['salaryTableBody', 'companyRaiseHistoryBody', 'salaryHistoryBody', 'categoriesTableBody',
       'dochubTableBody', 'empDochubTableBody', 'invoiceHistoryContainer', 'tableCashAccounts', 'tableForecastObligations',

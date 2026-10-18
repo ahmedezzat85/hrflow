@@ -1,46 +1,39 @@
-<div class="modal-overlay" id="socialInsuranceModal">
+<div class="modal-overlay fv fv-dialog fv-dialog--w520 fv-area-teal" id="socialInsuranceModal">
   <div class="modal modal-v2">
     <div class="modal-head">
-      <div class="modal-head-icon"><i class="fa-solid fa-shield-halved"></i></div>
+      <span class="modal-head-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"></path></svg></span>
       <div class="modal-head-text">
-        <h3 id="socialInsuranceModalTitle">Social Insurance Configuration</h3>
-        <p>Per-employee social insurance coverage and effective-dated insured base.</p>
+        <h3 id="socialInsuranceModalTitle">Social insurance</h3>
+        <p>Coverage and the effective-dated insured base</p>
       </div>
-      <button class="modal-close" onclick="closeModal('socialInsuranceModal')"><i class="fa-solid fa-xmark"></i></button>
+      <button class="modal-close" onclick="closeModal('socialInsuranceModal')" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
     </div>
     <div class="modal-body">
       <div class="form-section">
-        <div class="form-section-label"><i class="fa-solid fa-file-shield"></i> Insurance Configuration <span class="line"></span></div>
         <div class="form-grid">
           <div class="form-field full">
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;" for="fSocialInsBase">
-              <input type="checkbox" id="fSocialInsFlag" style="width:auto;cursor:pointer;">
-              <span style="font-weight:600;">Covered by Social Insurance</span>
+            <label class="fv-dialog-check fv-dialog-check--bar" for="fSocialInsFlag">
+              <strong>Covered by social insurance</strong>
+              <input type="checkbox" id="fSocialInsFlag">
             </label>
-            <span style="font-size:11px;color:var(--text3);margin-top:2px;display:block;">
-              Toggle whether social insurance deductions apply to this employee.
-            </span>
           </div>
-          <div class="form-field full" id="fSocialInsBaseContainer">
-            <label>Insured Base Amount (EGP) <span class="req">*</span></label>
-            <input type="number" step="0.01" min="0" id="fSocialInsBase" placeholder="e.g. 5000.00">
-            <span style="font-size:11px;color:var(--text3);margin-top:2px;display:block;">
-              Statutory social insurance base in Egyptian Pounds (EGP). Deduction is an internal estimate.
-            </span>
+          <div class="form-field" id="fSocialInsBaseContainer">
+            <label for="fSocialInsBase">Insured base</label>
+            <div class="input-group">
+              <span class="input-addon">EGP</span>
+              <input type="number" step="0.01" min="0" id="fSocialInsBase" placeholder="e.g. 5000.00" style="text-align: right;">
+            </div>
           </div>
-          <div class="form-field full">
-            <label for="fSocialInsEffectiveDate">Effective Date <span class="req">*</span></label>
+          <div class="form-field">
+            <label for="fSocialInsEffectiveDate">Effective from</label>
             <input type="date" id="fSocialInsEffectiveDate">
-            <span style="font-size:11px;color:var(--text3);margin-top:2px;display:block;">
-              Must be on or before today (future pre-staging is not permitted).
-            </span>
           </div>
         </div>
       </div>
     </div>
     <div class="modal-foot">
       <button class="btn" id="socialInsuranceCancelBtn" onclick="closeModal('socialInsuranceModal')">Cancel</button>
-      <button class="btn btn-fill" id="socialInsuranceSaveBtn" onclick="saveSocialInsurance(event)"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+      <button class="btn btn-fill" id="socialInsuranceSaveBtn" onclick="saveSocialInsurance(event)">Save</button>
     </div>
   </div>
 </div>

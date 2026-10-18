@@ -6,14 +6,14 @@
 
 (function () {
   const seedEmployees = [
-    { id: 301, name: 'Youssef Adel', baseExt: 1800, baseInt: 4300, deductions: 473.00, deductions_total: 473.00, bonuses: [], exception: null },
-    { id: 302, name: 'Salma Ibrahim', baseExt: 0, baseInt: 4450, deductions: 489.50, deductions_total: 489.50, bonuses: [{ type: 'Support Commission', amount: 360, source: 'internal' }], exception: null },
-    { id: 303, name: 'Karim Nabil', baseExt: 2500, baseInt: 4500, deductions: 495.00, deductions_total: 495.00, bonuses: [{ type: 'Bonus', amount: 600, source: 'external' }], exception: null },
-    { id: 304, name: 'Mariam Essam', baseExt: 1200, baseInt: 4550, deductions: 500.50, deductions_total: 500.50, bonuses: [{ type: 'Sales Commission', amount: 1050, source: 'internal' }, { type: 'Bonus', amount: 200, source: 'external' }], exception: null },
-    { id: 305, name: 'Omar Farouk', baseExt: 0, baseInt: 4200, deductions: 462.00, deductions_total: 462.00, bonuses: [{ type: 'Support Commission', amount: 430, source: 'internal' }], exception: null },
-    { id: 306, name: 'Nadine Samir', baseExt: 2000, baseInt: 3100, deductions: 341.00, deductions_total: 341.00, bonuses: [], exception: null },
-    { id: 307, name: 'Hassan Tarek', baseExt: 0, baseInt: 5200, deductions: 572.00, deductions_total: 572.00, bonuses: [{ type: 'Bonus', amount: 750, source: 'internal' }], exception: null },
-    { id: 308, name: 'Lina Kamal', baseExt: 1600, baseInt: 3900, deductions: 429.00, deductions_total: 429.00, bonuses: [], exception: null }
+    { id: 301, name: 'Youssef Adel', role: 'Software Engineer', dept: 'Engineering', baseExt: 1800, baseInt: 4300, deductions: 473.00, deductions_total: 473.00, bonuses: [], exception: null },
+    { id: 302, name: 'Salma Ibrahim', role: 'Product Manager', dept: 'Product', baseExt: 0, baseInt: 4450, deductions: 489.50, deductions_total: 489.50, bonuses: [{ type: 'Support Commission', amount: 360, source: 'internal' }], exception: null },
+    { id: 303, name: 'Karim Nabil', role: 'Design Lead', dept: 'Design', baseExt: 2500, baseInt: 4500, deductions: 495.00, deductions_total: 495.00, bonuses: [{ type: 'Bonus', amount: 600, source: 'external' }], exception: null },
+    { id: 304, name: 'Mariam Essam', role: 'Sales Executive', dept: 'Sales', baseExt: 1200, baseInt: 4550, deductions: 500.50, deductions_total: 500.50, bonuses: [{ type: 'Sales Commission', amount: 1050, source: 'internal' }, { type: 'Bonus', amount: 200, source: 'external' }], exception: null },
+    { id: 305, name: 'Omar Farouk', role: 'Support Specialist', dept: 'Support', baseExt: 0, baseInt: 4200, deductions: 462.00, deductions_total: 462.00, bonuses: [{ type: 'Support Commission', amount: 430, source: 'internal' }], exception: null },
+    { id: 306, name: 'Nadine Samir', role: 'HR Coordinator', dept: 'Human Resources', baseExt: 2000, baseInt: 3100, deductions: 341.00, deductions_total: 341.00, bonuses: [], exception: null },
+    { id: 307, name: 'Hassan Tarek', role: 'DevOps Engineer', dept: 'Infrastructure', baseExt: 0, baseInt: 5200, deductions: 572.00, deductions_total: 572.00, bonuses: [{ type: 'Bonus', amount: 750, source: 'internal' }], exception: null },
+    { id: 308, name: 'Lina Kamal', role: 'Finance Analyst', dept: 'Finance', baseExt: 1600, baseInt: 3900, deductions: 429.00, deductions_total: 429.00, bonuses: [], exception: null }
   ];
 
   const seedBanks = [
@@ -23,12 +23,12 @@
 
   const FLOW = ['initiation', 'approve', 'processing', 'preview', 'confirmation', 'statutory'];
   const STEP_META = {
-    initiation: { label: '1. Initiation', hint: 'Step 1 of 6 — Confirm payroll schedule, target funding accounts, and currency exchange rate.' },
-    approve: { label: '2. Approve', hint: 'Step 2 of 6 — Review base compensation and dynamic bonus/commission additions. Submit & approve run.' },
-    processing: { label: '3. Processing', hint: 'Step 3 of 6 — Review frozen backend statutory snapshots. Idempotently finalized upon entry.' },
-    preview: { label: '4. Payment Preview', hint: 'Step 4 of 6 — Preview the payment breakdown by salary type before recording payment.' },
-    confirmation: { label: '5. Confirm Disbursal', hint: 'Step 5 of 6 — Disburse funds and auto-post general ledger journal entries.' },
-    statutory: { label: '6. Statutory Payments', hint: 'Step 6 of 6 — Reconcile portal liabilities and record/settle statutory obligations.' }
+    initiation: { label: 'Set up', hint: 'Step 1 of 6 — Confirm payroll schedule, target funding accounts, and currency exchange rate.' },
+    approve: { label: 'Review pay', hint: 'Step 2 of 6 — Review base compensation and dynamic bonus/commission additions. Submit & approve run.' },
+    processing: { label: 'Statutory', hint: 'Step 3 of 6 — Review frozen backend statutory snapshots. Idempotently finalized upon entry.' },
+    preview: { label: 'Payment preview', hint: 'Step 4 of 6 — Preview the payment breakdown by salary type before recording payment.' },
+    confirmation: { label: 'Confirm payment', hint: 'Step 5 of 6 — Disburse funds and auto-post general ledger journal entries.' },
+    statutory: { label: 'Statutory payments', hint: 'Step 6 of 6 — Reconcile portal liabilities and record/settle statutory obligations.' }
   };
   const DONE_HINT = 'Cycle complete — payroll is Paid and statutory obligations are reconciled.';
 
@@ -148,6 +148,7 @@
               return {
                 id: e.id,
                 name: e.name,
+                role: e.role || e.title || e.position || e.dept || 'Employee',
                 dept: e.dept || e.department || 'Operations',
                 baseExt: baseExt,
                 baseInt: baseInt,
@@ -341,7 +342,7 @@
       if (newRunBtn) newRunBtn.hidden = !this.canPermission('finance.payroll.prepare');
 
       if (this.runsLoadError) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#ef4444; padding:24px;"><i class="fa-solid fa-triangle-exclamation"></i> ${escapeHtml(this.runsLoadError)}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--danger); padding:24px;"><i class="fa-solid fa-triangle-exclamation"></i> ${escapeHtml(this.runsLoadError)}</td></tr>`;
         if (countEl) countEl.textContent = '0 runs';
         return;
       }
@@ -361,16 +362,49 @@
       // A saved run for the current month is shown with its saved status and total;
       // the local draft row appears only when no run has been saved yet.
       const savedCurrent = (this.serverRuns || []).some(r => r.period_label === this.month);
-      let rowsHtml = savedCurrent ? '' : `
-        <tr class="clickable" onclick="PayrollApp.openRun('current')">
-          <td data-label="Period"><strong>${this.month}</strong></td>
-          <td data-label="Date range">${this.start} &rarr; ${this.end}</td>
-          <td data-label="Status"><span class="p-badge ${statusMap[currentStatus] ? statusMap[currentStatus][1] : 'b-gray'}">${statusMap[currentStatus] ? statusMap[currentStatus][0] : 'Draft'}</span></td>
-          <td data-label="Total Disbursement" class="payroll-num">${this.money(t.net)}</td>
-          <td data-label="Employees">${this.rows.length}</td>
-          <td data-label="Last updated">${this.audit[0] ? this.audit[0].when : '—'}</td>
-        </tr>
-      `;
+      const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      const SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthName = (ym) => { const m = /^(\d{4})-(\d{2})/.exec(String(ym || '')); return m ? `${MONTHS[+m[2] - 1]} ${m[1]}` : String(ym || ''); };
+      const rangeText = (a, b) => {
+        const pa = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(a || '')); const pb = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(b || ''));
+        if (!pa || !pb) return `${a || ''} &rarr; ${b || ''}`;
+        return `${+pa[3]}&ndash;${+pb[3]} ${SHORT[+pb[2] - 1]} ${pb[1]}`;
+      };
+      const dayText = (d) => { const p = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(d || '')); return p ? `${+p[3]} ${SHORT[+p[2] - 1]} ${p[1]}` : String(d || ''); };
+      const dot = '<span class="pv-dot"></span>';
+      const pill = (cls, text) => `<span class="pv-pill ${cls}">${dot}${text}</span>`;
+      const rows = [];
+      const stampText = (v) => {
+        const p = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?:\s*([AP]M))?/i.exec(String(v || ''));
+        if (!p) return null;
+        let hh = +p[4];
+        if (p[6]) { const pm = p[6].toUpperCase() === 'PM'; if (pm && hh < 12) hh += 12; if (!pm && hh === 12) hh = 0; }
+        return `${+p[3]} ${SHORT[+p[2] - 1]} ${p[1]}, ${String(hh).padStart(2, '0')}:${p[5]}`;
+      };
+      const rowHtml = (o) => `
+        <tr class="clickable" data-cat="${o.cat}" data-stat-open="${o.statOpen ? 1 : 0}" onclick="PayrollApp.openRun('${o.arg}')">
+          <td data-label="Period"><strong class="pv-period">${escapeHtml(o.period)}</strong><span class="pv-period-sub">${rangeText(o.start, o.end)}</span><span class="sr-only">${escapeHtml(o.periodLabel || '')}</span></td>
+          <td data-label="Salaries">${o.salaries}</td>
+          <td data-label="Statutory">${o.statutory}</td>
+          <td data-label="Employees" class="num">${o.hc}</td>
+          <td data-label="Net pay" class="payroll-num num">${o.net}${o.projected ? '<div class="pv-sub">projected</div>' : ''}</td>
+          <td data-label="Last saved">${o.upd}</td>
+          <td data-label="Actions" class="col-actions"><button type="button" class="btn btn-sm ${o.primary ? 'btn-fill' : 'btn-outline'}" onclick="event.stopPropagation(); PayrollApp.openRun('${o.arg}')">${o.action}</button></td>
+        </tr>`;
+      const salaryPill = (key, label, stepNo) => {
+        if (key === 'draft') return `<span class="pv-pill pv-pill--draft">${dot}${label} \u00b7 step ${stepNo} of 6</span>`;
+        if (key === 'paid') return pill('pv-pill--paid', label);
+        if (key === 'partially_paid' || key === 'processing') return pill('pv-pill--part', label);
+        return pill('pv-pill--open', label);
+      };
+      if (!savedCurrent) {
+        rows.push({
+          arg: 'current', cat: 'draft', statOpen: false, period: monthName(this.month), periodLabel: this.month, start: this.start, end: this.end,
+          salaries: salaryPill(currentStatus, statusMap[currentStatus] ? statusMap[currentStatus][0] : 'Draft', this.stepIndex + 1),
+          statutory: pill('pv-pill--none', 'Not started'), hc: this.rows.length, net: this.money(t.net), projected: true,
+          upd: (this.audit[0] && stampText(this.audit[0].when)) || 'Not saved yet', action: 'Continue', primary: true
+        });
+      }
 
       const pastRuns = this.serverRuns || [];
       pastRuns.forEach(r => {
@@ -378,9 +412,12 @@
         const sBadge = statusMap[sKey] || ['Draft', 'b-gray'];
         const netVal = r.total_net !== undefined ? r.total_net : (r.net || 0);
         const hc = r.headcount !== undefined ? r.headcount : (r.employees || (r.lines ? r.lines.length : 0));
-        const upd = r.paid_at || r.updated_at || r.created_at || '—';
-        const displayUpd = upd.length > 16 ? upd.slice(0, 16).replace('T', ' ') : upd;
-        let statBadgeHtml = '';
+        const upd = r.paid_at || r.updated_at || r.created_at || '';
+        const displayUpd = stampText(upd) || 'Not saved yet';
+        let statutory = pill('pv-pill--none', 'Not started');
+        let statOpen = false;
+        let action = sKey === 'draft' ? 'Continue' : 'Open';
+        let primary = sKey === 'draft';
         if (sKey === 'paid' || sKey === 'partially_paid') {
           const obls = (this.allObligations || []).filter(o =>
             (r.id !== undefined && r.id !== null && (o.source_id === r.id || String(o.source_id) === String(r.id))) ||
@@ -389,24 +426,65 @@
           );
           const resolved = this.resolvePayrollRunState(r, obls);
           if (resolved && resolved.badge) {
-            statBadgeHtml = ` <span class="p-badge ${resolved.badgeClass}" style="margin-left:4px; font-size:0.72rem;">${resolved.badge}</span>`;
+            const partial = /partial/i.test(resolved.badge);
+            const settled = /reconciled$/i.test(resolved.badge) && !partial;
+            statOpen = !settled;
+            statutory = pill(partial ? 'pv-pill--part' : (settled ? 'pv-pill--paid' : 'pv-pill--open'), resolved.badge);
+            action = partial ? 'Reconcile' : (settled ? 'Open' : 'Record statutory');
+            primary = partial;
           }
         }
-
-        rowsHtml += `
-          <tr class="clickable" onclick="PayrollApp.openRun('${r.id || r.period_label}')">
-            <td data-label="Period"><strong>${escapeHtml(r.period_label)}</strong></td>
-            <td data-label="Date range">${r.period_start || (r.period_label + '-01')} &rarr; ${r.period_end || (r.period_label + '-30')}</td>
-            <td data-label="Status"><span class="p-badge ${sBadge[1]}">${sBadge[0]}</span>${statBadgeHtml}</td>
-            <td data-label="Total Disbursement" class="payroll-num">${this.money(netVal)}</td>
-            <td data-label="Employees">${hc}</td>
-            <td data-label="Last updated">${displayUpd}</td>
-          </tr>
-        `;
+        rows.push({
+          arg: String(r.id || r.period_label), cat: (sKey === 'paid' || sKey === 'partially_paid') ? 'paid' : 'draft', statOpen,
+          period: monthName(r.period_label), periodLabel: r.period_label, start: r.period_start || (r.period_label + '-01'), end: r.period_end || (r.period_label + '-30'),
+          salaries: salaryPill(sKey, sBadge[0], this.resolvePayrollRunState(r, []).stepIndex + 1), statutory, hc, net: this.money(netVal), upd: displayUpd, action, primary
+        });
       });
 
-      tbody.innerHTML = rowsHtml;
-      if (countEl) countEl.textContent = `${(savedCurrent ? 0 : 1) + pastRuns.length} runs total`;
+      tbody.innerHTML = rows.map(rowHtml).join('');
+      const total = rows.length;
+      if (countEl) countEl.textContent = `${total} runs total`;
+      const foot = document.getElementById('payrollRunsFoot');
+      if (foot) foot.innerHTML = `<span>Showing <strong>${total ? '1\u2013' + total : '0'}</strong> of <strong>${total}</strong> runs \u00b7 every action is saved, open a run to continue where it stopped</span><span>Page 1 of 1</span>`;
+
+      // Status filter pills (All / Draft / Salaries paid / Statutory open)
+      const filterEl = document.getElementById('payrollRunsFilter');
+      if (filterEl) {
+        const count = (fn) => rows.filter(fn).length;
+        const defs = [
+          ['all', 'All', total, ''],
+          ['draft', 'Draft', count(x => x.cat === 'draft'), 'pv-fp--draft'],
+          ['paid', 'Salaries paid', count(x => x.cat === 'paid'), 'pv-fp--paid'],
+          ['stat', 'Statutory open', count(x => x.statOpen), 'pv-fp--open']
+        ];
+        const cur = this._runsFilter || 'all';
+        filterEl.innerHTML = defs.map(([k, label, n, cls]) =>
+          `<button type="button" class="pv-fp ${cls}${cur === k ? ' active' : ''}" data-runs-filter="${k}" aria-pressed="${cur === k}">${k === 'all' ? '' : dot}${label} <span class="pv-fp-n">${n}</span></button>`).join('');
+        const apply = () => {
+          const f = this._runsFilter || 'all';
+          tbody.querySelectorAll('tr').forEach(tr => {
+            const show = f === 'all' || (f === 'stat' ? tr.dataset.statOpen === '1' : tr.dataset.cat === f);
+            tr.hidden = !show;
+          });
+          filterEl.querySelectorAll('.pv-fp').forEach(b => { const on = b.dataset.runsFilter === f; b.classList.toggle('active', on); b.setAttribute('aria-pressed', on); });
+        };
+        filterEl.onclick = (e) => { const b = e.target.closest('.pv-fp'); if (!b) return; this._runsFilter = b.dataset.runsFilter; apply(); };
+        apply();
+      }
+
+      // Current-cycle banner
+      const banner = document.getElementById('payrollCycleBanner');
+      if (banner) {
+        const STEP_NAMES = ['set up', 'review pay', 'statutory', 'payment preview', 'confirm payment', 'statutory payments'];
+        const savedForMonth = (this.serverRuns || []).find(r => r.period_label === this.month);
+        const stepNo = (savedForMonth ? this.resolvePayrollRunState(savedForMonth, []).stepIndex : this.stepIndex) + 1;
+        banner.hidden = false;
+        banner.innerHTML = `
+          <span class="pv-banner-main"><span class="pv-banner-kicker">Current cycle \u00b7 step ${stepNo} of 6, ${STEP_NAMES[stepNo - 1] || ''}</span><span class="pv-banner-title">${escapeHtml(monthName(this.month))}</span><span class="pv-banner-sub">Pay date ${dayText(this.payDate)} &middot; ${this.rows.length} employees eligible &middot; saved automatically</span></span>
+          <span class="pv-banner-net"><span class="pv-banner-kicker">Projected net pay</span><span class="pv-banner-amt">${this.money(t.net)}</span></span>
+          <span class="pv-banner-btn" id="btnOpenCurrentCycle">Continue run</span>`;
+        banner.onclick = () => PayrollApp.openRun('current');
+      }
     },
 
     // Period defaults for a calendar month "YYYY-MM": first to last day, paid on the last day.
@@ -604,7 +682,7 @@
       if (!container) return;
       const doneThrough = this.completedThroughIndex();
 
-      const stepNames = FLOW.map((k, i) => (STEP_META[k] ? STEP_META[k].label : `${i + 1}. Step`));
+      const stepNames = FLOW.map((k, i) => `${i + 1}. ${STEP_META[k] ? STEP_META[k].label : 'Step'}`);
       const compact = `
         <div class="payroll-step-compact">
           <strong>Step ${this.stepIndex + 1} of ${FLOW.length}</strong>
@@ -613,7 +691,7 @@
           </select>
         </div>`;
       container.innerHTML = compact + FLOW.map((stepKey, idx) => {
-        const meta = STEP_META[stepKey] || { label: `${idx + 1}. Step` };
+        const meta = STEP_META[stepKey] || { label: 'Step' };
         const isActive = idx === this.stepIndex;
         const isDone = idx < this.stepIndex || idx <= doneThrough;
         const cls = isActive ? 'active' : (isDone ? 'done' : '');
@@ -637,7 +715,6 @@
           if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.finalizePayrollRun === 'function') {
             await FinanceApi.finalizePayrollRun(this.currentRun.id);
             this.currentRun = await FinanceApi.getPayrollRun(this.currentRun.id);
-            this.showBanner('Payroll run finalized and locked. Backend snapshots populated.', 'blue');
           }
         } catch (err) {
           this.showBanner(err.message || 'Finalization failed. Statutory snapshot could not be generated.', 'red');
@@ -681,12 +758,9 @@
       const lockNote = document.getElementById('payrollLockNote');
       const lockText = document.getElementById('payrollLockText');
       if (lockNote && lockText) {
-        if (idx >= 2 || this.isRunLocked()) {
-          lockNote.classList.remove('payroll-hidden');
-          lockText.textContent = 'This run is finalized. Compensation and additions are read-only.';
-        } else {
-          lockNote.classList.add('payroll-hidden');
-        }
+        // The blue "Finalized snapshot" strip and the status pill already say this (mock): keep the note hidden
+        lockText.textContent = 'This run is finalized. Compensation and additions are read-only.';
+        lockNote.classList.add('payroll-hidden');
       }
     },
 
@@ -716,10 +790,10 @@
       const extSelect = document.getElementById('p1ExtAccount');
       const intSelect = document.getElementById('p1IntAccount');
       if (extSelect) {
-        extSelect.innerHTML = (this.banks || []).map(b => `<option value="${b.id}" ${String(b.id) === String(this.selectedExternalAccountId) ? 'selected' : ''}>${b.name} (${b.currency} ${b.number})</option>`).join('');
+        extSelect.innerHTML = (this.banks || []).map(b => `<option value="${b.id}" ${String(b.id) === String(this.selectedExternalAccountId) ? 'selected' : ''}>${this.fundingAccountLabel(b)}</option>`).join('');
       }
       if (intSelect) {
-        intSelect.innerHTML = (this.banks || []).map(b => `<option value="${b.id}" ${String(b.id) === String(this.selectedInternalAccountId) ? 'selected' : ''}>${b.name} (${b.currency} ${b.number})</option>`).join('');
+        intSelect.innerHTML = (this.banks || []).map(b => `<option value="${b.id}" ${String(b.id) === String(this.selectedInternalAccountId) ? 'selected' : ''}>${this.fundingAccountLabel(b)}</option>`).join('');
       }
 
       this.drawFxRate();
@@ -735,6 +809,29 @@
       if (extEl) extEl.textContent = this.money((p && p.final_ext_total) || t.external);
       if (intEl) intEl.textContent = this.money((p && p.final_int_total) || t.internal);
       if (netEl) netEl.textContent = this.money((p && p.total_net) || t.net);
+
+      const hcSub = document.getElementById('p1HeadcountSub');
+      if (hcSub) {
+        const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        const m = /^(\d{4})-(\d{2})/.exec(String(this.month || ''));
+        hcSub.textContent = `active in ${m ? MONTHS[+m[2] - 1] : this.month}`;
+      }
+
+      const warnEl = document.getElementById('p1MissingBankWarn');
+      const warnCountEl = document.getElementById('p1MissingBankCount');
+      if (warnEl) {
+        const missing = this.missingBankCount();
+        if (missing > 0) {
+          warnEl.hidden = false;
+          warnEl.style.display = 'flex';
+          if (warnCountEl) {
+            warnCountEl.textContent = `${missing} employee${missing > 1 ? 's have' : ' has'}`;
+          }
+        } else {
+          warnEl.hidden = true;
+          warnEl.style.display = 'none';
+        }
+      }
     },
 
     onScreen1PeriodChange() {
@@ -896,7 +993,7 @@
         const allowed = awaitingApproval ? this.canPermission('finance.payroll.approve') : this.canPermission('finance.payroll.prepare');
         p2ApproveBtn.innerHTML = awaitingApproval
           ? 'Approve <i class="fa-solid fa-check"></i>'
-          : 'Submit for approval <i class="fa-solid fa-paper-plane"></i>';
+          : 'Submit for approval';
         p2ApproveBtn.style.display = allowed && !pastApproval ? '' : 'none';
         const blockers = awaitingApproval ? 0 : this.blockingIssues().length;
         p2ApproveBtn.disabled = blockers > 0;
@@ -984,29 +1081,39 @@
         totTotal += (r.baseExt + r.baseInt + c.bonusTotal);
 
         const inits = this.getInitials(r.name);
-        const bonusBadges = (r.bonuses || []).map((b, bIdx) => `
-          <span class="chip p-bonus-pill" style="display:inline-flex; align-items:center; gap:4px;">
-            <span>${b.type || 'Bonus'} $${Number(b.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} · ${(b.source || 'int').toUpperCase()}</span>
-            <button type="button" onclick="PayrollApp.deleteBonus(${r.id}, ${bIdx}, ${b.id ? `'${b.id}'` : 'null'})" style="border:none; background:transparent; color:#ef4444; cursor:pointer; padding:0 2px; font-weight:800; font-size:12px; line-height:1;" title="Remove">&times;</button>
-          </span>
-        `).join('');
+        // Bonus amounts (left aligned, one line each) and their reasons (coloured tags on the same lines)
+        const reasonTone = (type) => /sales/i.test(type || '') ? 'sales' : /support/i.test(type || '') ? 'support' : 'bonus';
+        const bonusAmounts = (r.bonuses || []).map((b, bIdx) => {
+          const src = String(b.source || 'int').toLowerCase().startsWith('ext') ? 'ext' : 'int';
+          const srcLabel = src === 'ext' ? 'External (USD transfer)' : 'Internal (EGP cash)';
+          return `<div class="pv-bonus-line">
+            <span class="pv-src-dot pv-src-dot--${src}" title="${srcLabel}" aria-label="${srcLabel}"></span>
+            <span class="pv-bonus-amount">$${Number(b.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            <button type="button" class="pv-bonus-x" title="Remove this bonus" aria-label="Remove ${escapeHtml(b.type || 'bonus')}" onclick="PayrollApp.deleteBonus(${r.id}, ${bIdx}, ${b.id ? `'${b.id}'` : 'null'})">&times;</button>
+          </div>`;
+        }).join('');
+        const bonusReasons = (r.bonuses || []).map((b) => `<div class="pv-bonus-line"><span class="pv-reason-tag pv-reason-tag--${reasonTone(b.type)}">${escapeHtml(b.type || 'Bonus')}</span></div>`).join('');
 
         rowsHtml += `
           <tr>
-            <td class="col-id payroll-id-th" data-label="ID">${r.id}</td>
-            <td class="payroll-name-th">
-              <div class="tname">
+            <td class="payroll-emp-cell" data-label="Employee" style="padding:8px 16px; text-align:left;">
+              <span class="col-id sr-only">${r.id}</span>
+              <div class="tname" style="display:flex; align-items:center; gap:10px;">
                 <span class="avatar">${inits}</span>
-                <a class="payroll-emp-link" href="${Router.hrefFor('a-employee-detail', 'admin').replace(/\/?$/, '')}/${encodeURIComponent(r.id)}" data-action="open-employee-profile" data-employee-id="${escapeHtml(r.id)}"><strong>${escapeHtml(r.name)}</strong></a>
+                <span>
+                  <a class="payroll-emp-link" href="${Router.hrefFor('a-employee-detail', 'admin').replace(/\/?$/, '')}/${encodeURIComponent(r.id)}" data-action="open-employee-profile" data-employee-id="${escapeHtml(r.id)}" style="display:block; font-weight:600; color:var(--ink-strong); text-decoration:none;">${escapeHtml(r.name)}</a>
+                  <span class="pv-emp-sub" style="font-size:12px; color:var(--ink-muted);">${escapeHtml(r.role || r.dept || 'Employee')}</span>
+                </span>
               </div>
             </td>
-            <td class="num payroll-num" data-label="Base Ext">${this.money(r.baseExt)}</td>
-            <td class="num payroll-num" data-label="Base Int">${this.money(r.baseInt)}</td>
-            <td class="num payroll-num" data-label="Bonus / Commission">
-              ${bonusBadges || '<span class="muted" style="color:var(--text3); font-weight:600;">—</span>'}
+            <td class="num payroll-num" data-label="External base, USD" style="padding:8px 12px; text-align:right; font-variant-numeric:tabular-nums;">${this.money(r.baseExt)}</td>
+            <td class="num payroll-num" data-label="Internal base, USD" style="padding:8px 12px; text-align:right; font-variant-numeric:tabular-nums;">${this.money(r.baseInt)}</td>
+            <td class="payroll-bonus-col" data-label="Bonus or commission" style="padding:8px 12px; text-align:left;">
+              ${bonusAmounts || '<span class="muted" style="color:var(--ink-muted); font-size:13px;">None</span>'}
             </td>
-            <td class="num payroll-num strong" data-label="Total comp (gross)">${this.money(r.baseExt + r.baseInt + c.bonusTotal)}</td>
-            <td class="col-actions" style="text-align:center;">
+            <td class="payroll-reason-col" data-label="Reason" style="padding:8px 12px; text-align:left;">${bonusReasons}</td>
+            <td class="num payroll-num strong" data-label="Total pay, gross" style="padding:8px 16px; text-align:right; font-weight:700; color:var(--ink-strong); font-variant-numeric:tabular-nums;">${this.money(r.baseExt + r.baseInt + c.bonusTotal)}</td>
+            <td class="col-actions" style="width:40px; text-align:center; padding:8px 8px;">
               <button type="button" class="plus" id="btnPlus_${r.id}" onclick="PayrollApp.toggleInlineBonus(${r.id}, this)" title="Add bonus / commission">+</button>
             </td>
           </tr>
@@ -1019,6 +1126,8 @@
       const fInt = document.getElementById('fBaseInt');
       const fBon = document.getElementById('fBonus');
       const fNet = document.getElementById('fNet');
+      const fLbl = document.getElementById('fTotalsLabel');
+      if (fLbl) fLbl.textContent = `Totals \u00b7 ${filtered.length} ${filtered.length === 1 ? 'employee' : 'employees'}`;
       if (fExt) fExt.textContent = this.money(totExt);
       if (fInt) fInt.textContent = this.money(totInt);
       if (fBon) fBon.textContent = this.money(totBonus);
@@ -1327,7 +1436,7 @@
       const rate = this.resolvedFxRate || 50.0;
 
       let rowsHtml = '';
-      let totEmpSi = 0, totEmprSi = 0, totSi = 0, totTax = 0, totNetEgp = 0, totNetUsd = 0;
+      let totInsuredBase = 0, totEmpSi = 0, totEmprSi = 0, totSi = 0, totTax = 0, totNetEgp = 0, totNetUsd = 0;
 
       if (lines.length > 0) {
         // Group and deduplicate lines by employee_id (employees may have multiple split payment lines)
@@ -1369,6 +1478,7 @@
         const employeeEntries = Array.from(empMap.values());
 
         employeeEntries.forEach(l => {
+          const insBase = Number(l.insured_base_egp_snapshot || 0);
           const empSi = Number(l.employee_social_insurance_egp || 0);
           const emprSi = Number(l.employer_social_insurance_egp || 0);
           const tSi = Number(l.total_social_insurance_egp || (empSi + emprSi));
@@ -1376,6 +1486,7 @@
           const netEgp = Number(l.final_internal_net_egp || 0);
           const netUsd = Number(l.net_pay || l.amount || (netEgp / rate));
 
+          totInsuredBase += insBase;
           totEmpSi += empSi;
           totEmprSi += emprSi;
           totSi += tSi;
@@ -1388,19 +1499,22 @@
 
           rowsHtml += `
             <tr>
-              <td class="col-id payroll-id-th">${l.employee_id}</td>
-              <td class="payroll-name-th">
-                <div class="tname">
+              <td class="payroll-name-th" data-label="Employee" style="padding:9px 16px;">
+                <span class="col-id sr-only">${l.employee_id}</span>
+                <span style="display:flex; align-items:center; gap:10px;">
                   <span class="avatar">${inits}</span>
-                  <strong>${empName}</strong>
-                </div>
+                  <span style="display:block;">
+                    <strong style="color:var(--ink-strong); font-weight:600;">${escapeHtml(empName)}</strong>
+                    <span class="pv-emp-sub" style="display:block; font-size:12px; color:var(--ink-muted);">${escapeHtml(l.role || l.dept || 'Employee')}</span>
+                  </span>
+                </span>
               </td>
-              <td class="num payroll-num">${Number(l.insured_base_egp_snapshot || 0).toFixed(2)}</td>
-              <td class="num payroll-num">${empSi.toFixed(2)}</td>
-              <td class="num payroll-num">${emprSi.toFixed(2)}</td>
-              <td class="num payroll-num" style="font-weight:700;">${tSi.toFixed(2)}</td>
-              <td class="num payroll-num" style="font-weight:700;">${tax.toFixed(2)}</td>
-              <td class="num payroll-num strong accent" style="font-weight:800; color:var(--accent-text);">${this.money(netUsd)}</td>
+              <td class="num payroll-num" data-label="Insured base, EGP" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${insBase.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td class="num payroll-num" data-label="Employee SI, EGP" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${empSi.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td class="num payroll-num" data-label="Employer SI, EGP" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${emprSi.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td class="num payroll-num" data-label="Total SI, EGP" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${tSi.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td class="num payroll-num" data-label="Income tax, EGP" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${tax.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td class="num payroll-num strong accent" data-label="Internal net payment" style="padding:9px 16px; text-align:right; font-weight:700; color:var(--ink-strong); font-variant-numeric:tabular-nums;">${this.money(netUsd)}</td>
             </tr>
           `;
         });
@@ -1416,6 +1530,7 @@
           const netEgp = Math.max(0, insuredEgp - empSi);
           const netUsd = Math.round((netEgp / rate) * 100) / 100;
 
+          totInsuredBase += insuredEgp;
           totEmpSi += empSi;
           totEmprSi += emprSi;
           totSi += tSi;
@@ -1427,19 +1542,22 @@
 
           rowsHtml += `
             <tr>
-              <td class="col-id payroll-id-th">${r.id}</td>
-              <td class="payroll-name-th">
-                <div class="tname">
+              <td class="payroll-name-th" data-label="Employee" style="padding:9px 16px;">
+                <span class="col-id sr-only">${r.id}</span>
+                <span style="display:flex; align-items:center; gap:10px;">
                   <span class="avatar">${inits}</span>
-                  <strong>${r.name}</strong>
-                </div>
+                  <span style="display:block;">
+                    <strong style="color:var(--ink-strong); font-weight:600;">${escapeHtml(r.name)}</strong>
+                    <span class="pv-emp-sub" style="display:block; font-size:12px; color:var(--ink-muted);">${escapeHtml(r.role || r.dept || 'Employee')}</span>
+                  </span>
+                </span>
               </td>
-              <td class="num payroll-num">${insuredEgp.toFixed(2)}</td>
-              <td class="num payroll-num">${empSi.toFixed(2)}</td>
-              <td class="num payroll-num">${emprSi.toFixed(2)}</td>
-              <td class="num payroll-num" style="font-weight:700;">${tSi.toFixed(2)}</td>
-              <td class="num payroll-num" style="font-weight:700;">${tax.toFixed(2)}</td>
-              <td class="num payroll-num strong accent" style="font-weight:800; color:var(--accent-text);">${this.money(netUsd)}</td>
+              <td class="num payroll-num" data-label="Insured base, EGP" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${insuredEgp.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td class="num payroll-num" data-label="Employee SI, EGP" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${empSi.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td class="num payroll-num" data-label="Employer SI, EGP" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${emprSi.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td class="num payroll-num" data-label="Total SI, EGP" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${tSi.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td class="num payroll-num" data-label="Income tax, EGP" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${tax.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td class="num payroll-num strong accent" data-label="Internal net payment" style="padding:9px 16px; text-align:right; font-weight:700; color:var(--ink-strong); font-variant-numeric:tabular-nums;">${this.money(netUsd)}</td>
             </tr>
           `;
         });
@@ -1453,14 +1571,20 @@
       const p3Tax = document.getElementById('p3TotTax');
       const p3Egp = document.getElementById('p3TotNetEgp');
       const p3Usd = document.getElementById('p3TotNetUsd');
+      const p3Ins = document.getElementById('p3TotInsuredBase');
+      const p3Lbl = document.getElementById('p3TotalsLabel');
 
-      if (p3Emp) p3Emp.textContent = totEmpSi.toFixed(2) + ' EGP';
-      if (p3Empr) p3Empr.textContent = totEmprSi.toFixed(2) + ' EGP';
-      if (p3Si) p3Si.textContent = totSi.toFixed(2) + ' EGP';
-      if (p3Tax) p3Tax.textContent = totTax.toFixed(2) + ' EGP';
+      const count = (lines.length > 0) ? new Set(lines.map(l => l.employee_id)).size : this.rows.length;
+      if (p3Lbl) p3Lbl.textContent = `Totals \u00b7 ${count} ${count === 1 ? 'employee' : 'employees'}`;
+      if (p3Ins) p3Ins.textContent = totInsuredBase.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      if (p3Emp) p3Emp.textContent = totEmpSi.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      if (p3Empr) p3Empr.textContent = totEmprSi.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      if (p3Si) p3Si.textContent = totSi.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      if (p3Tax) p3Tax.textContent = totTax.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       if (p3Egp) p3Egp.textContent = totNetEgp.toFixed(2) + ' EGP';
       if (p3Usd) p3Usd.textContent = this.money(totNetUsd);
     },
+
 
     /* ==================== SCREEN 4: PAYMENT PREVIEW ==================== */
     // Per-employee external/internal payment amounts, shared by screens 4 and 5 and the journal
@@ -1549,45 +1673,72 @@
         }
 
         let bankBadgeHtml = '';
+        const empBankHref = `${Router.hrefFor('a-employee-detail', 'admin')}/${encodeURIComponent(r.id)}/bank`;
         if (isMissingBank) {
-          bankBadgeHtml = `<a class="pill-danger badge-pill p-badge b-amber payroll-missing-bank-link" style="font-size:0.75rem;" href="${Router.hrefFor('a-employee-detail', 'admin')}/${encodeURIComponent(r.id)}/bank" data-action="open-employee-bank" data-employee-id="${escapeHtml(r.id)}" title="Open this employee's bank section"><i class="fa-solid fa-triangle-exclamation"></i> Missing bank details</a>`;
+          bankBadgeHtml = `
+            <a class="pv-pill pv-pill--open payroll-missing-bank-link" href="${empBankHref}" data-action="open-employee-bank" data-employee-id="${escapeHtml(r.id)}" style="display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600; text-decoration:none; background:var(--warning-soft); color:var(--warning-text, var(--warning));">
+              Missing bank details
+            </a>
+            <div class="pv-emp-sub" style="font-size:12px; color:var(--ink-muted); margin-top:2px;">Pay outside HRFlow and record it here</div>
+          `;
         } else if (hasExternal) {
-          const bankDisplay = (r.bank_name ? `${escapeHtml(r.bank_name)} ${escapeHtml(r.bank_account_masked || '')}` : 'Bank details on file');
-          bankBadgeHtml = `<span class="p-badge b-gray badge-pill" style="font-size:0.75rem;"><i class="fa-solid fa-building-columns"></i> ${bankDisplay}</span>`;
+          const bankName = r.bank_name || 'Bank';
+          const maskedIban = r.bank_account_masked || (r.bank_account_id ? '•••• ' + String(r.bank_account_id).slice(-4) : '•••• on file');
+          const swift = r.swift || r.swift_code || '';
+          bankBadgeHtml = `
+            <span style="color:var(--ink-strong); font-weight:500;">${escapeHtml(bankName)} · ${escapeHtml(maskedIban)}</span>
+            ${swift ? `<div class="pv-emp-sub" style="font-size:12px; color:var(--ink-muted); margin-top:2px;">SWIFT ${escapeHtml(swift)}</div>` : ''}
+          `;
         } else {
-          bankBadgeHtml = `<span class="p-badge b-gray badge-pill" style="font-size:0.75rem;"><i class="fa-solid fa-building-columns"></i> None (Internal only)</span>`;
+          bankBadgeHtml = `<span style="color:var(--ink-muted); font-size:12.5px;">None (Internal only)</span>`;
         }
 
         const inits = this.getInitials(r.name);
+        const empProfileHref = `${Router.hrefFor('a-employee-detail', 'admin').replace(/\/?$/, '')}/${encodeURIComponent(r.id)}`;
 
         rowsHtml += `
-          <tr class="${isMissingBank ? 'warnrow' : ''}">
-            <td class="col-id payroll-id-th" data-label="ID">${r.id}</td>
-            <td class="payroll-name-th">
-              <div class="tname">
+          <tr class="${isMissingBank ? 'warnrow' : ''}" style="${isMissingBank ? 'background: color-mix(in srgb, var(--warning-soft) 40%, transparent);' : ''}">
+            <td class="col-id payroll-id-th sr-only" style="display:none;" data-label="ID">${r.id}</td>
+            <td class="payroll-name-th" data-label="Employee" style="padding:9px 16px;">
+              <span style="display:flex; align-items:center; gap:10px;">
                 <span class="avatar">${inits}</span>
-                <a class="payroll-emp-link" href="${Router.hrefFor('a-employee-detail', 'admin').replace(/\/?$/, '')}/${encodeURIComponent(r.id)}" data-action="open-employee-profile" data-employee-id="${escapeHtml(r.id)}"><strong>${escapeHtml(r.name)}</strong></a>
-              </div>
+                <a class="payroll-emp-link" href="${empProfileHref}" data-action="open-employee-profile" data-employee-id="${escapeHtml(r.id)}" style="color:var(--ink-strong); font-weight:600; text-decoration:none;"><strong>${escapeHtml(r.name)}</strong></a>
+              </span>
             </td>
-            <td data-label="Bank / Routing">${bankBadgeHtml}</td>
-            <td class="num payroll-num" data-label="External (USD)">${this.money(extVal)}</td>
-            <td class="num payroll-num" data-label="Internal (USD)">${this.money(intVal)}</td>
-            <td class="num payroll-num strong accent" data-label="Total Disbursement" style="font-weight:800; color:var(--accent-text);">${this.money(netVal)}</td>
+            <td data-label="Employee bank account" style="padding:9px 12px;">${bankBadgeHtml}</td>
+            <td class="num payroll-num" data-label="External, USD" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${this.money(extVal)}</td>
+            <td class="num payroll-num" data-label="Internal, USD" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${this.money(intVal)}</td>
+            <td class="num payroll-num strong accent" data-label="Net pay" style="padding:9px 16px; text-align:right; font-weight:700; color:var(--ink-strong); font-variant-numeric:tabular-nums;">${this.money(netVal)}</td>
           </tr>
         `;
       });
       tbody.innerHTML = rowsHtml;
 
-      if (bMissing) {
-        bMissing.textContent = missingBankCount;
-        bMissing.style.color = missingBankCount > 0 ? 'var(--warning, #e07d10)' : 'var(--text2, #7a8ea8)';
+      const rCard = document.getElementById('p4RecipientsCard');
+      const rVal = document.getElementById('p4RecipientsVal');
+      const rSub = document.getElementById('p4RecipientsSub');
+      if (rVal) {
+        if (missingBankCount > 0) {
+          if (rCard) {
+            rCard.classList.add('pv-stat-tile--flagged');
+            rCard.style.borderColor = 'color-mix(in srgb, var(--warning) 40%, transparent)';
+          }
+          rVal.style.color = 'var(--warning-text, var(--warning))';
+          rVal.innerHTML = `<span id="p4MissingBankCount">${missingBankCount}</span> of <span id="p4Headcount">${this.rows.length}</span> flagged`;
+          if (rSub) rSub.textContent = 'missing bank details · payment can still be recorded';
+        } else {
+          if (rCard) {
+            rCard.classList.remove('pv-stat-tile--flagged');
+            rCard.style.borderColor = '';
+          }
+          rVal.style.color = 'var(--ink-strong)';
+          rVal.innerHTML = `<span id="p4MissingBankCount" style="display:none;">0</span><span id="p4Headcount">${this.rows.length}</span> recipients`;
+          if (rSub) rSub.textContent = 'all recipients ready';
+        }
       }
 
-      const recSub = document.getElementById('p4RecipientsSub');
-      if (recSub) {
-        recSub.textContent = missingBankCount > 0 ? `${missingBankCount} missing bank details` : 'All recipients ready';
-        if (missingBankCount > 0) recSub.style.color = 'var(--warning, #e07d10)';
-      }
+      const p4Lbl = document.getElementById('p4TotalsLabel');
+      if (p4Lbl) p4Lbl.textContent = `Totals \u00b7 ${this.rows.length} ${this.rows.length === 1 ? 'recipient' : 'recipients'}`;
 
       const fExt = document.getElementById('p4TotExt');
       const fInt = document.getElementById('p4TotInt');
@@ -1604,8 +1755,10 @@
       const t = this.rollup();
       const p = this.currentPreview;
 
-      const extBankName = (this.banks.find(b => String(b.id) === String(this.selectedExternalAccountId)) || {}).name || '—';
-      const intBankName = (this.banks.find(b => String(b.id) === String(this.selectedInternalAccountId)) || {}).name || '—';
+      const extBankObj = this.banks.find(b => String(b.id) === String(this.selectedExternalAccountId));
+      const intBankObj = this.banks.find(b => String(b.id) === String(this.selectedInternalAccountId));
+      const extBankName = extBankObj ? this.fundingAccountLabel(extBankObj) : '—';
+      const intBankName = intBankObj ? this.fundingAccountLabel(intBankObj) : '—';
 
       const { ext: extTotal, int: intTotal } = this.paymentTotals();
 
@@ -1635,13 +1788,13 @@
       if (p5ExtAcc) p5ExtAcc.textContent = extBankName;
       if (p5ExtRec) p5ExtRec.textContent = 'External salaries';
       if (p5ExtRecCount) p5ExtRecCount.textContent = `${extRecipients} employee${extRecipients === 1 ? '' : 's'}`;
-      if (p5ExtDate) p5ExtDate.textContent = this.payDate;
+      if (p5ExtDate) p5ExtDate.textContent = fmtDateShort(this.payDate);
 
       if (p5IntTot) p5IntTot.textContent = this.money(intTotal);
       if (p5IntAcc) p5IntAcc.textContent = intBankName;
       if (p5IntRec) p5IntRec.textContent = 'Internal salaries';
       if (p5IntRecCount) p5IntRecCount.textContent = `${intRecipients} employee${intRecipients === 1 ? '' : 's'}`;
-      if (p5IntDate) p5IntDate.textContent = this.payDate;
+      if (p5IntDate) p5IntDate.textContent = fmtDateShort(this.payDate);
 
       if (extEl) extEl.textContent = `${this.money(extTotal)} (${extBankName})`;
       if (intEl) intEl.textContent = `${this.money(intTotal)} (${intBankName})`;
@@ -1662,9 +1815,15 @@
                 <i class="fa-solid ${isWarn ? 'fa-triangle-exclamation' : 'fa-circle-xmark'}"></i>
                 <span><strong>${label}:</strong> ${escapeHtml(text)}</span>
               </div>`;
-          const missingHtml = missingBankExc.length
-            ? alertHtml(true, 'Warning', `bank details missing for ${missingBankExc.length} employee${missingBankExc.length === 1 ? '' : 's'}. Payment can still be recorded.`)
-            : '';
+          let missingHtml = '';
+          if (missingBankExc.length > 0) {
+            const missingNames = missingBankExc.map(exc => {
+              const row = (this.rows || []).find(r => String(r.id) === String(exc.employee_id));
+              return row ? row.name : `Employee #${exc.employee_id}`;
+            });
+            const nameStr = missingNames.length > 0 ? missingNames.join(', ') : `${missingBankExc.length} employee${missingBankExc.length === 1 ? '' : 's'}`;
+            missingHtml = alertHtml(true, 'Warning', `${nameStr} has no employee bank account on file (bank details missing for ${missingBankExc.length} employee${missingBankExc.length === 1 ? '' : 's'}). Flagged only; this does not block recording the payment. Payment can still be recorded.`);
+          }
           excStrip.innerHTML = missingHtml + otherExc.map(exc => {
             const isWarn = exc.severity === 'warning';
             return alertHtml(isWarn, isWarn ? 'Warning' : 'Blocking exception', exc.details || exc.message || 'Exception reported for this run.');
@@ -1694,7 +1853,7 @@
         if (jCard) jCard.classList.add('payroll-hidden');
         if (btnDisburse) {
           btnDisburse.disabled = false;
-          btnDisburse.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Confirm and record as paid';
+          btnDisburse.textContent = 'Confirm and record as paid';
         }
         this.applyConfirmState();
       }
@@ -1714,11 +1873,26 @@
       const totals = this.paymentTotals();
       const recipients = this.rows.length;
       const missing = this.missingBankCount();
+
+      const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      const mMatch = /^(\d{4})-(\d{2})/.exec(String(this.month || ''));
+      const monthTitle = mMatch ? `${MONTHS[+mMatch[2] - 1]} ${mMatch[1]}` : this.month;
+
+      const extBankName = (this.banks.find(b => String(b.id) === String(this.selectedExternalAccountId)) || {}).name || 'Voyance Operating USD';
+      const intBankName = (this.banks.find(b => String(b.id) === String(this.selectedInternalAccountId)) || {}).name || 'CIB EGP Operating';
+      const paidOn = (run && (run.paid_at || run.payment_date)) || this.payDate;
+
       const confirmed = await FinanceCommand.confirmAction({
-        title: 'Record payroll as paid',
-        consequence: `Record ${this.money(totals.net)} as paid to ${recipients} employee${recipients === 1 ? '' : 's'} for ${this.month}. `
-          + `${missing} ${missing === 1 ? 'employee has' : 'employees have'} missing bank details. `
-          + 'This posts the payroll journal and cannot be undone from here.',
+        title: `Record ${monthTitle} as paid?`,
+        subtitle: 'Records the payment in HRFlow. No money is sent.',
+        tone: 'violet',
+        iconSvg: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18v10H3zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5"></path></svg>',
+        tiles: [
+          { label: 'Total net pay', value: this.money(totals.net) },
+          { label: 'Recipients', value: `${recipients} ${recipients === 1 ? 'employee' : 'employees'}` },
+          { label: 'Missing bank details', value: `${missing} ${missing === 1 ? 'employee' : 'employees'}`, tone: missing > 0 ? 'amber' : 'neutral' },
+        ],
+        consequence: `Internal salaries ${this.money(totals.int)} from ${intBankName} and external salaries ${this.money(totals.ext)} from ${extBankName}, dated ${fmtDateShort(paidOn)}. Missing bank details do not block this.`,
         actionLabel: 'Confirm and record as paid',
         actionClass: 'btn btn-fill',
         severity: 'warning',
@@ -1765,11 +1939,14 @@
       const status = this.currentRun && this.currentRun.status;
       const paid = status === 'paid';
       const ready = ['finalized', 'processing', 'partially_paid'].includes(status);
+      // "Next: Statutory payments" joins the footer once the payment is recorded
+      const nextBtn = document.getElementById('btnP5ProceedStatutory');
+      if (nextBtn) nextBtn.hidden = !(paid || status === 'partially_paid');
       if (paid || status === 'partially_paid') this.showRecordedAsPaid(btn);
       else btn.disabled = !ready;
       if (hint) {
-        hint.hidden = ready || paid;
-        hint.textContent = ready || paid ? '' : 'Payment can be recorded once the run is approved and finalized.';
+        hint.hidden = false;
+        hint.textContent = ready || paid ? 'Records the payment in HRFlow. No money is sent from here.' : 'Payment can be recorded once the run is approved and finalized.';
       }
     },
 
@@ -1904,7 +2081,7 @@
       const siDateInput = document.getElementById('p6SiPaymentDate');
       const taxDateInput = document.getElementById('p6TaxPaymentDate');
 
-      const bankOptionsHtml = (this.banks || []).map(b => `<option value="${b.id}" ${String(b.id) === String(this.selectedExternalAccountId) ? 'selected' : ''}>${b.name} (${b.currency} ${b.number})</option>`).join('');
+      const bankOptionsHtml = (this.banks || []).map(b => `<option value="${b.id}" ${String(b.id) === String(this.selectedExternalAccountId) ? 'selected' : ''}>${this.fundingAccountLabel(b)}</option>`).join('');
       if (siAccountSelect) siAccountSelect.innerHTML = bankOptionsHtml;
       if (taxAccountSelect) taxAccountSelect.innerHTML = bankOptionsHtml;
 
@@ -1936,7 +2113,7 @@
         const diff = Math.round((actual - est) * 100) / 100;
         const sign = diff > 0 ? '+' : '';
         varEl.textContent = `${sign}${diff.toFixed(2)} EGP`;
-        varEl.style.color = diff !== 0 ? (diff > 0 ? '#b91c1c' : '#15803d') : '#64748b';
+        varEl.style.color = diff !== 0 ? (diff > 0 ? 'var(--warning-text, var(--warning))' : 'var(--success)') : 'var(--ink-muted)';
       } else if (type === 'tax') {
         const estText = document.getElementById('p6TaxEstimate');
         const input = document.getElementById('p6TaxActual');
@@ -1947,13 +2124,27 @@
         const diff = Math.round((actual - est) * 100) / 100;
         const sign = diff > 0 ? '+' : '';
         varEl.textContent = `${sign}${diff.toFixed(2)} EGP`;
-        varEl.style.color = diff !== 0 ? (diff > 0 ? '#b91c1c' : '#15803d') : '#64748b';
+        varEl.style.color = diff !== 0 ? (diff > 0 ? 'var(--warning-text, var(--warning))' : 'var(--success)') : 'var(--ink-muted)';
       }
     },
 
     async loadLinkedStatutoryObligations() {
       const tbody = document.getElementById('payrollStatutoryRecordsTableBody');
       if (!tbody) return;
+
+      const typeLabel = (t) => {
+        if (!t) return '—';
+        if (t.includes('social_insurance')) return 'Social insurance';
+        if (t.includes('tax')) return 'Salary income tax';
+        return t.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      };
+
+      const statusBadge = (st) => {
+        const s = (st || 'accrued').toLowerCase();
+        if (s === 'remitted') return '<span class="stage-badge settled">Remitted</span>';
+        if (s === 'accrued') return '<span class="stage-badge recorded">Recorded, unpaid</span>';
+        return '<span class="stage-badge unrecorded">Not recorded</span>';
+      };
 
       try {
         if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.listStatutoryObligations === 'function') {
@@ -1964,13 +2155,12 @@
           if (linked.length > 0) {
             tbody.innerHTML = linked.map(o => `
               <tr>
-                <td><strong>#${o.id}</strong></td>
-                <td>${o.obligation_type}</td>
-                <td>${o.period}</td>
-                <td class="num payroll-num">${Number(o.amount_accrued).toFixed(2)} ${o.currency}</td>
-                <td class="num payroll-num">${Number(o.amount_remitted || 0).toFixed(2)} ${o.currency}</td>
-                <td><span class="pill-${o.status === 'remitted' ? 'success' : 'info'} badge-pill">${(o.status || 'accrued').toUpperCase()}</span></td>
-                <td><span style="font-size:0.75rem; color:#64748b;">${o.notes || '—'}</span></td>
+                <td style="padding: 11px 16px; font-weight: 600; color: var(--ink-strong);">${typeLabel(o.obligation_type)}</td>
+                <td style="padding: 11px 12px;">${escapeHtml(o.period || '')}</td>
+                <td class="num payroll-num" style="padding: 11px 12px; text-align: right; font-weight: 600; color: var(--ink-strong);">${o.currency || 'EGP'} ${Number(o.amount_accrued).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td class="num payroll-num" style="padding: 11px 12px; text-align: right; color: var(--ink-muted);">${o.currency || 'EGP'} ${Number(o.amount_remitted || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style="padding: 11px 12px;">${statusBadge(o.status)}</td>
+                <td style="padding: 11px 16px; color: var(--ink-muted);">${escapeHtml(o.notes || '—')}</td>
               </tr>
             `).join('');
 
@@ -1980,6 +2170,8 @@
 
             const siBadge = document.getElementById('p6SiStatusBadge');
             const taxBadge = document.getElementById('p6TaxStatusBadge');
+            const btnRecordSi = document.getElementById('btnP6RecordSocialIns');
+            const btnRecordTax = document.getElementById('btnP6RecordTax');
             const btnSettleSi = document.getElementById('btnP6SettleSocialIns');
             const btnSettleTax = document.getElementById('btnP6SettleTax');
             const siPayStage = document.getElementById('p6SiPayStage');
@@ -1988,41 +2180,53 @@
             if (siObl) {
               if (siBadge) {
                 const isRemitted = siObl.status === 'remitted';
-                siBadge.textContent = isRemitted ? 'Remitted' : 'Recorded';
+                siBadge.textContent = isRemitted ? 'Remitted' : 'Recorded, unpaid';
                 siBadge.className = `stage-badge ${isRemitted ? 'settled' : 'recorded'}`;
               }
               if (siPayStage) siPayStage.classList.remove('locked');
               if (btnSettleSi) {
                 btnSettleSi.disabled = siObl.status === 'remitted';
                 btnSettleSi.setAttribute('data-obl-id', siObl.id);
+                btnSettleSi.style.display = '';
               }
+              if (btnRecordSi) btnRecordSi.style.display = 'none';
             } else {
               if (siBadge) {
-                siBadge.textContent = 'Unrecorded';
+                siBadge.textContent = 'Not recorded';
                 siBadge.className = 'stage-badge unrecorded';
               }
               if (siPayStage) siPayStage.classList.add('locked');
-              if (btnSettleSi) btnSettleSi.disabled = true;
+              if (btnSettleSi) {
+                btnSettleSi.disabled = true;
+                btnSettleSi.style.display = 'none';
+              }
+              if (btnRecordSi) btnRecordSi.style.display = '';
             }
 
             if (taxObl) {
               if (taxBadge) {
                 const isRemitted = taxObl.status === 'remitted';
-                taxBadge.textContent = isRemitted ? 'Remitted' : 'Recorded';
+                taxBadge.textContent = isRemitted ? 'Remitted' : 'Recorded, unpaid';
                 taxBadge.className = `stage-badge ${isRemitted ? 'settled' : 'recorded'}`;
               }
               if (taxPayStage) taxPayStage.classList.remove('locked');
               if (btnSettleTax) {
                 btnSettleTax.disabled = taxObl.status === 'remitted';
                 btnSettleTax.setAttribute('data-obl-id', taxObl.id);
+                btnSettleTax.style.display = '';
               }
+              if (btnRecordTax) btnRecordTax.style.display = 'none';
             } else {
               if (taxBadge) {
-                taxBadge.textContent = 'Unrecorded';
+                taxBadge.textContent = 'Not recorded';
                 taxBadge.className = 'stage-badge unrecorded';
               }
               if (taxPayStage) taxPayStage.classList.add('locked');
-              if (btnSettleTax) btnSettleTax.disabled = true;
+              if (btnSettleTax) {
+                btnSettleTax.disabled = true;
+                btnSettleTax.style.display = 'none';
+              }
+              if (btnRecordTax) btnRecordTax.style.display = '';
             }
 
             const resolved = this.resolvePayrollRunState(this.currentRun, linked);
@@ -2041,11 +2245,19 @@
       const taxBadge = document.getElementById('p6TaxStatusBadge');
       const siPayStage = document.getElementById('p6SiPayStage');
       const taxPayStage = document.getElementById('p6TaxPayStage');
-      if (siBadge) { siBadge.textContent = 'Unrecorded'; siBadge.className = 'stage-badge unrecorded'; }
-      if (taxBadge) { taxBadge.textContent = 'Unrecorded'; taxBadge.className = 'stage-badge unrecorded'; }
+      const btnRecordSi = document.getElementById('btnP6RecordSocialIns');
+      const btnRecordTax = document.getElementById('btnP6RecordTax');
+      const btnSettleSi = document.getElementById('btnP6SettleSocialIns');
+      const btnSettleTax = document.getElementById('btnP6SettleTax');
+      if (siBadge) { siBadge.textContent = 'Not recorded'; siBadge.className = 'stage-badge unrecorded'; }
+      if (taxBadge) { taxBadge.textContent = 'Not recorded'; taxBadge.className = 'stage-badge unrecorded'; }
       if (siPayStage) siPayStage.classList.add('locked');
       if (taxPayStage) taxPayStage.classList.add('locked');
-      tbody.innerHTML = '<tr><td colspan="7" class="muted" style="text-align:center; padding:16px;">No statutory obligations recorded yet for this payroll run.</td></tr>';
+      if (btnRecordSi) btnRecordSi.style.display = '';
+      if (btnRecordTax) btnRecordTax.style.display = '';
+      if (btnSettleSi) { btnSettleSi.disabled = true; btnSettleSi.style.display = 'none'; }
+      if (btnSettleTax) { btnSettleTax.disabled = true; btnSettleTax.style.display = 'none'; }
+      tbody.innerHTML = '<tr><td colspan="6" class="muted" style="text-align:center; padding:16px;">No statutory obligations recorded yet for this payroll run.</td></tr>';
     },
 
     async recordStatutoryObligation(type) {
@@ -2171,6 +2383,20 @@
       }
     },
 
+    // Funding account option text per the mocks: "Name · •••• 1234" (currency appended only when the name lacks it)
+    fundingAccountLabel(b) {
+      const numStr = String(b.number || '').trim();
+      let masked = '';
+      if (numStr) {
+        masked = (typeof FinanceFormat !== 'undefined' && typeof FinanceFormat.formatMaskedAccountNumber === 'function')
+          ? FinanceFormat.formatMaskedAccountNumber(numStr)
+          : (numStr.length > 4 ? `•••• ${numStr.slice(-4)}` : numStr);
+      }
+      const cur = String(b.currency || '');
+      const name = cur && !String(b.name || '').toUpperCase().includes(cur.toUpperCase()) ? `${b.name} ${cur}` : String(b.name || '');
+      return masked ? `${name} · ${masked}` : name;
+    },
+
     drawFxRate() {
       const rateEl = document.getElementById('payrollFxRateBadge');
       const srcEl = document.getElementById('payrollFxRateSourceBadge');
@@ -2186,7 +2412,7 @@
         if (isManual) {
           srcEl.textContent = 'manual override';
         } else if (isFallback) {
-          srcEl.textContent = 'system fallback rate';
+          srcEl.textContent = 'fallback rate';
         } else {
           srcEl.textContent = 'from transfer history';
         }
@@ -2236,7 +2462,34 @@
       this.redraw();
     },
 
+    // Run page chrome lives in the top bar (mock Pay-Run-*): 'Payroll runs / September 2026', status pill.
+    syncRunChrome(page) {
+      const onRun = page === 'run';
+      const statusBadge = document.getElementById('payrollStatusBadge');
+      if (statusBadge) statusBadge.hidden = !onRun;
+      const topRevert = document.getElementById('payrollTopRevertBtn');
+      if (topRevert && !onRun) topRevert.hidden = true;
+      const fxEl = document.getElementById('payrollFxStrip');
+      if (fxEl) fxEl.hidden = true;
+      const areaEl = document.getElementById('adminAreaName');
+      if (areaEl && onRun) areaEl.hidden = true;
+
+      const titleEl = document.getElementById('adminPageTitle');
+      if (!titleEl) return;
+      if (onRun) {
+        const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        const m = /^(\d{4})-(\d{2})/.exec(String(this.month || ''));
+        const monthLabel = m ? `${MONTHS[+m[2] - 1]} ${m[1]}` : this.month;
+        titleEl.innerHTML = `<a href="#" onclick="PayrollApp.showPage('list'); return false;" class="topbar-crumb">Payroll runs</a> <span class="topbar-crumb-sep">/</span> <span class="topbar-crumb-cur">${monthLabel}</span>`;
+      } else if (page === 'list') {
+        titleEl.textContent = 'Payroll runs';
+      } else if (page === 'settings') {
+        titleEl.textContent = 'Payroll settings';
+      }
+    },
+
     drawPeriodLabel() {
+      if (this.currentPage === 'run') this.syncRunChrome('run');
       const lbl = document.getElementById('payrollPeriodLabel');
       const sub = document.getElementById('payrollPeriodSubtitle');
       if (lbl) lbl.textContent = this.month;
@@ -2250,33 +2503,31 @@
       const badge = document.getElementById('payrollStatusBadge');
       if (!badge) return;
       const key = this.currentStatusKey();
+      // Finalized runs read "Approved" until the payment step, then "Finalized · not paid yet" (mock Pay-Run-*)
+      const finalizedLabel = this.stepIndex >= 4 ? 'Finalized · not paid yet' : 'Approved';
       const statusMap = {
         draft: ['Draft', 'b-gray'],
         submitted: ['Submitted', 'b-blue'],
         approved: ['Approved', 'b-blue'],
-        finalized: ['Finalized', 'b-blue'],
+        finalized: [finalizedLabel, 'b-blue'],
         processing: ['Processing', 'b-orange'],
         partially_paid: ['Partially paid', 'b-orange'],
         paid: ['Salaries paid', 'b-green']
       };
       const info = statusMap[key] || ['Draft', 'b-gray'];
       badge.textContent = info[0];
-      badge.className = `p-badge ${info[1]}`;
+      badge.className = `p-badge ${info[1]} topbar-run-status`;
+      // "Revert to draft" sits in the top bar while the run is approved (before the payment step)
+      const revertBtn = document.getElementById('payrollTopRevertBtn');
+      if (revertBtn) revertBtn.hidden = badge.hidden || info[0] !== 'Approved';
     },
 
     drawFundingAccounts() {
       const selExt = document.getElementById('payrollTargetExternalAccount');
       const selInt = document.getElementById('payrollTargetInternalAccount');
       const formatOpt = (b, selectedId) => {
-        let numStr = (b.number || '').trim();
-        let masked = numStr;
-        if (typeof FinanceFormat !== 'undefined' && typeof FinanceFormat.formatMaskedAccountNumber === 'function') {
-          masked = FinanceFormat.formatMaskedAccountNumber(numStr);
-        } else if (numStr.length > 4) {
-          masked = `•••• ${numStr.slice(-4)}`;
-        }
         const isSel = String(b.id) === String(selectedId) ? 'selected' : '';
-        return `<option value="${b.id}" ${isSel}>${b.name} (${b.currency} ${masked})</option>`;
+        return `<option value="${b.id}" ${isSel}>${this.fundingAccountLabel(b)}</option>`;
       };
       if (selExt) {
         selExt.innerHTML = this.banks.map(b => formatOpt(b, this.selectedExternalAccountId)).join('');
@@ -2394,6 +2645,8 @@
         window.AdminNav.syncFromPage(page === 'settings' ? 'a-finance-payroll-settings' : 'a-finance-payroll-runs');
       }
 
+      this.currentPage = page;
+      this.syncRunChrome(page);
       if (page === 'list') {
         this.drawRunsList();
       } else if (page === 'run') {
@@ -2403,6 +2656,10 @@
         this.drawFundingAccounts();
         const setFxInput = document.getElementById('payrollSetFxRate');
         if (setFxInput) setFxInput.value = this.fxRateValue || '';
+        const monthBadge = document.getElementById('payrollSettingsMonthBadge');
+        if (monthBadge) {
+          monthBadge.textContent = this.formatMonthName(this.month) || 'Current cycle';
+        }
 
         // Populate Social Insurance rates
         if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.getPayrollSettings === 'function') {
@@ -2468,9 +2725,21 @@
       }
     },
 
+    formatMonthName(ym) {
+      const m = /^(\d{4})-(\d{2})/.exec(String(ym || ''));
+      const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      return m ? `${MONTHS[+m[2] - 1]} ${m[1]}` : String(ym || '');
+    },
+
     openRevertModal() {
       const reason = document.getElementById('payrollRevertReason');
       if (reason) reason.value = '';
+      const title = document.getElementById('payrollRevertTitle');
+      if (title) {
+        const m = (this.currentRun && (this.currentRun.month || this.currentRun.period_month)) || this.month || '';
+        const formatted = this.formatMonthName(m);
+        title.textContent = formatted ? `Revert ${formatted} to draft?` : 'Revert run to draft?';
+      }
       openModal('payrollRevertModal');
       if (reason) setTimeout(() => reason.focus(), 50);
     },

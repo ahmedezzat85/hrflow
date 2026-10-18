@@ -118,7 +118,7 @@
 .fv .btn:disabled,
 .fv .btn-fill:disabled,
 .fv .btn-outline:disabled {
-  background: var(--fv-surface-soft);
+  background: var(--surface2);
   border: 1px solid var(--fv-line);
   color: var(--ink-faint);
 }
@@ -548,12 +548,15 @@
 }
 
 .fv .fv-table thead th.fv-num,
-.fv .fv-table tbody td.fv-num {
+.fv .fv-table tbody td.fv-num,
+.fv .fv-table thead th.cell-money,
+.fv .fv-table tbody td.cell-money {
   text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .fv .fv-table tbody td {
-  padding: 10px 12px;
+  padding: 9px 12px;
   border-bottom: 1px solid var(--fv-line-row);
   vertical-align: middle;
   color: var(--ink-body);
@@ -1182,11 +1185,14 @@
 }
 
 /* ---------- Dialog extras ---------- */
-.fv-area-blue { --fv-a: var(--id-blue); --fv-a-ink: var(--id-blue-ink); }
-.fv-area-orange { --fv-a: var(--id-orange); --fv-a-ink: var(--id-orange-ink); }
-.fv-area-teal { --fv-a: var(--id-teal); --fv-a-ink: var(--id-teal-ink); }
+.fv-area-blue { --fv-a: var(--id-blue); --fv-a-ink: var(--id-blue-ink); --fv-a-bg: var(--fv-area-blue-bg); }
+.fv-area-green { --fv-a: var(--id-green); --fv-a-ink: var(--id-green-ink); --fv-a-bg: var(--fv-area-green-bg); }
+.fv-area-orange { --fv-a: var(--id-orange); --fv-a-ink: var(--id-orange-ink); --fv-a-bg: var(--fv-area-orange-bg); }
+.fv-area-teal { --fv-a: var(--id-teal); --fv-a-ink: var(--id-teal-ink); --fv-a-bg: var(--fv-area-teal-bg); }
 .fv-area-sky { --fv-a: var(--id-sky); --fv-a-ink: var(--id-sky-ink); }
-.fv-area-violet { --fv-a: var(--id-violet); --fv-a-ink: var(--id-violet-ink); }
+.fv-area-violet { --fv-a: var(--id-violet); --fv-a-ink: var(--id-violet-ink); --fv-a-bg: var(--fv-area-violet-bg); }
+.fv-area-ochre { --fv-a: var(--id-ochre); --fv-a-ink: var(--id-ochre-ink); --fv-a-bg: var(--fv-area-ochre-bg); }
+.fv-area-pink { --fv-a: var(--id-pink); --fv-a-ink: var(--id-pink-ink); --fv-a-bg: var(--fv-area-pink-bg); }
 .fv-area-slate { --fv-a: var(--ink-label); --fv-a-ink: var(--ink-label); }
 
 .fv-dialog .modal-head-icon {
@@ -1199,13 +1205,14 @@
   border: 0;
   border-radius: 11px;
   font-size: 18px;
-  background: color-mix(in srgb, var(--fv-a, var(--id-blue)) var(--fv-tint-pct), transparent);
+  background: var(--fv-a-bg, color-mix(in srgb, var(--fv-a, var(--id-blue)) var(--fv-tint-pct), transparent));
   color: var(--fv-a-ink, var(--id-blue-ink));
 }
 
-.fv-dialog--danger .modal-head-icon {
-  background: var(--danger-soft);
-  color: var(--danger);
+.fv-dialog--danger .modal-head-icon,
+.fv.fv-dialog--danger .modal-head-icon {
+  background: var(--fv-area-danger-bg, var(--danger-soft));
+  color: var(--fv-area-danger-ink, var(--danger));
 }
 
 .fv-dialog .modal-head-text {
@@ -2457,3 +2464,9 @@
   color: inherit !important;
   opacity: .85;
 }
+
+/* Table headers share the HR height (line-height 1.45 gives the 42 px header row of the mocks) */
+.fv .fv-table thead th { line-height: 1.45; }
+
+/* More breathing room in finance rows (finance mocks run 60-64 px per row; these were 51) */
+.fv .fv-table tbody td { padding-top: 13px; padding-bottom: 13px; }

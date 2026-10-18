@@ -1,101 +1,91 @@
-        <section class="page-section" id="e-vacations">
-          <div class="grid g3" style="margin-bottom:20px;">
-            <div class="card stat-card">
-              <div class="stat-top">
-                <div class="stat-label">Annual Entitlement</div>
-                <div class="stat-icon" style="background:var(--accent-soft);color:var(--accent-text);"><i class="fa-solid fa-calendar-check"></i></div>
-              </div>
-              <div class="stat-val" id="empStatVacEntitlement">—</div>
-              <div class="stat-subtext">
-                <span class="stat-trend" style="background:var(--accent-soft);color:var(--accent-text);"><i class="fa-solid fa-shield-halved"></i> Allocated days</span>
-              </div>
+        <section class="page-section fv" id="e-vacations">
+          <!-- 3 compact KPI cards -->
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 14px;">
+            <div class="card" style="padding: 14px 18px; border-radius: 14px; border: 1px solid var(--fv-line); background: var(--fv-surface); box-shadow: var(--fv-shadow-card);">
+              <div style="font-size: 12.5px; font-weight: 600; color: var(--ink-label);">Annual entitlement</div>
+              <div id="empStatVacEntitlement" style="font-family: var(--font-display, Sora, sans-serif); font-weight: 700; font-size: 24px; color: var(--ink-strong);">21 days</div>
+              <div style="font-size: 12.5px; color: var(--ink-muted);">for 2026</div>
             </div>
-            <div class="card stat-card">
-              <div class="stat-top">
-                <div class="stat-label">Days Used</div>
-                <div class="stat-icon" style="background:var(--warning-soft);color:var(--warning);"><i class="fa-solid fa-clock-rotate-left"></i></div>
-              </div>
-              <div class="stat-val" id="empStatVacUsed">—</div>
-              <div class="stat-subtext">
-                <span class="stat-trend" id="empStatVacUsedTrend" style="background:var(--warning-soft);color:var(--warning);"><i class="fa-solid fa-hourglass-half"></i> Consumed</span>
-              </div>
+            <div class="card" style="padding: 14px 18px; border-radius: 14px; border: 1px solid var(--fv-line); background: var(--fv-surface); box-shadow: var(--fv-shadow-card);">
+              <div style="font-size: 12.5px; font-weight: 600; color: var(--ink-label);">Used</div>
+              <div id="empStatVacUsed" style="font-family: var(--font-display, Sora, sans-serif); font-weight: 700; font-size: 24px; color: var(--ink-strong);">8 days</div>
+              <span style="margin-top: 6px; height: 6px; border-radius: 999px; background: var(--fv-line); display: block; overflow: hidden;">
+                <span id="empVacUsedProgress" style="display: block; width: 38%; height: 6px; border-radius: 999px; background: var(--id-teal);"></span>
+              </span>
+              <span id="empStatVacUsedTrend" style="display: none;"></span>
             </div>
-            <div class="card stat-card">
-              <div class="stat-top">
-                <div class="stat-label">Days Remaining</div>
-                <div class="stat-icon" style="background:var(--success-soft);color:var(--success);"><i class="fa-solid fa-umbrella-beach"></i></div>
-              </div>
-              <div class="stat-val" id="empStatVacRemaining" style="color:var(--success)">—</div>
-              <div class="stat-subtext">
-                <span class="stat-trend" style="background:var(--success-soft);color:var(--success);"><i class="fa-solid fa-check"></i> Available balance</span>
-              </div>
+            <div class="card" style="padding: 14px 18px; border-radius: 14px; border: 1px solid var(--fv-line); background: var(--fv-surface); box-shadow: var(--fv-shadow-card);">
+              <div style="font-size: 12.5px; font-weight: 600; color: var(--ink-label);">Left to take</div>
+              <div id="empStatVacRemaining" style="font-family: var(--font-display, Sora, sans-serif); font-weight: 700; font-size: 24px; color: var(--brand);">13 days</div>
+              <div style="font-size: 12.5px; color: var(--ink-muted);">available balance</div>
             </div>
           </div>
-          <div class="card time-off-card" style="margin-bottom:20px;">
-            <div class="time-off-head">
+
+          <!-- 2-column layout: Form & Leave History -->
+          <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 14px; align-items: start;">
+            <!-- Request time off -->
+            <section class="card" style="background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: 14px; padding: 14px 16px; box-shadow: var(--fv-shadow-card); display: flex; flex-direction: column; gap: 12px;">
               <div>
-                <h3 style="display:flex;align-items:center;gap:8px;"><i class="fa-solid fa-plane-departure" style="color:var(--accent-text);"></i> Request Time Off</h3>
-                <p style="font-size:12px;color:var(--text2);margin-top:2px;">Submit a leave or remote work request for HR and manager approval.</p>
+                <h2 style="margin: 0; font-family: var(--font-display, Sora, sans-serif); font-size: 15px; color: var(--ink-strong);">Request time off</h2>
+                <div style="font-size: 12.5px; color: var(--ink-muted);">Goes to HR and your manager for approval</div>
               </div>
-            </div>
-            <div class="time-off-body" id="empVacationForm">
-              <div class="form-grid">
-                <div class="form-field">
-                  <label for="vacType">Leave Type</label>
-                  <select id="vacType">
+              <div id="empVacationForm" style="display: flex; flex-direction: column; gap: 12px;">
+                <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label);">
+                  Leave type
+                  <select id="vacType" style="height: 36px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; background: var(--fv-surface); color: var(--ink-strong);">
                     <option>Annual Leave</option>
                     <option>Sick Leave</option>
                     <option>Work From Home</option>
                     <option>Unpaid Leave</option>
                   </select>
-                </div>
-                <div class="form-field">
-                  <label for="vacDuration">Duration</label>
-                  <select id="vacDuration" onchange="onVacationDatesChange()">
+                </label>
+                <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label);">
+                  Duration
+                  <select id="vacDuration" onchange="onVacationDatesChange()" style="height: 36px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; background: var(--fv-surface); color: var(--ink-strong);">
                     <option value="Full Day(s)">Full Day(s)</option>
                     <option value="Half Day">Half Day (0.5 day)</option>
                   </select>
+                </label>
+                <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+                  <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label);">
+                    Start date
+                    <input type="date" id="vacStart" onchange="onVacationDatesChange()" style="height: 36px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; background: var(--fv-surface); color: var(--ink-strong);">
+                  </label>
+                  <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label);">
+                    End date
+                    <input type="date" id="vacEnd" onchange="onVacationDatesChange()" style="height: 36px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; background: var(--fv-surface); color: var(--ink-strong);">
+                  </label>
                 </div>
-                <div class="form-field">
-                  <label for="vacStart">Start Date</label>
-                  <input type="date" id="vacStart" onchange="onVacationDatesChange()">
+                <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label);">
+                  Reason, optional
+                  <textarea rows="2" id="vacReason" placeholder="Anything HR should know" style="padding: 8px 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; background: var(--fv-surface); color: var(--ink-strong); resize: none;"></textarea>
+                </label>
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; border-radius: 11px; background: var(--fv-surface-soft); font-size: 13px;">
+                  <span style="color: var(--ink-label);">Calculated duration</span>
+                  <strong id="vacComputedDays" style="color: var(--ink-strong);">0 days</strong>
                 </div>
-                <div class="form-field">
-                  <label for="vacEnd">End Date</label>
-                  <input type="date" id="vacEnd" onchange="onVacationDatesChange()">
-                </div>
-                <div class="form-field full">
-                  <label for="vacReason">Reason / Additional Details (optional)</label>
-                  <textarea rows="2" id="vacReason" placeholder="Add context for your manager..."></textarea>
-                </div>
+                <button type="button" class="btn btn-fill" id="btnSubmitVacation" onclick="submitVacation()" style="align-self: flex-end; display: inline-flex; align-items: center; height: 34px; padding: 0 16px; border-radius: 9px; font-weight: 600; font-size: 13px;">Submit request</button>
               </div>
-              <div class="time-off-summary-bar">
-                <div class="time-off-days-badge">
-                  <i class="fa-solid fa-calculator" style="color:var(--accent-text);"></i>
-                  <span>Calculated Duration: <b id="vacComputedDays">0 days</b></span>
-                </div>
-                <button class="btn btn-fill" id="btnSubmitVacation" onclick="submitVacation()"><i
-                    class="fa-solid fa-paper-plane"></i> Submit Request</button>
+            </section>
+
+            <!-- My leave history -->
+            <section class="card fv-table-card" style="background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: 14px; overflow: hidden; box-shadow: var(--fv-shadow-card);">
+              <div style="padding: 14px 16px; border-bottom: 1px solid var(--fv-line);">
+                <h2 style="margin: 0; font-family: var(--font-display, Sora, sans-serif); font-size: 15px; color: var(--ink-strong);">My leave history</h2>
               </div>
-            </div>
-          </div>
-          <div class="card">
-            <div class="card-head">
-              <div>
-                <h3>My Vacation &amp; Leave History</h3>
-                <p style="font-size:12px;color:var(--text2);margin-top:2px;">Overview of all previous and pending leave requests.</p>
+              <div class="fv-table-scroll">
+                <table class="responsive-card-table fv-table" style="width: 100%; border-collapse: collapse;">
+                  <thead>
+                    <tr>
+                      <th scope="col" style="text-align: left; padding: 11px 16px; font-size: 12px; font-weight: 600; color: var(--ink-label); border-bottom: 1px solid var(--fv-line);">Type</th>
+                      <th scope="col" style="text-align: left; padding: 11px 12px; font-size: 12px; font-weight: 600; color: var(--ink-label); border-bottom: 1px solid var(--fv-line);">Dates</th>
+                      <th scope="col" style="text-align: right; padding: 11px 12px; font-size: 12px; font-weight: 600; color: var(--ink-label); border-bottom: 1px solid var(--fv-line);">Days</th>
+                      <th scope="col" style="text-align: left; padding: 11px 16px; font-size: 12px; font-weight: 600; color: var(--ink-label); border-bottom: 1px solid var(--fv-line);">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="empVacationBody"></tbody>
+                </table>
               </div>
-            </div>
-            <table class="responsive-card-table">
-              <thead>
-                <tr>
-                  <th>Type</th>
-                  <th>Dates</th>
-                  <th>Days</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody id="empVacationBody"></tbody>
-            </table>
+            </section>
           </div>
         </section>

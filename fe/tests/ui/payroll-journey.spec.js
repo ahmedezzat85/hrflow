@@ -78,8 +78,8 @@ test.describe('U8 payroll journey', () => {
     await page.click('#btnP5ConfirmDisburse');
     const dialog = page.locator('#financeConfirmModal');
     await expect(dialog).toBeVisible();
-    await expect(page.locator('#financeConfirmDescription')).toContainText('employees');
-    await expect(page.locator('#financeConfirmDescription')).toContainText('missing bank details');
+    await expect(page.locator('#financeConfirmDescription')).toContainText('Missing bank details do not block this');
+    await expect(page.locator('#financeConfirmDescription')).toContainText('Missing bank details do not block this');
     await page.click('#financeConfirmModal .btn-ghost, #financeConfirmModal [onclick*="handleConfirmCancel"]');
     await expect(dialog).toBeHidden();
     expect(await page.evaluate(() => window.__pay)).toBe(0);

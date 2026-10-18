@@ -1,22 +1,35 @@
-    <aside class="sidebar" id="empSidebar">
-      <div class="sidebar-top-row">
-        <div class="brand"><i class="fa-solid fa-heart-pulse"></i> <span class="grad">HRFlow</span></div>
-        <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse('empSidebar')" title="Collapse sidebar"><i
-            class="fa-solid fa-chevron-left"></i></button>
-      </div>
-      <div class="sidebar-nav">
-        <div class="nav-section-label">Workspace</div>
-        <a class="nav-item active" data-page="e-dashboard" title="Dashboard"><i class="fa-solid fa-grip"></i> <span
-            class="nav-label">Dashboard</span></a>
-        <a class="nav-item" data-page="e-salary" title="Salary & Raises"><i class="fa-solid fa-arrow-trend-up"></i> <span
-            class="nav-label">Salary & Raises</span></a>
-        <a class="nav-item" data-page="e-payslips" title="My Payslips"><i class="fa-solid fa-file-invoice-dollar"></i> <span
-            class="nav-label">My Payslips</span></a>
-        <a class="nav-item" data-page="e-vacations" title="Vacations"><i class="fa-solid fa-umbrella-beach"></i> <span
-            class="nav-label">Vacations</span></a>
-        <a class="nav-item" data-page="e-insurance" title="Medical Insurance"><i
-            class="fa-solid fa-briefcase-medical"></i> <span class="nav-label">Medical Insurance</span></a>
-        <a class="nav-item" data-page="e-dochub" title="Document Hub"><i class="fa-solid fa-folder-open"></i> <span
-            class="nav-label">Document Hub</span></a>
+    <aside class="sidebar dual-rail" id="empSidebar">
+      <!-- Slim Module Rail -->
+      <nav class="rail" aria-label="Modules">
+        <span class="rail-logo brand" title="HRFlow"><i class="fa-solid fa-heart-pulse" aria-hidden="true"></i></span>
+        <button class="rail-btn on active" data-module="me" id="empRailBtn" aria-label="Me module" aria-current="true" title="Me">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8M4 21a8 8 0 0 1 16 0"></path></svg>
+          <span>Me</span>
+        </button>
+      </nav>
+
+      <!-- Contextual Page Panel -->
+      <div class="nav-panel" id="empNavPanel">
+        <div class="panel-inner">
+          <div class="panel-head">
+            <h2 id="empNavPanelTitle">My workspace</h2>
+            <small id="empNavPanelSub">Personal records and requests</small>
+          </div>
+          <nav class="sidebar-nav" aria-label="Employee Navigation">
+            <div id="empWorkspaceNavGroup" class="nav-group">
+              <div class="nav-section-label">Workspace</div>
+              <a class="nav-item active" href="#" data-page="e-dashboard" title="Dashboard"><span class="nav-tile fv-hue-blue"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 13h6V4H4zM14 20h6v-9h-6zM14 8h6V4h-6zM4 20h6v-3H4z"></path></svg></span> <span class="nav-label">Dashboard</span></a>
+              <a class="nav-item" href="#" data-page="e-salary" title="My salary"><span class="nav-tile fv-hue-green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"></path></svg></span> <span class="nav-label">My salary</span></a>
+              <a class="nav-item" href="#" data-page="e-payslips" title="Payslips"><span class="nav-tile fv-hue-violet"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"></path></svg></span> <span class="nav-label">Payslips</span></a>
+              <a class="nav-item" href="#" data-page="e-vacations" title="Vacations"><span class="nav-tile fv-hue-teal"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 0 1 9 9H3a9 9 0 0 1 9-9M12 12v7a2 2 0 0 0 4 0"></path></svg></span> <span class="nav-label">Vacations</span></a>
+              <a class="nav-item" href="#" data-page="e-insurance" title="Medical insurance"><span class="nav-tile fv-hue-teal"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-8-5.2-8-10.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5C20 14.8 12 20 12 20z"></path></svg></span> <span class="nav-label">Medical insurance</span></a>
+              <a class="nav-item" href="#" data-page="e-dochub" title="Document hub"><span class="nav-tile fv-hue-ochre"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h6l2 2h10v11H3z"></path></svg></span> <span class="nav-label">Document hub</span></a>
+            </div>
+          </nav>
+        </div>
+        <button type="button" class="collapse-btn sidebar-collapse-btn" id="empSidebarCollapseBtn" onclick="toggleSidebarCollapse('empSidebar')" title="Collapse navigation panel" aria-label="Toggle navigation panel">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"></path></svg>
+          <span>Collapse</span>
+        </button>
       </div>
     </aside>

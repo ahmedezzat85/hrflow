@@ -1,35 +1,31 @@
-  <div class="modal-overlay" id="behalfClaimModal">
+  <div class="modal-overlay fv fv-dialog fv-dialog--w580 fv-area-teal" id="behalfClaimModal">
     <div class="modal modal-v2">
       <div class="modal-head">
-        <div class="modal-head-icon"><i class="fa-solid fa-briefcase-medical"></i></div>
+        <span class="modal-head-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-8-5.2-8-10.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5C20 14.8 12 20 12 20z"></path></svg></span>
         <div class="modal-head-text">
-          <h3>Submit Insurance Claim on Behalf</h3>
-          <p>Record medical claims and calculate policy reimbursements.</p>
+          <h3 id="behalfClaimModalTitle">Record claim</h3>
+          <p id="behalfClaimModalSubtitle">Medical claim entered by HR for this employee</p>
         </div>
-        <button class="modal-close" onclick="closeModal('behalfClaimModal')"><i class="fa-solid fa-xmark"></i></button>
+        <button class="modal-close" onclick="closeModal('behalfClaimModal')" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
       </div>
       <div class="modal-body">
         <div class="form-section">
-          <div class="form-section-label"><i class="fa-solid fa-receipt"></i> Claim Details <span class="line"></span></div>
           <div class="form-grid">
-            <div class="form-field full">
-              <label for="bcCategory">Category <span class="req">*</span></label>
+            <div class="form-field">
+              <label for="bcCategory">Category</label>
               <select id="bcCategory"></select>
             </div>
             <div class="form-field">
               <label for="bcProvider">Provider</label>
-              <input id="bcProvider" placeholder="e.g. Allianz Egypt">
+              <input id="bcProvider" placeholder="Clinic or pharmacy">
             </div>
             <div class="form-field">
-              <label for="bcAmount">Amount <span class="opt">EGP</span> <span class="req">*</span></label>
-              <input min="0" inputmode="decimal" type="number" id="bcAmount" placeholder="e.g. 1500">
+              <label for="bcAmount">Amount</label>
+              <div class="input-group">
+                <span class="input-addon">EGP</span>
+                <input min="0" inputmode="decimal" type="number" id="bcAmount" placeholder="0.00" style="text-align: right;">
+              </div>
             </div>
-          </div>
-        </div>
-
-        <div class="form-section">
-          <div class="form-section-label"><i class="fa-solid fa-file-shield"></i> Processing & Attachment <span class="line"></span></div>
-          <div class="form-grid">
             <div class="form-field">
               <label for="bcStatus">Status</label>
               <select id="bcStatus">
@@ -39,17 +35,16 @@
               </select>
             </div>
             <div class="form-field">
-              <label for="bcRecordDate">Record Date <span class="opt">Optional</span></label>
+              <label for="bcRecordDate">Record date, optional</label>
               <input type="date" id="bcRecordDate">
             </div>
             <div class="form-field full">
-              <label for="bcDocument">Supporting Document <span class="opt">Optional</span></label>
+              <label for="bcDocument">Receipt, optional</label>
               <div id="bcDocDropZone" class="doc-drop-zone compact" role="button" tabindex="0" aria-label="Choose a file to upload" onclick="document.getElementById('bcDocument').click()">
                 <input type="file" id="bcDocument" accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
                 <div id="bcDocDropZoneEmpty" class="doc-drop-empty">
-                  <i class="fa-solid fa-cloud-arrow-up"></i>
-                  <p><strong>Click to browse</strong> or drag a file here</p>
-                  <span>PDF, JPG or PNG - up to 2MB</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M4 15v5h16v-5"></path></svg>
+                  <span>Choose a file or drop it here</span>
                 </div>
                 <div id="bcDocDropZoneFile" class="doc-drop-file" style="display:none;">
                   <div class="doc-file-icon" id="bcDocFileIconWrap"><i class="fa-solid fa-file"></i></div>
@@ -66,7 +61,7 @@
       </div>
       <div class="modal-foot">
         <button class="btn" id="behalfClaimCancelBtn" onclick="closeModal('behalfClaimModal')">Cancel</button>
-        <button class="btn btn-fill" id="behalfClaimSaveBtn" onclick="submitBehalfClaim(event)"><i class="fa-solid fa-check"></i> Submit</button>
+        <button class="btn btn-fill" id="behalfClaimSaveBtn" onclick="submitBehalfClaim(event)">Record claim</button>
       </div>
     </div>
   </div>

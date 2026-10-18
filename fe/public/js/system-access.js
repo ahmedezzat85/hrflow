@@ -260,7 +260,7 @@
     const tbody = document.getElementById('rolesTableBody');
     if (!tbody) return;
     if (_systemRoles.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:24px; color:var(--text3);">No roles defined.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:24px; color:var(--ink-muted);">No roles defined.</td></tr>`;
       return;
     }
 
@@ -269,32 +269,40 @@
       const isSystem = !!role.system_key;
       const isEmployee = role.system_key === 'employee';
       const noDelete = isLocked || isEmployee;
-      const deleteTitle = isLocked ? 'Locked roles cannot be deleted' : (isEmployee ? 'The Employee role provides baseline access and cannot be deleted' : 'Delete role');
-      const permCount = (role.permissions || []).length;
-      const permText = isLocked ? `All (${_permissionCatalog.length})` : `${permCount} permission${permCount === 1 ? '' : 's'}`;
+      const deleteTitle = isLocked
+        ? "Protected role, cannot be deleted"
+        : (isSystem ? "Built-in role, cannot be deleted" : (isEmployee ? "The baseline Employee role cannot be deleted" : "Delete role"));
+
+      const perms = role.permissions || [];
+      const permText = isLocked ? `All ${_permissionCatalog.length}` : `${perms.length} permission${perms.length === 1 ? '' : 's'}`;
       const rid = Number(role.id);
 
       return `
         <tr data-role-id="${rid}">
-          <td data-label="Role Name" style="font-weight:600;">
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span>${escHtml(role.name)}</span>
-              ${isSystem ? `<span class="badge" style="background:var(--accent-soft); color:var(--accent-text); font-size:11px; padding:2px 6px;">System</span>` : ''}
-            </div>
+          <td data-label="Role" style="padding: 10px 16px; white-space: nowrap;">
+            <span style="display: flex; align-items: center; gap: 10px;">
+              <span style="width: 32px; height: 32px; flex: none; border-radius: 10px; background: var(--fv-area-pink-bg); color: var(--fv-area-pink-ink); display: inline-flex; align-items: center; justify-content: center;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"></path></svg>
+              </span>
+              <span>
+                <span style="display: block; font-weight: 600; font-size: 14px; line-height: 1.45; color: var(--ink-strong);">${escHtml(role.name)}</span>
+                <span style="display: block; font-size: 12px; font-weight: 400; line-height: 1.45; color: var(--ink-muted); margin-top: 2px;">${isSystem ? 'Built-in role' : 'Custom role'} <span class="badge" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">${isSystem ? 'System' : ''}</span></span>
+              </span>
+            </span>
           </td>
-          <td data-label="Description" style="color:var(--text2); font-size:13px;">${escHtml(role.description) || '—'}</td>
-          <td data-label="Assigned Users">
-            <span class="badge" style="background:var(--surface2);">${escHtml(role.user_count ?? (role.users ? role.users.length : 0))}</span>
+          <td data-label="Description" style="padding: 10px 12px; color: var(--ink-body); font-size: 13.5px;">${escHtml(role.description) || '—'}</td>
+          <td data-label="Users" style="padding: 10px 12px; text-align: right; font-weight: 600; color: var(--ink-strong); font-variant-numeric: tabular-nums;">${escHtml(role.user_count ?? (role.users ? role.users.length : 0))}</td>
+          <td data-label="Permissions" style="padding: 10px 12px;">
+            <span style="padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--brand-dark, #1a46bd); background: var(--brand-soft, #e8eeff); white-space: nowrap;">${escHtml(permText)}</span>
           </td>
-          <td data-label="Permissions">
-            <span class="badge badge-neutral" style="font-size:12px;">${escHtml(permText)}</span>
-          </td>
-          <td data-label="Actions" class="col-actions">
-            <button class="btn btn-sm btn-outline btn-edit-role" onclick="openEditRoleModal(${rid})" title="${isLocked ? 'View role permissions (read-only)' : 'Edit role permissions'}">
-              <i class="fa-solid ${isLocked ? 'fa-eye' : 'fa-pen'}"></i> ${isLocked ? 'View' : 'Edit'}
+          <td data-label="Actions" class="col-actions" style="padding: 10px 16px; text-align: right; white-space: nowrap;">
+            <button class="btn btn-sm btn-outline btn-edit-role" onclick="openEditRoleModal(${rid})" title="${isLocked ? 'View role permissions (read-only)' : 'Edit role permissions'}" style="display: inline-flex; align-items: center; box-sizing: border-box; height: 28px; padding: 0 11px; border-radius: 8px; border: 1px solid var(--fv-outline); background: var(--fv-surface); color: var(--brand-dark, #1a46bd); font-weight: 600; font-size: 12.5px; vertical-align: middle;">
+              ${isLocked ? 'View' : 'Edit'}
             </button>
-            <button class="btn btn-sm btn-outline btn-delete-role" onclick="deleteRole(${rid})" ${noDelete ? 'disabled' : ''} title="${escHtml(deleteTitle)}" style="${noDelete ? 'opacity:0.4; cursor:not-allowed;' : 'color:var(--danger); border-color:var(--danger);'}">
-              <i class="fa-solid fa-trash"></i>
+            <button class="btn-delete-role" onclick="${noDelete ? '' : `deleteRole(${rid})`}" ${noDelete ? 'disabled' : ''} title="${escHtml(deleteTitle)}" aria-label="${escHtml(deleteTitle)}" style="display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; margin-left: 2px; border: 0; background: transparent; border-radius: 8px; color: var(--ink-muted, #5d6b8f); vertical-align: middle; cursor: ${noDelete ? 'not-allowed' : 'pointer'}; opacity: ${noDelete ? '0.45' : '1'};">
+              ${noDelete
+                ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>`
+                : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"></path></svg>`}
             </button>
           </td>
         </tr>
@@ -320,27 +328,28 @@
     container.innerHTML = Object.keys(groups).map(grp => {
       const items = groups[grp].filter(p => !q || p.key.toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q));
       if (items.length === 0) return '';
+      const checkedInGrp = items.filter(p => _userExplicitPermissions.has(p.key)).length;
 
       return `
-        <div class="perm-group-card" style="border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px; padding: 12px; background: var(--surface);">
-          <div style="font-weight: 600; font-size: 13px; margin-bottom: 8px; color: var(--text); display:flex; justify-content:space-between; align-items:center;">
-            <span><i class="fa-solid fa-folder-open" style="color:var(--accent-text); margin-right:6px;"></i>${escHtml(grp)}</span>
-            <span style="font-size: 11px; color:var(--text3); font-weight:normal;">${items.length} key${items.length === 1 ? '' : 's'}</span>
+        <div class="perm-group-section" style="border-bottom: 1px solid var(--fv-line);">
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; background: var(--fv-surface-soft); border-bottom: 1px solid var(--fv-line); font-size: 12.5px; font-weight: 700; color: var(--ink-strong);">
+            <span>${escHtml(grp)}</span>
+            <span style="font-weight: 500; color: var(--ink-muted);" class="perm-group-count">${checkedInGrp} of ${items.length}</span>
           </div>
-          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px;">
+          <div>
             ${items.map(p => `
-                <label class="perm-checkbox-item" style="display:flex; align-items:flex-start; gap:8px; font-size:12.5px; cursor:${readOnly ? 'default' : 'pointer'}; margin:0;">
-                  <input type="checkbox"
-                         data-perm-key="${escHtml(p.key)}"
-                         ${readOnly ? 'disabled' : ''}
-                         onchange="handlePermissionCheckboxChange(event, this.dataset.permKey)"
-                         style="margin-top:2px;">
-                  <div>
-                    <div style="font-family:monospace; font-size:11.5px; font-weight:600; color:var(--text);">${escHtml(p.key)}</div>
-                    <div style="font-size:11px; color:var(--text2);">${escHtml(p.description)}</div>
-                  </div>
-                </label>
-              `).join('')}
+              <label class="perm-checkbox-item" style="display: flex; align-items: flex-start; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--fv-line); cursor: ${readOnly ? 'default' : 'pointer'}; margin: 0;">
+                <input type="checkbox"
+                       data-perm-key="${escHtml(p.key)}"
+                       ${readOnly ? 'disabled' : ''}
+                       onchange="handlePermissionCheckboxChange(event, this.dataset.permKey)"
+                       style="width: 16px; height: 16px; margin-top: 2px; accent-color: var(--brand);">
+                <span style="flex: 1;">
+                  <span style="display: block; font-size: 13.5px; color: var(--ink-strong); font-weight: 500;">${escHtml(p.description)}</span>
+                  <span style="font-size: 12px; color: var(--ink-muted); font-family: inherit;">${escHtml(p.key)}${Array.isArray(p.implies) && p.implies.length ? ` · includes ${escHtml(p.implies.join(', '))}` : ''}</span>
+                </span>
+              </label>
+            `).join('')}
           </div>
         </div>
       `;
@@ -352,6 +361,20 @@
   function syncPermissionChecks() {
     document.querySelectorAll('#rolePermissionsContainer input[type="checkbox"]').forEach(cb => {
       cb.checked = _userExplicitPermissions.has(cb.dataset.permKey);
+    });
+
+    const countEl = document.getElementById('rolePermSelectedCount');
+    if (countEl) {
+      countEl.textContent = `· ${_userExplicitPermissions.size} selected`;
+    }
+
+    document.querySelectorAll('.perm-group-section').forEach(sec => {
+      const allCbs = sec.querySelectorAll('input[type="checkbox"]');
+      const checkedCbs = sec.querySelectorAll('input[type="checkbox"]:checked');
+      const countSpan = sec.querySelector('.perm-group-count');
+      if (countSpan && allCbs.length) {
+        countSpan.textContent = `${checkedCbs.length} of ${allCbs.length}`;
+      }
     });
   }
 
@@ -397,7 +420,7 @@
   window.openCreateRoleModal = function() {
     _currentEditingRoleId = null;
     _userExplicitPermissions = new Set();
-    document.getElementById('roleModalTitle').textContent = 'Create Role';
+    document.getElementById('roleModalTitle').textContent = 'Create role';
     document.getElementById('fRoleName').value = '';
     document.getElementById('fRoleDescription').value = '';
     setRoleModalReadOnly(false, false);
@@ -413,7 +436,7 @@
     _userExplicitPermissions = locked
       ? new Set(_permissionCatalog.map(p => p.key))
       : new Set(role.permissions || []);
-    document.getElementById('roleModalTitle').textContent = `${locked ? 'View' : 'Edit'} Role: ${role.name}`;
+    document.getElementById('roleModalTitle').textContent = `${locked ? 'View' : 'Edit'} role: ${role.name}`;
     document.getElementById('fRoleName').value = role.name;
     document.getElementById('fRoleDescription').value = role.description || '';
     // Seeded roles keep a read-only name; custom roles can be renamed
@@ -602,52 +625,72 @@
       return matchesSearch && matchesKind && matchesRole;
     });
 
+    const footerText = document.getElementById('systemUsersCountText');
+    if (footerText) {
+      footerText.innerHTML = `Showing <strong style="color: var(--brand);">1–${filtered.length}</strong> of <strong style="color: var(--brand);">${_systemUsers.length}</strong> users · you cannot archive your own account`;
+    }
+
     if (filtered.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:24px; color:var(--text3);">No users found.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:24px; color:var(--ink-muted);">No users found.</td></tr>`;
       return;
     }
 
-    tbody.innerHTML = filtered.map(u => {
+    const AVATAR_PALETTE = [
+      'background: var(--brand-soft, #e8eeff); color: var(--brand-dark, #1a46bd);',
+      'background: var(--warning-soft, #fdf0e1); color: var(--warning-text, #b2560f);',
+      'background: var(--teal-soft, #e0f4f1); color: var(--teal-ink, #0b7a6d);',
+      'background: var(--violet-soft, #f1eafe); color: var(--violet-ink, #6236c0);',
+      'background: var(--pink-soft, #fbe7f0); color: var(--pink-text, #ad3469);',
+      'background: var(--sky-soft, #e2f2fb); color: var(--sky-ink, #146fa3);'
+    ];
+
+    tbody.innerHTML = filtered.map((u, idx) => {
       const uid = Number(u.id);
       const isArchived = !!u.archived_at;
       const isSelf = !!u.is_self;
       const statusPill = isArchived
-        ? `<span class="badge" style="background:var(--danger-soft, #fee2e2); color:var(--danger, #ef4444);"><i class="fa-solid fa-circle-xmark"></i> Archived</span>`
-        : `<span class="badge" style="background:var(--success-soft, #dcfce7); color:var(--success, #10b981);"><i class="fa-solid fa-circle-check"></i> Active</span>`;
+        ? `<span class="badge badge-status" style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--ink-muted); background: var(--fv-surface-soft);"><span style="width: 7px; height: 7px; border-radius: 50%; background: var(--ink-muted);"></span>Archived</span>`
+        : `<span class="badge badge-status" style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #06703f; background: #e3f5ec;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #06703f;"></span>Active</span>`;
 
       const assignedRole = getUserRole(u);
       const roleBadges = assignedRole
-        ? `<span class="badge" style="background:var(--accent-soft); color:var(--accent-text); margin-right:4px;">${escHtml(assignedRole.name)}</span>`
-        : `<span style="color:var(--text3); font-size:12px;">${u.employee_id ? 'Employee access only' : 'No role'}</span>`;
+        ? `<span class="badge badge-role" style="background:transparent; color:inherit; font-weight:600; font-size:inherit; padding:0; border:0; display:inline;">${escHtml(assignedRole.name)}</span>`
+        : `<span style="color:var(--ink-muted); font-size:12.5px; font-weight:normal;">${u.employee_id ? 'Employee access only' : 'No role'}</span>`;
 
       const selfTitle = 'You cannot change your own access';
       let actions;
       if (isArchived) {
         // Archived users keep their record but offer no actions (no reinstatement control until Q-006 is decided)
-        actions = '<span style="color:var(--text3); font-size:12px;">—</span>';
+        actions = '<span style="color:var(--ink-muted); font-size:12.5px;">—</span>';
       } else {
         actions = `
-            <button class="btn btn-sm btn-outline btn-assign-roles" onclick="openAssignRolesModal(${uid})" ${isSelf ? `disabled title="${selfTitle}"` : 'title="Assign role"'}>
-              <i class="fa-solid fa-user-gear"></i> Role
+            <button class="btn btn-sm btn-outline btn-assign-roles" onclick="openAssignRolesModal(${uid})" ${isSelf ? `disabled title="${selfTitle}" style="display: inline-flex; align-items: center; box-sizing: border-box; height: 28px; padding: 0 11px; border-radius: 8px; border: 1px solid var(--fv-outline); background: var(--fv-surface); color: var(--brand-dark, #1a46bd); font-weight: 600; font-size: 12.5px; vertical-align: middle; opacity: 0.4; cursor: not-allowed;"` : 'title="Assign role" style="display: inline-flex; align-items: center; box-sizing: border-box; height: 28px; padding: 0 11px; border-radius: 8px; border: 1px solid var(--fv-outline); background: var(--fv-surface); color: var(--brand-dark, #1a46bd); font-weight: 600; font-size: 12.5px; vertical-align: middle;"'}>
+              Change role
             </button>
-            <button class="btn btn-sm btn-outline btn-archive-user" onclick="archiveUser(${uid})" ${isSelf ? `disabled title="${selfTitle}"` : 'title="Archive user account"'} style="${isSelf ? 'opacity:0.4; cursor:not-allowed;' : 'color:var(--danger); border-color:var(--danger);'}">
-              <i class="fa-solid fa-user-slash"></i> Archive
+            <button class="btn-archive-user" onclick="${isSelf ? '' : `archiveUser(${uid})`}" ${isSelf ? `disabled title="${selfTitle}" style="display: inline-flex; width: 30px; height: 30px; margin-left: 2px; border: 0; background: transparent; opacity: 0; pointer-events: none; vertical-align: middle; cursor: default;"` : `title="Archive user account" aria-label="Archive ${escHtml(u.name || u.email)}" style="display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; margin-left: 2px; border: 0; background: transparent; border-radius: 8px; color: var(--ink-muted, #5d6b8f); vertical-align: middle; cursor: pointer;"`}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h18v4H3zM5 8v12h14V8M10 12h4"></path></svg>
             </button>`;
       }
 
+      const avatarStyle = AVATAR_PALETTE[idx % AVATAR_PALETTE.length];
+
       return `
         <tr data-user-id="${uid}">
-          <td data-label="User" class="tname">
-            <div class="avatar">${escHtml(initials(u.name || u.email))}</div>
-            <div>
-              <div style="font-weight:600; color:var(--text);">${escHtml(u.name || 'External User')}</div>
-              ${u.employee_id ? `<div style="font-size:11px; color:var(--text3);">Employee #${escHtml(u.employee_id)}</div>` : `<span class="badge badge-external" style="font-size:10.5px; padding:1px 6px; background:var(--surface2); color:var(--text2);">External</span>`}
-            </div>
+          <td data-label="User" class="tname" style="padding: 10px 16px;">
+            <span style="display: flex; align-items: center; gap: 10px;">
+              <span class="avatar" style="width: 32px; height: 32px; flex: none; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; ${avatarStyle}">${escHtml(initials(u.name || u.email))}</span>
+              <span>
+                <span style="display: block; font-weight: 600; font-size: 14px; line-height: 1.45; color: var(--ink-strong);">${escHtml(u.name || 'External User')}</span>
+                <span style="display: block; font-size: 12px; font-weight: 400; line-height: 1.45; color: var(--ink-muted); margin-top: 2px;">
+                  ${u.employee_id ? `Employee EMP${String(u.employee_id).padStart(3, '0')}${isSelf ? ' · you' : ''}` : `<span class="badge" style="font-size: 12px; color: var(--ink-muted); background: transparent; padding: 0; border: 0; font-weight: 400;">External user</span>`}
+                </span>
+              </span>
+            </span>
           </td>
-          <td data-label="Email" style="color:var(--text2); font-size:13px;">${escHtml(u.email)}</td>
-          <td data-label="Role">${isArchived ? '<span style="color:var(--text3); font-size:12px;">—</span>' : roleBadges}</td>
-          <td data-label="Status">${statusPill}</td>
-          <td data-label="Actions" class="col-actions">${actions}</td>
+          <td data-label="Email" style="padding: 10px 12px; color: var(--ink-body); font-size: 13.5px;">${escHtml(u.email)}</td>
+          <td data-label="Role" style="padding: 10px 12px; font-weight: 600; color: var(--ink-strong);">${isArchived ? '<span style="color:var(--ink-muted); font-size:12px;">—</span>' : roleBadges}</td>
+          <td data-label="Status" style="padding: 10px 12px;">${statusPill}</td>
+          <td data-label="Actions" class="col-actions" style="padding: 10px 16px; text-align: right; white-space: nowrap;">${actions}</td>
         </tr>
       `;
     }).join('');
@@ -662,7 +705,15 @@
 
     const isLinkedEmployee = !!user.employee_id;
     const display = document.getElementById('assignUserDisplay');
-    if (display) display.textContent = `Assign a role for ${user.name || user.email} (${user.email})`;
+    if (display) display.textContent = `${user.email} · every user has exactly one role`;
+
+    const titleEl = document.getElementById('assignRolesModalTitle');
+    if (titleEl) titleEl.textContent = `Change role · ${user.name || user.email}`;
+
+    const headIcon = document.getElementById('assignRolesHeadIcon');
+    if (headIcon) {
+      headIcon.textContent = initials(user.name || user.email);
+    }
 
     const note = document.getElementById('assignRoleNote');
     if (note) {
@@ -672,7 +723,7 @@
     }
 
     const current = getUserRole(user);
-    const optionStyle = 'display:flex; align-items:center; gap:10px; padding:8px 12px; border:1px solid var(--border-color, #e2e8f0); border-radius:6px; background:var(--surface); cursor:pointer;';
+    const optionStyle = 'display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--fv-line); background: var(--fv-surface); cursor: pointer;';
 
     const checklist = document.getElementById('assignRolesChecklist');
     if (checklist) {
@@ -681,10 +732,10 @@
         const isChecked = !!current && (current.id === role.id || current.name === role.name);
         return `
           <label style="${optionStyle}">
-            <input type="radio" name="assignRoleChoice" data-role-id="${role.id}" data-role-name="${escHtml(role.name)}" ${isChecked ? 'checked' : ''}>
+            <input type="radio" name="assignRoleChoice" data-role-id="${role.id}" data-role-name="${escHtml(role.name)}" ${isChecked ? 'checked' : ''} style="width: 16px; height: 16px; margin-top: 2px; accent-color: var(--brand);">
             <div>
-              <div style="font-weight:600; font-size:13px; color:var(--text);">${escHtml(role.name)}</div>
-              <div style="font-size:11.5px; color:var(--text2);">${escHtml(role.description || '')}</div>
+              <div style="font-weight: 600; font-size: 13.5px; color: var(--ink-strong);">${escHtml(role.name)}</div>
+              <div style="font-size: 12.5px; color: var(--ink-muted);">${escHtml(role.description || '')}</div>
             </div>
           </label>
         `;
@@ -693,10 +744,10 @@
       // Only a linked employee may have no assigned role (they keep the Employee baseline).
       const noneOption = isLinkedEmployee ? `
           <label style="${optionStyle}">
-            <input type="radio" name="assignRoleChoice" data-role-id="" data-role-name="" ${current ? '' : 'checked'}>
+            <input type="radio" name="assignRoleChoice" data-role-id="" data-role-name="" ${current ? '' : 'checked'} style="width: 16px; height: 16px; margin-top: 2px; accent-color: var(--brand);">
             <div>
-              <div style="font-weight:600; font-size:13px; color:var(--text);">No additional role</div>
-              <div style="font-size:11.5px; color:var(--text2);">Employee access only</div>
+              <div style="font-weight: 600; font-size: 13.5px; color: var(--ink-strong);">No additional role</div>
+              <div style="font-size: 12.5px; color: var(--ink-muted);">Employee access only</div>
             </div>
           </label>
         ` : '';

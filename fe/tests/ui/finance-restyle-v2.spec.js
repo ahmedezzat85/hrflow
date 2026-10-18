@@ -34,7 +34,7 @@ test.describe('Finance restyle v2: foundations (S1)', () => {
     await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
     expect(await read('--ink-strong')).toBe('#e9eeff');
     expect(await read('--id-teal')).toBe('#1f9d8e');
-    expect(await read('--fv-canvas')).toBe('#0f1117');
+    expect(await read('--fv-canvas')).toBe('#0b1634');
   });
 
   test('FinanceUI helpers: hue by id, initials, markup is class based', async ({ page }) => {
@@ -87,15 +87,15 @@ test.describe('Finance restyle v2: foundations (S1)', () => {
     }
   });
 
-  test('Payroll and HR pages keep the existing chrome', async ({ page }) => {
+  test('Payroll and HR pages adopt the shared app-wide shell chrome', async ({ page }) => {
     await openAdmin(page);
     await page.evaluate(() => showSection('a-finance-payroll-runs', 'admin'));
-    await expect(page.locator('#adminAreaTile')).toBeHidden();
-    await expect(page.locator('#admin-app .main.fv-shell')).toHaveCount(0);
+    await expect(page.locator('#adminAreaTile')).toBeVisible();
+    await expect(page.locator('#admin-app .main.fv-shell')).toHaveCount(1);
     await page.evaluate(() => showSection('a-dashboard', 'admin'));
-    await expect(page.locator('#adminAreaName')).toBeHidden();
-    await expect(page.locator('#admin-app .main.fv-shell')).toHaveCount(0);
-    expect(await css(page, '#adminPageTitle', 'fontSize')).not.toBe('16px');
+    await expect(page.locator('#adminAreaName')).toBeVisible();
+    await expect(page.locator('#admin-app .main.fv-shell')).toHaveCount(1);
+    expect(await css(page, '#adminPageTitle', 'fontSize')).toBe('16px');
   });
 });
 
@@ -354,7 +354,7 @@ test.describe('Finance restyle v2: Banking I (S5)', () => {
     await expect(page.locator('#financeAccountsSubNav')).toBeVisible();
     await expect(page.locator('#financeLedgerAccountSelect')).toBeVisible();
     expect(await css(page, '#financeLedgerRecordBtn', 'height')).toBe('32px');
-    await expect(page.locator('#financeLedgerTable thead th')).toHaveText(['Date', 'Details', 'Category', 'Payment type', 'Amount', 'Balance', 'Actions']);
+    await expect(page.locator('#financeLedgerTable thead th')).toHaveText(['Date ↓', 'Details', 'Category', 'Payment type', 'Amount', 'Balance', 'Actions']);
     await expect(page.locator('#financeLedgerTable')).not.toContainText('Rate / Equiv');
     await expect(page.locator('#financeLedgerTotalOut')).toContainText('4,200.00');
     await expect(page.locator('#financeLedgerCurrentBalance')).toContainText('145,800.00');
@@ -376,7 +376,7 @@ test.describe('Finance restyle v2: Banking I (S5)', () => {
     await openAdmin(page);
     await openAdminPage(page, 'a-finance-accounts');
     await expect(page.locator('#financeAccountsTableBody tr').first()).toBeVisible();
-    await page.locator('.btn-open-workspace').first().click();
+    await page.locator('#financeAccountsTableBody .fv-name-btn').first().click();
     await page.click('#btnWorkspaceNewTx');
     await expect(page.locator('#financeTransactionModal.fv-dialog')).toBeVisible();
     expect(await css(page, '#fFinanceTxAmount', 'height')).toBe('36px');

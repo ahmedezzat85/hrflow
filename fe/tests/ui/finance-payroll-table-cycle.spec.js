@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { submitAndApprove, confirmPayment } from './helpers/payroll.js';
+import { submitAndApprove, confirmPayment, selectUsdInternalAccount } from './helpers/payroll.js';
 import { openAdminPage } from './helpers/admin-nav.js';
 import fs from 'fs';
 import path from 'path';
@@ -75,7 +75,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     // 1. Check Stepper: 6 purpose-built steps
     const stepper = page.locator('#payrollStepper');
     await expect(stepper.locator('.payroll-step-pill')).toHaveCount(6);
-    await expect(stepper.locator('.payroll-step-pill.active')).toContainText('1. Initiation');
+    await expect(stepper.locator('.payroll-step-pill.active')).toContainText('Set up');
 
     // 2. Screen 1 elements visible
     const s1 = page.locator('#payrollScreen1');
@@ -101,7 +101,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     await expect(s1).toHaveClass(/payroll-hidden/);
     const s2 = page.locator('#payrollScreen2');
     await expect(s2).toBeVisible();
-    await expect(stepper.locator('.payroll-step-pill.active')).toContainText('2. Approve');
+    await expect(stepper.locator('.payroll-step-pill.active')).toContainText('Review pay');
 
     // Check Worksheet table on Screen 2
     const table = page.locator('#payrollWorksheetTable');
@@ -124,7 +124,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     await expect(expandRow).not.toBeVisible();
 
     // Verify row displays bonus badge
-    await expect(rows.first().locator('.p-bonus-pill')).toContainText('450');
+    await expect(rows.first().locator('.pv-bonus-amount')).toContainText('450');
 
     // Save Draft
     await page.click('#btnP2SaveDraft');
@@ -143,10 +143,11 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     // Advances to Screen 3 (Processing)
     const s3 = page.locator('#payrollScreen3');
     await expect(s3).toBeVisible();
-    await expect(page.locator('#payrollStepper .payroll-step-pill.active')).toContainText('3. Processing');
+    await expect(page.locator('#payrollStepper .payroll-step-pill.active')).toContainText('Statutory');
 
     // Finalized lock note is visible
-    await expect(page.locator('#payrollLockNote')).toBeVisible();
+    // The finalized state is shown by the status pill and the blue snapshot strip (no amber note)
+    await expect(page.locator('#payrollLockNote')).toBeHidden();
 
     // Screen 3 table contains backend statutory snapshots (deduplicated per employee)
     const procTable = page.locator('#payrollProcessingTableBody tr');
@@ -159,7 +160,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     await page.click('#btnP3Next');
     const s4 = page.locator('#payrollScreen4');
     await expect(s4).toBeVisible();
-    await expect(page.locator('#payrollStepper .payroll-step-pill.active')).toContainText('4. Payment Preview');
+    await expect(page.locator('#payrollStepper .payroll-step-pill.active')).toContainText('Payment preview');
 
     // Check disbursement summary cards
     await expect(page.locator('#p4ExtBankTotal')).toBeVisible();
@@ -187,9 +188,10 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     if (extFirstVal) {
       await extSelect.selectOption(extFirstVal);
     }
-    const intLastVal = await intOptions.last().getAttribute('value');
-    if (intLastVal) {
-      await intSelect.selectOption(intLastVal);
+    const intUsd = intSelect.locator('option:has-text("USD")').first();
+    const intUsdVal = await intUsd.getAttribute('value');
+    if (intUsdVal) {
+      await intSelect.selectOption(intUsdVal);
     }
 
     // Change Month schedule
@@ -203,6 +205,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
 
   test('TC-5: Screen 5 (Disbursement & GL Journal) and Screen 6 (Statutory Reconciliation)', async ({ page }) => {
     await page.click('#btnOpenCurrentCycle');
+    await selectUsdInternalAccount(page);
     // Screen 1 -> Screen 2
     await page.click('#btnP1Proceed');
     // Screen 2 -> Screen 3
@@ -214,7 +217,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
 
     const s5 = page.locator('#payrollScreen5');
     await expect(s5).toBeVisible();
-    await expect(page.locator('#payrollStepper .payroll-step-pill.active')).toContainText('5. Confirm Disbursal');
+    await expect(page.locator('#payrollStepper .payroll-step-pill.active')).toContainText('Confirm payment');
 
     // Confirm & Disburse
     await confirmPayment(page);
@@ -234,7 +237,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     await page.click('#btnP5ProceedStatutory');
     const s6 = page.locator('#payrollScreen6');
     await expect(s6).toBeVisible();
-    await expect(page.locator('#payrollStepper .payroll-step-pill.active')).toContainText('6. Statutory Payments');
+    await expect(page.locator('#payrollStepper .payroll-step-pill.active')).toContainText('Statutory payments');
 
     // Check estimate snapshot displays
     await expect(page.locator('#p6SocialInsEstimate')).toContainText('EGP');
@@ -269,9 +272,9 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     await expect(p1Card).toHaveClass(/payroll-stat/);
 
     // Check inner structure
-    await expect(p1Card.locator('.label')).toHaveText('Active Headcount');
+    await expect(p1Card.locator('.label')).toHaveText('Eligible employees');
     await expect(p1Card.locator('.value')).toHaveText('2');
-    await expect(p1Card.locator('.sub')).toHaveText('Eligible employees');
+    await expect(p1Card.locator('.sub')).toHaveText(/active in/);
 
     // Check computed styles on Screen 1 card: border and background
     const p1CardBorder = await p1Card.evaluate((el) => window.getComputedStyle(el).borderStyle);
@@ -286,18 +289,18 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     const s4 = page.locator('#payrollScreen4');
     await expect(s4).toBeVisible();
 
-    // Verify all 5 summary cards on Screen 4 have payroll-card and payroll-stat classes
+    // Verify all 4 summary cards on Screen 4 have payroll-card and payroll-stat classes (restyle v3 S4.5)
     const s4Cards = s4.locator('.payroll-stats .payroll-stat');
-    await expect(s4Cards).toHaveCount(5);
+    await expect(s4Cards).toHaveCount(4);
 
     const p4Card = page.locator('#p4TotalNet').locator('xpath=ancestor::div[contains(@class, "payroll-stat")][1]');
     await expect(p4Card).toHaveClass(/payroll-card/);
     await expect(p4Card).toHaveClass(/payroll-stat/);
 
     // Check inner structure
-    await expect(p4Card.locator('.label')).toHaveText('Total Net Disbursal');
+    await expect(p4Card.locator('.label')).toHaveText('Total net pay');
     await expect(p4Card.locator('.value')).toBeVisible();
-    await expect(p4Card.locator('.sub')).toHaveText('Total employee net cash & wire');
+    await expect(p4Card.locator('.sub')).toHaveText('cash and transfer');
 
     // Check computed styles on Screen 4 card
     const p4CardBorder = await p4Card.evaluate((el) => window.getComputedStyle(el).borderStyle);
@@ -337,7 +340,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     await expect(s3).toHaveClass(/payroll-hidden/);
 
     // Stepper remains on Screen 2 (Approve)
-    await expect(page.locator('#payrollStepper .payroll-step-pill.active')).toContainText('2. Approve');
+    await expect(page.locator('#payrollStepper .payroll-step-pill.active')).toContainText('Review pay');
 
     // Fallback message test: when error has no message
     await page.evaluate(() => {
@@ -752,6 +755,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
   test('TC-16: U4 Visual Checkpoints — Screen 5 Payment Confirmation and Disbursal', async ({ page }) => {
     const artifactDir = checkpointDir;
     await page.click('#btnOpenCurrentCycle');
+    await selectUsdInternalAccount(page);
     await page.click('#btnP1Proceed');
     await submitAndApprove(page);
     await page.click('#btnP3Next');
@@ -759,7 +763,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
 
     const s5 = page.locator('#payrollScreen5');
     await expect(s5).toBeVisible();
-    await expect(page.locator('#payrollStepper .payroll-step-pill.active')).toContainText('5. Confirm Disbursal');
+    await expect(page.locator('#payrollStepper .payroll-step-pill.active')).toContainText('Confirm payment');
 
     // Simulate warning exception for Lina Kamal (D-006) to match prototype v9
     await page.evaluate(() => {
@@ -845,6 +849,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
   test('TC-17: U5 Visual Checkpoints — Screen 6 Statutory Reconciliation', async ({ page }) => {
     const artifactDir = checkpointDir;
     await page.click('#btnOpenCurrentCycle');
+    await selectUsdInternalAccount(page);
     await page.click('#btnP1Proceed');
     await submitAndApprove(page);
     await page.click('#btnP3Next');
@@ -854,7 +859,7 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
 
     const s6 = page.locator('#payrollScreen6');
     await expect(s6).toBeVisible();
-    await expect(page.locator('#payrollStepper .payroll-step-pill.active')).toContainText('6. Statutory Payments');
+    await expect(page.locator('#payrollStepper .payroll-step-pill.active')).toContainText('Statutory payments');
 
     // Setup initial Screen 6 state with one recorded obligation (recorded-unpaid state)
     await page.evaluate(async () => {
@@ -987,8 +992,8 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     await page.waitForTimeout(100);
     await page.screenshot({ path: `${artifactDir}/payroll-settings-mobile.png`, fullPage: false, animations: 'disabled' });
 
-    // Return to runs
-    await page.click('button:has-text("Back to payroll runs")');
+    // Return to runs via Cancel
+    await page.click('#payrollViewSettings button:has-text("Cancel")');
     await expect(page.locator('#payrollViewList')).toBeVisible();
   });
 });

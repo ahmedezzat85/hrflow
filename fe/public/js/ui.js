@@ -80,6 +80,16 @@ document.addEventListener('change', (e) => {
   if (e.target.classList && e.target.classList.contains('is-invalid') && window.FinanceForm) FinanceForm.clearFieldError(e.target);
 });
 
+// Table card footer ("Showing 1-N of N ...") shared by the HR list tables.
+function setTableFoot(bodyId, count, noun) {
+  const body = document.getElementById(bodyId);
+  const card = body && body.closest('.card, .fv-table-card');
+  if (!card) return;
+  let f = card.querySelector(':scope > .fv-tablefoot, :scope > .card-footer.fv-table-foot');
+  if (!f) { f = document.createElement('div'); f.className = 'fv-tablefoot'; card.appendChild(f); }
+  f.innerHTML = `<span>Showing <b>${count ? '1\u2013' + count : '0'}</b> of <b>${count}</b> ${noun}</span><span>Page 1 of 1</span>`;
+}
+
 function showSectionLoadingBar(id){ const el = document.getElementById(id); if(el) el.classList.add('show'); }
 function hideSectionLoadingBar(id){ const el = document.getElementById(id); if(el) el.classList.remove('show'); }
 
@@ -207,22 +217,22 @@ document.addEventListener('click', (e) => {
 });
 document.querySelectorAll('[data-goto]').forEach(el=>{ el.addEventListener('click',()=>showSection(el.dataset.goto, el.dataset.portal || 'admin')); });
 const titles = {
-  'a-dashboard':['General Dashboard',"Welcome back, here's what's happening today."],
+  'a-dashboard':['HR dashboard',"Welcome back, here's what's happening today."],
   'a-employees':['Employees',"Manage employee profiles and information."],
-  'a-employee-detail':['Employee Profile',"View and manage employee profile and records."],
-  'a-requests':['Pending Requests',"Review and action employee requests."],
-  'a-salary':['Salary & Raises',"Review compensation and raise history."],
-  'a-invoices':['Salary Payment Docs',"Generate and manage external-salary payment docs."],
+  'a-employee-detail':['Employees / Profile',"View and manage employee profile and records."],
+  'a-requests':['Pending requests',"Review and action employee requests."],
+  'a-salary':['Salary and raises',"Review compensation and raise history."],
+  'a-invoices':['Salary payment docs',"Generate and manage external-salary payment docs."],
   'a-vacations':['Vacations',"Track balances and leave across the company."],
-  'a-insurance':['Medical Insurance',"Manage claims, categories and coverage limits."],
-  'a-dochub':['Document Hub',"Manage company-wide documents and policies."],
+  'a-insurance':['Medical insurance',"Manage claims, categories and coverage limits."],
+  'a-dochub':['Document hub',"Manage company-wide documents and policies."],
   'a-finance-dashboard':['Finance Overview','Executive summary of cash flow, revenue, and operating expenses.'],
   'a-finance-sales':['Sales & Receivables','Manage customer invoices, receivables, and customer accounts.'],
   'a-finance-spend':['Spend & Payables','Track vendor bills, payments, and recurring subscriptions.'],
   'a-finance-banking':['Banking & Cash Management','Manage company treasury, continuous ledger, cheques, and reconciliation.'],
-  'a-finance-payroll':['Payroll Runs','Review and execute company payroll cycles.'],
-  'a-finance-payroll-runs':['Payroll Runs','Review and execute company payroll cycles.'],
-  'a-finance-payroll-settings':['Payroll Settings','Configure payroll company bank accounts and cycle defaults.'],
+  'a-finance-payroll':['Payroll runs','Review and execute company payroll cycles.'],
+  'a-finance-payroll-runs':['Payroll runs','Review and execute company payroll cycles.'],
+  'a-finance-payroll-settings':['Payroll settings','Configure payroll company bank accounts and cycle defaults.'],
   'a-finance-reports':['Financial Reports & Export','Category spend rollups, annual spend matrix, point-in-time balances, and Excel downloads.'],
   'a-finance-settings':['Finance Settings','Configure transaction categories and payment method rules.'],
   'a-finance-invoices':['Sales Invoices','Manage customer invoices and accounts receivable.'],
@@ -233,14 +243,14 @@ const titles = {
   'a-finance-statements':['Statements & Reconciliation','Import bank statements and reconcile operating accounts.'],
   'a-finance-subscriptions':['Recurring Subscriptions','Manage recurring vendor software and obligations.'],
   'a-finance-statutory':['Statutory Obligations','Track and remit government tax and social insurance liabilities.'],
-  'a-system-roles':['Roles & Permissions','Manage system roles, descriptions, and fine-grained permission assignments.'],
-  'a-system-users':['User Accounts & Access','Manage user identity, assigned RBAC roles, and account access status.'],
-  'e-dashboard':['My Dashboard','Welcome back, here is your snapshot.'],
-  'e-salary':['Salary & Raises','Your compensation history and growth.'],
-  'e-payslips':['My Payslips','Your monthly payslip history and compensation breakdown.'],
+  'a-system-roles':['Roles and permissions','Manage system roles, descriptions, and fine-grained permission assignments.'],
+  'a-system-users':['User accounts','Manage user identity, assigned RBAC roles, and account access status.'],
+  'e-dashboard':['My dashboard','Welcome back, here is your snapshot.'],
+  'e-salary':['Salary and raises','Your compensation history and growth.'],
+  'e-payslips':['My payslips','Your monthly payslip history and compensation breakdown.'],
   'e-vacations':['Vacations','Your balance, requests and history.'],
-  'e-insurance':['Medical Insurance','Your plan, category limits and claims history.'],
-  'e-dochub':['Document Hub','Company documents and policies.'],
+  'e-insurance':['Medical insurance','Your plan, category limits and claims history.'],
+  'e-dochub':['Document hub','Company documents and policies.'],
 };
 function showSection(pageId, portal, params){
   const appSel = portal==='admin' ? '#admin-app' : '#employee-app';
@@ -292,9 +302,18 @@ function showSection(pageId, portal, params){
 
   const t = titles[pageId] || titles[targetSectionId];
   if(t){
-    document.getElementById(portal==='admin'?'adminPageTitle':'empPageTitle').textContent=t[0];
+    let pageTitleText = t[0];
+    if (pageId === 'a-employee-detail') {
+      const empId = (params && params[0]) || (typeof currentDetailEmployeeId !== 'undefined' ? currentDetailEmployeeId : null);
+      const e = empId && typeof employees !== 'undefined' ? employees.find(x => String(x.id) === String(empId)) : null;
+      if (e && e.name) pageTitleText = 'Employees / ' + e.name;
+    }
+    document.getElementById(portal==='admin'?'adminPageTitle':'empPageTitle').textContent = pageTitleText;
   }
-  if (portal === 'admin' && typeof applyFinanceAreaChrome === 'function') applyFinanceAreaChrome(pageId);
+  if (portal === 'admin' && !String(pageId).startsWith('a-finance-payroll')) {
+    ['payrollStatusBadge', 'payrollFxStrip'].forEach(id => { const el = document.getElementById(id); if (el) el.hidden = true; });
+  }
+  if (typeof applyFinanceAreaChrome === 'function') applyFinanceAreaChrome(pageId, portal);
   // An error toast belongs to the page that raised it: drop it when the user moves to another page.
   if (showSection.lastPage !== undefined && showSection.lastPage !== pageId) clearErrorToasts();
   showSection.lastPage = pageId;
@@ -323,6 +342,8 @@ function showSection(pageId, portal, params){
       window.SystemAccess.loadRoles();
     } else if(pageId === 'a-system-users' && window.SystemAccess && typeof window.SystemAccess.loadUsers === 'function') {
       window.SystemAccess.loadUsers();
+    } else if(pageId === 'a-dochub' && typeof renderCompanyDocumentsAdmin === 'function') {
+      renderCompanyDocumentsAdmin();
     }
     if(window.AdminNav && typeof window.AdminNav.syncFromPage === 'function') {
       window.AdminNav.syncFromPage(pageId);
@@ -350,11 +371,18 @@ document.addEventListener('click',e=>{
 });
 
 // Account identity: fills every copy of the signed-in user's initials, name and role in a top bar.
-function fillAccountIdentity(portal, {name, role}){
+function fillAccountIdentity(portal, {name, role, department}){
   const initials = getInitials(name);
   document.querySelectorAll('[data-account-initials="'+portal+'"]').forEach(el=>{ el.textContent = initials; });
   document.querySelectorAll('#'+portal+'UserName').forEach(el=>{ el.textContent = name || ''; });
   document.querySelectorAll('#'+portal+'UserRole').forEach(el=>{ el.textContent = role || ''; });
+  if (portal === 'emp') {
+    const sub = document.getElementById('empNavPanelSub');
+    if (sub) {
+      const dept = department || (window.currentLoggedInEmployee && window.currentLoggedInEmployee.department);
+      sub.textContent = name ? (dept ? `${name} · ${dept}` : name) : 'Personal records and requests';
+    }
+  }
 }
 
 // Top-bar disclosure popovers (account menu, notifications): one open at a time.
@@ -436,14 +464,30 @@ function initials(name){ return name.split(' ').map(n=>n[0]).join('').substring(
 // (up to 2 decimals, trailing zeros trimmed on whole numbers).
 function fmtMoney(n){ return FinanceFormat.formatMoney(n, 'EGP', { decimals: 2, minDecimals: 0 }); }
 function fmtUSD(n){ return FinanceFormat.formatMoney(n, 'USD', { decimals: 2, minDecimals: 0 }); }
+const _MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function _parseDay(d){
+  const dt = new Date(String(d).slice(0, 10) + 'T00:00:00');
+  return isNaN(dt.getTime()) ? null : dt;
+}
+// "7 Oct 2026" (the format the approved mocks use for table and card dates)
 function fmtDateShort(d){
   if(!d || d === '—') return '—';
-  const dt = new Date(String(d).slice(0, 10) + 'T00:00:00');
-  return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  const dt = _parseDay(d);
+  return dt ? `${dt.getDate()} ${_MON[dt.getMonth()]} ${dt.getFullYear()}` : d;
+}
+// "4-6 Oct 2026", "30 Sep - 2 Oct 2026" or "30 Dec 2026 - 2 Jan 2027"
+function fmtDateRange(a, b){
+  const s = a ? _parseDay(a) : null, e = b ? _parseDay(b) : null;
+  if(!s || !e) return [a, b].filter(Boolean).join(' to ');
+  if(s.getTime() === e.getTime()) return fmtDateShort(a);
+  if(s.getFullYear() !== e.getFullYear()) return `${fmtDateShort(a)} – ${fmtDateShort(b)}`;
+  if(s.getMonth() !== e.getMonth()) return `${s.getDate()} ${_MON[s.getMonth()]} – ${e.getDate()} ${_MON[e.getMonth()]} ${e.getFullYear()}`;
+  return `${s.getDate()}–${e.getDate()} ${_MON[e.getMonth()]} ${e.getFullYear()}`;
 }
 function statusPill(status){
-  const map = {Pending:'pill-warning',Approved:'pill-success','Active':'pill-success',Rejected:'pill-danger','On Leave':'pill-info',Suspended:'pill-danger'};
-  return `<span class="badge-pill ${map[status]||'pill-neutral'}">${status}</span>`;
+  const map = {Waiting:'pill-warning',Pending:'pill-warning',Approved:'pill-success','Active':'pill-success',Rejected:'pill-danger','On Leave':'pill-info','On leave':'pill-info',Suspended:'pill-danger'};
+  const dotMap = {Waiting:'hv-dot--warning',Pending:'hv-dot--warning',Approved:'hv-dot--success','Active':'hv-dot--success',Rejected:'hv-dot--danger','On Leave':'hv-dot--info','On leave':'hv-dot--info',Suspended:'hv-dot--danger'};
+  return `<span class="badge-pill ${map[status]||'pill-neutral'}"><span class="hv-dot ${dotMap[status]||'hv-dot--muted'}"></span>${status === 'On Leave' ? 'On leave' : status}</span>`;
 }
 /**
  * Accessible Modal Controller (Story 0.3)

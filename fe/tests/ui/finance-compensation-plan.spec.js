@@ -32,7 +32,7 @@ test.describe('FUX-416: Employee Compensation Plan', () => {
 
   test('Opens Compensation Plan modal from the profile with active summary & history', async ({ page }) => {
     const modal = await openPlanFromProfile(page);
-    await expect(modal.locator('#compPlanModalTitle')).toContainText('Employee Compensation Plan');
+    await expect(modal.locator('#compPlanModalTitle')).toContainText('Pay plan');
     await expect(modal.locator('#compPlanEmpName')).not.toBeEmpty();
     await expect(modal.locator('#compPlanActiveExternal')).toBeVisible();
     await expect(modal.locator('#compPlanActiveInternal')).toBeVisible();

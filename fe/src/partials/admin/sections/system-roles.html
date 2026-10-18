@@ -1,26 +1,24 @@
-        <section class="page-section" id="a-system-roles">
-          <div class="toolbar">
-            <div class="section-title-group">
-              <h2 class="section-title"><i class="fa-solid fa-user-shield"></i> Roles &amp; Permissions</h2>
-              <p class="section-subtitle">Manage system roles, descriptions, and fine-grained permission assignments.</p>
-            </div>
-            <div style="display:flex; gap:10px; align-items:center;">
-              <button class="btn btn-fill" id="btnCreateRole" onclick="openCreateRoleModal()"><i class="fa-solid fa-plus"></i> New Role</button>
-            </div>
+        <section class="page-section fv" id="a-system-roles">
+          <h2 class="section-title sr-only" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); font-size: 18px;">Roles and permissions</h2>
+          <div class="toolbar sys-toolbar" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+            <span style="font-size: 13px; color: var(--ink-muted);">A role is a named set of permissions. Every user has exactly one role.</span>
+            <button class="btn btn-fill" id="btnCreateRole" onclick="openCreateRoleModal()" style="display: inline-flex; align-items: center; height: 32px; padding: 0 14px; border-radius: 8px; font-weight: 600; font-size: 13px;">New role</button>
           </div>
-          <div class="card">
+          <div class="card fv-table-card" style="background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: 14px; box-shadow: var(--fv-shadow-card); overflow: hidden;">
             <div class="section-loading-bar" id="rolesTableLoadingBar"><span></span></div>
-            <table class="responsive-card-table">
-              <thead>
-                <tr>
-                  <th>Role Name</th>
-                  <th>Description</th>
-                  <th>Assigned Users</th>
-                  <th>Permission Count</th>
-                  <th class="col-actions">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="rolesTableBody"></tbody>
-            </table>
+            <div class="fv-table-scroll">
+              <table class="responsive-card-table fv-table" style="width: 100%; border-collapse: collapse;">
+                <thead>
+                  <tr>
+                    <th scope="col" style="width: 22%; min-width: 200px; text-align: left; padding: 12px 16px; font-size: 12px; font-weight: 600; color: var(--ink-label); border-bottom: 1px solid var(--fv-line-strong);">Role</th>
+                    <th scope="col" style="width: 46%; min-width: 300px; text-align: left; padding: 12px; font-size: 12px; font-weight: 600; color: var(--ink-label); border-bottom: 1px solid var(--fv-line-strong);">Description</th>
+                    <th scope="col" style="width: 8%; min-width: 70px; text-align: right; padding: 12px; font-size: 12px; font-weight: 600; color: var(--ink-label); border-bottom: 1px solid var(--fv-line-strong);">Users</th>
+                    <th scope="col" style="width: 14%; min-width: 140px; text-align: left; padding: 12px; font-size: 12px; font-weight: 600; color: var(--ink-label); border-bottom: 1px solid var(--fv-line-strong);">Permissions</th>
+                    <th scope="col" class="col-actions" style="width: 10%; min-width: 130px; padding: 12px 16px; border-bottom: 1px solid var(--fv-line-strong); text-align: right;"><span class="sr-only" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0);">Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody id="rolesTableBody"></tbody>
+              </table>
+            </div>
           </div>
         </section>

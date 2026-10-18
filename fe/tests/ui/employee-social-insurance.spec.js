@@ -18,7 +18,7 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
     // Click on the first employee row to view detail
     const firstRow = page.locator('#employeesTableBody tr').first();
     await expect(firstRow).toBeVisible();
-    await firstRow.locator('.icon-action[title="View Profile"]').click();
+    await firstRow.locator('td.tname a').click();
 
     // Verify detail page is visible
     await expect(page.locator('#a-employee-detail')).toBeVisible();
@@ -30,7 +30,7 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
     // Check Social Insurance card exists in Sensitive Data section
     const socialInsCard = page.locator('#socialInsuranceCard');
     await expect(socialInsCard).toBeVisible();
-    await expect(socialInsCard.locator('h3')).toContainText('Social Insurance');
+    await expect(socialInsCard.locator('h3')).toContainText('Social insurance');
     await expect(socialInsCard.locator('#socialInsurancePill')).toBeVisible();
     await expect(socialInsCard.locator('#socialInsCoverage')).toBeVisible();
     await expect(socialInsCard.locator('#socialInsBase')).toBeVisible();
@@ -42,7 +42,7 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
     await openAdminPage(page, 'a-employees');
     const firstRow = page.locator('#employeesTableBody tr').first();
     await expect(firstRow).toBeVisible();
-    await firstRow.locator('.icon-action[title="View Profile"]').click();
+    await firstRow.locator('td.tname a').click();
     await expect(page.locator('#a-employee-detail')).toBeVisible();
 
     // Click edit action on Social Insurance card
@@ -53,8 +53,8 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
     // Modal should appear
     const modal = page.locator('#socialInsuranceModal');
     await expect(modal).toBeVisible();
-    await expect(modal.locator('#socialInsuranceModalTitle')).toContainText('Social Insurance Configuration');
-    await expect(modal.locator('#fSocialInsBaseContainer label')).toContainText('(EGP)');
+    await expect(modal.locator('#socialInsuranceModalTitle')).toContainText('Social insurance');
+    await expect(modal.locator('#fSocialInsBaseContainer label')).toContainText('Insured base');
 
     // Attempt to set a future date
     await modal.locator('#fSocialInsFlag').check();
@@ -98,7 +98,7 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
     // Verify Social Insurance Contribution Rates card exists
     const rateCard = page.locator('#payrollSocialInsuranceSettingsCard');
     await expect(rateCard).toBeVisible();
-    await expect(rateCard).toContainText('Social Insurance Contribution Rates');
+    await expect(rateCard).toContainText('Social insurance rates');
 
     const empRateInput = page.locator('#payrollEmployeeInsuranceRate');
     const empyrRateInput = page.locator('#payrollEmployerInsuranceRate');
@@ -127,9 +127,9 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
 
     // Verify Screen 3 table headers contain statutory Social Insurance snapshots
     const tableHeader = page.locator('#payrollProcessingTable thead');
-    await expect(tableHeader).toContainText('Emp SI (EGP)');
-    await expect(tableHeader).toContainText('Empr SI (EGP)');
-    await expect(tableHeader).toContainText('Total SI (EGP)');
+    await expect(tableHeader).toContainText('Employee SI, EGP');
+    await expect(tableHeader).toContainText('Employer SI, EGP');
+    await expect(tableHeader).toContainText('Total SI, EGP');
   });
 
   test('Regression fix: Employee profile card renders with header and compensation grid', async ({ page }) => {
@@ -138,7 +138,7 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
 
     const firstRow = page.locator('#employeesTableBody tr').first();
     await expect(firstRow).toBeVisible();
-    await firstRow.locator('.icon-action[title="View Profile"]').click();
+    await firstRow.locator('td.tname a').click();
 
     await expect(page.locator('#a-employee-detail')).toBeVisible();
 
@@ -152,7 +152,7 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
     const infoGrid = page.locator('#detailInfoGrid');
     await expect(infoGrid).toBeVisible();
     await expect(infoGrid.locator('.esc-body')).toBeVisible();
-    await expect(infoGrid).toContainText('Monthly Compensation');
+    await expect(infoGrid).toContainText('Monthly total');
   });
 
   test('Regression fix: Employee edit button in table opens edit modal with prefilled data', async ({ page }) => {
@@ -170,7 +170,7 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
     // Expect modal to be open and prefilled
     const modal = page.locator('#employeeModal');
     await expect(modal).toBeVisible();
-    await expect(modal.locator('#empModalTitle')).toContainText('Edit Employee');
+    await expect(modal.locator('#empModalTitle')).toContainText('Edit employee');
     await expect(modal.locator('#fEmpName')).not.toBeEmpty();
 
     // Close modal cleanly

@@ -1,0 +1,1495 @@
+/* Payroll restyle v3 (D-028). Overrides payroll.css with the Finance v2 look; markup and ids untouched
+   (payroll-cycle.js, finance-payroll.js and payroll-table.js build rows at runtime). Tokens only. */
+
+#a-finance-payroll { --pv-r: 14px; }
+
+/* ---------- Cards and headers ---------- */
+#a-finance-payroll .card,
+#a-finance-payroll .payroll-settings-card {
+  background: var(--fv-surface);
+  border: 1px solid var(--fv-line);
+  border-radius: var(--pv-r);
+  box-shadow: var(--fv-shadow-card);
+}
+#a-finance-payroll .card:hover,
+#a-finance-payroll .payroll-settings-card:hover { box-shadow: var(--fv-shadow-card); transform: none; }
+#a-finance-payroll .section-title,
+#a-finance-payroll .payroll-panel-title,
+#a-finance-payroll .runtitle {
+  font-size: 16px; font-weight: 700; color: var(--ink-strong); letter-spacing: 0; text-transform: none;
+}
+#a-finance-payroll .section-title i,
+#a-finance-payroll .title-row .section-title i { color: var(--brand-text); font-size: 15px; }
+#a-finance-payroll .title-row .section-title { font-size: 15.5px; }
+#a-finance-payroll .payroll-subtitle { font-size: 12.5px; color: var(--ink-muted); }
+#a-finance-payroll .innerhead,
+#a-finance-payroll .inner .innerhead {
+  font-size: 13.5px; font-weight: 700; color: var(--ink-strong); text-transform: none; letter-spacing: 0;
+}
+#a-finance-payroll .inner { background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: 12px; box-shadow: none; }
+#a-finance-payroll .fxbox { background: var(--fv-canvas); border: 1px solid var(--fv-line); border-radius: 999px; color: var(--ink-body); font-size: 12.5px; }
+
+/* ---------- Step pills ---------- */
+#a-finance-payroll .payroll-step-pill {
+  height: 30px; padding: 0 12px 0 6px; border-radius: 999px; font-size: 12.5px; font-weight: 600;
+  background: var(--fv-surface); border: 1px solid var(--fv-line); color: var(--ink-label); box-shadow: none;
+}
+#a-finance-payroll .payroll-step-pill.active { background: var(--brand-wash); border-color: transparent; color: var(--brand-text); }
+#a-finance-payroll .payroll-step-pill.done { background: var(--success-soft); border-color: transparent; color: var(--success); }
+#a-finance-payroll .payroll-step-num { width: 20px; height: 20px; font-size: 11px; font-weight: 700; background: var(--fv-canvas); color: var(--ink-label); }
+#a-finance-payroll .payroll-step-pill.active .payroll-step-num { background: var(--brand); color: var(--fv-on-brand); }
+#a-finance-payroll .payroll-step-pill.done .payroll-step-num { background: var(--success); color: var(--fv-on-brand); }
+
+/* ---------- Banners ---------- */
+#a-finance-payroll .payroll-lock-note,
+#a-finance-payroll .payroll-action-banner,
+#a-finance-payroll .payroll-exception-alert.warning,
+#a-finance-payroll .alertbox {
+  background: var(--warning-soft); border: 0; border-radius: 10px; color: var(--warning-text, var(--warning)); font-size: 13px;
+}
+
+/* ---------- Stat tiles ---------- */
+#a-finance-payroll .payroll-stat,
+#a-finance-payroll .stat {
+  background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: 12px; box-shadow: none; padding: 12px 14px;
+}
+#a-finance-payroll .payroll-stat .label,
+#a-finance-payroll .stat .lbl,
+#a-finance-payroll .stat .label {
+  font-size: 12.5px; font-weight: 600; color: var(--ink-label); text-transform: none; letter-spacing: 0;
+}
+#a-finance-payroll .payroll-stat .value,
+#a-finance-payroll .stat .val { font-size: 22px; font-weight: 700; color: var(--ink-strong); }
+#a-finance-payroll .stat .val.val-accent,
+#a-finance-payroll .stat .val-accent { color: var(--brand-text); }
+#a-finance-payroll .payroll-stat .sub,
+#a-finance-payroll .stat .sub { font-size: 12.5px; color: var(--ink-muted); }
+
+/* ---------- Form controls ---------- */
+#a-finance-payroll label,
+#a-finance-payroll .field label,
+#a-finance-payroll .field-hint { text-transform: none; letter-spacing: 0; }
+#a-finance-payroll .field label,
+#a-finance-payroll .form-field label { font-size: 12.5px; font-weight: 600; color: var(--ink-label); }
+#a-finance-payroll input[type="text"],
+#a-finance-payroll input[type="number"],
+#a-finance-payroll input[type="date"],
+#a-finance-payroll input[type="month"],
+#a-finance-payroll select {
+  height: 36px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--fv-input-border);
+  background: var(--fv-surface); color: var(--ink-strong); font-size: 14px; font-family: inherit; box-sizing: border-box;
+}
+#a-finance-payroll input:focus,
+#a-finance-payroll select:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-wash); }
+#a-finance-payroll .payroll-toolbar input,
+#a-finance-payroll .payroll-toolbar select { height: 32px; font-size: 13px; border-radius: 8px; }
+
+/* ---------- Buttons ---------- */
+#a-finance-payroll .btn { height: 32px; padding: 0 14px; border-radius: 8px; font-size: 13px; font-weight: 600; box-shadow: none; }
+#a-finance-payroll .btn.sm,
+#a-finance-payroll .btn-sm { height: 28px; padding: 0 12px; font-size: 12.5px; }
+#a-finance-payroll .btn-ghost { background: var(--fv-surface); border: 1px solid var(--fv-line); color: var(--ink-body); }
+#a-finance-payroll .btn-fill { background: var(--brand); border-color: var(--brand); color: var(--fv-on-brand); }
+
+/* ---------- Tables ---------- */
+#a-finance-payroll .payroll-table-wrap { border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+#a-finance-payroll table.runs-table th,
+#a-finance-payroll table.payroll-worksheet th,
+#a-finance-payroll .payroll-num-th,
+#a-finance-payroll .payroll-name-th {
+  font-size: 12px; font-weight: 600; color: var(--ink-label); text-transform: none; letter-spacing: 0;
+  background: var(--fv-surface); border-bottom: 1px solid var(--fv-line-strong); padding: 10px 14px;
+}
+#a-finance-payroll table.runs-table td,
+#a-finance-payroll table.payroll-worksheet td { font-size: 13.5px; padding: 10px 14px; border-bottom: 1px solid var(--fv-line-row); color: var(--ink-body); }
+#a-finance-payroll table.runs-table td.strong,
+#a-finance-payroll table.payroll-worksheet .strong { color: var(--ink-strong); font-weight: 700; }
+#a-finance-payroll table.payroll-worksheet tr:hover td,
+#a-finance-payroll table.runs-table tr.clickable:hover td { background: var(--fv-canvas); }
+#a-finance-payroll table.payroll-worksheet tfoot td { background: var(--fv-canvas); border-top: 1px solid var(--fv-line-strong); color: var(--ink-strong); font-weight: 700; }
+#a-finance-payroll table.payroll-worksheet tr.warnrow td { background: var(--warning-soft); }
+#a-finance-payroll .payroll-num { color: var(--ink-strong); }
+
+/* ---------- Pills and badges ---------- */
+#a-finance-payroll .p-badge,
+#a-finance-payroll .badge-pill,
+#a-finance-payroll .settings-pill,
+#a-finance-payroll .stage-badge,
+#a-finance-payroll .disburse-rail-badge {
+  text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 600; border-radius: 999px; box-shadow: none;
+}
+
+/* ---------- Disbursement and statutory cards (steps 5, 6) ---------- */
+#a-finance-payroll .disburse-card,
+#a-finance-payroll .stat-obl-card { background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: var(--pv-r); box-shadow: var(--fv-shadow-card); }
+#a-finance-payroll .disburse-card.internal,
+#a-finance-payroll .disburse-card.external,
+#a-finance-payroll .stat-obl-card.si,
+#a-finance-payroll .stat-obl-card.tax { background: var(--fv-surface); }
+#a-finance-payroll .disburse-card .stripe,
+#a-finance-payroll .stat-obl-card .stripe { display: none; }
+#a-finance-payroll .disburse-title,
+#a-finance-payroll .stat-obl-title { font-size: 15.5px; font-weight: 700; color: var(--ink-strong); }
+#a-finance-payroll .disburse-amount,
+#a-finance-payroll .stat-obl-amount { font-size: 26px; font-weight: 700; color: var(--ink-strong); }
+#a-finance-payroll .disburse-card.external .disburse-amount { color: var(--success); }
+#a-finance-payroll .stat-obl-card.si .stat-obl-amount,
+#a-finance-payroll .stat-obl-card.tax .stat-obl-amount { color: var(--ink-strong); }
+#a-finance-payroll .stat-obl-row .k { flex: none; white-space: nowrap; }
+#a-finance-payroll .disburse-amount-lbl,
+#a-finance-payroll .stat-obl-amount-lbl,
+#a-finance-payroll .disburse-row .k,
+#a-finance-payroll .stat-obl-row .k {
+  text-transform: none; letter-spacing: 0; font-size: 12.5px; font-weight: 600; color: var(--ink-label);
+}
+#a-finance-payroll .disburse-row,
+#a-finance-payroll .stat-obl-row { background: var(--fv-canvas); border: 1px solid var(--fv-line); border-radius: 10px; }
+#a-finance-payroll .disburse-row .v,
+#a-finance-payroll .stat-obl-row .v { color: var(--ink-strong); font-weight: 600; }
+#a-finance-payroll .disburse-rail-badge { background: var(--fv-canvas); color: var(--ink-label); }
+#a-finance-payroll .disburse-card.internal .disburse-rail-badge { background: var(--brand-wash); color: var(--brand-text); }
+#a-finance-payroll .disburse-card.external .disburse-rail-badge { background: var(--success-soft); color: var(--success); }
+
+/* ---------- Footer / save bar ---------- */
+#a-finance-payroll .footer,
+#a-finance-payroll .payroll-footer-actions,
+#a-finance-payroll .save-bar { background: var(--fv-surface); border-top: 1px solid var(--fv-line); }
+#a-finance-payroll .left-info,
+#a-finance-payroll .save-bar-info { font-size: 12.5px; color: var(--ink-muted); }
+
+/* ---------- Settings ---------- */
+#a-finance-payroll .payroll-settings-card-header { border-bottom: 1px solid var(--fv-line); }
+#a-finance-payroll .settings-icon-chip { border-radius: 10px; background: var(--brand-wash); color: var(--brand-text); }
+#a-finance-payroll .settings-card-callout { background: var(--brand-wash); border: 0; border-radius: 10px; color: var(--brand-text); }
+#a-finance-payroll .input-affix-group .suffix,
+#a-finance-payroll .input-affix-group .prefix { background: var(--fv-canvas); color: var(--ink-label); border-color: var(--fv-input-border); }
+
+/* ---------- Dark: navy surfaces come from the tokens ---------- */
+[data-theme="dark"] #a-finance-payroll .disburse-row,
+[data-theme="dark"] #a-finance-payroll .stat-obl-row { background: var(--surface2); }
+
+/* =====================================================================
+   Structure pass: mocks lay the run page out as separate cards on the canvas
+   (stepper card, section cards, footer card), not one big card.
+   ===================================================================== */
+#a-finance-payroll #payrollViewRun,
+#a-finance-payroll #payrollViewList,
+#a-finance-payroll #payrollViewSettings {
+  background: none; border: 0; box-shadow: none; border-radius: 0; padding: 0; overflow: visible;
+}
+#a-finance-payroll .payroll-screen-view { background: none; padding: 0; }
+
+/* Run header & topbar chrome: breadcrumbs, status pill, FX strip suppressed per design */
+#a-finance-payroll .runhead,
+#a-finance-payroll #payrollFxControls,
+#payrollFxStrip,
+.topbar-fx { display: none !important; }
+#a-finance-payroll .runtitle { font-size: 18px; }
+
+.topbar h1 .topbar-crumb {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-label);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.topbar h1 .topbar-crumb:hover {
+  color: var(--brand);
+}
+.topbar h1 .topbar-crumb-sep {
+  color: var(--ink-muted);
+  font-weight: 400;
+  margin: 0 4px;
+  font-size: 14px;
+}
+.topbar h1 .topbar-crumb-cur {
+  font-family: var(--font-display, Sora, sans-serif);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--ink-strong);
+}
+
+#payrollStatusBadge.topbar-run-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-label);
+  border: 1px dashed var(--fv-line-strong);
+  background: transparent;
+  box-shadow: none;
+  line-height: 1.4;
+}
+#payrollStatusBadge.topbar-run-status::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-muted);
+  flex: none;
+}
+#payrollStatusBadge.topbar-run-status.b-green,
+#payrollStatusBadge.topbar-run-status.pill-success {
+  color: var(--success);
+  border: 1px solid var(--success);
+  background: var(--success-soft);
+}
+#payrollStatusBadge.topbar-run-status.b-green::before,
+#payrollStatusBadge.topbar-run-status.pill-success::before {
+  background: var(--success);
+}
+
+/* Stepper card with check circles joined by lines */
+#a-finance-payroll .payroll-stepper {
+  display: flex; align-items: center; gap: 0; padding: 14px 18px; margin: 0 0 12px;
+  background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: var(--pv-r); box-shadow: var(--fv-shadow-card);
+}
+#a-finance-payroll .payroll-step-pill {
+  flex: 1 1 auto; display: flex; align-items: center; gap: 8px; height: auto; padding: 0;
+  background: none; border: 0; border-radius: 0; box-shadow: none; color: var(--ink-label); font-size: 13px; font-weight: 500; white-space: nowrap;
+}
+#a-finance-payroll .payroll-step-pill:last-child { flex: 0 0 auto; }
+#a-finance-payroll .payroll-step-pill::after {
+  content: ""; flex: 1 1 24px; min-width: 16px; height: 2px; margin: 0 10px; border-radius: 2px; background: var(--fv-line-strong);
+}
+#a-finance-payroll .payroll-step-pill:last-child::after { display: none; }
+#a-finance-payroll .payroll-step-num {
+  width: 26px; height: 26px; flex: none; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--fv-surface); border: 1px solid var(--fv-line-strong); color: var(--ink-label); font-size: 12px; font-weight: 700;
+}
+#a-finance-payroll .payroll-step-pill.active { background: none; color: var(--ink-strong); font-weight: 700; }
+#a-finance-payroll .payroll-step-pill.active .payroll-step-num { background: var(--brand); border-color: var(--brand); color: var(--fv-on-brand); }
+#a-finance-payroll .payroll-step-pill.done { background: none; color: var(--success); font-weight: 600; }
+#a-finance-payroll .payroll-step-pill.done::after { background: var(--success); }
+#a-finance-payroll .payroll-step-pill.done .payroll-step-num {
+  background: var(--success-soft); border-color: transparent; color: var(--success); font-size: 0;
+}
+#a-finance-payroll .payroll-step-pill.done .payroll-step-num::before {
+  content: "\f00c"; font-family: "Font Awesome 6 Free", "Font Awesome 5 Free"; font-weight: 900; font-size: 11px;
+}
+
+/* Section headings and footers */
+#a-finance-payroll .title-row { padding: 0; margin: 0 0 10px; }
+#a-finance-payroll .title-row .section-title { font-size: 15px; }
+#a-finance-payroll .grid { gap: 12px; margin-bottom: 12px; padding: 0; }
+#a-finance-payroll .payroll-stats,
+#a-finance-payroll .stats { gap: 12px; margin-bottom: 12px; padding: 0; }
+#a-finance-payroll .footer,
+#a-finance-payroll .payroll-footer-actions {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  margin: 12px 0 0; padding: 12px 16px; background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: var(--pv-r);
+  box-shadow: var(--fv-shadow-card);
+}
+
+/* Tables become their own cards (toolbar is the card's top strip) */
+#a-finance-payroll .payroll-table-wrap {
+  background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: var(--pv-r); box-shadow: var(--fv-shadow-card); overflow: hidden;
+}
+#a-finance-payroll .payroll-toolbar {
+  padding: 10px 14px; margin: 0; background: var(--fv-surface); border: 1px solid var(--fv-line); border-bottom: 0;
+  border-radius: var(--pv-r) var(--pv-r) 0 0;
+}
+#a-finance-payroll .payroll-toolbar + .payroll-table-wrap { border-radius: 0 0 var(--pv-r) var(--pv-r); }
+
+/* Runs list: header row on the canvas, table card below */
+#a-finance-payroll #payrollViewList > .card-pad { padding: 0 0 12px; }
+#a-finance-payroll #payrollViewList .payroll-table-wrap { margin: 0; }
+
+/* Step 5: title and amount on one row, three tiles below */
+#a-finance-payroll .disburse-grid { gap: 12px; margin: 0 0 12px; }
+#a-finance-payroll .disburse-card-body { display: grid; grid-template-columns: 1fr auto; column-gap: 12px; padding: 16px; }
+#a-finance-payroll .disburse-head { grid-column: 1; grid-row: 1 / span 2; align-self: center; justify-content: flex-start; gap: 10px; }
+#a-finance-payroll .disburse-amount-lbl { grid-column: 2; grid-row: 1; justify-self: end; margin: 0; font-size: 12px; }
+#a-finance-payroll .disburse-amount { grid-column: 2; grid-row: 2; justify-self: end; margin: 0; font-size: 22px; }
+#a-finance-payroll .disburse-meta { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+#a-finance-payroll .disburse-row {
+  flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 4px; padding: 10px 12px;
+  background: var(--fv-canvas); border: 0; border-radius: 10px;
+}
+#a-finance-payroll .disburse-row .k i { display: none; }
+#a-finance-payroll .disburse-row .v { font-size: 14.5px; font-weight: 700; text-align: left; }
+#a-finance-payroll #p5ExceptionsWrap { margin: 0 0 12px; padding: 0; }
+
+/* Settings: plain intro, cards on canvas, footer card */
+#a-finance-payroll .payroll-settings-header { padding: 0 0 12px; border: 0; background: none; }
+#a-finance-payroll .save-bar {
+  margin-top: 12px; padding: 12px 16px; background: var(--fv-surface); border: 1px solid var(--fv-line);
+  border-radius: var(--pv-r); box-shadow: var(--fv-shadow-card);
+}
+
+/* Banners sit in the card flow, not on top of the stepper */
+#a-finance-payroll .payroll-lock-note,
+#a-finance-payroll .payroll-action-banner:not(:empty) { margin: 0 0 12px; padding: 10px 14px; }
+#a-finance-payroll .payroll-action-banner:empty { display: none; }
+/* Step 5 action strip as a footer-style card */
+#a-finance-payroll #p5ExceptionsWrap + div {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; padding: 12px 16px !important;
+  background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: var(--pv-r); box-shadow: var(--fv-shadow-card);
+}
+#a-finance-payroll #p5ExceptionsWrap + div .payroll-subtitle { margin: 0; flex: 1 1 100%; }
+/* Flagged rows: a light tint, not a block of colour */
+#a-finance-payroll table.payroll-worksheet tr.warnrow td { background: color-mix(in srgb, var(--warning-soft) 40%, transparent); }
+
+/* Align every block with the stepper edge; mocks have no inner gutters */
+#a-finance-payroll .payroll-screen-view > :not(.footer):not(.payroll-footer-actions):not(#p5ExceptionsWrap + div) {
+  padding-left: 0; padding-right: 0; margin-left: 0; margin-right: 0;
+}
+#a-finance-payroll .payroll-settings-grid { padding: 0; gap: 12px; margin: 0 0 12px; }
+#a-finance-payroll #payrollViewSettings > * { margin-left: 0; margin-right: 0; }
+#a-finance-payroll .payroll-settings-card-header :is(h2, h3, h4, .payroll-panel-title) { font-size: 15px; font-weight: 700; color: var(--ink-strong); }
+/* Amounts are neutral ink in the mocks (the markup carries inline tone colours) */
+#a-finance-payroll .stat-obl-amount,
+#a-finance-payroll .disburse-amount { color: var(--ink-strong) !important; }
+
+.pv-linked { padding: 0; margin: 0 0 12px; }
+.pv-linked > b { display: block; margin: 0 0 8px; font-size: 14px; font-weight: 700; color: var(--ink-strong); }
+
+/* =====================================================================
+   Step 6 statutory cards, per mock Pay-Run-Statutory:
+   card 14/16 padding, header (title + sub + dot pill), 3 tiles (estimate / portal / variance),
+   2 labelled fields, right-aligned action.
+   ===================================================================== */
+#a-finance-payroll .stat-grid { gap: 14px; margin: 0 0 14px; padding: 0; }
+#a-finance-payroll .stat-obl-card { padding: 14px 16px; }
+#a-finance-payroll .stat-obl-card-body { padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 10px; row-gap: 0; }
+#a-finance-payroll .stat-obl-card-body > * { grid-column: 1 / -1; }
+#a-finance-payroll .stat-obl-head { margin: 0 0 12px; gap: 10px; align-items: center; }
+#a-finance-payroll .stat-obl-title { font-family: var(--font-head); font-size: 15px; font-weight: 600; color: var(--ink-strong); gap: 0; }
+#a-finance-payroll .stat-obl-title i { display: none; }
+#a-finance-payroll .stat-obl-sub { font-size: 12.5px; font-weight: 400; color: var(--ink-muted); margin: 0; }
+#a-finance-payroll .stage-badge {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 0; border-radius: 999px;
+  font-size: 12px; font-weight: 600; white-space: nowrap; background: var(--fv-canvas); color: var(--ink-label);
+}
+#a-finance-payroll .stage-badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+#a-finance-payroll .stage-badge.unrecorded { background: var(--warning-soft); color: var(--warning-text, var(--warning)); }
+#a-finance-payroll .stage-badge.recorded { background: color-mix(in srgb, var(--id-violet) var(--fv-status-tint-pct), transparent); color: var(--id-violet-ink); }
+#a-finance-payroll .stage-badge.settled { background: var(--success-soft); color: var(--success); }
+
+/* tiles: estimate = label + amount, portal + variance = the two rows of the first meta block */
+#a-finance-payroll .stat-obl-card-body > .stat-obl-amount-lbl {
+  grid-column: 1; grid-row: 2; margin: 0; padding: 10px 12px 0; border-radius: 12px 12px 0 0; background: var(--fv-surface-soft);
+  font-size: 12px; font-weight: 400; color: var(--ink-muted);
+}
+#a-finance-payroll .stat-obl-card-body > .stat-obl-amount {
+  grid-column: 1; grid-row: 3; margin: 0 0 12px; padding: 2px 12px 10px; border-radius: 0 0 12px 12px; background: var(--fv-surface-soft);
+  font-family: inherit; font-size: 14px; font-weight: 700; line-height: 1.45;
+}
+#a-finance-payroll .stat-obl-card-body > .stat-obl-meta { display: contents; }
+#a-finance-payroll .stat-obl-card-body > .stat-obl-meta > .stat-obl-row {
+  grid-row: 2 / span 2; grid-column: auto; margin: 0 0 12px; padding: 10px 12px; border: 0; border-radius: 12px; background: var(--fv-surface-soft);
+  display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch; gap: 4px;
+}
+#a-finance-payroll .stat-obl-card-body > .stat-obl-meta > .stat-obl-row .k { font-size: 12px; font-weight: 400; color: var(--ink-muted); gap: 0; }
+#a-finance-payroll .stat-obl-card-body > .stat-obl-meta > .stat-obl-row .v { font-size: 14px; font-weight: 700; color: var(--ink-strong); text-align: left; }
+#a-finance-payroll .stat-obl-card-body > .stat-obl-meta > .stat-obl-row input {
+  height: 30px; padding: 0 8px; border-radius: 8px; font-size: 13.5px; font-weight: 700; text-align: left; border: 1px solid var(--fv-input-border);
+}
+#a-finance-payroll .stat-obl-row .k i { display: none; }
+
+/* settlement stage: two labelled fields, no tile chrome */
+#a-finance-payroll .pay-stage { display: block; padding: 0; margin: 0; border: 0; background: none; }
+#a-finance-payroll .pay-stage.locked { opacity: 1; pointer-events: auto; }
+#a-finance-payroll .pay-stage .stage-hint { margin: 0 0 8px; font-size: 12.5px; }
+#a-finance-payroll .pay-stage .stat-obl-meta { display: grid; grid-template-columns: 1.4fr 1fr; gap: 10px; margin: 0 0 12px; }
+#a-finance-payroll .pay-stage .stat-obl-row { padding: 0; border: 0; background: none; border-radius: 0; gap: 5px; }
+#a-finance-payroll .pay-stage .stat-obl-row .k { font-size: 12.5px; font-weight: 600; color: var(--ink-label); }
+#a-finance-payroll .pay-stage .stat-obl-row select,
+#a-finance-payroll .pay-stage .stat-obl-row input { height: 36px; padding: 0 10px; border-radius: 9px; font-size: 14px; font-weight: 400; width: 100%; }
+
+/* actions: right aligned, auto width; obligation is the outline step, remittance the fill step */
+#a-finance-payroll .stat-obl-actions { display: flex; justify-content: flex-end; margin: 0 0 12px; }
+#a-finance-payroll .pay-stage .stat-obl-actions { margin: 0; }
+#a-finance-payroll .stat-obl-actions .btn { width: auto; height: 34px; padding: 0 16px; border-radius: 8px; }
+#a-finance-payroll #btnP6RecordSocialIns,
+#a-finance-payroll #btnP6RecordTax { background: var(--fv-surface); color: var(--brand-ink); border: 1px solid var(--fv-outline); }
+#a-finance-payroll .stat-obl-actions .btn { flex: 0 0 auto; }
+#a-finance-payroll .pay-stage .stat-obl-row { flex-direction: column; align-items: stretch; justify-content: flex-start; }
+#a-finance-payroll .pay-stage .stat-obl-row input[type="date"] { min-width: 0; }
+/* No uppercase labels anywhere in Payroll */
+#a-finance-payroll * { text-transform: none; }
+#a-finance-payroll #payrollStatutoryRecordsTable td .badge-pill,
+#a-finance-payroll #payrollStatutoryRecordsTable td .p-badge { text-transform: capitalize; }
+#a-finance-payroll .pay-stage .stat-obl-row select,
+#a-finance-payroll .pay-stage .stat-obl-row input { border: 1px solid var(--fv-input-border); background-color: var(--fv-surface); color: var(--ink-strong); }
+
+/* =====================================================================
+   Step 1 setup, per mock Pay-Run-Setup
+   ===================================================================== */
+#a-finance-payroll .grid { gap: 14px; }
+#a-finance-payroll .inner { padding: 14px 16px; border-radius: 14px; border-color: var(--fv-line); display: flex; flex-direction: column; gap: 12px; }
+#a-finance-payroll .innerhead {
+  display: block; margin: 0; padding: 0; border: 0; background: none;
+  font-family: var(--font-head); font-size: 15px; font-weight: 600; color: var(--ink-strong);
+}
+#a-finance-payroll .innerhead i { display: none; }
+#a-finance-payroll .payroll-screen-view .form,
+#a-finance-payroll .payroll-screen-view .funding-form { padding: 0; margin: 0; gap: 12px 16px; }
+#a-finance-payroll .payroll-screen-view .field { display: flex; flex-direction: column; gap: 5px; margin: 0; }
+#a-finance-payroll .payroll-screen-view .field label { display: block; margin: 0; font-size: 12.5px; font-weight: 600; color: var(--ink-label); }
+#a-finance-payroll .payroll-screen-view .field label i { display: none; }
+#a-finance-payroll .payroll-stats,
+#a-finance-payroll .stats { gap: 14px; }
+#a-finance-payroll .payroll-stat,
+#a-finance-payroll .stat { padding: 14px 18px; border-radius: 14px; border-color: var(--fv-line-row); display: flex; flex-direction: column; gap: 0; }
+#a-finance-payroll .payroll-stat .value,
+#a-finance-payroll .stat .val { font-size: 22px; line-height: 1.3; font-family: inherit; }
+#a-finance-payroll .footer .btn,
+#a-finance-payroll .payroll-footer-actions .btn { height: 34px; padding: 0 16px; border-radius: 8px; }
+#a-finance-payroll .payroll-stat .value,
+#a-finance-payroll .stat .val { font-family: var(--font-head); }
+#a-finance-payroll #btnP1ApplyFx,
+#a-finance-payroll #btnP1ResetFx { height: 36px; padding: 0 14px; border-radius: 8px; font-size: 13px; }
+#a-finance-payroll #btnP1ResetFx { background: var(--fv-surface); color: var(--brand-ink); border: 1px solid var(--fv-outline); padding: 0 12px; }
+#a-finance-payroll .payroll-step-num { border-color: var(--fv-outline); }
+
+/* =====================================================================
+   Review / preview tables, per mocks Pay-Run-Review and Pay-Run-Preview
+   ===================================================================== */
+#a-finance-payroll table.payroll-worksheet th,
+#a-finance-payroll table.runs-table th { padding: 11px 12px; border-bottom: 1px solid var(--fv-line-strong); }
+#a-finance-payroll table.payroll-worksheet td,
+#a-finance-payroll table.runs-table td { padding: 8px 12px; border-bottom: 1px solid var(--fv-line-row); }
+#a-finance-payroll table.payroll-worksheet th:first-child,
+#a-finance-payroll table.payroll-worksheet td:first-child,
+#a-finance-payroll table.runs-table th:first-child,
+#a-finance-payroll table.runs-table td:first-child { padding-left: 16px; }
+#a-finance-payroll table.payroll-worksheet th:last-child,
+#a-finance-payroll table.payroll-worksheet td:last-child,
+#a-finance-payroll table.runs-table th:last-child,
+#a-finance-payroll table.runs-table td:last-child { padding-right: 16px; }
+#a-finance-payroll table.payroll-worksheet tfoot td { padding: 10px 12px; background: var(--fv-surface-soft); border-top: 0; }
+#a-finance-payroll table.payroll-worksheet tfoot td:first-child { padding-left: 16px; }
+#a-finance-payroll table.payroll-worksheet tfoot td:last-child { padding-right: 16px; }
+#a-finance-payroll table.payroll-worksheet td.payroll-num { font-variant-numeric: tabular-nums; }
+#a-finance-payroll table.payroll-worksheet .avatar {
+  width: 32px; height: 32px; border-radius: 10px; font-size: 12px; font-weight: 700; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--id-blue) var(--fv-tint-pct), transparent); color: var(--id-blue-ink);
+}
+#a-finance-payroll table.payroll-worksheet tbody tr:nth-child(6n+1) .avatar { background: color-mix(in srgb, var(--id-blue) var(--fv-tint-pct), transparent); color: var(--id-blue-ink); }
+#a-finance-payroll table.payroll-worksheet tbody tr:nth-child(6n+2) .avatar { background: color-mix(in srgb, var(--id-violet) var(--fv-tint-pct), transparent); color: var(--id-violet-ink); }
+#a-finance-payroll table.payroll-worksheet tbody tr:nth-child(6n+3) .avatar { background: color-mix(in srgb, var(--id-teal) var(--fv-tint-pct), transparent); color: var(--id-teal-ink); }
+#a-finance-payroll table.payroll-worksheet tbody tr:nth-child(6n+4) .avatar { background: color-mix(in srgb, var(--id-orange) var(--fv-tint-pct), transparent); color: var(--id-orange-ink); }
+#a-finance-payroll table.payroll-worksheet tbody tr:nth-child(6n+5) .avatar { background: color-mix(in srgb, var(--id-pink) var(--fv-tint-pct), transparent); color: var(--id-pink-ink); }
+#a-finance-payroll table.payroll-worksheet tbody tr:nth-child(6n) .avatar,
+#a-finance-payroll table.payroll-worksheet tbody tr:nth-child(6n+6) .avatar { background: color-mix(in srgb, var(--id-sky) var(--fv-tint-pct), transparent); color: var(--id-sky-ink); }
+
+/* Variable pay chips and plus button per design */
+#a-finance-payroll table.payroll-worksheet .p-bonus-pill {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 6px;
+  background: var(--brand-wash); color: var(--brand-text); font-size: 12px; font-weight: 500;
+  margin: 2px 4px 2px 0; white-space: nowrap;
+}
+#a-finance-payroll table.payroll-worksheet .p-bonus-pill button {
+  border: none; background: transparent; color: var(--danger); cursor: pointer;
+  padding: 0 2px; font-weight: 700; font-size: 13px; line-height: 1; display: inline-flex; align-items: center; justify-content: center;
+}
+#a-finance-payroll table.payroll-worksheet .plus {
+  width: 22px; height: 22px; border: 1px solid var(--fv-outline); background: var(--fv-surface);
+  color: var(--brand-text); font-weight: 700; border-radius: 6px; font-size: 14px; cursor: pointer;
+  line-height: 1; display: inline-flex; align-items: center; justify-content: center; padding: 0;
+  transition: all 0.15s ease;
+}
+#a-finance-payroll table.payroll-worksheet .plus:hover {
+  background: var(--fv-canvas); border-color: var(--brand);
+}
+#a-finance-payroll .payroll-toolbar { padding: 12px 16px; border-bottom: 1px solid var(--fv-line-row); }
+#a-finance-payroll .payroll-toolbar + .payroll-table-wrap { border-top: 0; }
+
+/* Footer buttons: Back is a text button, secondary actions are outline */
+#a-finance-payroll #btnP2Back, #a-finance-payroll #btnP3Back, #a-finance-payroll #btnP4Back,
+#a-finance-payroll #btnP5Back, #a-finance-payroll #btnP6Back {
+  background: none; border-color: transparent; color: var(--ink-label); padding: 0 12px;
+}
+#a-finance-payroll #btnP2SaveDraft, #a-finance-payroll #btnP4ExportCsv, #a-finance-payroll #btnP5ExportCsv {
+  background: var(--fv-surface); color: var(--brand-ink); border: 1px solid var(--fv-outline); padding: 0 14px;
+}
+#a-finance-payroll .btn-ghost:hover:not(:disabled) { background: var(--fv-canvas); color: var(--brand-text); }
+
+/* Footer layout per mocks: Back on the left, actions grouped on the right */
+#a-finance-payroll .footer,
+#a-finance-payroll .payroll-footer-actions { justify-content: flex-start; gap: 8px; }
+#a-finance-payroll .footer > .btn-fill,
+#a-finance-payroll .payroll-footer-actions > .btn-fill { margin-left: auto; }
+#a-finance-payroll #btnP2Back, #a-finance-payroll #btnP3Back, #a-finance-payroll #btnP4Back,
+#a-finance-payroll #btnP5Back, #a-finance-payroll #btnP6Back { order: -2; }
+#a-finance-payroll .footer > .left-info { order: -1; flex: 1 1 auto; padding-left: 8px; }
+#a-finance-payroll #btnP2SaveDraft, #a-finance-payroll #btnP4ExportCsv { margin-left: auto; }
+#a-finance-payroll #btnP2Approve, #a-finance-payroll #btnP4Next { margin-left: 0; }
+
+/* Preview/review value cells: regular weight, the last column carries the emphasis */
+#a-finance-payroll table.payroll-worksheet td.payroll-num { font-weight: 400; color: var(--ink-body); }
+#a-finance-payroll table.payroll-worksheet td.payroll-num:last-child,
+#a-finance-payroll table.payroll-worksheet td.payroll-num.strong { font-weight: 700; color: var(--ink-strong); }
+#a-finance-payroll table.payroll-worksheet td.payroll-num.accent { color: var(--brand-text); }
+/* Bank state pills: amber for missing, neutral for internal only; dot instead of icon */
+#a-finance-payroll .payroll-missing-bank-link,
+#a-finance-payroll table.payroll-worksheet td .p-badge {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 0; border-radius: 999px;
+  font-size: 12px !important; font-weight: 600; text-decoration: none; background: var(--fv-canvas); color: var(--ink-label);
+}
+#a-finance-payroll .payroll-missing-bank-link { background: var(--warning-soft); color: var(--warning-text, var(--warning)); }
+#a-finance-payroll .payroll-missing-bank-link i,
+#a-finance-payroll table.payroll-worksheet td .p-badge i { display: none; }
+#a-finance-payroll .payroll-missing-bank-link::before,
+#a-finance-payroll table.payroll-worksheet td .p-badge::before {
+  content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none;
+}
+#a-finance-payroll .payroll-step-num { width: 24px; height: 24px; }
+#a-finance-payroll .disburse-row .k { font-weight: 400; color: var(--ink-muted); font-size: 12px; }
+#a-finance-payroll #p5ExceptionsWrap + div .btn { height: 34px; padding: 0 16px; border-radius: 8px; }
+
+/* Settings per mock Pay-Settings: input add-ons and the save bar */
+#a-finance-payroll .input-affix-group .prefix,
+#a-finance-payroll .input-affix-group .suffix {
+  display: inline-flex; align-items: center; height: 36px; box-sizing: border-box; padding: 0 10px; font-size: 13px;
+  background: var(--fv-surface-soft); color: var(--ink-label); border: 1px solid var(--fv-input-border);
+}
+#a-finance-payroll .input-affix-group .prefix { border-right: 0; border-radius: 9px 0 0 9px; }
+#a-finance-payroll .input-affix-group .suffix { border-left: 0; border-radius: 0 9px 9px 0; }
+#a-finance-payroll .input-affix-group input { border-radius: 0; }
+#a-finance-payroll .input-affix-group .prefix + input { border-radius: 0 9px 9px 0; }
+#a-finance-payroll .input-affix-group input:has(+ .suffix) { border-radius: 9px 0 0 9px; }
+#a-finance-payroll .save-bar button { height: 34px; padding: 0 16px; border-radius: 8px; }
+#a-finance-payroll .save-bar-actions .btn:not(.btn-fill) { background: none; border-color: transparent; color: var(--ink-label); padding: 0 12px; }
+
+/* Runs list rows and status pills, per mock Pay-Runs */
+#a-finance-payroll table.runs-table td { color: var(--ink-strong); }
+#a-finance-payroll table.runs-table td:nth-child(2) { color: var(--ink-label); }
+#a-finance-payroll table.runs-table td .badge-pill,
+#a-finance-payroll table.runs-table td .p-badge {
+  display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 11px; box-sizing: border-box;
+  border-radius: 999px; font-size: 12px; font-weight: 600; margin-right: 4px;
+}
+#a-finance-payroll table.runs-table td .badge-pill::before,
+#a-finance-payroll table.runs-table td .p-badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
+#a-finance-payroll table.runs-table td .pill-neutral { background: var(--fv-surface); border: 1px dashed var(--ink-faint); color: var(--ink-label); }
+
+/* =====================================================================
+   Payroll runs list, per mock Pay-Runs
+   ===================================================================== */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+#a-finance-payroll .pv-banner {
+  display: flex; align-items: center; gap: 16px; padding: 16px 18px; margin: 0 0 14px; border-radius: 14px; color: #fff; cursor: pointer;
+  text-decoration: none; background: linear-gradient(155deg, #2a5df0 0%, #2056e8 38%, #1a2f9c 100%); box-shadow: 0 8px 22px -10px rgba(32, 86, 232, .65);
+}
+#a-finance-payroll .pv-banner[hidden] { display: none; }
+#a-finance-payroll .pv-banner-main { flex: 1; display: flex; flex-direction: column; }
+#a-finance-payroll .pv-banner-net { display: flex; flex-direction: column; text-align: right; }
+#a-finance-payroll .pv-banner-kicker, #a-finance-payroll .pv-banner-sub { font-size: 12.5px; color: rgba(255, 255, 255, .88); }
+#a-finance-payroll .pv-banner-kicker { font-weight: 600; }
+#a-finance-payroll .pv-banner-net .pv-banner-kicker { font-weight: 400; }
+#a-finance-payroll .pv-banner-title, #a-finance-payroll .pv-banner-amt { font-family: var(--font-head); font-weight: 700; font-size: 22px; color: #fff; }
+#a-finance-payroll .pv-banner-btn {
+  display: inline-flex; align-items: center; height: 34px; padding: 0 16px; border-radius: 8px; background: #fff; color: var(--brand-ink); font-weight: 600; font-size: 13px;
+}
+#a-finance-payroll .pv-filterrow { display: flex; align-items: center; justify-content: space-between; margin: 0 0 14px; }
+#a-finance-payroll .pv-fpgroup { display: flex; gap: 6px; }
+#a-finance-payroll .pv-fp {
+  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600;
+  background: var(--fv-surface); color: var(--ink-label); border: 1px dashed var(--ink-faint); cursor: pointer; box-shadow: none;
+}
+#a-finance-payroll .pv-fp.pv-fp--paid { background: var(--success-soft); color: var(--success); border: 1px solid transparent; }
+#a-finance-payroll .pv-fp.pv-fp--open { background: var(--warning-soft); color: var(--warning-text, var(--warning)); border: 1px solid transparent; }
+#a-finance-payroll .pv-fp:not([data-runs-filter="all"]):not(.pv-fp--draft) .pv-dot { background: currentColor; }
+#a-finance-payroll .pv-fp .pv-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; background: var(--ink-faint); }
+#a-finance-payroll .pv-fp--paid .pv-dot, #a-finance-payroll .pv-fp--open .pv-dot { background: currentColor; }
+#a-finance-payroll .pv-fp .pv-fp-n { opacity: .75; }
+#a-finance-payroll .pv-fp.active[data-runs-filter="all"] { background: var(--brand); color: var(--fv-on-brand); border: 1px solid var(--brand); }
+#a-finance-payroll .pv-fp.active[data-runs-filter="all"] .pv-fp-n { padding: 0 6px; border-radius: 999px; background: rgba(255, 255, 255, .22); opacity: 1; }
+#a-finance-payroll .pv-fp.active:not([data-runs-filter="all"]) { box-shadow: inset 0 0 0 1.5px currentColor; }
+
+/* table: header and rows exactly as the mock (12px head padding 12/16, 10px row padding 12/16, rows with a two-line first cell) */
+#a-finance-payroll table.runs-table th {
+  padding: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-label);
+  border-bottom: 1px solid var(--fv-line-strong);
+  line-height: 1.5;
+}
+#a-finance-payroll table.runs-table th:first-child { padding-left: 16px; }
+#a-finance-payroll table.runs-table th:last-child { padding-right: 16px; }
+#a-finance-payroll table.runs-table th.pv-sorted { color: var(--brand); }
+#a-finance-payroll table.runs-table td {
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 1.45;
+  border-bottom: 1px solid var(--fv-line-row);
+  color: var(--ink-body);
+  vertical-align: middle;
+}
+#a-finance-payroll table.runs-table td:first-child { padding-left: 16px; }
+#a-finance-payroll table.runs-table td:last-child { padding-right: 16px; }
+#a-finance-payroll table.runs-table th.num, #a-finance-payroll table.runs-table td.num { text-align: right; }
+#a-finance-payroll table.runs-table td.payroll-num { font-weight: 700; color: var(--ink-strong); font-variant-numeric: tabular-nums; }
+#a-finance-payroll table.runs-table td:nth-child(2) { color: var(--ink-strong); }
+#a-finance-payroll table.runs-table td:nth-child(4) { color: var(--ink-body); font-weight: 400; }
+#a-finance-payroll table.runs-table .pv-period { display: block; font-weight: 600; color: var(--ink-strong); font-size: 14px; }
+#a-finance-payroll table.runs-table .pv-period-sub { font-size: 12px; color: var(--ink-muted); }
+#a-finance-payroll table.runs-table .pv-sub { font-size: 12px; font-weight: 500; color: var(--ink-muted); }
+#a-finance-payroll table.runs-table td.col-actions { text-align: right; white-space: nowrap; }
+#a-finance-payroll .pv-pill {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap;
+  border: 1px solid transparent; background: var(--fv-canvas); color: var(--ink-label);
+}
+#a-finance-payroll .pv-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; background: var(--ink-faint); }
+#a-finance-payroll .pv-pill--draft { background: var(--fv-surface); border: 1px dashed var(--ink-faint); }
+#a-finance-payroll .pv-pill--paid { background: var(--success-soft); color: var(--success); }
+#a-finance-payroll .pv-pill--paid .pv-dot, #a-finance-payroll .pv-pill--open .pv-dot { background: currentColor; }
+#a-finance-payroll .pv-pill--open { background: var(--warning-soft); color: var(--warning-text, var(--warning)); }
+#a-finance-payroll .pv-pill--part { background: color-mix(in srgb, var(--id-violet) var(--fv-status-tint-pct), transparent); color: var(--id-violet-ink); }
+#a-finance-payroll .pv-pill--part .pv-dot { background: currentColor; }
+#a-finance-payroll .pv-tablefoot {
+  display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-top: 1px solid var(--fv-line-row); font-size: 12.5px; color: var(--ink-muted);
+}
+#a-finance-payroll table { line-height: 1.45; }
+#a-finance-payroll table.runs-table th, #a-finance-payroll table.payroll-worksheet th { padding-top: 12px; padding-bottom: 12px; }
+
+
+/* S4.2 Step 1 Setup */
+#a-finance-payroll #payrollScreen1 {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+#a-finance-payroll #payrollScreen1.payroll-hidden {
+  display: none !important;
+}
+#a-finance-payroll #payrollScreen1 .pv-s1-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+#a-finance-payroll #payrollScreen1 .pv-s1-card {
+  background: var(--fv-surface);
+  border: 1px solid var(--fv-line);
+  border-radius: var(--pv-r, 14px);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+#a-finance-payroll #payrollScreen1 .pv-s1-card h2 {
+  margin: 0;
+  font-family: var(--font-display, Sora, sans-serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink-strong);
+}
+#a-finance-payroll #payrollScreen1 .pv-s1-period-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+#a-finance-payroll #payrollScreen1 label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-label);
+}
+#a-finance-payroll #payrollScreen1 .pv-fx-field-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+#a-finance-payroll #payrollScreen1 .pv-fx-lbl {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-label);
+}
+#a-finance-payroll #payrollScreen1 .pv-addon-wrap {
+  display: flex;
+  width: 100%;
+}
+#a-finance-payroll #payrollScreen1 .pv-addon {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  border: 1px solid var(--fv-input-border);
+  border-right: 0;
+  border-radius: 9px 0 0 9px;
+  background: var(--fv-canvas);
+  color: var(--ink-label);
+  font-size: 13px;
+  white-space: nowrap;
+}
+#a-finance-payroll #payrollScreen1 .pv-addon-wrap input {
+  height: 36px;
+  flex: 1;
+  min-width: 0;
+  padding: 0 10px;
+  border: 1px solid var(--fv-input-border);
+  border-radius: 0 9px 9px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+#a-finance-payroll #payrollScreen1 .pv-p1-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+#a-finance-payroll #payrollScreen1 .pv-stat-tile {
+  padding: 14px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--fv-line);
+  background: var(--fv-surface);
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+#a-finance-payroll #payrollScreen1 .pv-stat-tile .label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-label);
+}
+#a-finance-payroll #payrollScreen1 .pv-stat-tile .value {
+  font-family: var(--font-display, Sora, sans-serif);
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 1.3;
+  color: var(--ink-strong);
+}
+#a-finance-payroll #payrollScreen1 .pv-stat-tile .value.accent,
+#a-finance-payroll #payrollScreen1 .pv-stat-tile .val-accent {
+  color: var(--brand-text);
+}
+#a-finance-payroll #payrollScreen1 .pv-stat-tile .sub {
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+#a-finance-payroll #payrollScreen1 .pv-bank-warn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--warning-soft);
+  color: var(--warning-text, var(--warning));
+  font-size: 13px;
+}
+#a-finance-payroll #payrollScreen1 .pv-s1-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: var(--fv-surface);
+  border: 1px solid var(--fv-line);
+}
+#a-finance-payroll #payrollScreen1 .pv-s1-footer-note {
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+
+/* S4.3 Step 2 Review pay */
+#a-finance-payroll #payrollScreen2 {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+#a-finance-payroll #payrollScreen2.payroll-hidden {
+  display: none !important;
+}
+#a-finance-payroll #payrollScreen2 .pv-s2-card {
+  background: var(--fv-surface);
+  border: 1px solid var(--fv-line);
+  border-radius: var(--pv-r, 14px);
+  overflow: hidden;
+}
+#a-finance-payroll #payrollScreen2 .pv-s2-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--fv-line);
+}
+#a-finance-payroll #payrollScreen2 .pv-s2-card-header h2 {
+  margin: 0;
+  font-family: var(--font-display, Sora, sans-serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink-strong);
+}
+#a-finance-payroll #payrollScreen2 .pv-s2-sub {
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+#a-finance-payroll #payrollScreen2 .pv-s2-controls {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+#a-finance-payroll #payrollScreen2 #payrollSearchInput {
+  height: 32px;
+  width: 220px;
+  padding: 0 12px;
+  border: 1px solid var(--fv-outline);
+  border-radius: 8px;
+  background: var(--fv-surface);
+  font-size: 13px;
+  color: var(--ink-strong);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+#a-finance-payroll #payrollScreen2 #payrollSearchInput:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 2px var(--brand-wash);
+}
+#a-finance-payroll #payrollScreen2 #payrollBonusFilter {
+  display: none !important;
+}
+#a-finance-payroll table.payroll-worksheet {
+  width: 100%;
+  border-collapse: collapse;
+}
+#a-finance-payroll table.payroll-worksheet th,
+#a-finance-payroll table.payroll-worksheet td {
+  display: table-cell !important;
+  vertical-align: middle;
+}
+#a-finance-payroll #payrollScreen2 table.payroll-worksheet th {
+  padding: 11px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-label);
+  border-bottom: 1px solid var(--fv-line-strong);
+  background: var(--fv-surface);
+  text-transform: none;
+  letter-spacing: 0;
+}
+#a-finance-payroll #payrollScreen2 table.payroll-worksheet td {
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--ink-body);
+  border-bottom: 1px solid var(--fv-line-row);
+  line-height: 1.4;
+}
+#a-finance-payroll #payrollScreen2 table.payroll-worksheet th:first-child,
+#a-finance-payroll #payrollScreen2 table.payroll-worksheet td:first-child {
+  padding-left: 16px;
+  text-align: left !important;
+}
+#a-finance-payroll #payrollScreen2 table.payroll-worksheet th:nth-child(2),
+#a-finance-payroll #payrollScreen2 table.payroll-worksheet td:nth-child(2),
+#a-finance-payroll #payrollScreen2 table.payroll-worksheet th:nth-child(3),
+#a-finance-payroll #payrollScreen2 table.payroll-worksheet td:nth-child(3) {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+#a-finance-payroll #payrollScreen2 table.payroll-worksheet th.payroll-bonus-col,
+#a-finance-payroll #payrollScreen2 table.payroll-worksheet td.payroll-bonus-col {
+  text-align: left !important;
+}
+#a-finance-payroll #payrollScreen2 table.payroll-worksheet th:nth-child(6),
+#a-finance-payroll #payrollScreen2 table.payroll-worksheet td:nth-child(6) {
+  text-align: right !important;
+  padding-right: 16px;
+  font-weight: 700;
+  color: var(--ink-strong);
+  font-variant-numeric: tabular-nums;
+}
+#a-finance-payroll #payrollScreen2 table.payroll-worksheet th:last-child,
+#a-finance-payroll #payrollScreen2 table.payroll-worksheet td:last-child {
+  text-align: center !important;
+  width: 40px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+#a-finance-payroll #payrollScreen2 table.payroll-worksheet tfoot tr {
+  background: var(--fv-surface-soft);
+}
+#a-finance-payroll #payrollScreen2 table.payroll-worksheet tfoot td {
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink-strong);
+  border-top: 1px solid var(--fv-line-strong);
+}
+#a-finance-payroll #payrollScreen2 table.payroll-worksheet tfoot td#fTotalsLabel {
+  padding-left: 16px;
+  text-align: left;
+}
+#a-finance-payroll #payrollScreen2 table.payroll-worksheet tfoot td#fBaseExt,
+#a-finance-payroll #payrollScreen2 table.payroll-worksheet tfoot td#fBaseInt {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+#a-finance-payroll #payrollScreen2 table.payroll-worksheet tfoot td#fBonus {
+  text-align: left !important;
+  font-variant-numeric: tabular-nums;
+}
+#a-finance-payroll #payrollScreen2 table.payroll-worksheet tfoot td#fNet {
+  padding-right: 16px;
+  text-align: right;
+  font-family: var(--font-display, Sora, sans-serif);
+  font-weight: 700;
+  color: var(--brand);
+  font-variant-numeric: tabular-nums;
+}
+#a-finance-payroll #payrollScreen2 table.payroll-worksheet tfoot td:last-child {
+  width: 40px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+#a-finance-payroll #payrollScreen2 .pv-s2-info-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--brand-wash);
+  color: var(--ink-strong);
+  font-size: 13px;
+}
+#a-finance-payroll #payrollScreen2 .pv-s2-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: var(--fv-surface);
+  border: 1px solid var(--fv-line);
+}
+
+/* S4.4 Step 3 Statutory processing */
+#a-finance-payroll #payrollScreen3 {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+#a-finance-payroll #payrollScreen3.payroll-hidden {
+  display: none !important;
+}
+#a-finance-payroll #payrollScreen3 .pv-s3-lock-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--brand-wash);
+  color: var(--ink-strong);
+  font-size: 13px;
+}
+#a-finance-payroll #payrollScreen3 .pv-s3-card {
+  background: var(--fv-surface);
+  border: 1px solid var(--fv-line);
+  border-radius: var(--pv-r, 14px);
+  overflow: hidden;
+}
+#a-finance-payroll #payrollScreen3 .pv-s3-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--fv-line);
+}
+#a-finance-payroll #payrollScreen3 .pv-s3-card-header h2 {
+  margin: 0;
+  font-family: var(--font-display, Sora, sans-serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink-strong);
+}
+#a-finance-payroll #payrollScreen3 .pv-s3-sub {
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+#a-finance-payroll #payrollScreen3 table.payroll-worksheet th {
+  padding: 11px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-label);
+  border-bottom: 1px solid var(--fv-line);
+}
+#a-finance-payroll #payrollScreen3 table.payroll-worksheet td {
+  border-bottom: 1px solid var(--fv-line-row);
+}
+#a-finance-payroll #payrollScreen3 .pv-s3-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: var(--fv-surface);
+  border: 1px solid var(--fv-line);
+}
+#a-finance-payroll #payrollScreen3 .pv-s3-footer-hint {
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+
+/* S4.5 Step 4 Payment preview */
+#a-finance-payroll #payrollScreen4 {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+#a-finance-payroll #payrollScreen4.payroll-hidden {
+  display: none !important;
+}
+#a-finance-payroll #payrollScreen4 .pv-s4-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+#a-finance-payroll #payrollScreen4 .pv-stat-tile {
+  padding: 14px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--fv-line);
+  background: var(--fv-surface);
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+#a-finance-payroll #payrollScreen4 .pv-stat-tile--flagged {
+  border-color: color-mix(in srgb, var(--warning) 40%, transparent);
+}
+#a-finance-payroll #payrollScreen4 .pv-stat-tile .label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-label);
+}
+#a-finance-payroll #payrollScreen4 .pv-stat-tile .value {
+  font-family: var(--font-display, Sora, sans-serif);
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 1.3;
+  color: var(--ink-strong);
+}
+#a-finance-payroll #payrollScreen4 .pv-stat-tile .sub {
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+#a-finance-payroll #payrollScreen4 .pv-s4-card {
+  background: var(--fv-surface);
+  border: 1px solid var(--fv-line);
+  border-radius: var(--pv-r, 14px);
+  overflow: hidden;
+}
+#a-finance-payroll #payrollScreen4 .pv-s4-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--fv-line);
+}
+#a-finance-payroll #payrollScreen4 .pv-s4-card-header h2 {
+  margin: 0;
+  font-family: var(--font-display, Sora, sans-serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink-strong);
+}
+#a-finance-payroll #payrollScreen4 table.payroll-worksheet th {
+  padding: 11px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-label);
+  border-bottom: 1px solid var(--fv-line);
+}
+#a-finance-payroll #payrollScreen4 table.payroll-worksheet td {
+  border-bottom: 1px solid var(--fv-line-row);
+}
+#a-finance-payroll #payrollScreen4 .pv-s4-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: var(--fv-surface);
+  border: 1px solid var(--fv-line);
+}
+
+/* S4.6 Step 5 Payment confirmation */
+#a-finance-payroll #payrollScreen5 {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+#a-finance-payroll #payrollScreen5.payroll-hidden {
+  display: none !important;
+}
+#a-finance-payroll #payrollScreen5 .pv-s5-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+#a-finance-payroll #payrollScreen5 .pv-s5-card {
+  background: var(--fv-surface);
+  border: 1px solid var(--fv-line);
+  border-radius: var(--pv-r, 14px);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+#a-finance-payroll #payrollScreen5 .pv-s5-card h2 {
+  margin: 0;
+  font-family: var(--font-display, Sora, sans-serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink-strong);
+}
+#a-finance-payroll #payrollScreen5 .pv-tile-cell {
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: var(--fv-surface-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+#a-finance-payroll #payrollScreen5 .pv-tile-cell .k {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+#a-finance-payroll #payrollScreen5 .pv-tile-cell .v {
+  font-weight: 700;
+  color: var(--ink-strong);
+}
+#a-finance-payroll #payrollScreen5 .pv-s5-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: var(--fv-surface);
+  border: 1px solid var(--fv-line);
+}
+
+/* S4.8 Payroll Settings */
+#a-finance-payroll #payrollViewSettings {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+#a-finance-payroll #payrollViewSettings.payroll-hidden {
+  display: none !important;
+}
+#a-finance-payroll .pv-settings-intro-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+#a-finance-payroll .pv-settings-intro {
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+#a-finance-payroll .payroll-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  background: none;
+}
+#a-finance-payroll .payroll-settings-card {
+  background: var(--fv-surface);
+  border: 1px solid var(--fv-line);
+  border-radius: var(--pv-r, 14px);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 12px;
+}
+#a-finance-payroll .payroll-settings-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 0;
+  border-bottom: 0;
+  background: none;
+}
+#a-finance-payroll .payroll-settings-card-header .pv-pill {
+  margin-left: auto;
+}
+#a-finance-payroll .payroll-settings-card-header h2 {
+  margin: 0;
+  font-family: var(--font-display, Sora, sans-serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink-strong);
+}
+#a-finance-payroll .payroll-settings-card-header .pv-card-sub {
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+#a-finance-payroll .pv-card-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+#a-finance-payroll .pv-card-icon.blue { background: var(--fv-area-blue-bg); color: var(--fv-area-blue-ink); }
+#a-finance-payroll .pv-card-icon.violet { background: var(--fv-area-violet-bg); color: var(--fv-area-violet-ink); }
+#a-finance-payroll .pv-card-icon.teal { background: var(--fv-area-teal-bg); color: var(--fv-area-teal-ink); }
+#a-finance-payroll .pv-card-icon.ochre { background: var(--fv-area-ochre-bg); color: var(--fv-area-ochre-ink); }
+
+#a-finance-payroll .payroll-settings-card label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-label);
+}
+#a-finance-payroll .payroll-settings-card label .pv-subhint {
+  font-weight: 400;
+  color: var(--ink-muted);
+  font-size: 12px;
+}
+#a-finance-payroll .payroll-settings-card select,
+#a-finance-payroll .payroll-settings-card input {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--fv-input-border);
+  border-radius: 9px;
+  font-size: 13.5px;
+  background: var(--fv-surface);
+  color: var(--ink-strong);
+}
+#a-finance-payroll .payroll-settings-card .pv-callout {
+  padding: 9px 12px;
+  border-radius: 11px;
+  background: var(--fv-surface-soft);
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+#a-finance-payroll .pv-input-affix {
+  display: flex;
+}
+#a-finance-payroll .pv-affix-prefix {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  border: 1px solid var(--fv-input-border);
+  border-right: 0;
+  border-radius: 9px 0 0 9px;
+  background: var(--fv-surface-soft);
+  color: var(--ink-muted);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+#a-finance-payroll .pv-input-affix input.has-prefix {
+  border-radius: 0 9px 9px 0;
+}
+#a-finance-payroll .pv-input-affix input.has-suffix {
+  border-right: 0;
+  border-radius: 9px 0 0 9px;
+}
+#a-finance-payroll .pv-affix-suffix {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  border: 1px solid var(--fv-input-border);
+  border-radius: 0 9px 9px 0;
+  background: var(--fv-surface-soft);
+  color: var(--ink-muted);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+#a-finance-payroll input[type="number"]::-webkit-outer-spin-button,
+#a-finance-payroll input[type="number"]::-webkit-inner-spin-button,
+.pv-input-affix input[type="number"]::-webkit-outer-spin-button,
+.pv-input-affix input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+#a-finance-payroll input[type="number"],
+.pv-input-affix input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+#a-finance-payroll #payrollViewSettings .save-bar,
+#a-finance-payroll .pv-settings-save-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: var(--fv-surface);
+  border: 1px solid var(--fv-line);
+}
+
+/* Phone: keep the compact "Step N of 6" stepper and let banners/footers wrap */
+@media (max-width: 768px) {
+  #a-finance-payroll #payrollScreen1 .pv-s1-grid,
+  #a-finance-payroll #payrollScreen1 .pv-s1-period-grid,
+  #a-finance-payroll #payrollScreen1 .pv-p1-stats,
+  #a-finance-payroll #payrollScreen4 .pv-s4-stats,
+  #a-finance-payroll #payrollScreen5 .pv-s5-grid,
+  #a-finance-payroll #payrollScreen6 .stat-grid,
+  #a-finance-payroll #payrollScreen6 .pv-s6-tiles,
+  #a-finance-payroll #payrollScreen6 .pv-s6-fields,
+  #a-finance-payroll .payroll-settings-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #a-finance-payroll .pv-settings-save-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  #a-finance-payroll .payroll-step-pill { display: none; }
+  #a-finance-payroll .payroll-stepper { padding: 10px 14px; }
+  #a-finance-payroll .pv-banner { flex-wrap: wrap; }
+  #a-finance-payroll .pv-filterrow, #a-finance-payroll .pv-fpgroup { flex-wrap: wrap; }
+  #a-finance-payroll .payroll-screen-view .grid, #a-finance-payroll .disburse-meta, #a-finance-payroll .stat-obl-card-body { grid-template-columns: minmax(0, 1fr); }
+  #a-finance-payroll .stat-obl-card-body > .stat-obl-meta > .stat-obl-row, #a-finance-payroll .stat-obl-card-body > .stat-obl-amount-lbl, #a-finance-payroll .stat-obl-card-body > .stat-obl-amount { grid-column: 1 / -1; grid-row: auto; }
+}
+@media (max-width: 768px) { #a-finance-payroll .pv-fp { min-height: 44px; } }
+@media (max-width: 768px) {
+  #a-finance-payroll .runhead, #a-finance-payroll .runhead-right { flex-wrap: wrap; gap: 8px; }
+  #a-finance-payroll .fxbox { max-width: 100%; }
+  #a-finance-payroll .bonus-cell, #a-finance-payroll .payroll-bonus-col { flex-wrap: wrap; max-width: 100%; }
+  #a-finance-payroll .payroll-screen-view, #a-finance-payroll #payrollViewRun { overflow-x: clip; }
+}
+
+/* Native selects in payroll keep their chevron (Pay-Run-Setup, Pay-Settings); the shared field rule resets `background` */
+#a-finance-payroll select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%239ca3af' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 13px center;
+}
+
+/* ---------- Run page chrome ---------- */
+/* Approved / finalized status pill: blue with a dot (mock Pay-Run-Processing, Pay-Run-Confirm) */
+#payrollStatusBadge.topbar-run-status.b-blue {
+  color: var(--brand-ink);
+  border: 1px solid transparent;
+  background: var(--brand-tint);
+}
+#payrollStatusBadge.topbar-run-status.b-blue::before { background: var(--brand); }
+#payrollStatusBadge.topbar-run-status.b-orange {
+  color: var(--warning);
+  border: 1px solid transparent;
+  background: var(--warning-soft);
+}
+#payrollStatusBadge.topbar-run-status.b-orange::before { background: var(--warning); }
+/* The amber lock note and the Step 6 status pill are not part of the mock design */
+#a-finance-payroll #payrollLockNote,
+#a-finance-payroll #p6StatutoryBadge { display: none !important; }
+
+/* Review pay: one-line role under the name, so rows keep a steady height */
+#a-finance-payroll #payrollScreen2 .pv-emp-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+
+/* ---------- Colour per data type (Steps 5 and 6) ---------- */
+/* Same colours as the rest of the app: internal green, external blue, social insurance teal, income tax ochre */
+.pv-area-tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-right: 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  vertical-align: middle;
+}
+.pv-area-tile--green { background: color-mix(in srgb, var(--id-green) 16%, transparent); color: var(--id-green-ink); }
+.pv-area-tile--blue  { background: color-mix(in srgb, var(--id-blue) 14%, transparent);  color: var(--id-blue-ink); }
+.pv-area-tile--teal  { background: color-mix(in srgb, var(--id-teal) 16%, transparent);  color: var(--id-teal-ink); }
+.pv-area-tile--ochre { background: color-mix(in srgb, var(--id-ochre) 18%, transparent); color: var(--id-ochre-ink); }
+
+/* Step 5 (option A): headline amount takes the rail colour */
+#a-finance-payroll .pv-s5-amount--green { color: var(--id-green-ink) !important; }
+#a-finance-payroll .pv-s5-amount--blue  { color: var(--id-blue-ink) !important; }
+
+/* Step 6 (option B): tinted card with a coloured top rule */
+#a-finance-payroll .pv-s6-card.si {
+  background: color-mix(in srgb, var(--id-teal) 7%, var(--fv-surface)) !important;
+  border-top: 3px solid var(--id-teal) !important;
+}
+#a-finance-payroll .pv-s6-card.tax {
+  background: color-mix(in srgb, var(--id-ochre) 8%, var(--fv-surface)) !important;
+  border-top: 3px solid var(--id-ochre) !important;
+}
+#a-finance-payroll .pv-s6-card .pv-tile-cell { background: var(--fv-surface) !important; }
+#a-finance-payroll .pv-s6-card.si .stat-obl-amount  { color: var(--id-teal-ink); }
+#a-finance-payroll .pv-s6-card.tax .stat-obl-amount { color: var(--id-ochre-ink); }
+
+/* Steps 5 and 6: the heading is screen-reader text only, so the title row must not leave a gap */
+#a-finance-payroll #payrollScreen5 > .title-row,
+#a-finance-payroll #payrollScreen6 > .title-row { margin: 0; min-height: 0; }
+#a-finance-payroll #payrollScreen5 > .title-row:not(:has(.p-badge:not([style*="display: none"]))),
+#a-finance-payroll #payrollScreen6 > .title-row { height: 0; overflow: visible; }
+
+/* ---------- Review pay: bonus amounts and reason tags (two columns, same lines) ---------- */
+#a-finance-payroll #payrollScreen2 table.payroll-worksheet th.payroll-reason-col,
+#a-finance-payroll #payrollScreen2 table.payroll-worksheet td.payroll-reason-col { text-align: left !important; }
+.pv-bonus-line { display: flex; align-items: center; gap: 7px; height: 26px; }
+.pv-bonus-amount { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--ink-strong); }
+.pv-src-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.pv-src-dot--int { background: var(--id-green); }
+.pv-src-dot--ext { background: var(--id-blue); }
+.pv-bonus-x {
+  border: 0;
+  background: none;
+  padding: 0 4px;
+  color: var(--danger);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .12s;
+}
+tr:hover .pv-bonus-x, .pv-bonus-x:focus-visible { opacity: 1; }
+.pv-reason-tag {
+  display: inline-block;
+  padding: 1px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pv-reason-tag--bonus   { background: color-mix(in srgb, var(--id-blue) 14%, transparent);   color: var(--id-blue-ink); }
+.pv-reason-tag--support { background: color-mix(in srgb, var(--id-teal) 16%, transparent);   color: var(--id-teal-ink); }
+.pv-reason-tag--sales   { background: color-mix(in srgb, var(--id-pink) 15%, transparent);   color: var(--id-pink-ink); }
+
+/* Footer cards: Back at the left edge, actions grouped at the right (legacy payroll.css forces flex-end with !important) */
+#a-finance-payroll .footer.payroll-footer-actions {
+  justify-content: space-between !important;
+  padding: 12px 16px !important;
+  background: var(--fv-surface) !important;
+  border: 1px solid var(--fv-line) !important;
+  border-radius: var(--pv-r) !important;
+  gap: 12px !important;
+}
+#a-finance-payroll .footer.payroll-footer-actions > .btn-ghost:first-child { margin-right: auto; }
+@media (min-width: 900px) { #a-finance-payroll .footer.payroll-footer-actions { flex-wrap: nowrap !important; } }
+#a-finance-payroll #btnP5ProceedStatutory[hidden] { display: none !important; }
+
+/* Confirm dialog (Dlg-RecordPaid): violet icon tile, quieter body text */
+.fv .fv-tile--violet, #financeConfirmModal .fv-tile.fv-tile--violet { background: color-mix(in srgb, var(--id-violet) 14%, transparent); color: var(--id-violet-ink); }
+#financeConfirmModal #financeConfirmDescription { font-size: 13px; color: var(--ink-label); line-height: 1.5; }
+#financeConfirmModal .modal-body { display: flex; flex-direction: column; gap: 12px; padding: 16px 22px; }
+#financeConfirmModal .fv-confirm-tiles { margin-bottom: 0 !important; }

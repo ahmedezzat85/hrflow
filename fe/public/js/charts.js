@@ -1,12 +1,15 @@
 function chartColors(){
   const dark = document.documentElement.getAttribute('data-theme') === 'dark';
   return {
-    grid: dark ? '#2a2e3d' : '#e7e9f3',
-    text: dark ? '#9aa0b4' : '#6b7280',
+    grid: dark ? '#26396f' : '#e7e9f3',
+    text: dark ? '#9fb0dc' : '#6b7280',
     accent: '#2056e8',
     warning: '#e07d10',
     success: '#10b981',
-    info: '#0ea5e9'
+    info: '#0ea5e9',
+    vacation: '#1f9d8e',
+    wfh: '#3f98d0',
+    insurance: '#d55f92'
   };
 }
 
@@ -29,7 +32,7 @@ function initCharts(){
   const c = chartColors();
   Chart.defaults.font.family = "'Inter', sans-serif";
 
-  // 1. Bar Chart: Last 6 Months Requests & Claims
+  // 1. Bar Chart: Last 6 Months Requests & Claims (Stacked)
   const ctx1 = document.getElementById('chartRequests');
   if (ctx1) {
     const pastMonths = getPastSixMonths();
@@ -70,29 +73,54 @@ function initCharts(){
       data: {
         labels: pastMonths.map(m => m.label),
         datasets: [
-          { label: 'Vacation', data: vacData, backgroundColor: c.accent, borderRadius: 6 },
-          { label: 'WFH', data: wfhData, backgroundColor: c.warning, borderRadius: 6 },
-          { label: 'Insurance', data: insData, backgroundColor: c.success, borderRadius: 6 }
+          { label: 'Vacation', data: vacData, backgroundColor: c.vacation, borderRadius: 5, borderSkipped: false, maxBarThickness: 34 },
+          { label: 'Work from home', data: wfhData, backgroundColor: c.wfh, borderRadius: 5, borderSkipped: false, maxBarThickness: 34 },
+          { label: 'Medical claim', data: insData, backgroundColor: c.insurance, borderRadius: 5, borderSkipped: false, maxBarThickness: 34 }
         ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        layout: { padding: { top: 22 } },
         plugins: {
           legend: {
-            position: 'bottom',
-            labels: { color: c.text, boxWidth: 10, font: { size: 11 } }
+            display: false
           }
         },
         scales: {
-          x: { grid: { display: false }, ticks: { color: c.text } },
+          x: {
+            stacked: true,
+            grid: { display: false },
+            ticks: { color: c.text }
+          },
           y: {
-            grid: { color: c.grid },
-            ticks: { color: c.text, stepSize: 1, precision: 0 },
+            stacked: true,
+            display: false,
             beginAtZero: true
           }
         }
-      }
+      },
+      plugins: [{
+        // Request count above each stacked month bar (HR dashboard mock)
+        id: 'stackTotals',
+        afterDatasetsDraw(chart) {
+          const { ctx, data } = chart;
+          const top = chart.getDatasetMeta(data.datasets.length - 1);
+          ctx.save();
+          ctx.font = '600 12px Inter, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = chartColors().text;
+          const lastVisible = (i) => {
+            for (let d = data.datasets.length - 1; d >= 0; d--) { if (Number(data.datasets[d].data[i]) > 0) return chart.getDatasetMeta(d).data[i]; }
+            return top.data[i];
+          };
+          top.data.forEach((_, i) => {
+            const total = data.datasets.reduce((sum, d) => sum + (Number(d.data[i]) || 0), 0);
+            if (total > 0) { const bar = lastVisible(i); ctx.fillText(String(total), bar.x, bar.y - 6); }
+          });
+          ctx.restore();
+        }
+      }]
     });
   }
 
@@ -137,37 +165,68 @@ function initCharts(){
     });
   }
 
-  // 3. Line Chart: Employee Compensation Growth
+  // 3. Stacked Bar Chart: Employee Compensation Growth
   const emp = (Array.isArray(employees) ? employees.find(e => e.id === window.LOGGED_IN_EMPLOYEE_ID) : null) || currentLoggedInEmployee;
   const ctx3 = document.getElementById('chartSalary');
   if (ctx3 && emp && emp.salaryHistory && emp.salaryHistory.length) {
     if (window._charts.salary) {
       window._charts.salary.destroy();
     }
+    const sorted = emp.salaryHistory.slice().sort((a, b) => new Date(a.date) - new Date(b.date));
     window._charts.salary = new Chart(ctx3, {
-      type: 'line',
+      type: 'bar',
       data: {
-        labels: emp.salaryHistory.map(s => s.date ? s.date.slice(0, 7) : '—'),
-        datasets: [{
-          label: 'Salary Progression (USD)',
-          data: emp.salaryHistory.map(s => (s.newInternal || 0) + (s.newExternal || 0) || s.next || 0),
-          borderColor: c.accent,
-          backgroundColor: 'rgba(32, 86, 232, 0.12)',
-          fill: true,
-          tension: 0.4,
-          pointBackgroundColor: c.accent,
-          pointRadius: 5
-        }]
+        labels: sorted.map((s, i) => {
+          if (!s.date) return '—';
+          if (i === sorted.length - 1 && new Date(s.date) <= new Date()) return 'Today';
+          return new Date(s.date + 'T00:00:00').toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+        }),
+        datasets: [
+          {
+            label: 'External USD',
+            data: sorted.map(s => s.newExternal || 0),
+            backgroundColor: '#4f80f2',
+            borderRadius: 5,
+            maxBarThickness: 44,
+            stack: 'pay'
+          },
+          {
+            label: 'Internal USD cash',
+            data: sorted.map(s => s.newInternal || 0),
+            backgroundColor: '#4fa24c',
+            borderRadius: 5,
+            maxBarThickness: 44,
+            stack: 'pay'
+          }
+        ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        layout: { padding: { top: 22 } },
         plugins: { legend: { display: false } },
         scales: {
-          x: { grid: { display: false }, ticks: { color: c.text } },
-          y: { grid: { color: c.grid }, ticks: { color: c.text }, beginAtZero: false }
+          x: { stacked: true, grid: { display: false }, ticks: { color: c.text } },
+          y: { stacked: true, display: false, beginAtZero: true }
         }
-      }
+      },
+      plugins: [{
+        // Monthly total above each stacked bar (Employee Salary mock)
+        id: 'stackTotals',
+        afterDatasetsDraw(chart) {
+          const { ctx, data } = chart;
+          const last = chart.getDatasetMeta(data.datasets.length - 1);
+          ctx.save();
+          ctx.font = '600 12px Inter, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = chartColors().text;
+          last.data.forEach((bar, i) => {
+            const total = data.datasets.reduce((sum, d) => sum + (Number(d.data[i]) || 0), 0);
+            ctx.fillText('$' + total.toLocaleString('en-US'), bar.x, bar.y - 6);
+          });
+          ctx.restore();
+        }
+      }]
     });
   }
 }

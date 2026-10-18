@@ -4,14 +4,27 @@
 
 let currentRequestsFilter = 'all';
 
+// Display label for a request type (stored values are unchanged)
+function requestTypeLabel(type) {
+  if (type === 'Work From Home' || type === 'WFH') return 'Work from home';
+  if (type === 'Medical Insurance') return 'Medical claim';
+  return type || '';
+}
+
 function getRequestTypeBadge(type) {
-  const map = {
-    'Vacation': { icon: 'fa-umbrella-beach', cls: 'pill-info' },
-    'Work From Home': { icon: 'fa-house-laptop', cls: 'pill-warning' },
-    'Medical Insurance': { icon: 'fa-briefcase-medical', cls: 'pill-success' }
-  };
-  const conf = map[type] || { icon: 'fa-file-lines', cls: 'pill-neutral' };
-  return `<span class="badge-pill ${conf.cls}"><i class="fa-solid ${conf.icon}"></i> ${type}</span>`;
+  // Plain label with a small colour square (HR-Requests mock): vacation teal, work from home sky, medical claim pink
+  const tone = { 'Vacation': 'teal', 'Work From Home': 'sky', 'WFH': 'sky', 'Medical Insurance': 'pink' }[type] || 'muted';
+  return `<span class="hv-reqtype"><span class="hv-reqtype__dot hv-reqtype__dot--${tone}"></span>${escapeHtml(requestTypeLabel(type))}</span>`;
+}
+
+// "7 Oct 2026 - 1 day": the days the request covers, then how long
+function requestWhenLine(r) {
+  const start = r.startDate || r.start_date || r.date;
+  const end = r.endDate || r.end_date || start;
+  const range = start ? fmtDateRange(start, end) : '';
+  const days = Number(r.days);
+  const len = days > 0 ? `${days} ${days === 1 ? 'day' : 'days'}` : '';
+  return [range, len].filter(Boolean).join(' · ');
 }
 
 function updateRequestFilterCounts() {
@@ -31,6 +44,24 @@ function updateRequestFilterCounts() {
   if (elIns) elIns.textContent = insCount;
 }
 
+let currentRequestsStatus = 'all';
+
+function renderRequestStatusPills(typeList) {
+  const el = document.getElementById('requestStatusPills');
+  if (!el) return;
+  const n = (st) => typeList.filter(r => r.status === st).length;
+  const defs = [['all', 'All', typeList.length, ''], ['Pending', 'Pending', n('Pending'), 'hv-sp--pending'], ['Approved', 'Approved', n('Approved'), 'hv-sp--approved'], ['Rejected', 'Rejected', n('Rejected'), 'hv-sp--rejected']];
+  el.innerHTML = defs.map(([k, label, c, cls]) => `<button type="button" class="fv-pill hv-sp ${cls}${currentRequestsStatus === k ? ' active' : ''}" data-reqstatus="${k}" aria-pressed="${currentRequestsStatus === k}">${k === 'all' ? '' : '<span class="hv-dot"></span>'}${label} <span class="hv-sp-n">${c}</span></button>`).join('');
+}
+
+let currentRequestsSearch = '';
+
+function filterRequests(val) {
+  currentRequestsSearch = (val || '').toLowerCase().trim();
+  renderRequestsTable();
+}
+window.filterRequests = filterRequests;
+
 function renderRequestsTable(filter) {
   if (filter) {
     currentRequestsFilter = filter;
@@ -40,12 +71,20 @@ function renderRequestsTable(filter) {
   const body = document.getElementById('requestsTableBody');
   if (!body) return;
 
-  const list = currentRequestsFilter === 'all' 
-    ? requests 
-    : requests.filter(r => r.type === currentRequestsFilter);
+  const typeList = currentRequestsFilter === 'all' ? requests : requests.filter(r => r.type === currentRequestsFilter);
+  renderRequestStatusPills(typeList);
+  let list = currentRequestsStatus === 'all' ? typeList : typeList.filter(r => r.status === currentRequestsStatus);
+  if (currentRequestsSearch) {
+    list = list.filter(r => {
+      const empName = (r.employee_name || r.emp || '').toLowerCase();
+      const type = (r.type || '').toLowerCase();
+      const details = (r.details || r.reason || '').toLowerCase();
+      return empName.includes(currentRequestsSearch) || type.includes(currentRequestsSearch) || details.includes(currentRequestsSearch);
+    });
+  }
 
   if (!list.length) {
-    body.innerHTML = renderEmptyTableRow(6, currentRequestsFilter === 'all' ? 'No pending requests found.' : `No requests found in category "${currentRequestsFilter}".`, 'fa-solid fa-inbox');
+    body.innerHTML = renderEmptyTableRow(6, currentRequestsSearch ? `No requests match "${escapeHtml(currentRequestsSearch)}".` : (currentRequestsFilter === 'all' ? 'No pending requests found.' : `No requests found in category "${currentRequestsFilter}".`), 'fa-solid fa-inbox');
     return;
   }
 
@@ -54,24 +93,25 @@ function renderRequestsTable(filter) {
     const deptTag = matchedEmp && matchedEmp.dept ? `<span class="badge-pill pill-neutral" style="font-size:10.5px;padding:2px 6px;">${escapeHtml(matchedEmp.dept)}</span>` : '';
 
     return `
-      <tr>
+      <tr class="${r.status === 'Pending' ? 'hv-row-pending' : ''}">
         <td data-label="Employee" class="tname">
           <div class="avatar">${initials(r.employee_name)}</div>
           <div>
-            <div style="font-weight:600;color:var(--text);">${escapeHtml(r.employee_name)}</div>
-            ${deptTag ? `<div style="margin-top:2px;">${deptTag}</div>` : ''}
+            <div style="font-weight:600;color:var(--ink-strong);">${escapeHtml(r.employee_name)}</div>
+            ${matchedEmp && matchedEmp.dept ? `<div style="font-size:12px;color:var(--ink-muted);">${escapeHtml(matchedEmp.dept)}</div>` : ''}
           </div>
         </td>
-        <td data-label="Type">${getRequestTypeBadge(r.type)}</td>
-        <td data-label="Details">
+        <td data-label="Request">
+          ${getRequestTypeBadge(r.type)}
+          ${requestWhenLine(r) ? `<div class="hv-sub-line">${escapeHtml(requestWhenLine(r))}</div>` : ''}
+        </td>
+        <td data-label="Reason">
           <div class="request-details-cell">
-            <div class="request-details-title">${r.details || 'No details provided'}</div>
+            <div class="request-details-title">${r.details || r.reason ? escapeHtml(r.details || r.reason) : '<span class="hv-muted">No reason given</span>'}</div>
           </div>
         </td>
-        <td data-label="Date">
-          <div style="font-size:12.5px;color:var(--text2);display:inline-flex;align-items:center;gap:6px;">
-            <i class="fa-regular fa-calendar" style="color:var(--text3);"></i> ${r.date || '—'}
-          </div>
+        <td data-label="Submitted">
+          <div style="font-size:13px;color:var(--ink-strong);white-space:nowrap;">${r.date ? escapeHtml(fmtDateShort(r.date)) : '—'}</div>
         </td>
         <td data-label="Status">${statusPill(r.status)}</td>
         <td data-label="Actions" class="col-actions">
@@ -91,7 +131,15 @@ function renderRequestsTable(filter) {
       </tr>
     `;
   }).join('');
+  setTableFoot('requestsTableBody', list.length, 'requests');
 }
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest && e.target.closest('[data-reqstatus]');
+  if (!b) return;
+  currentRequestsStatus = b.dataset.reqstatus;
+  renderRequestsTable();
+});
 
 document.querySelectorAll('[data-reqfilter]').forEach(btn => {
   btn.addEventListener('click', () => {

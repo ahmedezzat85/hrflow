@@ -41,10 +41,10 @@ test.describe('Admin Dual-Rail Navigation Shell (Slice 1)', () => {
       await expect(hrItems.nth(i)).toHaveAttribute('data-page', expectedPages[i]);
     }
 
-    // Salary Payment Docs rename verification
+    // Salary payment docs rename verification
     const salaryDocsItem = hrGroup.locator('.nav-item[data-page="a-invoices"]');
-    await expect(salaryDocsItem).toContainText('Salary Payment Docs');
-    await expect(salaryDocsItem).toHaveAttribute('title', 'Salary Payment Docs');
+    await expect(salaryDocsItem).toContainText('Salary payment docs');
+    await expect(salaryDocsItem).toHaveAttribute('title', 'Salary payment docs');
 
     // Verify panel inner needs no vertical scroll at 1440x900
     const isScrollable = await page.evaluate(() => {
@@ -219,11 +219,11 @@ test.describe('Admin Dual-Rail Navigation Shell (Slice 1)', () => {
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   });
 
-  test('AC 10: ?mock=employee shows unchanged Employee sidebar', async ({ page }) => {
+  test('AC 10: ?mock=employee shows Employee dual-rail sidebar with Me rail button', async ({ page }) => {
     await page.goto('/?mock=employee');
     await expect(page.locator('#empSidebar')).toBeVisible();
-    await expect(page.locator('#empSidebar')).not.toHaveClass(/dual-rail/);
-    await expect(page.locator('#empSidebar .sidebar-top-row .brand')).toBeVisible();
+    await expect(page.locator('#empSidebar')).toHaveClass(/dual-rail/);
+    await expect(page.locator('#empSidebar .rail-btn[data-module="me"]')).toBeVisible();
   });
 });
 
@@ -321,8 +321,8 @@ test.describe('Slice 3 — Payroll Module', () => {
     const settingsItem = page.locator('#payrollNavSettings');
     await expect(runsItem).toBeVisible();
     await expect(settingsItem).toBeVisible();
-    await expect(runsItem.locator('.nav-label')).toHaveText('Payroll Runs');
-    await expect(settingsItem.locator('.nav-label')).toHaveText('Payroll Settings');
+    await expect(runsItem.locator('.nav-label')).toHaveText('Payroll runs');
+    await expect(settingsItem.locator('.nav-label')).toHaveText('Payroll settings');
 
     // Click Runs item
     await runsItem.click();

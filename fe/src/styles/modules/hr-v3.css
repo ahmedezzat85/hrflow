@@ -1,0 +1,1238 @@
+/* HR, System and portal page helpers (D-028). Semantic classes that replace the inline style="" attributes
+   formerly used for layout and tone in the section partials. Values are identical to the removed inline styles.
+   Scoped under .fv (page root) so Finance and login are unaffected. */
+
+/* ---------- Spacing ---------- */
+.fv .hv-mb-0 { margin-bottom: 0; }
+.fv .hv-mb-8 { margin-bottom: 8px; }
+.fv .hv-mb-12 { margin-bottom: 12px; }
+.fv .hv-mb-14 { margin-bottom: 14px; }
+.fv .hv-mb-16 { margin-bottom: 16px; }
+.fv .hv-mb-20 { margin-bottom: 20px; }
+.fv .hv-pb-8 { padding-bottom: 8px; }
+.fv .hv-pad { padding: 14px 16px; }
+.fv .hv-right { text-align: right; }
+.fv .hv-no-border { border-bottom: 0; }
+.fv .hv-push-bottom { align-self: flex-start; margin-top: auto; }
+.fv .hv-w-full { width: 100%; }
+.fv .hv-w-190 { width: 190px; max-width: 190px; flex: 0 0 auto; }
+.fv .hv-w-200 { width: 200px; max-width: 200px; flex: 0 0 auto; }
+.fv .hv-w-210 { width: 210px; max-width: 210px; flex: 0 0 auto; }
+.fv .hv-w-220 { width: 220px; max-width: 220px; flex: 0 0 auto; }
+.fv .hv-w-230 { width: 230px; max-width: 230px; flex: 0 0 auto; }
+.fv .hv-minw-180 { min-width: 180px; }
+.fv .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+/* ---------- Layout rows ---------- */
+.fv .hv-row-8 { display: flex; gap: 8px; align-items: center; }
+.fv .hv-row-10 { display: flex; gap: 10px; align-items: center; }
+.fv .hv-wrap { flex-wrap: wrap; }
+.fv .hv-col-10 { display: flex; flex-direction: column; gap: 10px; }
+.fv .hv-between { display: flex; align-items: center; justify-content: space-between; }
+.fv .hv-between-meta { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--ink-muted); }
+.fv .hv-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.fv .hv-tabbar {
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  border-bottom: 1px solid var(--border); margin-bottom: 14px;
+}
+.fv .hv-grid { display: grid; gap: 14px; margin-bottom: 14px; }
+.fv .hv-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.fv .hv-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.fv .hv-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.fv .hv-card-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.fv .hv-card-head-plain { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+
+/* ---------- Stat tiles ---------- */
+.fv .hv-stat-tile {
+  display: flex; flex-direction: column; gap: 8px; padding: 14px 18px; border-radius: 14px;
+  border: 1px solid var(--border); background: var(--surface); box-shadow: var(--shadow-sm);
+}
+.fv .hv-clickable { cursor: pointer; }
+.fv .hv-stat-label { font-size: 12.5px; font-weight: 600; color: var(--ink-label); }
+.fv .hv-stat-sub { font-size: 12.5px; color: var(--ink-muted); }
+.fv .hv-stat-value { font-family: var(--font-head); font-weight: 700; font-size: 24px; line-height: 1.1; color: var(--ink-strong); }
+.fv .hv-stat-value.hv-tone-warning { color: var(--warning); }
+.fv .hv-stat-value.hv-tone-success { color: var(--success); }
+.fv .hv-stat-value.hv-tone-brand { color: var(--brand-text); }
+.fv .hv-card-title { margin: 0; font-family: var(--font-head); font-size: 15px; font-weight: 700; color: var(--ink-strong); }
+
+.fv tr.hv-row-pending { background: var(--warning-soft); }
+.fv .hv-tone-warning-soft { background: var(--warning-soft); color: var(--warning); }
+.fv .hv-tone-success-soft { background: var(--success-soft); color: var(--success); }
+.fv .hv-tone-accent-soft { background: var(--accent-soft); color: var(--accent-text); }
+.fv .hv-text-accent { color: var(--accent-text); }
+.fv .hv-text-brand { color: var(--brand); }
+.fv .hv-text-success { color: var(--success); }
+.fv .hv-bold { font-weight: 600; }
+.fv .hv-count { margin-left: 4px; padding: 0 6px; border-radius: 999px; font-size: 11.5px; background: var(--surface2); }
+.fv .hv-count--brand { background: var(--brand-wash); }
+.fv .hv-count-fade { padding: 0 6px; border-radius: 999px; opacity: .85; margin-left: 4px; }
+.fv .hv-count-fade--sm { padding: 0; opacity: .75; margin-left: 2px; }
+.fv .hv-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 2px; }
+.fv .hv-dot--success { background: var(--success); }
+.fv .hv-dot--muted { background: var(--ink-muted); }
+.fv .hv-dot--info { background: var(--info); }
+.fv .hv-dot--warning { background: var(--warning); }
+.fv .hv-dot--danger { background: var(--danger); }
+
+/* ---------- Text helpers ---------- */
+.fv .hv-note-sm { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.fv .hv-muted-13 { font-size: 13px; color: var(--ink-muted); }
+.fv .hv-text2-13 { color: var(--text2); font-size: 13px; }
+.fv .hv-text2-125 { color: var(--text2); font-size: 12.5px; margin: 0; }
+.fv .hv-link { font-size: 13px; font-weight: 600; color: var(--brand); cursor: pointer; }
+
+/* ---------- Empty states ---------- */
+.fv .hv-empty { padding: 48px 24px; text-align: center; }
+.fv .hv-empty-icon { font-size: 36px; color: var(--text3); margin-bottom: 12px; }
+.fv .hv-empty-text { color: var(--text2); font-size: 14px; max-width: 440px; margin: 0 auto; line-height: 1.5; }
+
+/* ---------- Select and tabs ---------- */
+.fv .hv-select {
+  height: 32px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px;
+  background-color: var(--surface); font-size: 13px; color: var(--text);
+}
+.fv .hv-tab {
+  padding: 9px 12px; border-radius: 0; background: none; border: none; border-bottom: 2px solid transparent;
+  color: var(--ink-body); font-weight: 500; cursor: pointer;
+}
+.fv .hv-tab.active { border-bottom-color: var(--brand); color: var(--brand); font-weight: 600; background: none; box-shadow: none; }
+.fv .hv-tab:hover { background: none; color: var(--brand); }
+.fv .hv-tab.active .hv-count { background: var(--brand-wash); }
+
+/* ---------- Employee detail ---------- */
+.fv .hv-mb-18 { margin-bottom: 18px; }
+.fv .hv-mt-16 { margin-top: 16px; }
+.fv .hv-mt-20 { margin-top: 20px; }
+.fv .hv-total-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+.fv .hv-total-label { font-size: 12.5px; color: var(--text2); }
+.fv .hv-total-value { font-family: var(--font-head); font-size: 16px; }
+.fv .hv-auto-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.fv .hv-pill-neutral { background: var(--surface2); color: var(--text2); }
+
+#a-employee-detail .employee-detail-section-label {
+  font-size: 12.5px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink-label);
+}
+#a-employee-detail .employee-detail-section-line { background: var(--fv-line); }
+#a-employee-detail .card { padding: 0; overflow: hidden; border-radius: 14px; box-shadow: var(--fv-shadow-card); }
+#a-employee-detail .emp-summary-card { overflow: visible; }
+#a-employee-detail .card-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 12px 16px; margin: 0; border-bottom: 1px solid var(--fv-line);
+}
+#a-employee-detail .card-head h3 { font-size: 15px; font-weight: 700; color: var(--ink-strong); letter-spacing: 0; text-transform: none; }
+#a-employee-detail .card-head h3 i { font-size: 14px; }
+#a-employee-detail .card-body { padding: 14px 16px; }
+#a-employee-detail .emp-summary-card .esc-zone-label,
+#a-employee-detail .emp-summary-card .esc-comp-piece .esc-k,
+#a-employee-detail .emp-summary-card .esc-row .esc-k,
+#a-employee-detail .employee-bank-card .iban-row .k {
+  text-transform: none; letter-spacing: 0; font-size: 12.5px; font-weight: 600; color: var(--ink-label);
+}
+#a-employee-detail .employee-bank-card .helper { font-size: 12.5px; color: var(--ink-muted); }
+#a-employee-detail .employee-bank-card .iban-row { border-bottom: 1px solid var(--fv-line-row); }
+#a-employee-detail .employee-quick-action {
+  height: 36px; border: 1px solid var(--fv-line); border-radius: 9px; background: var(--fv-surface);
+  color: var(--ink-body); font-size: 13px; font-weight: 600;
+}
+#a-employee-detail .employee-quick-action:hover { background: var(--fv-canvas); color: var(--brand-text); }
+#a-employee-detail .form-field label { font-size: 12.5px; font-weight: 600; color: var(--ink-label); text-transform: none; letter-spacing: 0; }
+#a-employee-detail .form-field input,
+#a-employee-detail .form-field select { height: 36px; border-radius: 9px; border: 1px solid var(--fv-input-border); font-size: 14px; }
+#a-employee-detail .form-field textarea { border-radius: 9px; border: 1px solid var(--fv-input-border); font-size: 14px; }
+
+/* ---------- HR, System and portal pages: one table scale, no uppercase labels ---------- */
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table th {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 12px 12px;
+  text-transform: none !important;
+  letter-spacing: 0;
+  color: var(--ink-label);
+  background: var(--surface);
+  border-bottom: 1px solid var(--fv-line-strong, var(--border));
+  white-space: nowrap;
+}
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table th:first-child,
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table td:first-child {
+  padding-left: 16px;
+}
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table th:last-child,
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table td:last-child {
+  padding-right: 16px;
+}
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table td {
+  font-size: 13.5px;
+  line-height: 1.45;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--fv-line-row, var(--border));
+  color: var(--ink-body, var(--text));
+  vertical-align: middle;
+}
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table th.hv-th-active,
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table th[data-sort-active="true"] {
+  color: var(--brand) !important;
+}
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table tbody tr:hover {
+  background: var(--surface2);
+}
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table td .cell-sub,
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table td span[style*="font-size: 12px"],
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table td div[style*="font-size:12px"],
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table td div[style*="font-size: 12px"] {
+  font-weight: 400 !important;
+  color: var(--ink-muted) !important;
+  line-height: 1.45;
+}
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table .avatar,
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) td.tname .avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) td.col-actions .btn-sm {
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  vertical-align: middle;
+  box-sizing: border-box;
+}
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) td.col-actions .icon-action:not(.btn) {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  vertical-align: middle;
+  transition: background 0.15s, color 0.15s;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) td.col-actions .icon-action:not(.btn):hover {
+  background: var(--brand-wash);
+  color: var(--brand-text);
+}
+:is(#a-dashboard, #a-employees, #a-employee-detail, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) * {
+  text-transform: none;
+}
+
+/* ---------- System: plain role pills and status pills (rows are rendered by system-access.js with inline tones) ---------- */
+:is(#a-system-users, #a-system-roles) .badge {
+  display: inline-flex; align-items: center; gap: 5px; padding: 2px 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; line-height: 1.5; box-shadow: none;
+}
+:is(#a-system-users, #a-system-roles) .badge[style*="var(--surface2)"] { background: var(--fv-canvas); color: var(--ink-body); border: 0; }
+:is(#a-system-users, #a-system-roles) td.tname { font-weight: 600; color: var(--ink-strong); }
+
+/* =====================================================================
+   Employees list, per mock HR-Employees
+   ===================================================================== */
+#a-employees .filter-tab[data-emp-status="Active"] { background: var(--success-soft); color: var(--success); }
+#a-employees .filter-tab[data-emp-status="On leave"] { background: color-mix(in srgb, var(--id-sky) var(--fv-status-tint-pct), transparent); color: var(--id-sky-ink); }
+#a-employees .filter-tab[data-emp-status="Inactive"] { background: var(--fv-closed-bg); color: var(--ink-label); }
+#a-employees .filter-tab[data-emp-status="all"].active { background: var(--brand); color: var(--fv-on-brand); }
+#a-employees .filter-tab[data-emp-status="all"] .hv-count-fade { background: rgba(255, 255, 255, .22); opacity: 1; padding: 0 7px; margin-left: 6px; }
+#a-employees .filter-tab[data-emp-status] .hv-dot { background: currentColor; }
+#a-employees .filter-tab[data-emp-status]:not([data-emp-status="all"]).active { box-shadow: inset 0 0 0 1.5px currentColor; }
+#a-employees table td { padding: 10px 12px; line-height: 1.45; }
+#a-employees table th { padding: 12px 12px; }
+#a-employees table th:first-child, #a-employees table td:first-child { padding-left: 16px; }
+#a-employees table th:last-child, #a-employees table td:last-child { padding-right: 16px; }
+#a-employees table th:first-child, #a-employees table td:first-child { padding-right: 16px; }
+#a-employees table th:last-child, #a-employees table td:last-child { padding-left: 16px; }
+#a-employees .search-box input { border-color: var(--fv-line-strong); }
+#a-employees td.col-actions .icon-action:not(.btn) { width: 30px; height: 30px; }
+#a-employees table td.col-id { color: var(--ink-label); font-weight: 600; }
+#a-employees table td.tname { display: table-cell; }
+#a-employees table td.tname .avatar {
+  width: 32px; height: 32px; border-radius: 10px; font-size: 12px; font-weight: 700; flex: none; display: inline-flex;
+  align-items: center; justify-content: center; margin-right: 10px; vertical-align: middle; box-shadow: none;
+  background: color-mix(in srgb, var(--id-blue) var(--fv-tint-pct), transparent); color: var(--id-blue-ink);
+}
+#a-employees table td.tname > div:not(.avatar) { display: inline-block; vertical-align: middle; }
+#a-employees tbody tr:nth-child(6n+2) .avatar { background: color-mix(in srgb, var(--id-orange) var(--fv-tint-pct), transparent); color: var(--id-orange-ink); }
+#a-employees tbody tr:nth-child(6n+3) .avatar { background: color-mix(in srgb, var(--id-teal) var(--fv-tint-pct), transparent); color: var(--id-teal-ink); }
+#a-employees tbody tr:nth-child(6n+4) .avatar { background: color-mix(in srgb, var(--id-violet) var(--fv-tint-pct), transparent); color: var(--id-violet-ink); }
+#a-employees tbody tr:nth-child(6n+5) .avatar { background: color-mix(in srgb, var(--id-pink) var(--fv-tint-pct), transparent); color: var(--id-pink-ink); }
+#a-employees tbody tr:nth-child(6n+6) .avatar { background: color-mix(in srgb, var(--id-sky) var(--fv-tint-pct), transparent); color: var(--id-sky-ink); }
+#a-employees .col-actions { white-space: nowrap; text-align: right; }
+#a-employees .icon-action:not(.btn) { width: 30px; height: 30px; border: 0; background: none; color: var(--ink-faint); border-radius: 8px; }
+#a-employees .icon-action:not(.btn):hover { background: var(--fv-canvas); color: var(--ink-label); }
+#a-employees .icon-action:not(.btn) i { font-size: 13px; }
+#a-employees .icon-action.btn { width: auto; height: 28px; padding: 0 14px; font-size: 12.5px; }
+#a-employees td .icon-action:not(.btn) { color: var(--ink-faint); background: none; border: 0; }
+#a-employees td .icon-action:not(.btn):hover { color: var(--ink-label); background: var(--fv-canvas); }
+#a-employees .hv-toolbar { margin-bottom: 12px; }
+
+/* =====================================================================
+   Shared HR list rows: tinted square avatars (mock HR-*), 9/12 cell padding
+   ===================================================================== */
+:is(#a-requests, #a-vacations, #a-insurance, #a-salary, #a-invoices) table td.tname .avatar,
+:is(#a-requests, #a-vacations, #a-insurance, #a-salary, #a-invoices) table td .avatar {
+  width: 32px; height: 32px; border-radius: 10px; font-size: 12px; font-weight: 700; flex: none; box-shadow: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--id-blue) var(--fv-tint-pct), transparent); color: var(--id-blue-ink);
+}
+:is(#a-requests, #a-vacations, #a-insurance, #a-salary, #a-invoices) tbody tr:nth-child(6n+2) .avatar { background: color-mix(in srgb, var(--id-orange) var(--fv-tint-pct), transparent); color: var(--id-orange-ink); }
+:is(#a-requests, #a-vacations, #a-insurance, #a-salary, #a-invoices) tbody tr:nth-child(6n+3) .avatar { background: color-mix(in srgb, var(--id-teal) var(--fv-tint-pct), transparent); color: var(--id-teal-ink); }
+:is(#a-requests, #a-vacations, #a-insurance, #a-salary, #a-invoices) tbody tr:nth-child(6n+4) .avatar { background: color-mix(in srgb, var(--id-violet) var(--fv-tint-pct), transparent); color: var(--id-violet-ink); }
+:is(#a-requests, #a-vacations, #a-insurance, #a-salary, #a-invoices) tbody tr:nth-child(6n+5) .avatar { background: color-mix(in srgb, var(--id-pink) var(--fv-tint-pct), transparent); color: var(--id-pink-ink); }
+:is(#a-requests, #a-vacations, #a-insurance, #a-salary, #a-invoices) tbody tr:nth-child(6n+6) .avatar { background: color-mix(in srgb, var(--id-sky) var(--fv-tint-pct), transparent); color: var(--id-sky-ink); }
+:is(#a-requests, #a-vacations, #a-insurance, #a-salary, #a-invoices) table td { padding: 9px 12px; }
+:is(#a-requests, #a-vacations, #a-insurance, #a-salary, #a-invoices) table th { padding: 11px 12px; }
+:is(#a-requests, #a-vacations, #a-insurance, #a-salary, #a-invoices) table td:first-child,
+:is(#a-requests, #a-vacations, #a-insurance, #a-salary, #a-invoices) table th:first-child { padding-left: 16px; }
+:is(#a-requests, #a-vacations, #a-insurance, #a-salary, #a-invoices) table td:last-child,
+:is(#a-requests, #a-vacations, #a-insurance, #a-salary, #a-invoices) table th:last-child { padding-right: 16px; }
+
+/* =====================================================================
+   Pending requests, per mock HR-Requests
+   ===================================================================== */
+#a-requests .hv-tab .hv-count { background: var(--fv-canvas); color: var(--ink-label); font-weight: 600; padding: 0 7px; }
+#a-requests .hv-tab.active .hv-count { background: var(--brand-tint); color: var(--brand-ink); }
+#a-requests .hv-tab i { display: none; }
+#a-requests tr.hv-row-pending { background: color-mix(in srgb, var(--warning-soft) 45%, transparent); }
+/* request type: dot + label instead of a coloured chip */
+:is(#a-requests, #a-dashboard) td:is([data-label="Type"], [data-label="Request"]) .badge-pill {
+  background: none; padding: 0; border: 0; gap: 6px; font-size: 14px; font-weight: 600; color: var(--ink-strong); box-shadow: none;
+}
+:is(#a-requests, #a-dashboard) td:is([data-label="Type"], [data-label="Request"]) .badge-pill i { display: none; }
+:is(#a-requests, #a-dashboard) td:is([data-label="Type"], [data-label="Request"]) .badge-pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--id-blue); }
+:is(#a-requests, #a-dashboard) td:is([data-label="Type"], [data-label="Request"]) .badge-pill.pill-info::before { background: var(--id-teal); }
+:is(#a-requests, #a-dashboard) td:is([data-label="Type"], [data-label="Request"]) .badge-pill.pill-warning::before { background: var(--id-sky); }
+:is(#a-requests, #a-dashboard) td:is([data-label="Type"], [data-label="Request"]) .badge-pill.pill-success::before { background: var(--id-green); }
+#a-requests .request-details-title { font-size: 14px; font-weight: 400; color: var(--ink-faint); }
+#a-requests td[data-label="Date"] > div { font-size: 14px; color: var(--ink-strong); }
+#a-requests td[data-label="Date"] i { display: none; }
+/* actions: Approve is the one text button, Reject an icon button */
+#a-requests .request-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+#a-requests .request-actions .btn-success-outline { background: var(--brand); border-color: var(--brand); color: var(--fv-on-brand); }
+#a-requests .request-actions .btn-success-outline i { display: none; }
+#a-requests .request-actions .btn-danger-outline { width: 30px; height: 30px; padding: 0; border: 0; background: none; font-size: 0; color: var(--danger); justify-content: center; }
+#a-requests .request-actions .btn-danger-outline i { font-size: 14px; }
+#a-requests td.col-actions .request-actions .btn-danger-outline { width: 30px; height: 30px; padding: 0; border: 0; background: none; font-size: 0; color: var(--danger); justify-content: center; }
+#a-requests td.col-actions .request-actions .btn-danger-outline i { font-size: 14px; }
+#a-requests td.col-actions .request-actions .btn-success-outline { background: var(--brand); border-color: var(--brand); color: var(--fv-on-brand); padding: 0 14px; }
+
+/* Salary and raises: 14px rhythm between stat tiles and cards, names never wrap */
+:is(#a-salary, #a-vacations, #a-insurance, #a-requests, #a-employees, #a-invoices) td.tname { white-space: nowrap; }
+#a-salary .hv-grid { margin-bottom: 14px; }
+#a-salary > .card, #a-salary .card { margin-bottom: 14px; }
+#a-salary .card > .hv-card-head .hv-text2-125 { display: none; }
+:is(#a-salary, #a-vacations, #a-insurance, #a-requests, #a-employees, #a-invoices) td.tname { color: var(--ink-strong); }
+:is(#a-dashboard, #a-salary, #a-vacations, #a-insurance, #a-requests, #a-employees, #a-invoices, #a-dochub) table td { color: var(--ink-strong); }
+
+/* =====================================================================
+   Filter pills per mocks (Document hub outline pills, Salary payment docs 28px pills)
+   ===================================================================== */
+#a-dochub .filter-tab:not(.active) { background: var(--fv-surface); border: 1px solid var(--fv-outline); color: var(--ink-label); }
+#a-dochub .filter-tab.active { background: var(--brand); border-color: var(--brand); color: var(--fv-on-brand); }
+/* Salary payment docs filter pills per mock HR-SalaryDocs */
+#a-invoices .invoice-filter-group {
+  display: flex !important;
+  gap: 6px !important;
+  align-items: center !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+
+#a-invoices .invoice-filter-group .filter-tab {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  height: 28px !important;
+  padding: 0 11px !important;
+  border-radius: 999px !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  border: 1px solid transparent !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+  transition: all 0.15s ease !important;
+}
+
+#a-invoices .invoice-filter-group .filter-tab .hv-count {
+  margin-left: 0 !important;
+  padding: 0 6px !important;
+  border-radius: 999px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  background: transparent !important;
+  opacity: 0.75 !important;
+}
+
+/* Inactive states with soft tints matching HR-SalaryDocs */
+#a-invoices #invFilterAllBtn {
+  background: var(--fv-canvas) !important;
+  color: var(--ink-label) !important;
+}
+
+#a-invoices #invFilterEligibleBtn {
+  background: var(--accent-soft) !important;
+  color: var(--accent-text) !important;
+}
+
+#a-invoices #invFilterGeneratedBtn {
+  background: var(--success-soft) !important;
+  color: var(--success) !important;
+}
+
+#a-invoices #invFilterSkippedBtn {
+  background: var(--fv-canvas) !important;
+  color: var(--ink-label) !important;
+}
+
+/* Active states */
+#a-invoices #invFilterAllBtn.active {
+  background: var(--brand, var(--accent)) !important;
+  color: var(--fv-on-brand, var(--on-accent)) !important;
+  border-color: var(--brand, var(--accent)) !important;
+}
+
+#a-invoices #invFilterEligibleBtn.active {
+  background: var(--brand, var(--accent)) !important;
+  color: var(--fv-on-brand, var(--on-accent)) !important;
+  border-color: var(--brand, var(--accent)) !important;
+}
+
+#a-invoices #invFilterGeneratedBtn.active {
+  background: var(--success) !important;
+  color: var(--fv-on-brand, var(--on-accent)) !important;
+  border-color: var(--success) !important;
+}
+
+#a-invoices #invFilterSkippedBtn.active {
+  background: var(--ink-strong) !important;
+  color: var(--fv-on-brand, var(--on-accent)) !important;
+  border-color: var(--ink-strong) !important;
+}
+
+/* Active count badge styling */
+#a-invoices .invoice-filter-group .filter-tab.active .hv-count {
+  background: rgba(255, 255, 255, 0.22) !important;
+  color: inherit !important;
+  opacity: 1 !important;
+}
+
+/* Salary payment docs table header height, padding and column alignments */
+#a-invoices table thead th {
+  padding: 11px 12px !important;
+  padding-top: 11px !important;
+  padding-bottom: 11px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: var(--ink-label) !important;
+  border-bottom: 1px solid var(--fv-line-strong) !important;
+  line-height: 1.2 !important;
+  box-sizing: border-box;
+}
+
+#a-invoices table thead th:first-child,
+#a-invoices table tbody td:first-child {
+  padding-left: 16px !important;
+}
+
+#a-invoices table thead th:last-child,
+#a-invoices table tbody td:last-child {
+  padding-right: 16px !important;
+}
+
+#invoiceResultsTable th:nth-child(1),
+#invoiceResultsTable td:nth-child(1) {
+  text-align: left;
+  width: 28%;
+}
+
+#invoiceResultsTable th:nth-child(2),
+#invoiceResultsTable td:nth-child(2) {
+  text-align: left;
+  width: 18%;
+}
+
+#invoiceResultsTable th:nth-child(3),
+#invoiceResultsTable td:nth-child(3),
+#a-invoices table thead th.hv-right,
+#a-invoices table tbody td.hv-right {
+  text-align: right !important;
+  width: 18%;
+}
+
+#invoiceResultsTable th:nth-child(4),
+#invoiceResultsTable td:nth-child(4) {
+  text-align: left;
+  width: 24%;
+}
+
+#invoiceResultsTable th:nth-child(5),
+#invoiceResultsTable td:nth-child(5) {
+  text-align: right !important;
+  width: 12%;
+  white-space: nowrap;
+}
+
+/* Action button styling in Salary payment docs */
+#a-invoices table td .btn,
+#a-invoices .btn-xs {
+  height: 28px !important;
+  border-radius: 8px !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#a-invoices table td .btn-fill {
+  background: var(--brand, var(--accent)) !important;
+  color: var(--fv-on-brand, var(--on-accent)) !important;
+  border: 1px solid var(--brand, var(--accent)) !important;
+  padding: 0 13px !important;
+}
+
+#a-invoices table td .btn-fill:hover {
+  background: var(--accent2, var(--brand)) !important;
+  border-color: var(--accent2, var(--brand)) !important;
+}
+
+#a-invoices table td .btn-outline,
+#a-invoices .btn-outline.btn-xs {
+  background: var(--surface) !important;
+  border: 1px solid var(--fv-outline) !important;
+  color: var(--brand-ink, var(--accent-text)) !important;
+  padding: 0 11px !important;
+}
+
+#a-invoices table td .btn-outline:hover,
+#a-invoices .btn-outline.btn-xs:hover {
+  background: var(--brand-wash, var(--accent-soft)) !important;
+  border-color: var(--fv-outline) !important;
+}
+
+/* Dashboard tiles and insurance details */
+#a-dashboard .hero-card:not(.hero-card-accent) .hero-card-label { color: var(--ink-label); }
+#a-dashboard .hero-card { font-size: 14px; line-height: 1.45; }
+#a-dashboard .hero-card-badge.fv-badge-orange { color: var(--id-orange-ink); }
+#a-dashboard .hero-card-badge.fv-badge-teal { color: var(--id-teal-ink); }
+#a-insurance .empty-state { width: 100%; }
+
+/* ==================== Dashboard V3 Scoped Alignment & Spacing ==================== */
+#a-dashboard:not(.active) {
+  display: none !important;
+}
+#a-dashboard.active {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+#a-dashboard > * {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+#a-dashboard .hero-banner {
+  margin-bottom: 0 !important;
+}
+#a-dashboard .hero-stats {
+  gap: 14px;
+}
+#a-dashboard .grid {
+  gap: 14px;
+  margin-bottom: 0 !important;
+}
+#a-dashboard .g-2-1 {
+  grid-template-columns: 2fr 1fr;
+}
+#a-dashboard .g-1-2 {
+  grid-template-columns: 1fr 1.6fr;
+}
+#a-dashboard .card {
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--fv-line, var(--border));
+  box-shadow: 0 1px 3px rgba(20, 50, 120, 0.05);
+  margin: 0;
+}
+#a-dashboard .card-head {
+  padding: 0;
+  margin: 0 0 12px 0;
+  border-bottom: none;
+}
+#a-dashboard .card:has(#upcomingRaisesList),
+#a-dashboard .card:has(#dashPendingBody) {
+  padding: 0;
+  overflow: hidden;
+}
+#a-dashboard .card:has(#upcomingRaisesList) .card-head,
+#a-dashboard .card:has(#dashPendingBody) .card-head {
+  padding: 14px 22px;
+  margin: 0;
+  border-bottom: 1px solid var(--fv-line, var(--border));
+}
+#a-dashboard .card:has(#upcomingRaisesList) .card-head h3,
+#a-dashboard .card:has(#dashPendingBody) .card-head h3 {
+  margin: 0;
+}
+#a-dashboard .card-head h3, #a-dashboard .card > h3, #a-dashboard .card h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink-strong);
+}
+#a-dashboard #upcomingRaisesList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+#a-dashboard #upcomingRaisesList .hv-raise-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 22px;
+  border-bottom: 1px solid var(--fv-line-row, var(--border));
+}
+#a-dashboard #upcomingRaisesList .hv-raise-item:last-child {
+  border-bottom: none;
+}
+#a-dashboard #upcomingRaisesList .avatar,
+#a-dashboard #dashPendingBody .avatar {
+  width: 32px !important;
+  height: 32px !important;
+  flex: none;
+  border-radius: 10px !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  box-shadow: none !important;
+}
+/* Rotating harmonic squircle tiles for upcoming raises */
+#a-dashboard #upcomingRaisesList .hv-raise-item:nth-child(6n+1) .avatar {
+  background: var(--brand-wash);
+  color: var(--brand-ink);
+}
+#a-dashboard #upcomingRaisesList .hv-raise-item:nth-child(6n+2) .avatar {
+  background: color-mix(in srgb, var(--id-orange) var(--fv-tint-pct), transparent);
+  color: var(--id-orange-ink);
+}
+#a-dashboard #upcomingRaisesList .hv-raise-item:nth-child(6n+3) .avatar {
+  background: color-mix(in srgb, var(--id-teal) var(--fv-tint-pct), transparent);
+  color: var(--id-teal-ink);
+}
+#a-dashboard #upcomingRaisesList .hv-raise-item:nth-child(6n+4) .avatar {
+  background: color-mix(in srgb, var(--id-violet) var(--fv-tint-pct), transparent);
+  color: var(--id-violet-ink);
+}
+#a-dashboard #upcomingRaisesList .hv-raise-item:nth-child(6n+5) .avatar {
+  background: color-mix(in srgb, var(--id-pink) var(--fv-tint-pct), transparent);
+  color: var(--id-pink-ink);
+}
+#a-dashboard #upcomingRaisesList .hv-raise-item:nth-child(6n+6) .avatar {
+  background: color-mix(in srgb, var(--id-sky) var(--fv-tint-pct), transparent);
+  color: var(--id-sky-ink);
+}
+
+/* Rotating harmonic squircle tiles for waiting for a decision table */
+#a-dashboard #dashPendingBody tr:nth-child(6n+1) .avatar {
+  background: color-mix(in srgb, var(--id-orange) var(--fv-tint-pct), transparent);
+  color: var(--id-orange-ink);
+}
+#a-dashboard #dashPendingBody tr:nth-child(6n+2) .avatar {
+  background: color-mix(in srgb, var(--id-teal) var(--fv-tint-pct), transparent);
+  color: var(--id-teal-ink);
+}
+#a-dashboard #dashPendingBody tr:nth-child(6n+3) .avatar {
+  background: var(--brand-wash);
+  color: var(--brand-ink);
+}
+#a-dashboard #dashPendingBody tr:nth-child(6n+4) .avatar {
+  background: color-mix(in srgb, var(--id-violet) var(--fv-tint-pct), transparent);
+  color: var(--id-violet-ink);
+}
+#a-dashboard #dashPendingBody tr:nth-child(6n+5) .avatar {
+  background: color-mix(in srgb, var(--id-pink) var(--fv-tint-pct), transparent);
+  color: var(--id-pink-ink);
+}
+#a-dashboard #dashPendingBody tr:nth-child(6n+6) .avatar {
+  background: color-mix(in srgb, var(--id-sky) var(--fv-tint-pct), transparent);
+  color: var(--id-sky-ink);
+}
+
+#a-dashboard #upcomingRaisesList .txt {
+  flex: 1;
+}
+#a-dashboard #upcomingRaisesList .txt strong {
+  display: block;
+  font-weight: 600;
+  color: var(--ink-strong);
+  font-size: 13.5px;
+}
+#a-dashboard #upcomingRaisesList .txt p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+#a-dashboard #upcomingRaisesList .hv-raise-meta {
+  text-align: right;
+}
+#a-dashboard #upcomingRaisesList .hv-raise-date {
+  display: block;
+  font-weight: 600;
+  color: var(--ink-strong);
+  font-size: 13px;
+}
+#a-dashboard #upcomingRaisesList .hv-raise-rel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+
+/* Waiting for a decision table row and action alignment */
+#a-dashboard table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+}
+#a-dashboard table thead tr {
+  height: 38px;
+}
+#a-dashboard table thead th {
+  padding: 10px 16px;
+  height: 38px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--ink-label);
+  border-bottom: 1px solid var(--fv-line, var(--border));
+  background: var(--surface);
+  box-sizing: border-box;
+}
+#a-dashboard table thead th:first-child,
+#a-dashboard table tbody td:first-child {
+  padding-left: 16px;
+}
+#a-dashboard table thead th:last-child,
+#a-dashboard table tbody td:last-child {
+  padding-right: 16px;
+}
+#a-dashboard table tbody td {
+  padding: 9px 16px;
+  font-size: 14px;
+  line-height: 1.45;
+  border-bottom: 1px solid var(--fv-line-row, var(--border));
+  vertical-align: middle;
+}
+#a-dashboard #dashPendingBody tr:last-child td {
+  border-bottom: none;
+}
+#a-dashboard td.col-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+#a-dashboard td.col-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 28px;
+  padding: 0 13px;
+  border-radius: 8px;
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--fv-on-brand, #fff);
+  font-weight: 600;
+  font-size: 12.5px;
+  border: none;
+}
+#a-dashboard td.col-actions .btn:hover {
+  background: var(--brand-hover, var(--brand));
+}
+#a-insurance .grid .empty-state, #a-insurance .g4 .empty-state { grid-column: 1 / -1; width: 100%; }
+
+/* Vacations: balance cells are rendered by vacations.js with inline tone colours; the mock uses plain ink and bold remaining */
+#a-vacations tbody td:nth-child(3), #a-vacations tbody td:nth-child(4) { color: var(--ink-body) !important; font-weight: 400 !important; }
+#a-vacations tbody td:nth-child(5) { color: var(--ink-strong) !important; font-weight: 700 !important; }
+#a-vacations .btn { white-space: nowrap; }
+#a-vacations .hv-card-head .btn-fill { min-width: max-content; }
+
+/* Employee detail summary, per mock HR-EmployeeDetail (type scale and avatar; layout is rendered by employees.js) */
+#a-employee-detail .emp-summary-card .esc-avatar {
+  width: 52px; height: 52px; border-radius: 15px; font-size: 18px; font-weight: 700; box-shadow: none; background: var(--brand-tint); color: var(--brand-ink);
+}
+#a-employee-detail .emp-summary-card .esc-identity h4 { font-size: 20px; font-weight: 700; color: var(--ink-strong); }
+#a-employee-detail .emp-summary-card .esc-identity .esc-meta { font-size: 13px; color: var(--ink-muted); }
+#a-employee-detail .emp-summary-card .esc-pill { padding: 2px 10px; font-size: 12px; font-weight: 600; }
+#a-employee-detail .emp-summary-card .esc-comp-total .esc-amount { font-size: 22px; font-weight: 700; color: var(--brand-text); }
+#a-employee-detail .emp-summary-card .esc-comp-piece .esc-v { font-size: 20px; font-weight: 700; color: var(--ink-strong); }
+#a-employee-detail .emp-summary-card .esc-row .esc-v { color: var(--ink-strong); font-weight: 600; font-size: 13.5px; }
+
+/* System pages: tinted square avatars and the mock's cell type scale */
+:is(#a-system-users, #a-system-roles) table td .avatar {
+  width: 32px; height: 32px; border-radius: 10px; font-size: 12px; font-weight: 700; flex: none; box-shadow: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--id-blue) var(--fv-tint-pct), transparent); color: var(--id-blue-ink);
+}
+:is(#a-system-users, #a-system-roles) tbody tr:nth-child(6n+2) .avatar { background: color-mix(in srgb, var(--id-orange) var(--fv-tint-pct), transparent); color: var(--id-orange-ink); }
+:is(#a-system-users, #a-system-roles) tbody tr:nth-child(6n+3) .avatar { background: color-mix(in srgb, var(--id-teal) var(--fv-tint-pct), transparent); color: var(--id-teal-ink); }
+:is(#a-system-users, #a-system-roles) tbody tr:nth-child(6n+4) .avatar { background: color-mix(in srgb, var(--id-violet) var(--fv-tint-pct), transparent); color: var(--id-violet-ink); }
+:is(#a-system-users, #a-system-roles) tbody tr:nth-child(6n+5) .avatar { background: color-mix(in srgb, var(--id-pink) var(--fv-tint-pct), transparent); color: var(--id-pink-ink); }
+:is(#a-system-users, #a-system-roles) tbody tr:nth-child(6n+6) .avatar { background: color-mix(in srgb, var(--id-sky) var(--fv-tint-pct), transparent); color: var(--id-sky-ink); }
+#a-system-users td:nth-child(2) { font-size: 14px; color: var(--ink-body); }
+#a-system-users td.tname { color: var(--ink-strong); }
+#a-system-users table td { padding: 9px 12px; }
+
+/* Roles table, per mock Sys-Roles: plain counts, tinted permission chips, 14px cells */
+#a-system-roles td { font-size: 14px; }
+#a-system-roles td:first-child { font-weight: 600; color: var(--ink-strong); }
+#a-system-roles td:nth-child(2) { color: var(--ink-body); }
+#a-system-roles td:nth-child(3) .badge { background: none !important; padding: 0; font-size: 14px; font-weight: 400; color: var(--ink-strong); }
+#a-system-roles td:nth-child(4) .badge { background: var(--brand-tint) !important; color: var(--brand-ink); border: 0; }
+
+/* =====================================================================
+   Employee detail, per mock HR-EmployeeDetail: header card + KPI strip, two-column body
+   ===================================================================== */
+#a-employee-detail .ed-back { margin-bottom: 12px; }
+#a-employee-detail .ed-head { overflow: visible; }
+#a-employee-detail .ed-head .esc-head { padding: 16px 18px; border: 0; display: flex; align-items: center; gap: 14px; flex-wrap: nowrap; }
+#a-employee-detail .ed-head .esc-identity { flex: 1; min-width: 0; }
+#a-employee-detail .ed-name { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+#a-employee-detail .ed-name h4 { margin: 0; font-family: var(--font-head); }
+#a-employee-detail .ed-head .esc-meta { margin-top: 3px; }
+#a-employee-detail .ed-actions { display: flex; gap: 8px; flex: none; }
+#a-employee-detail .ed-kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid var(--fv-line); }
+#a-employee-detail .ed-kpi { padding: 12px 18px; border-right: 1px solid var(--fv-line); min-width: 0; }
+#a-employee-detail .ed-kpi:last-child { border-right: 0; }
+#a-employee-detail .ed-kpi-k, #a-employee-detail .ed-kpi .esc-zone-label { font-size: 12px; font-weight: 600; color: var(--ink-label); margin: 0 0 2px; }
+#a-employee-detail .ed-kpi-v, #a-employee-detail .ed-kpi .esc-comp-total { font-family: var(--font-head); font-size: 20px; font-weight: 700; color: var(--ink-strong); line-height: 1.3; margin: 0; }
+#a-employee-detail .ed-kpi .esc-comp-total { display: flex; align-items: baseline; gap: 6px; }
+#a-employee-detail .ed-kpi .esc-comp-total .esc-amount { font-size: 20px; color: var(--brand-text); }
+#a-employee-detail .ed-kpi .esc-comp-total .esc-unit { font-family: var(--font-body); font-size: 12px; font-weight: 400; color: var(--ink-muted); }
+#a-employee-detail .ed-kpi-s { font-size: 12px; color: var(--ink-muted); }
+
+#a-employee-detail .ed-grid { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 14px; align-items: start; }
+#a-employee-detail .ed-main, #a-employee-detail .ed-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+#a-employee-detail .ed-side .card { margin: 0; }
+#a-employee-detail .ed-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+#a-employee-detail .ed-tile {
+  display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; margin-right: 10px; vertical-align: middle;
+}
+#a-employee-detail .ed-tile i { font-size: 13px; color: inherit; }
+#a-employee-detail .ed-tile--green { background: rgba(63, 154, 60, .14); color: var(--id-green-ink); }
+#a-employee-detail .ed-tile--teal { background: rgba(15, 157, 140, .14); color: var(--id-teal-ink); }
+#a-employee-detail .ed-tile--ochre { background: color-mix(in srgb, var(--id-ochre) var(--fv-tint-pct), transparent); color: var(--id-ochre-ink); }
+#a-employee-detail .ed-tile--blue { background: var(--brand-tint); color: var(--brand-ink); }
+#a-employee-detail .card-head h3 i { color: inherit; }
+
+/* compensation card shows the raise history only; the metrics now live in the header strip */
+#a-employee-detail .compensation-metrics, #a-employee-detail .compensation-history-label { display: none; }
+
+/* list-style tables: two-line first cell, status on the right, no header row */
+#a-employee-detail table.ed-list thead { display: none; }
+#a-employee-detail table.ed-list td { padding: 10px 16px; vertical-align: middle; }
+#a-employee-detail table.ed-list td.ed-status { text-align: right; width: 1%; white-space: nowrap; }
+#a-employee-detail .ed-title { font-size: 14px; font-weight: 600; color: var(--ink-strong); line-height: 1.3; }
+#a-employee-detail .ed-sub { font-size: 12px; color: var(--ink-muted); margin-top: 1px; }
+#a-employee-detail .doc-name-cell { display: flex; align-items: center; gap: 10px; }
+#a-employee-detail .doc-type-icon { width: 32px; height: 32px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; flex: none; background: color-mix(in srgb, var(--id-ochre) var(--fv-tint-pct), transparent); color: var(--id-ochre-ink); }
+#a-employee-detail td.col-actions { text-align: right; white-space: nowrap; }
+#a-employee-detail td.col-actions .icon-action { width: 30px; height: 30px; border: 0; background: none; color: var(--ink-faint); }
+
+/* side cards */
+#a-employee-detail .ed-details-card .card-body { padding: 4px 16px 10px; }
+#a-employee-detail .ed-details-card .esc-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--fv-line-row); }
+#a-employee-detail .ed-details-card .esc-row:last-child { border-bottom: 0; }
+#a-employee-detail .ed-details-card .esc-k { font-size: 13.5px; font-weight: 400; color: var(--ink-muted); }
+#a-employee-detail .ed-details-card .esc-k i { display: none; }
+#a-employee-detail .ed-details-card .esc-v { font-size: 13.5px; font-weight: 600; color: var(--ink-strong); text-align: right; }
+#a-employee-detail .employee-bank-card .card-head { gap: 8px; }
+#a-employee-detail .employee-bank-card .card-head h3 { flex: 1; }
+#a-employee-detail .employee-bank-card .badge-pill { margin-left: auto; }
+#a-employee-detail .employee-bank-card .action-btn { width: 28px; height: 28px; border: 0; background: none; color: var(--ink-faint); }
+#a-employee-detail .employee-bank-card .status-line { padding: 10px 16px 0; border: 0; }
+#a-employee-detail .employee-bank-card .status-line:not(:has(.btn:not([hidden]))) { display: none; }
+#a-employee-detail .employee-bank-card .card-body { padding: 4px 16px 12px; }
+#a-employee-detail .employee-bank-card .iban-row { padding: 8px 0; display: flex; justify-content: space-between; }
+#a-employee-detail .employee-bank-card .iban-row .k { font-weight: 400; color: var(--ink-muted); font-size: 13.5px; }
+#a-employee-detail .employee-bank-card .iban-row .v { font-weight: 600; color: var(--ink-strong); font-size: 13.5px; }
+@media (max-width: 1100px) {
+  #a-employee-detail .ed-grid { grid-template-columns: minmax(0, 1fr); }
+  #a-employee-detail .ed-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #a-employee-detail .ed-head .esc-head { flex-wrap: wrap; }
+}
+#a-employee-detail .ed-back { display: inline-flex; width: auto; align-self: flex-start; }
+#a-employee-detail .card { margin: 0; }
+#a-employee-detail .ed-main > .card, #a-employee-detail .ed-pair > .card { margin: 0; }
+#a-employee-detail .esc-pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; }
+
+/* =====================================================================
+   HR list tables: footer, two-line cells, document rows (mocks HR-Employees / Requests / Documents)
+   ===================================================================== */
+.fv .fv-tablefoot { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-top: 1px solid var(--fv-line-row); font-size: 12.5px; color: var(--ink-muted); }
+.fv .fv-tablefoot b { color: var(--brand-ink); font-weight: 600; }
+:is(#a-employees, #a-dochub) .ed-title { font-size: 14px; font-weight: 600; color: var(--ink-strong); line-height: 1.3; }
+:is(#a-employees, #a-dochub) .ed-sub { font-size: 12px; color: var(--ink-muted); margin-top: 1px; }
+#a-employees td[data-label="Role"] .ed-title { font-weight: 400; color: var(--ink-strong); }
+:is(#a-dochub, #e-dochub) .doc-name-cell { display: flex; align-items: center; gap: 10px; }
+:is(#a-dochub, #e-dochub) .doc-type-icon { width: 32px; height: 32px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; flex: none; background: color-mix(in srgb, var(--id-ochre) var(--fv-tint-pct), transparent); color: var(--id-ochre-ink); }
+:is(#a-dochub, #e-dochub) .doc-name-text { display: block; font-weight: 600; color: var(--ink-strong); }
+:is(#a-dochub, #e-dochub) .doc-name-meta { font-size: 12px; color: var(--ink-muted); display: block; margin-top: 1px; }
+:is(#a-dochub, #e-dochub) .hv-catdot { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-body); }
+:is(#a-dochub, #e-dochub) .hv-catdot::before { content: ""; width: 8px; height: 8px; border-radius: 3px; display: inline-block; background: var(--id-blue); }
+:is(#a-dochub, #e-dochub) .hv-catdot[data-cat="Policy"]::before { background: var(--id-sky); }
+:is(#a-dochub, #e-dochub) .hv-catdot[data-cat="Handbook"]::before { background: var(--id-violet); }
+:is(#a-dochub, #e-dochub) .hv-catdot[data-cat="Form"]::before { background: var(--id-ochre); }
+:is(#a-dochub, #e-dochub) .hv-catdot[data-cat="General"]::before { background: var(--id-blue); }
+#a-dochub td:last-child { text-align: right; white-space: nowrap; }
+#a-dochub td:last-child > * { vertical-align: middle; }
+#a-employees tbody td { white-space: nowrap; }
+
+/* Table headers: 12px padding and the mock's 1.45 line height (taller header row, 41px) */
+:is(#a-dashboard, #a-employees, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-dashboard, #e-salary, #e-payslips, #e-vacations, #e-insurance, #e-dochub) table { line-height: 1.45; }
+:is(#a-dashboard, #a-employees, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-salary, #e-vacations, #e-insurance, #e-dochub) table th { padding-top: 12px; padding-bottom: 12px; }
+:is(#a-dashboard, #a-employees, #a-requests, #a-salary, #a-invoices, #a-vacations, #a-insurance, #a-dochub, #a-system-roles, #a-system-users, #e-salary, #e-vacations, #e-insurance, #e-dochub) table td { padding-top: 9px; padding-bottom: 9px; }
+
+/* Requests status pills (mock HR-Requests) */
+#a-requests .hv-pillrow { margin: 0 0 14px; }
+#a-requests .hv-statuspills { display: flex; gap: 6px; }
+#a-requests .hv-sp {
+  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600;
+  background: var(--fv-canvas); color: var(--ink-label); border: 1px solid transparent; cursor: pointer; box-shadow: none;
+}
+#a-requests .hv-sp--pending { background: var(--warning-soft); color: var(--warning-text, var(--warning)); }
+#a-requests .hv-sp--approved { background: var(--success-soft); color: var(--success); }
+#a-requests .hv-sp--rejected { background: var(--danger-soft); color: var(--danger); }
+#a-requests .hv-sp .hv-dot { background: currentColor; }
+#a-requests .hv-sp .hv-sp-n { opacity: .75; }
+#a-requests .hv-sp.active[data-reqstatus="all"] { background: var(--brand); color: var(--fv-on-brand); border-color: var(--brand); box-shadow: 0 2px 6px rgba(32, 86, 232, .25); }
+#a-requests .hv-sp.active[data-reqstatus="all"] .hv-sp-n { padding: 0 6px; border-radius: 999px; background: rgba(255, 255, 255, .22); opacity: 1; }
+#a-requests .hv-sp.active:not([data-reqstatus="all"]) { box-shadow: inset 0 0 0 1.5px currentColor; }
+
+/* Vacations balances: numeric columns right aligned (mock HR-Vacations) */
+#a-vacations th:nth-child(2), #a-vacations th:nth-child(3), #a-vacations th:nth-child(4),
+#a-vacations td:nth-child(2), #a-vacations td:nth-child(3), #a-vacations td:nth-child(4) { text-align: right; }
+#a-vacations .vac-progress-cell { display: flex; align-items: center; gap: 12px; }
+#a-vacations .progress-bar { flex: 1; height: 8px; border-radius: 999px; background: var(--fv-canvas); overflow: hidden; }
+#a-vacations .progress-bar > span { display: block; height: 100%; border-radius: 999px; background: var(--id-teal); }
+#a-vacations .progress-bar.progress-warning > span { background: var(--warning); }
+#a-vacations .progress-bar.progress-danger > span { background: var(--danger); }
+#a-vacations .vac-progress-pct { font-size: 12.5px; color: var(--ink-muted); min-width: 34px; text-align: right; }
+@media (max-width: 768px) { #a-requests .hv-sp { min-height: 44px; } }
+
+/* =====================================================================
+   Employee portal pages, per mocks ESS-* (compact tiles, two-column request forms)
+   ===================================================================== */
+:is(#e-vacations, #e-insurance, #e-salary, #e-dashboard, #e-dochub) .card-head h3,
+:is(#e-vacations, #e-insurance, #e-salary, #e-dashboard) .card h3 { font-family: var(--font-head); font-size: 15px; font-weight: 700; color: var(--ink-strong); }
+:is(#e-vacations, #e-insurance, #e-salary, #e-dashboard) .card { border-radius: 14px; box-shadow: var(--fv-shadow-card); }
+
+/* tiles (vacations) */
+#e-vacations .stat-card { padding: 14px 18px; display: flex; flex-direction: column; gap: 2px; }
+#e-vacations .stat-card .stat-top { display: block; margin: 0; }
+#e-vacations .stat-card .stat-label { font-size: 12.5px; font-weight: 600; color: var(--ink-label); margin: 0; }
+#e-vacations .stat-card .stat-icon { display: none; }
+#e-vacations .stat-card .stat-val { font-family: var(--font-head); font-size: 22px; font-weight: 700; line-height: 1.3; color: var(--ink-strong); }
+#e-vacations .stat-card .stat-val.hv-text-success { color: var(--brand-text); }
+#e-vacations .stat-card .stat-trend { background: none; padding: 0; border-radius: 0; font-size: 12.5px; font-weight: 400; color: var(--ink-muted); }
+#e-vacations .stat-card .stat-trend i { display: none; }
+#e-vacations .time-off-head h3 i { display: none; }
+#e-vacations .time-off-body .form-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+#e-vacations .form-field label { font-size: 12.5px; font-weight: 600; color: var(--ink-label); }
+#e-vacations .form-field input, #e-vacations .form-field select { height: 36px; border-radius: 9px; border: 1px solid var(--fv-input-border); font-size: 14px; }
+#e-vacations .time-off-summary-bar { background: var(--fv-surface-soft); border-radius: 10px; }
+
+#e-insurance .form-field label { font-size: 12.5px; font-weight: 600; color: var(--ink-label); }
+#e-insurance .form-field input:not([type="file"]), #e-insurance .form-field select { height: 36px; border-radius: 9px; border: 1px solid var(--fv-input-border); font-size: 14px; }
+#e-insurance input[type="file"] {
+  width: 100%; box-sizing: border-box; padding: 14px; border: 1px dashed var(--fv-outline); border-radius: 10px; background: var(--fv-surface-soft);
+  color: var(--ink-muted); font-size: 13px;
+}
+#e-insurance input[type="file"]::file-selector-button {
+  height: 30px; margin-right: 10px; padding: 0 12px; border: 1px solid var(--fv-outline); border-radius: 8px; background: var(--fv-surface);
+  color: var(--brand-ink); font-weight: 600; font-size: 12.5px; cursor: pointer;
+}
+
+/* dashboard tiles */
+#e-dashboard .hero-card:not(.hero-card-accent) .hero-card-label { color: var(--ink-label); }
+:is(#e-vacations, #e-insurance) .form-field select, :is(#e-vacations, #e-insurance) .form-field input { line-height: normal; padding-top: 0; padding-bottom: 0; }
+#e-vacations .time-off-summary-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; }
+#e-insurance .card .btn.hv-w-full { width: auto; display: flex; margin-left: auto; height: 34px; padding: 0 16px; }
+
+/* Dialog info tiles & raise preview */
+.fv-dialog .fv-dialog-tile {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+}
+.fv-dialog .fv-dialog-tile__label {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.fv-dialog .fv-dialog-tile__value {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink-strong);
+}
+.fv-dialog .raise-preview-divider {
+  border-top: 1px dashed var(--fv-line-strong);
+  padding-top: 8px;
+  margin-top: 4px;
+}
+
+/* S3.8 Insurance helpers */
+.fv .insurance-limits-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.fv .insurance-limit-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fv .insurance-limit-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+.fv .insurance-limit-name {
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+.fv .insurance-limit-val {
+  color: var(--ink-muted);
+}
+.fv .insurance-limit-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface2);
+  overflow: hidden;
+  display: block;
+}
+.fv .insurance-limit-fill {
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--id-teal);
+}
+.fv .category-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.fv .category-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--id-teal);
+  flex: none;
+}
+.fv .category-title {
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+.fv .category-limit-cell {
+  color: var(--ink-muted);
+}
+
+/* ---------- Dashboard Restyle Additions ---------- */
+.fv .hv-chart-legend {
+  display: flex;
+  gap: 14px;
+  font-size: 12.5px;
+  color: var(--ink-label);
+}
+.fv .hv-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.fv .hv-legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  flex: none;
+}
+.fv .hv-dot-teal { background: var(--id-teal); }
+.fv .hv-dot-sky { background: var(--id-sky); }
+.fv .hv-dot-pink { background: var(--id-pink); }
+.fv .hv-dot-green { background: var(--id-green); }
+.fv .hv-dot-blue { background: var(--id-blue); }
+
+.fv .hv-request-type-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.fv .hv-request-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.fv .hv-req-bar-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fv .hv-req-bar-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+.fv .hv-req-bar-label {
+  color: var(--ink-strong);
+  font-weight: 600;
+}
+.fv .hv-req-bar-val {
+  color: var(--ink-label);
+}
+.fv .hv-req-bar-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface2);
+  display: block;
+  overflow: hidden;
+}
+.fv .hv-req-bar-fill {
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+}
+.fv .hv-bar-teal { background: var(--id-teal); }
+.fv .hv-bar-sky { background: var(--id-sky); }
+.fv .hv-bar-pink { background: var(--id-pink); }
+.fv .hv-request-summary {
+  margin-top: auto;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface2);
+  font-size: 12.5px;
+  color: var(--ink-label);
+}
+
+.fv .hv-dash-insurance-card {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 14px 16px;
+}
+.fv .hv-dash-ins-head {
+  flex: none;
+}
+.fv .hv-dash-ins-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.fv .hv-dash-ins-tile {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface2);
+}
+.fv .hv-dash-ins-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+}
+.fv .hv-dash-ins-cat {
+  color: var(--ink-label);
+  font-weight: 600;
+}
+.fv .hv-dash-ins-val {
+  color: var(--ink-strong);
+  font-weight: 700;
+}
+.fv .hv-dash-ins-track {
+  margin-top: 7px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface);
+  display: block;
+  overflow: hidden;
+}
+.fv .hv-dash-ins-fill {
+  display: block;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--id-teal);
+}
+.fv .hv-dash-ins-btn {
+  flex: none;
+}
+.fv th.hv-th-active,
+.fv th[data-sort-active="true"] {
+  color: var(--brand);
+}
+
+
+
+/* Employee detail v3: KPI accent, card meta, text link buttons, missing bank alert, unset values (HR-EmployeeDetail) */
+#a-employee-detail .ed-kpi-v--brand { color: var(--brand-text); }
+#a-employee-detail .ed-unset { color: var(--ink-muted); font-weight: 400; }
+#a-employee-detail .ed-card-meta { margin-left: auto; font-size: 12.5px; color: var(--ink-muted); white-space: nowrap; }
+#a-employee-detail .ed-link-btn {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--brand-text);
+  cursor: pointer;
+}
+#a-employee-detail .ed-link-btn:hover { color: var(--brand-ink); text-decoration: underline; }
+#a-employee-detail .employee-bank-card .status-line.is-missing {
+  margin: 10px 16px 14px;
+  padding: 12px 14px;
+  border: 1px dashed var(--warning);
+  border-radius: 12px;
+  background: var(--warning-soft);
+}
+#a-employee-detail .employee-bank-card .status-line.is-missing { display: block; }
+#a-employee-detail .employee-bank-card .status-line.is-missing .btn { height: 30px; padding: 0 12px; }
+#a-employee-detail .ed-alert-text { margin: 0 0 8px; font-size: 12.5px; color: var(--ink-body); }
+
+/* Slice 3: name cell sub line (two-line first cell), claim reject icon */
+.fv td.tname .hv-sub-line {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.45;
+  margin-top: 2px;
+  color: var(--ink-muted);
+}
+#a-insurance .icon-action.text-danger { color: var(--danger); }
+
+/* User accounts filters keep the select chevron */
+#a-system-users select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%239ca3af' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 13px center;
+}
+.hv-muted { color: var(--ink-muted); }
+
+/* Salary payment docs: doc number opens the preview (link button), muted regenerate icon */
+#a-invoices .hv-link-btn { border: 0; background: none; padding: 0; font: inherit; color: var(--brand-text); cursor: pointer; text-align: left; }
+#a-invoices .hv-link-btn:hover { color: var(--brand-ink); text-decoration: underline; }
+
+/* Request type: colour square + plain label, sub line under it (HR-Requests, HR-Dashboard mocks) */
+.fv .hv-reqtype { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-strong); font-weight: 500; }
+.fv .hv-reqtype__dot { width: 8px; height: 8px; border-radius: 3px; display: inline-block; flex: none; background: var(--ink-muted); }
+.fv .hv-reqtype__dot--teal { background: var(--id-teal); }
+.fv .hv-reqtype__dot--sky { background: var(--id-sky); }
+.fv .hv-reqtype__dot--pink { background: var(--id-pink); }
+#a-requests td[data-label="Request"] .hv-sub-line { margin-top: 0; }

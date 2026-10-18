@@ -1,21 +1,21 @@
   <div class="modal-overlay fv fv-dialog fv-area-teal" id="customerModal">
     <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="customerModalTitle">
       <div class="modal-head">
-        <div class="modal-head-icon"><i class="fa-solid fa-users"></i></div>
+        <span class="modal-head-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M20 8v6M23 11h-6"></path></svg></span>
         <div class="modal-head-text">
           <h3 id="customerModalTitle">Add Customer</h3>
           <p>Register client organizations for sales billing, invoice generation, and receivables tracking.</p>
         </div>
-        <button class="modal-close" onclick="closeModal('customerModal')" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
+        <button class="modal-close" onclick="closeModal('customerModal')" aria-label="Close dialog"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
       </div>
 
       <!-- Duplicate Candidate Warning Banner -->
-      <div id="customerDuplicateBanner" class="alert alert-warning" style="display:none; margin: 12px 24px 0 24px; padding: 10px 14px; font-size: 0.85rem; border-radius: 6px; border: 1px solid var(--warning-border, #f59e0b); background: var(--warning-bg, rgba(245,158,11,0.1));" role="status">
+      <div id="customerDuplicateBanner" class="alert alert-warning" style="display:none; margin: 12px 24px 0 24px; padding: 10px 14px; font-size: 0.85rem; border-radius: 6px; border: 1px solid var(--warning-border); background: var(--warning-bg);" role="status">
         <div style="display:flex; align-items:flex-start; gap:8px;">
-          <i class="fa-solid fa-triangle-exclamation" style="color:var(--warning, #f59e0b); margin-top:2px;"></i>
+          <i class="fa-solid fa-triangle-exclamation" style="color:var(--warning); margin-top:2px;"></i>
           <div>
             <div style="font-weight:700;">Potential Duplicate Customer</div>
-            <div id="customerDuplicateText" style="color:var(--text2); margin-top:2px;">A customer with matching identity already exists.</div>
+            <div id="customerDuplicateText" style="color:var(--ink-muted); margin-top:2px;">A customer with matching identity already exists.</div>
           </div>
         </div>
       </div>
@@ -23,7 +23,6 @@
       <div class="modal-body">
         <input type="hidden" id="fCustomerId">
         <div class="form-section">
-          <div class="form-section-label"><i class="fa-solid fa-id-card"></i> Identity & Legal Information <span class="line"></span></div>
           <div class="form-grid">
             <div class="form-field full">
               <label for="fCustomerName">Company / Display Name <span class="req">*</span></label>
@@ -49,7 +48,6 @@
         </div>
 
         <div class="form-section" style="margin-top:16px;">
-          <div class="form-section-label"><i class="fa-solid fa-file-contract"></i> Billing Terms & Operations <span class="line"></span></div>
           <div class="form-grid">
             <div class="form-field">
               <label for="fCustomerTerms">Payment Terms (Days)</label>
@@ -59,9 +57,9 @@
               <label for="fCustomerWithholding">Withholding tax (%)</label>
               <input id="fCustomerWithholding" type="number" min="0" max="100" step="0.01" value="0" placeholder="0 (normally none)">
             </div>
-            <div class="form-field">
+            <div class="form-field full">
               <label for="fCustomerCurrency">Default Currency</label>
-              <select id="fCustomerCurrency" class="form-control">
+              <select id="fCustomerCurrency">
                 <option value="USD" selected>USD — US Dollars</option>
                 <option value="EGP">EGP — Egyptian Pounds</option>
                 <option value="EUR">EUR — Euros</option>
@@ -89,7 +87,7 @@
       </div>
       <div class="modal-foot">
         <button class="btn" onclick="closeModal('customerModal')">Cancel</button>
-        <button class="btn btn-fill" id="customerSaveBtn" onclick="saveCustomer()"><i class="fa-solid fa-floppy-disk"></i> Save Customer</button>
+        <button class="btn btn-fill" id="customerSaveBtn" onclick="saveCustomer()">Save Customer</button>
       </div>
     </div>
   </div>

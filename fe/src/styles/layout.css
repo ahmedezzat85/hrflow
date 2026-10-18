@@ -263,41 +263,54 @@ html, body {
   min-width: 0;
   height: 100vh;
   overflow-y: auto;
+  background: var(--fv-canvas);
 }
 
 .topbar {
   position: sticky;
   top: 0;
   z-index: 20;
-  background: var(--bg);
-  border-bottom: 1px solid var(--border);
+  background: var(--fv-surface);
+  border-bottom: 1px solid var(--fv-line);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 48px;
-  padding: 6px 24px;
+  height: 52px;
+  min-height: 52px;
+  padding: 0 24px;
   box-sizing: border-box;
 }
 
 .topbar-lead {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
 }
 
 .topbar h1 {
   margin: 0;
   font-family: var(--font-head);
-  font-size: 17px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
   letter-spacing: -0.012em;
   line-height: 1.25;
-  color: var(--text);
+  color: var(--ink-strong);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.topbar .fv-area-name {
+  font-size: 12.5px;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+.topbar .fv-area-name[hidden],
+.topbar .fv-tile[hidden] {
+  display: none;
 }
 
 .topbar-add-tx {

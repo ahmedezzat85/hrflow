@@ -104,34 +104,83 @@ function initMockAdminData(){
   };
 
   employees = [
-    { id: 'EMP001', name: 'Sarah Connor', email: 'sarah@voyance.com', role: 'Engineering Lead', department: 'Engineering', dept: 'Engineering', status: 'Active', hireDate: '2023-01-15', salary: 12500, internalSalaryUsd: 5000, externalSalaryUsd: 7500, phone: '+1 555-0101', nextRaise: getFutureDate(45), salaryHistory: [{ date: '2023-01-15', salary: 11000, newInternal: 4500, newExternal: 6500, prevInternal: 4500, prevExternal: 6500, reason: 'Hire package' }, { date: '2024-01-15', salary: 12500, pct: '+13.6%', newInternal: 5000, newExternal: 7500, prevInternal: 4500, prevExternal: 6500, reason: 'Annual performance raise' }] },
-    { id: 'EMP002', name: 'John Doe', email: 'john@voyance.com', role: 'Product Designer', department: 'Design', dept: 'Design', status: 'Active', hireDate: '2023-04-10', salary: 9800, phone: '+1 555-0102', nextRaise: getFutureDate(75), salaryHistory: [] },
-    { id: 'EMP003', name: 'Alex Rivera', email: 'alex@voyance.com', role: 'QA Analyst', department: 'Engineering', dept: 'Engineering', status: 'Active', hireDate: '2023-08-01', salary: 8200, phone: '+1 555-0103', nextRaise: getFutureDate(110), salaryHistory: [] },
-    { id: 'EMP004', name: 'Elena Rostova', email: 'elena@voyance.com', role: 'Operations Manager', department: 'Operations', dept: 'Operations', status: 'Active', hireDate: '2022-11-20', salary: 11500, phone: '+1 555-0104', salaryHistory: [] },
-    { id: 'EMP005', name: 'Marcus Vance', email: 'marcus@voyance.com', role: 'Frontend Engineer', department: 'Engineering', dept: 'Engineering', status: 'On Leave', hireDate: '2024-02-01', salary: 9000, phone: '+1 555-0105', salaryHistory: [] }
+    { id: 'EMP001', name: 'Sarah Connor', email: 'sarah@voyance.com', role: 'Engineering Lead', department: 'Engineering', dept: 'Engineering', status: 'Active', hireDate: '2023-01-15', salary: 12500, internalSalaryUsd: 5000, externalSalaryUsd: 7500, vacTotal: 21, vacUsed: 8, join: '2023-01-15', phone: '+1 555-0101', nextRaise: getFutureDate(45), salaryHistory: [{ date: '2023-01-15', salary: 11000, newInternal: 4500, newExternal: 6500, prevInternal: 4500, prevExternal: 6500, reason: 'Hire package' }, { date: '2024-01-15', salary: 12500, pct: '+13.6%', newInternal: 5000, newExternal: 7500, prevInternal: 4500, prevExternal: 6500, reason: 'Annual performance raise' }] },
+    { id: 'EMP002', name: 'John Doe', email: 'john@voyance.com', role: 'Product Designer', department: 'Design', dept: 'Design', status: 'Active', hireDate: '2023-04-10', salary: 9000, internalSalaryUsd: 3000, externalSalaryUsd: 6000, vacTotal: 21, vacUsed: 2, join: '2023-04-10', phone: '+1 555-0102', nextRaise: getFutureDate(75), salaryHistory: [] },
+    { id: 'EMP003', name: 'Alex Rivera', email: 'alex@voyance.com', role: 'QA Analyst', department: 'Engineering', dept: 'Engineering', status: 'Active', hireDate: '2023-08-01', salary: 8000, internalSalaryUsd: 2500, externalSalaryUsd: 5500, vacTotal: 21, vacUsed: 2, join: '2023-08-01', phone: '+1 555-0103', nextRaise: getFutureDate(110), salaryHistory: [] },
+    { id: 'EMP004', name: 'Elena Rostova', email: 'elena@voyance.com', role: 'Operations Manager', department: 'Operations', dept: 'Operations', status: 'Active', hireDate: '2022-11-20', salary: 10500, internalSalaryUsd: 3500, externalSalaryUsd: 7000, vacTotal: 21, vacUsed: 0, join: '2022-11-20', phone: '+1 555-0104', salaryHistory: [] },
+    { id: 'EMP005', name: 'Marcus Vance', email: 'marcus@voyance.com', role: 'Frontend Engineer', department: 'Engineering', dept: 'Engineering', status: 'On Leave', hireDate: '2024-02-01', salary: 11000, internalSalaryUsd: 3500, externalSalaryUsd: 7500, vacTotal: 21, vacUsed: 0, join: '2024-02-01', phone: '+1 555-0105', salaryHistory: [] }
   ];
 
   requests = [
-    { id: 'REQ-101', employee_id: 'EMP001', employee_name: 'Sarah Connor', type: 'Vacation', status: 'Approved', date: getPastDate(0, 5), startDate: getPastDate(0, 2), endDate: getFutureDate(3), days: 5 },
-    { id: 'REQ-102', employee_id: 'EMP002', employee_name: 'John Doe', type: 'Work From Home', status: 'Pending', date: getPastDate(0, 8), startDate: getFutureDate(1), endDate: getFutureDate(2), days: 2 },
-    { id: 'REQ-103', employee_id: 'EMP003', employee_name: 'Alex Rivera', type: 'Vacation', status: 'Pending', date: getPastDate(0, 10), startDate: getFutureDate(5), endDate: getFutureDate(10), days: 5 },
+    { id: 'REQ-101', employee_id: 'EMP001', employee_name: 'Sarah Connor', type: 'Vacation', status: 'Approved', date: getPastDate(0, 5), startDate: getPastDate(0, 2), endDate: getPastDate(0, 6), days: 5 },
+    { id: 'REQ-102', employee_id: 'EMP002', employee_name: 'John Doe', type: 'Work From Home', status: 'Pending', date: getPastDate(0, 8), startDate: getPastDate(0, 8), endDate: getPastDate(0, 8), days: 1 },
+    { id: 'REQ-103', employee_id: 'EMP003', employee_name: 'Alex Rivera', type: 'Vacation', status: 'Pending', date: getPastDate(0, 10), startDate: getPastDate(0, 10), endDate: getPastDate(0, 14), days: 5 },
     { id: 'REQ-104', employee_id: 'EMP004', employee_name: 'Elena Rostova', type: 'WFH', status: 'Approved', date: getPastDate(1, 12), days: 1 },
     { id: 'REQ-105', employee_id: 'EMP001', employee_name: 'Sarah Connor', type: 'Vacation', status: 'Approved', date: getPastDate(2, 14), days: 3 },
     { id: 'REQ-106', employee_id: 'EMP002', employee_name: 'John Doe', type: 'Vacation', status: 'Approved', date: getPastDate(3, 20), days: 4 },
     { id: 'REQ-107', employee_id: 'EMP005', employee_name: 'Marcus Vance', type: 'WFH', status: 'Approved', date: getPastDate(4, 18), days: 2 },
     { id: 'REQ-108', employee_id: 'EMP003', employee_name: 'Alex Rivera', type: 'Vacation', status: 'Approved', date: getPastDate(5, 22), days: 2 }
   ];
+  // Mock data only: requests without explicit dates cover `days` days starting on the submitted date
+  requests.forEach(r => {
+    if (r.startDate) return;
+    const [y, m, day] = r.date.split('-').map(Number);
+    const end = new Date(y, m - 1, day + Math.max(0, (r.days || 1) - 1));
+    r.startDate = r.date;
+    r.endDate = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
+  });
 
   insuranceClaims = [
     { id: 'CLM-201', employee_id: 'EMP001', employee_name: 'Sarah Connor', service: 'Dental Routine Checkup', category: 'Dental', amount: 180, status: 'Pending', date: getPastDate(0, 7) },
     { id: 'CLM-202', employee_id: 'EMP004', employee_name: 'Elena Rostova', service: 'Optical Exam & Glasses', category: 'Optical', amount: 350, status: 'Approved', date: getPastDate(1, 15) },
-    { id: 'CLM-203', employee_id: 'EMP002', employee_name: 'John Doe', service: 'Physiotherapy', category: 'Physical Therapy', amount: 240, status: 'Approved', date: getPastDate(3, 10) }
+    { id: 'CLM-203', employee_id: 'EMP002', employee_name: 'John Doe', service: 'Physiotherapy', category: 'Physical therapy', amount: 240, status: 'Approved', date: getPastDate(3, 10) }
+  ];
+
+  insuranceCategories = [
+    { id: 1, name: 'Dental', annual_limit: 2000 },
+    { id: 2, name: 'Optical', annual_limit: 1500 },
+    { id: 3, name: 'Physical therapy', annual_limit: 3000 }
+  ];
+
+  insuranceConsumption = [
+    {
+      employee_id: 'EMP001',
+      total_consumed: 180,
+      total_limit: 2000,
+      categories: [
+        { category: 'Dental', consumed: 180, limit: 2000 }
+      ]
+    },
+    {
+      employee_id: 'EMP004',
+      total_consumed: 350,
+      total_limit: 1500,
+      categories: [
+        { category: 'Optical', consumed: 350, limit: 1500 }
+      ]
+    },
+    {
+      employee_id: 'EMP002',
+      total_consumed: 240,
+      total_limit: 3000,
+      categories: [
+        { category: 'Physical therapy', consumed: 240, limit: 3000 }
+      ]
+    }
+  ];
+
+  companyDocuments = [
+    { id: 1, name: 'Leave and Remote Work Policy', category: 'Policy', file_type: 'pdf', uploaded_at: getPastDate(2, 10), drive_file_id: 'mock-doc-1' },
+    { id: 2, name: 'Employee Handbook 2026', category: 'Handbook', file_type: 'pdf', uploaded_at: getPastDate(1, 15), drive_file_id: 'mock-doc-2' },
+    { id: 3, name: 'Medical Insurance Claim Form', category: 'Form', file_type: 'pdf', uploaded_at: getPastDate(0, 1), drive_file_id: 'mock-doc-3' },
+    { id: 4, name: 'Office Access Guidelines', category: 'General', file_type: 'pdf', uploaded_at: getPastDate(0, 12), drive_file_id: 'mock-doc-4' }
   ];
 
   const adminUser = employees[0];
   fillAccountIdentity('admin', { name: adminUser.name, role: adminUser.role });
 
   renderAdminPortal();
+  if (typeof renderCompanyDocumentsAdmin === 'function') renderCompanyDocumentsAdmin();
   initCharts();
 }
 
@@ -139,6 +188,10 @@ function initMockEmployeeData(){
   const today = new Date();
   const getPastDate = (monthsAgo, day = 15) => {
     const d = new Date(today.getFullYear(), today.getMonth() - monthsAgo, day);
+    return d.toISOString().slice(0, 10);
+  };
+  const getFutureDate = (daysAhead) => {
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + daysAhead);
     return d.toISOString().slice(0, 10);
   };
 
@@ -151,29 +204,57 @@ function initMockEmployeeData(){
     status: 'Active',
     hireDate: '2023-01-15',
     salary: 12500,
+    internalSalaryUsd: 5000,
+    externalSalaryUsd: 7500,
+    vacTotal: 21,
+    vacUsed: 8,
+    nextRaise: getFutureDate(45),
     phone: '+1 555-0101',
-    annualLeaveBalance: 16,
+    annualLeaveBalance: 13,
     annualLeaveTotal: 21,
     salaryHistory: [
-      { date: '2023-01-15', salary: 11000 },
-      { date: '2023-07-01', salary: 11800 },
-      { date: '2024-01-15', salary: 12500 }
+      { date: '2023-01-15', salary: 11000, newInternal: 4500, newExternal: 6500, prevInternal: 4500, prevExternal: 6500, reason: 'Hire package' },
+      { date: '2024-01-15', salary: 12500, pct: '+13.6%', newInternal: 5000, newExternal: 7500, prevInternal: 4500, prevExternal: 6500, reason: 'Annual performance raise' }
     ]
   };
   window.LOGGED_IN_EMPLOYEE_ID = currentLoggedInEmployee.id;
 
   empVacationHistory = [
-    { id: 'REQ-101', type: 'Vacation', status: 'Approved', startDate: getPastDate(0, 2), endDate: getPastDate(0, -3), days: 5 },
-    { id: 'REQ-105', type: 'Vacation', status: 'Approved', startDate: getPastDate(2, 14), endDate: getPastDate(2, 17), days: 3 }
+    { id: 'REQ-101', type: 'Vacation', status: 'Approved', startDate: getPastDate(0, 2), endDate: getPastDate(0, 6), days: 5 },
+    { id: 'REQ-105', type: 'Vacation', status: 'Approved', startDate: getPastDate(2, 14), endDate: getPastDate(2, 16), days: 3 }
   ];
+
+  insuranceCategories = [
+    { id: 1, name: 'Dental', annual_limit: 2000 },
+    { id: 2, name: 'Optical', annual_limit: 1500 },
+    { id: 3, name: 'Physical therapy', annual_limit: 3000 }
+  ];
+  insuranceConsumption = [{
+    employee_id: 'EMP001',
+    total_consumed: 180,
+    total_limit: 6500,
+    categories: [
+      { category: 'Dental', consumed: 180, limit: 2000 },
+      { category: 'Optical', consumed: 0, limit: 1500 },
+      { category: 'Physical therapy', consumed: 0, limit: 3000 }
+    ]
+  }];
 
   empInsuranceHistory = [
     { id: 'CLM-201', category: 'Dental', service: 'Dental Routine Checkup', amount: 180, status: 'Pending', date: getPastDate(0, 7) }
   ];
 
-  fillAccountIdentity('emp', { name: currentLoggedInEmployee.name, role: currentLoggedInEmployee.role });
+  companyDocuments = [
+    { id: 1, name: 'Leave and Remote Work Policy', category: 'Policy', file_type: 'pdf', uploaded_at: getPastDate(2, 10), drive_file_id: 'mock-doc-1' },
+    { id: 2, name: 'Employee Handbook 2026', category: 'Handbook', file_type: 'pdf', uploaded_at: getPastDate(1, 15), drive_file_id: 'mock-doc-2' },
+    { id: 3, name: 'Medical Insurance Claim Form', category: 'Form', file_type: 'pdf', uploaded_at: getPastDate(0, 1), drive_file_id: 'mock-doc-3' },
+    { id: 4, name: 'Office Access Guidelines', category: 'General', file_type: 'pdf', uploaded_at: getPastDate(0, 12), drive_file_id: 'mock-doc-4' }
+  ];
+
+  fillAccountIdentity('emp', { name: currentLoggedInEmployee.name, role: currentLoggedInEmployee.role, department: currentLoggedInEmployee.department });
 
   renderEmployeePortal();
+  if (typeof renderCompanyDocumentsEmployee === 'function') renderCompanyDocumentsEmployee();
   initCharts();
 }
 

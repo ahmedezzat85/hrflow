@@ -39,7 +39,7 @@ test.describe('FUX-505: Global Quick-Add Transaction', () => {
 
   test('Command palette and Shift+N keyboard shortcut open global quick-add modal', async ({ page }) => {
     // 1. Test Command Palette
-    await page.click('#adminSearchBtn');
+    await page.keyboard.press('Control+k');
     const paletteModal = page.locator('#commandPaletteModal');
     await expect(paletteModal).toBeVisible();
 
@@ -157,7 +157,7 @@ test.describe('FUX-505: Global Quick-Add Transaction', () => {
     await expect(page.locator('#a-finance-accounts')).toBeVisible();
 
     // Open workspace on first account
-    await page.locator('.btn-open-workspace').first().click();
+    await page.locator('#financeAccountsTableBody .fv-name-btn').first().click();
     await expect(page.locator('#financeSubPaneWorkspace')).toBeVisible();
 
     // Click Record Transaction from workspace

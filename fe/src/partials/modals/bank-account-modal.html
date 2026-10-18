@@ -1,45 +1,43 @@
-  <div class="modal-overlay" id="bankAccountModal">
+  <div class="modal-overlay fv fv-dialog fv-dialog--w540 fv-area-blue" id="bankAccountModal">
     <div class="modal modal-v2">
       <div class="modal-head">
-        <div class="modal-head-icon"><i class="fa-solid fa-building-columns"></i></div>
+        <span class="modal-head-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18v12H3zM3 11h18M7 15h4"></path></svg></span>
         <div class="modal-head-text">
-          <h3 id="bankAccountModalTitle">Employee bank account details</h3>
-          <p>Employee payout banking details and wire routing.</p>
+          <h3 id="bankAccountModalTitle">Employee bank account</h3>
+          <p>Where this employee is paid. Not a company account.</p>
         </div>
-        <button class="modal-close" onclick="closeModal('bankAccountModal')"><i class="fa-solid fa-xmark"></i></button>
+        <button class="modal-close" onclick="closeModal('bankAccountModal')" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
       </div>
       <div class="modal-body">
         <div class="form-section">
-          <div class="form-section-label"><i class="fa-solid fa-credit-card"></i> Banking Information <span class="line"></span></div>
           <div class="form-grid">
             <div class="form-field full">
-              <label for="fBankName">Bank Name <span class="req">*</span></label>
-              <input id="fBankName" placeholder="e.g. Commercial International Bank (CIB)">
+              <label for="fBankName">Bank name</label>
+              <input id="fBankName" placeholder="Commercial International Bank">
             </div>
             <div class="form-field full">
-              <label for="fBankIban">IBAN <span class="req">*</span></label>
+              <label for="fBankIban">IBAN</label>
               <div style="display:flex;gap:8px;align-items:center;">
-                <input id="fBankIban" placeholder="e.g. EG380019000500000000263180002"
-                  style="flex:1;font-family:monospace;">
+                <input id="fBankIban" placeholder="EG38 0019 0005 0000 0000 0263 1800 2"
+                  style="flex:1;font-variant-numeric:tabular-nums;">
                 <button type="button" class="btn btn-sm" id="bankRevealBtn" onclick="toggleBankIbanReveal()"
                   title="Reveal full IBAN">
                   <i class="fa-solid fa-eye"></i>
                 </button>
               </div>
-              <span style="font-size:11px;color:var(--text3);margin-top:4px;display:block;">Sensitive — shown masked by
+              <span style="font-size:11px;color:var(--ink-muted);margin-top:4px;display:block;">Sensitive — shown masked by
                 default. Click the eye icon to reveal.</span>
             </div>
             <div class="form-field full">
-              <label for="fBankSwift">SWIFT / BIC Code <span class="opt">Optional</span></label>
-              <input id="fBankSwift" placeholder="e.g. CIBEEGCX" style="font-family:monospace;">
+              <label for="fBankSwift">SWIFT or BIC, optional</label>
+              <input id="fBankSwift" placeholder="CIBEEGCX" style="font-variant-numeric:tabular-nums;">
             </div>
           </div>
         </div>
       </div>
       <div class="modal-foot">
         <button class="btn" id="bankAccountCancelBtn" onclick="closeModal('bankAccountModal')">Cancel</button>
-        <button class="btn btn-fill" id="bankAccountSaveBtn" onclick="saveBankAccount(event)"><i class="fa-solid fa-floppy-disk"></i>
-          Save</button>
+        <button class="btn btn-fill" id="bankAccountSaveBtn" onclick="saveBankAccount(event)">Save bank details</button>
       </div>
     </div>
   </div>

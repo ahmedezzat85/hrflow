@@ -1,34 +1,35 @@
-  <div class="modal-overlay" id="externalUserModal">
-    <div class="modal modal-v2" style="max-width: 500px; width: 95%;">
-      <div class="modal-head">
-        <div class="modal-head-icon"><i class="fa-solid fa-user-plus"></i></div>
-        <div class="modal-head-text">
-          <h3 id="externalUserModalTitle">Add External User</h3>
-          <p>An external user has no employee record and needs exactly one role.</p>
+  <div class="modal-overlay fv fv-dialog fv-dialog--w520 fv-area-pink" id="externalUserModal">
+    <div class="modal modal-v2" style="width: 520px; background: var(--fv-surface); border-radius: 18px; display: flex; flex-direction: column; overflow: hidden;">
+      <div class="modal-head" style="display: flex; align-items: center; gap: 12px; padding: 16px 22px; border-bottom: 1px solid var(--fv-line);">
+        <span class="modal-head-icon" style="width: 36px; height: 36px; flex: none; border-radius: 11px; background: var(--fv-area-pink-bg); color: var(--fv-area-pink-ink); display: inline-flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M22 11h-6"></path></svg></span>
+        <div class="modal-head-text" style="flex: 1;">
+          <h3 id="externalUserModalTitle" style="margin: 0; font-family: var(--font-display, Sora, sans-serif); font-size: 17px; font-weight: 700; color: var(--ink-strong);">Add external user</h3>
+          <p style="font-size: 12.5px; color: var(--ink-muted); margin: 0;">No employee record · needs exactly one role</p>
         </div>
-        <button class="modal-close" onclick="closeModal('externalUserModal')"><i class="fa-solid fa-xmark"></i></button>
+        <button class="modal-close" onclick="closeModal('externalUserModal')" aria-label="Close" style="width: 32px; height: 32px; border-radius: 9px; color: var(--ink-label); display: inline-flex; align-items: center; justify-content: center; background: transparent; border: 0; cursor: pointer;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body" style="padding: 16px 22px;">
         <div class="form-section">
-          <div class="form-grid">
-            <div class="form-field full">
-              <label for="fExtUserEmail">Email <span class="req">*</span></label>
-              <input id="fExtUserEmail" type="email" placeholder="name@example.com">
+          <div class="form-grid" style="display: flex; flex-direction: column; gap: 14px;">
+            <div class="form-field full" style="display: flex; flex-direction: column; gap: 5px;">
+              <label for="fExtUserEmail" style="font-size: 12.5px; font-weight: 600; color: var(--ink-label);">Email</label>
+              <input id="fExtUserEmail" type="email" placeholder="name@partner.example" style="height: 36px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; background: var(--fv-surface); color: var(--ink-strong);">
             </div>
-            <div class="form-field full">
-              <label for="fExtUserName">Name</label>
-              <input id="fExtUserName" placeholder="Full name">
+            <div class="form-field full" style="display: flex; flex-direction: column; gap: 5px;">
+              <label for="fExtUserName" style="font-size: 12.5px; font-weight: 600; color: var(--ink-label);">Name, optional</label>
+              <input id="fExtUserName" placeholder="Priya Nair" style="height: 36px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; background: var(--fv-surface); color: var(--ink-strong);">
             </div>
-            <div class="form-field full">
-              <label for="fExtUserRole">Role <span class="req">*</span></label>
-              <select id="fExtUserRole"></select>
+            <div class="form-field full" style="display: flex; flex-direction: column; gap: 5px;">
+              <label for="fExtUserRole" style="font-size: 12.5px; font-weight: 600; color: var(--ink-label);">Role</label>
+              <select id="fExtUserRole" style="height: 36px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; background: var(--fv-surface); color: var(--ink-strong);"></select>
             </div>
+            <p style="margin: 0; padding: 9px 12px; border-radius: 11px; background: var(--fv-surface-soft); font-size: 12.5px; color: var(--ink-body);">They sign in with Google using this email address.</p>
           </div>
         </div>
       </div>
-      <div class="modal-foot">
-        <button class="btn" id="extUserCancelBtn" onclick="closeModal('externalUserModal')">Cancel</button>
-        <button class="btn btn-fill" id="extUserSaveBtn" onclick="saveExternalUser(event)"><i class="fa-solid fa-check"></i> Add User</button>
+      <div class="modal-foot" style="display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 12px 22px; border-top: 1px solid var(--fv-line); background: var(--fv-surface-soft);">
+        <button class="btn" id="extUserCancelBtn" onclick="closeModal('externalUserModal')" style="display: inline-flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 9px; color: var(--ink-label); font-weight: 600; font-size: 13px;">Cancel</button>
+        <button class="btn btn-fill" id="extUserSaveBtn" onclick="saveExternalUser(event)" style="display: inline-flex; align-items: center; height: 34px; padding: 0 16px; border-radius: 9px; font-weight: 600; font-size: 13px;">Add user</button>
       </div>
     </div>
   </div>

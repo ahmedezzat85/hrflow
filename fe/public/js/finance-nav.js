@@ -1,39 +1,94 @@
 // ==========================================
-// Finance area chrome (restyle v2, D-027): top-bar area tile + name, page canvas.
-// Payroll pages are out of scope and keep the existing chrome.
+// App-wide area chrome (restyle v3, D-028): top-bar area tile + name, page canvas.
+// Shared across HR, Finance, Payroll, System, and Employee Portal.
 // ==========================================
-const FINANCE_AREA_BY_PAGE = {
-  "a-finance-dashboard": "overview",
-  "a-finance-sales": "sales",
-  "a-finance-invoices": "sales",
-  "a-finance-spend": "spend",
-  "a-finance-bills": "spend",
-  "a-finance-subscriptions": "spend",
-  "a-finance-statutory": "spend",
-  "a-finance-banking": "banking",
-  "a-finance-accounts": "banking",
-  "a-finance-transfers": "banking",
-  "a-finance-cheques": "banking",
-  "a-finance-statements": "banking",
-  "a-finance-reports": "reports",
-  "a-finance-settings": "settings",
+const APP_AREA_BY_PAGE = {
+  // Finance areas
+  "a-finance-dashboard": { name: "Overview", hue: "blue", icon: "fa-chart-pie" },
+  "a-finance-sales": { name: "Sales", hue: "teal", icon: "fa-file-invoice-dollar" },
+  "a-finance-invoices": { name: "Sales", hue: "teal", icon: "fa-file-invoice-dollar" },
+  "a-finance-spend": { name: "Spend", hue: "orange", icon: "fa-receipt" },
+  "a-finance-bills": { name: "Spend", hue: "orange", icon: "fa-receipt" },
+  "a-finance-subscriptions": { name: "Spend", hue: "orange", icon: "fa-receipt" },
+  "a-finance-statutory": { name: "Spend", hue: "orange", icon: "fa-receipt" },
+  "a-finance-banking": { name: "Banking", hue: "sky", icon: "fa-building-columns" },
+  "a-finance-accounts": { name: "Banking", hue: "sky", icon: "fa-building-columns" },
+  "a-finance-transfers": { name: "Banking", hue: "sky", icon: "fa-building-columns" },
+  "a-finance-cheques": { name: "Banking", hue: "sky", icon: "fa-building-columns" },
+  "a-finance-statements": { name: "Banking", hue: "sky", icon: "fa-building-columns" },
+  "a-finance-reports": { name: "Reports", hue: "violet", icon: "fa-file-excel" },
+  "a-finance-settings": { name: "Settings", hue: "slate", icon: "fa-sliders" },
+
+  // HR
+  "a-dashboard": { name: "HR · People", hue: "blue", icon: "fa-grip" },
+  "a-employees": { name: "HR · People", hue: "blue", icon: "fa-users" },
+  "a-employee-detail": { name: "HR · People", hue: "blue", icon: "fa-user" },
+  "a-requests": { name: "HR · People", hue: "blue", icon: "fa-inbox" },
+  "a-salary": { name: "HR · People", hue: "green", icon: "fa-arrow-trend-up" },
+  "a-invoices": { name: "HR · People", hue: "green", icon: "fa-file-lines" },
+  "a-vacations": { name: "HR · Benefits and records", hue: "teal", icon: "fa-umbrella-beach" },
+  "a-insurance": { name: "HR · Benefits and records", hue: "teal", icon: "fa-briefcase-medical" },
+  "a-dochub": { name: "HR · Benefits and records", hue: "ochre", icon: "fa-folder-open" },
+
+  // Payroll
+  "a-finance-payroll": { name: "Payroll", hue: "violet", icon: "fa-money-check-dollar" },
+  "a-finance-payroll-runs": { name: "Payroll", hue: "violet", icon: "fa-clock-rotate-left" },
+  "a-finance-payroll-settings": { name: "Payroll · Settings", hue: "slate", icon: "fa-sliders" },
+
+  // System
+  "a-system-roles": { name: "System · Access and security", hue: "pink", icon: "fa-shield-halved" },
+  "a-system-users": { name: "System · Access and security", hue: "pink", icon: "fa-users-gear" },
+
+  // Employee Portal
+  "e-dashboard": { name: "My workspace", hue: "blue", icon: "fa-grip" },
+  "e-salary": { name: "My workspace", hue: "green", icon: "fa-arrow-trend-up" },
+  "e-payslips": { name: "My workspace", hue: "violet", icon: "fa-file-invoice-dollar" },
+  "e-vacations": { name: "My workspace", hue: "teal", icon: "fa-umbrella-beach" },
+  "e-insurance": { name: "My workspace", hue: "teal", icon: "fa-briefcase-medical" },
+  "e-dochub": { name: "My workspace", hue: "ochre", icon: "fa-folder-open" },
 };
 
-function applyFinanceAreaChrome(pageId) {
-  const shell = document.querySelector("#admin-app .main");
-  const tile = document.getElementById("adminAreaTile");
-  const nameEl = document.getElementById("adminAreaName");
-  const areaKey = FINANCE_AREA_BY_PAGE[pageId];
-  const area = areaKey && typeof FinanceUI !== "undefined" ? FinanceUI.AREAS[areaKey] : null;
-  if (shell) shell.classList.toggle("fv-shell", !!area);
+// Outline icon set from the approved mocks for the page-title tile (paths only).
+const PAGE_TILE_SVG = {
+  "a-dashboard": "<path d=\"M4 13h6V4H4zM14 20h6v-9h-6zM14 8h6V4h-6zM4 20h6v-3H4z\"></path>",
+  "a-employees": "<path d=\"M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 20v-1a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8\"></path>",
+  "a-employee-detail": "<path d=\"M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 20v-1a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8\"></path>",
+  "a-requests": "<path d=\"M4 13l2.5-8h11L20 13v6H4zM4 13h5l1 2h4l1-2h5\"></path>",
+  "a-salary": "<path d=\"M3 17l6-6 4 4 8-8M15 7h6v6\"></path>",
+  "a-invoices": "<path d=\"M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h6\"></path>",
+  "a-vacations": "<path d=\"M12 3a9 9 0 0 1 9 9H3a9 9 0 0 1 9-9M12 12v7a2 2 0 0 0 4 0\"></path>",
+  "a-insurance": "<path d=\"M12 20s-8-5.2-8-10.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5C20 14.8 12 20 12 20z\"></path>",
+  "a-dochub": "<path d=\"M3 6h6l2 2h10v11H3z\"></path>",
+  "a-finance-payroll": "<path d=\"M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2\"></path>",
+  "a-finance-payroll-runs": "<path d=\"M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2\"></path>",
+  "a-finance-payroll-settings": "<path d=\"M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M14 4v4M8 10v4M16 16v4\"></path>",
+  "a-system-roles": "<path d=\"M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z\"></path>",
+  "a-system-users": "<path d=\"M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 20v-1a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8\"></path>",
+  "e-dashboard": "<path d=\"M4 13h6V4H4zM14 20h6v-9h-6zM14 8h6V4h-6zM4 20h6v-3H4z\"></path>",
+  "e-salary": "<path d=\"M3 17l6-6 4 4 8-8M15 7h6v6\"></path>",
+  "e-payslips": "<path d=\"M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6\"></path>",
+  "e-vacations": "<path d=\"M12 3a9 9 0 0 1 9 9H3a9 9 0 0 1 9-9M12 12v7a2 2 0 0 0 4 0\"></path>",
+  "e-insurance": "<path d=\"M12 20s-8-5.2-8-10.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5C20 14.8 12 20 12 20z\"></path>",
+  "e-dochub": "<path d=\"M3 6h6l2 2h10v11H3z\"></path>"
+};
+
+function applyFinanceAreaChrome(pageId, portal = "admin") {
+  const isEmp = portal === "employee" || (pageId && pageId.startsWith("e-"));
+  const shell = document.querySelector(isEmp ? "#employee-app .main" : "#admin-app .main");
+  const tile = document.getElementById(isEmp ? "empAreaTile" : "adminAreaTile");
+  const nameEl = document.getElementById(isEmp ? "empAreaName" : "adminAreaName");
+  if (shell) shell.classList.add("fv-shell");
   if (!tile || !nameEl) return;
+  const area = APP_AREA_BY_PAGE[pageId];
   if (!area) {
     tile.hidden = true;
     nameEl.hidden = true;
     return;
   }
   tile.className = `fv-tile fv-hue-${area.hue}`;
-  tile.innerHTML = `<i class="fa-solid ${area.icon}"></i>`;
+  tile.innerHTML = PAGE_TILE_SVG[pageId]
+    ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PAGE_TILE_SVG[pageId]}</svg>`
+    : `<i class="fa-solid ${area.icon}"></i>`;
   tile.hidden = false;
   nameEl.textContent = area.name;
   nameEl.hidden = false;
@@ -204,7 +259,7 @@ function runFinanceLoader(pageId) {
   } else if (pageId === "a-finance-settings") {
     loading = switchFinanceSettingsSubTab(_currentSettingsSubTab);
   } else if (pageId === "e-payslips") {
-    loading = loadMyPayslips();
+    loading = Promise.resolve();
   }
 
   if (pageId && pageId.startsWith("a-finance-") && typeof FinanceTable !== "undefined" && typeof FinanceTable.initAllTablesDensity === "function") {

@@ -10,7 +10,7 @@ test.describe('FUX-406: Unified Settlement Linking', () => {
     await expect(page.locator('#financeSubPaneAccounts')).toBeVisible();
 
     // Open workspace on the first account (Voyance Operating USD)
-    await page.locator('.btn-open-workspace').first().click();
+    await page.locator('#financeAccountsTableBody .fv-name-btn').first().click();
     await expect(page.locator('#financeSubPaneWorkspace')).toBeVisible();
 
     // Click Record Transaction

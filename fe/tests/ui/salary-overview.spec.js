@@ -11,15 +11,14 @@ async function openSalary(page, viewport) {
   await expect(page.locator('#salaryTableBody tr.salary-row').first()).toBeVisible();
 }
 
-test.describe('H2: Salary and Raises read-only overview', () => {
-  test('AC1: no toolbar, no Actions column, no control opens the raise or plan modal', async ({ page }) => {
+test.describe('H2: Salary and Raises overview (restyle v3)', () => {
+  test('AC1: no toolbar, Apply raise and row actions gated by permission', async ({ page }) => {
     await openSalary(page);
     const sec = page.locator('#a-salary');
     await expect(sec.locator('.toolbar')).toHaveCount(0);
     await expect(sec.locator('#btnOpenRaiseModal')).toHaveCount(0);
-    await expect(sec.locator('thead th', { hasText: 'Actions' })).toHaveCount(0);
-    await expect(sec.locator('#salaryTableBody button')).toHaveCount(0);
-    await expect(sec.locator('[onclick*="openRaiseModal"], [onclick*="openCompPlanModal"]')).toHaveCount(0);
+    await expect(sec.locator('#btnApplyRaise')).toBeVisible();
+    await expect(sec.locator('#salaryTableBody .btn-outline')).not.toHaveCount(0);
     await page.locator('#salaryTableBody tr').first().locator('td').nth(2).click();
     await expect(page.locator('#raiseModal')).not.toBeVisible();
     await expect(page.locator('#compensationPlanModal')).not.toBeVisible();
@@ -87,6 +86,6 @@ test.describe('H2: Salary and Raises read-only overview', () => {
     await expect(page.locator('#statAvgRaise')).toHaveText('+15.0%');
     await expect(page.locator('#companyRaiseHistoryBody tr')).toHaveCount(3);
     // Last raise is the newest by date, not the last array element
-    await expect(page.locator('#salaryTableBody tr[data-employee-id="1"]')).toContainText(`${year}-02-01`);
+    await expect(page.locator('#salaryTableBody tr[data-employee-id="1"]')).toContainText(`1 Feb ${year}`);
   });
 });

@@ -1,50 +1,47 @@
-  <div class="modal-overlay" id="raiseModal">
+  <div class="modal-overlay fv fv-dialog fv-dialog--w600 fv-area-green" id="raiseModal">
     <div class="modal modal-v2">
       <div class="modal-head">
-        <div class="modal-head-icon"><i class="fa-solid fa-arrow-trend-up"></i></div>
+        <span class="modal-head-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"></path></svg></span>
         <div class="modal-head-text">
-          <h3 id="raiseModalTitle">Apply New Raise</h3>
-          <p>Adjust compensation packages and record raises.</p>
+          <h3 id="raiseModalTitle">Apply raise</h3>
+          <p>Records the raise and updates pay from the effective date</p>
         </div>
-        <button class="modal-close" onclick="closeModal('raiseModal')"><i class="fa-solid fa-xmark"></i></button>
+        <button class="modal-close" onclick="closeModal('raiseModal')" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
       </div>
       <div class="modal-body">
         <div class="form-section">
-          <div class="form-section-label"><i class="fa-solid fa-user"></i> Employee Selection <span class="line"></span></div>
           <div class="form-field full">
-            <label for="rEmpSelect">Employee <span class="req">*</span></label>
+            <label for="rEmpSelect">Employee</label>
             <select id="rEmpSelect" onchange="onRaiseEmployeeChange()"></select>
             <input type="text" id="rEmpName" class="form-control" aria-label="Employee" readonly hidden>
           </div>
         </div>
 
-        <div class="form-section">
-          <div class="form-section-label"><i class="fa-solid fa-sack-dollar"></i> Compensation Adjustment <span class="line"></span></div>
-          <div class="form-grid">
-            <div class="form-field">
-              <label for="rvCurrentInternal">Current Internal <span class="opt">USD</span></label>
-              <input type="text" id="rvCurrentInternal" value="—" disabled>
-            </div>
-            <div class="form-field">
-              <label for="rvCurrentExternal">Current External <span class="opt">USD</span></label>
-              <input type="text" id="rvCurrentExternal" value="—" disabled>
-            </div>
-            <div class="form-field">
-              <label for="rNewInternal">New Internal <span class="opt">USD</span> <span class="req">*</span></label>
-              <input min="0" inputmode="decimal" type="number" id="rNewInternal" placeholder="e.g. 550" oninput="updateRaisePreview()">
-            </div>
-            <div class="form-field">
-              <label for="rNewExternal">New External <span class="opt">USD</span> <span class="req">*</span></label>
-              <input min="0" inputmode="decimal" type="number" id="rNewExternal" placeholder="e.g. 1000" oninput="updateRaisePreview()">
-            </div>
+        <div class="hv-grid hv-grid-2 hv-mb-12">
+          <div class="fv-dialog-tile">
+            <div class="fv-dialog-tile__label">Internal now</div>
+            <div class="fv-dialog-tile__value" id="rvCurrentInternalTile">—</div>
+            <input type="text" id="rvCurrentInternal" value="—" hidden>
+          </div>
+          <div class="fv-dialog-tile">
+            <div class="fv-dialog-tile__label">External now</div>
+            <div class="fv-dialog-tile__value" id="rvCurrentExternalTile">—</div>
+            <input type="text" id="rvCurrentExternal" value="—" hidden>
           </div>
         </div>
 
         <div class="form-section">
-          <div class="form-section-label"><i class="fa-solid fa-calendar-check"></i> Raise Details <span class="line"></span></div>
           <div class="form-grid">
             <div class="form-field">
-              <label for="rDate">Effective Date <span class="req">*</span></label>
+              <label for="rNewInternal">New internal, USD</label>
+              <input min="0" inputmode="decimal" type="number" id="rNewInternal" placeholder="e.g. 550" class="hv-right hv-bold" oninput="updateRaisePreview()">
+            </div>
+            <div class="form-field">
+              <label for="rNewExternal">New external, USD</label>
+              <input min="0" inputmode="decimal" type="number" id="rNewExternal" placeholder="e.g. 1000" class="hv-right hv-bold" oninput="updateRaisePreview()">
+            </div>
+            <div class="form-field">
+              <label for="rDate">Effective date</label>
               <input type="date" id="rDate">
             </div>
             <div class="form-field">
@@ -63,14 +60,14 @@
         <div class="raise-preview" id="raisePreview">
           <div class="row"><span>Internal Δ</span><b id="rvInternalDelta">—</b></div>
           <div class="row"><span>External Δ</span><b id="rvExternalDelta">—</b></div>
-          <div class="row" style="border-top:1px dashed var(--accent);padding-top:8px;margin-top:4px;"><span>Current Total</span><b id="rvCurrent">—</b></div>
-          <div class="row"><span>New Total</span><b id="rvNew">—</b></div>
+          <div class="row raise-preview-divider"><span>Current total</span><b id="rvCurrent">—</b></div>
+          <div class="row"><span>New total</span><b id="rvNew">—</b></div>
           <div class="row"><span>Total Δ</span><b id="rvIncrease">—</b></div>
         </div>
       </div>
       <div class="modal-foot">
         <button class="btn" id="raiseModalCancelBtn" onclick="closeModal('raiseModal')">Cancel</button>
-        <button class="btn btn-fill" id="raiseModalSaveBtn" onclick="applyRaise(event)"><i class="fa-solid fa-check"></i> Apply Raise</button>
+        <button class="btn btn-fill" id="raiseModalSaveBtn" onclick="applyRaise(event)">Apply raise</button>
       </div>
     </div>
   </div>

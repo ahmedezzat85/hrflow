@@ -48,10 +48,11 @@ test.describe('H1: Compensation card on the employee profile', () => {
     await expect(rows.nth(0)).toContainText('Annual performance raise');
     await expect(rows.nth(1)).toContainText('Mid-year adjustment');
     await expect(card).not.toContainText('John only reason');
-    // The profile head keeps only the monthly total and a link to the card
+    // The profile head KPI strip keeps only the monthly total in its first cell (the mock has no "see details" link)
     await expect(page.locator('#detailCompZone')).toContainText('$12,500');
+    await expect(page.locator('#detailCompZone')).toContainText('per month, USD');
     await expect(page.locator('#detailCompZone')).not.toContainText('Internal');
-    await expect(page.locator('#compDetailsLink')).toBeVisible();
+    await expect(page.locator('#compDetailsLink')).toHaveCount(0);
   });
 
   test('empty state when the employee has no raises', async ({ page }) => {

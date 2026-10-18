@@ -1,63 +1,76 @@
-        <section class="page-section" id="a-salary">
-          <div class="grid g4" style="margin-bottom:20px;">
-            <div class="card stat-card">
-              <div class="stat-label">Total Monthly Payroll</div>
-              <div class="stat-val" id="statPayroll">$0</div>
+        <section class="page-section fv" id="a-salary">
+          <div class="hv-grid hv-grid-4">
+            <div class="hv-stat-tile">
+              <span class="hv-stat-label">Monthly pay, all employees</span>
+              <span class="hv-stat-value" id="statPayroll">$0</span>
+              <span class="hv-stat-sub">USD, internal and external</span>
             </div>
-            <div class="card stat-card">
-              <div class="stat-label">Avg. Raise (Last Cycle)</div>
-              <div class="stat-val" id="statAvgRaise">+0%</div>
+            <div class="hv-stat-tile">
+              <span class="hv-stat-label">Average raise, last cycle</span>
+              <span class="hv-stat-value" id="statAvgRaise">+0%</span>
+              <span class="hv-stat-sub" id="statAvgRaiseSub">Last review cycle</span>
             </div>
-            <div class="card stat-card">
-              <div class="stat-label">Raises Applied (YTD)</div>
-              <div class="stat-val" id="statRaisesYtd">0</div>
+            <div class="hv-stat-tile">
+              <span class="hv-stat-label">Raises applied this year</span>
+              <span class="hv-stat-value" id="statRaisesYtd">0</span>
+              <span class="hv-stat-sub" id="statRaisesYtdSub">since 1 Jan 2026</span>
             </div>
-            <div class="card stat-card">
-              <div class="stat-label">Upcoming This Quarter</div>
-              <div class="stat-val" id="statUpcomingQ">0</div>
+            <div class="hv-stat-tile">
+              <span class="hv-stat-label">Raises due this quarter</span>
+              <span class="hv-stat-value" id="statUpcomingQ">0</span>
+              <span class="hv-stat-sub" id="statUpcomingQSub">Upcoming reviews</span>
             </div>
           </div>
-          <div class="card" style="margin-bottom:20px;">
-            <div class="card-head">
-              <h3>Employee Compensation</h3>
-              <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="salarySearch"
-                  placeholder="Search employees..." aria-label="Search employees"></div>
+          <div class="card fv-table-card hv-mb-14">
+            <div class="card-head hv-card-head hv-wrap">
+              <h3 class="hv-card-title">Current pay</h3>
+              <div class="hv-row-8">
+                <div class="search-box hv-w-200">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+                  <input id="salarySearch" placeholder="Search employees" aria-label="Search employees">
+                </div>
+                <button type="button" class="btn btn-fill btn-sm" id="btnApplyRaise" onclick="openRaiseModal()">Apply raise</button>
+              </div>
             </div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Employee</th>
-                  <th>Department</th>
-                  <th>External USD</th>
-                  <th>Internal USD Cash</th>
-                  <th>Total Monthly</th>
-                  <th>Next Raise Date</th>
-                  <th>Last Raise Applied</th>
-                </tr>
-              </thead>
-              <tbody id="salaryTableBody"></tbody>
-            </table>
-
+            <div class="fv-table-scroll">
+              <table class="responsive-card-table fv-table">
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th class="hv-right">External USD</th>
+                    <th class="hv-right">Internal USD cash</th>
+                    <th class="hv-right">Monthly total</th>
+                    <th data-sort-default="asc">Next raise</th>
+                    <th>Last raise</th>
+                    <th class="hv-right"><span class="sr-only">Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody id="salaryTableBody"></tbody>
+              </table>
+            </div>
           </div>
-          <div class="card">
-            <div class="card-head">
-              <h3>Company-wide Raise History</h3>
+          <div class="card fv-table-card">
+            <div class="card-head hv-card-head">
+              <h3 class="hv-card-title">Raise history</h3>
+              <select class="hv-select" id="raiseHistoryYearFilter" aria-label="Year">
+                <option value="">All years</option>
+              </select>
             </div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Employee</th>
-                  <th>Effective Date</th>
-                  <th>New Internal</th>
-                  <th>New External</th>
-                  <th>New Total</th>
-                  <th>Internal Δ</th>
-                  <th>External Δ</th>
-                  <th>Total Δ</th>
-                  <th>Reason</th>
-                </tr>
-              </thead>
-              <tbody id="companyRaiseHistoryBody"></tbody>
-            </table>
+            <div class="fv-table-scroll">
+              <table class="responsive-card-table fv-table">
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th data-sort-default="desc">Effective</th>
+                    <th class="hv-right">Internal USD</th>
+                    <th class="hv-right">External USD</th>
+                    <th class="hv-right">New monthly total</th>
+                    <th>Change</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody id="companyRaiseHistoryBody"></tbody>
+              </table>
+            </div>
           </div>
         </section>

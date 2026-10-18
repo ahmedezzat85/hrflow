@@ -39,7 +39,10 @@ test.describe('U7 HR tables and cross-links', () => {
       await page.evaluate((id) => document.getElementById(id).closest('table').querySelector('thead th[data-sort]').click(), bodyId);
       const first = await page.evaluate((id) => [...document.querySelectorAll(`#${id} tr`)].filter((r) => !r.hidden)[0].children[0].textContent.trim(), bodyId);
       expect(first).toBeTruthy();
-      await expect(page.locator(`#${bodyId}`).locator('xpath=ancestor::table').locator('thead th[data-sort][aria-sort="ascending"]')).toHaveCount(1);
+      // Exactly one header shows the sort. A column that already shows its starting arrow flips on the first click.
+      const sorted = page.locator(`#${bodyId}`).locator('xpath=ancestor::table').locator('thead th[data-sort][aria-sort="ascending"], thead th[data-sort][aria-sort="descending"]');
+      await expect(sorted).toHaveCount(1);
+      await expect(sorted.locator('.sort-arrow')).toHaveText(/[↑↓]/);
     });
   }
 

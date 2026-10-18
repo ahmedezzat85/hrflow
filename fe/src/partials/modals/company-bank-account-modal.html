@@ -1,17 +1,16 @@
   <div class="modal-overlay fv fv-dialog fv-area-sky" id="companyBankAccountModal">
     <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="companyBankAccountModalTitle">
       <div class="modal-head">
-        <div class="modal-head-icon"><i class="fa-solid fa-building-columns"></i></div>
+        <span class="modal-head-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10h18M3 6h18M3 14h18M3 18h18"></path></svg></span>
         <div class="modal-head-text">
           <h3 id="companyBankAccountModalTitle">Add Company Bank Account</h3>
           <p>Configure corporate accounts for receivables, vendor disbursements, and payroll funding.</p>
         </div>
-        <button class="modal-close" onclick="closeModal('companyBankAccountModal')" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
+        <button class="modal-close" onclick="closeModal('companyBankAccountModal')" aria-label="Close dialog"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
       </div>
       <div class="modal-body">
         <input type="hidden" id="fCompanyAccountId">
         <div class="form-section">
-          <div class="form-section-label"><i class="fa-solid fa-landmark"></i> Account Details <span class="line"></span></div>
           <div class="form-grid">
             <div class="form-field full">
               <label for="fCompanyAccountName">Account Label / Name <span class="req">*</span></label>
@@ -73,7 +72,7 @@
       </div>
       <div class="modal-foot">
         <button class="btn" onclick="closeModal('companyBankAccountModal')">Cancel</button>
-        <button class="btn btn-fill" id="companyBankAccountSaveBtn" onclick="saveCompanyBankAccount()"><i class="fa-solid fa-floppy-disk"></i> Save Account</button>
+        <button class="btn btn-fill" id="companyBankAccountSaveBtn" onclick="saveCompanyBankAccount()">Save Account</button>
       </div>
     </div>
   </div>

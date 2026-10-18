@@ -10,7 +10,7 @@ test.describe('Story 5.2: Guided Transaction Entry', () => {
     await expect(page.locator('#financeSubPaneAccounts')).toBeVisible();
 
     // Open workspace on the first account
-    await page.locator('.btn-open-workspace').first().click();
+    await page.locator('#financeAccountsTableBody .fv-name-btn').first().click();
     await expect(page.locator('#financeSubPaneWorkspace')).toBeVisible();
 
     // Click Record Transaction
