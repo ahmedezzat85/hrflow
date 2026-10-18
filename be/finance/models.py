@@ -16,6 +16,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import relationship
 
@@ -482,6 +483,10 @@ class SubscriptionDB(Base):
     auto_generate_bill = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    # Subscriptions v2 (X5, D-031)
+    billing_email = Column(String(255), nullable=True)
+    proof_source = Column(String(30), default="none", nullable=False, server_default="none")  # email_inbox | vendor_portal | bank_only | none
+    proof_expected = Column(Boolean, default=False, nullable=False, server_default="0")
 
     vendor = relationship("VendorDB", back_populates="subscriptions")
     payment_account = relationship("FinanceBankAccountDB")
@@ -503,6 +508,19 @@ class SubscriptionChargeDB(Base):
     note = Column(Text, default="", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(String(255), nullable=True)
+    # Subscriptions v2 (X5, D-031): a generated charge is `expected` until it is settled or skipped
+    status = Column(String(20), default="settled", nullable=False, server_default="settled")  # expected | settled | skipped
+    expected_amount = Column(Float, nullable=True)
+    proof_status = Column(String(20), default="pending", nullable=False, server_default="pending")  # attached | pending | unavailable
+    proof_note = Column(Text, nullable=True)
+    settled_at = Column(DateTime, nullable=True)
+    skipped_reason = Column(String(255), nullable=True)
+
+    __table_args__ = (
+        # Generating twice never creates a second expected charge for the same date (D-031)
+        Index("uq_subscription_expected_charge", "subscription_id", "billing_date", unique=True,
+              sqlite_where=text("status = 'expected'"), postgresql_where=text("status = 'expected'")),
+    )
 
     subscription = relationship("SubscriptionDB", back_populates="charges")
     linked_transaction = relationship("LedgerTransactionDB")

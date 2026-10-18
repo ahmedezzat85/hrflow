@@ -487,7 +487,8 @@ class AttentionQueueService:
                     try:
                         ren_dt = datetime.strptime(sub.next_renewal_date, "%Y-%m-%d").date()
                         notice_days = sub.notice_period_days if sub.notice_period_days is not None else 30
-                        notice_dt = ren_dt - timedelta(days=notice_days)
+                        # also surface a renewal that is a week away, whatever the contract notice period is (X5)
+                        notice_dt = ren_dt - timedelta(days=max(notice_days, 7))
                         if today >= notice_dt:
                             key = f"subscription:{sub.id}:renewal_due"
                             is_rev = key in reviewed_dict
@@ -523,6 +524,73 @@ class AttentionQueueService:
                                 )
                     except Exception:
                         pass
+
+                # 1b. Expected charges not settled past their date, and proofs still missing (X5, D-031). In-app only.
+                for chg in (sub.charges or []):
+                    chg_status = chg.status or "settled"
+                    if chg_status == "expected" and chg.billing_date and chg.billing_date < today_str:
+                        key = f"subscription_charge:{chg.id}:unsettled"
+                        is_rev = key in reviewed_dict
+                        if include_reviewed or not is_rev:
+                            days_late = (today - datetime.strptime(chg.billing_date, "%Y-%m-%d").date()).days
+                            raw_items.append(
+                                AttentionItem(
+                                    id=f"sub-chg-{chg.id}",
+                                    deduplication_key=key,
+                                    type="subscription_unsettled",
+                                    severity="warning",
+                                    severity_label="Warning",
+                                    title=f"Charge not settled: {sub.name}",
+                                    description=f"The {chg.billing_date} charge for '{sub.name}' ({chg.amount:,.2f} {chg.currency}) is expected but not settled. Link the payment or skip it.",
+                                    counterparty=sub.vendor.name if sub.vendor else "Vendor",
+                                    amount=chg.amount,
+                                    currency=chg.currency,
+                                    due_date=chg.billing_date,
+                                    due_state="overdue",
+                                    due_state_label=f"{days_late}d late",
+                                    owner=sub.owner,
+                                    target_route="a-finance-subscriptions",
+                                    target_id=sub.id,
+                                    target_filter={"subscription_id": sub.id, "status": "expected"},
+                                    permission="finance.subscription.read",
+                                    priority_score=65,
+                                    can_resolve=True,
+                                    can_mark_reviewed=True,
+                                    is_reviewed=is_rev,
+                                    created_at=chg.created_at.isoformat() if chg.created_at else None,
+                                )
+                            )
+                    if sub.proof_expected and chg.proof_status == "pending" and chg_status in ("expected", "settled") and chg.billing_date and chg.billing_date <= today_str:
+                        key = f"subscription_charge:{chg.id}:proof_missing"
+                        is_rev = key in reviewed_dict
+                        if include_reviewed or not is_rev:
+                            raw_items.append(
+                                AttentionItem(
+                                    id=f"sub-proof-{chg.id}",
+                                    deduplication_key=key,
+                                    type="subscription_proof_missing",
+                                    severity="info",
+                                    severity_label="Info",
+                                    title=f"Proof missing: {sub.name}",
+                                    description=f"No proof of payment yet for the {chg.billing_date} charge of '{sub.name}'. Attach it, or mark it unavailable with a reason.",
+                                    counterparty=sub.vendor.name if sub.vendor else "Vendor",
+                                    amount=chg.amount,
+                                    currency=chg.currency,
+                                    due_date=chg.billing_date,
+                                    due_state="immediate",
+                                    due_state_label="Proof pending",
+                                    owner=sub.owner,
+                                    target_route="a-finance-subscriptions",
+                                    target_id=sub.id,
+                                    target_filter={"subscription_id": sub.id, "proofs_missing": True},
+                                    permission="finance.subscription.read",
+                                    priority_score=35,
+                                    can_resolve=True,
+                                    can_mark_reviewed=True,
+                                    is_reviewed=is_rev,
+                                    created_at=chg.created_at.isoformat() if chg.created_at else None,
+                                )
+                            )
 
                 # 2. Missing owner alert
                 if not sub.owner:

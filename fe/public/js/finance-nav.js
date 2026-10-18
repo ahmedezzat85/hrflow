@@ -338,6 +338,7 @@ else SpendTabs.render();
   const go = () => {
     FinanceBookView.mount("dashboard", "financeBookSwitcherDashboard", () => { if (typeof refreshFinanceDashboard === "function") refreshFinanceDashboard(); });
     FinanceBookView.mount("reports", "financeBookSwitcherReports", () => { if (typeof refreshActiveReport === "function") refreshActiveReport(); });
+    FinanceBookView.mount("subscriptions", "financeBookSwitcherSubscriptions", () => { if (typeof loadFinanceSubscriptions === "function") loadFinanceSubscriptions(); });
   };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", go);
   else go();

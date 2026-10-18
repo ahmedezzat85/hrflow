@@ -7,14 +7,22 @@ let _subscriptionsNoticeOnly = false;
 let _currentHistorySubId = null;
 let _currentLoggingSub = null;
 
+let _subChargeFilter = "expected";
+
+function _subscriptionBookView() {
+  return typeof FinanceBookView !== "undefined" ? FinanceBookView.get("subscriptions") : "consolidated";
+}
+
 async function loadFinanceSubscriptions() {
   const bar = document.getElementById("financeSubscriptionsLoadingBar");
   if (bar) bar.style.display = "block";
 
   try {
+    // Opening the page generates any due expected charges on the server (idempotent)
     const subs = await FinanceApi.getSubscriptions();
     FinanceState.subscriptions = subs || [];
     renderFinanceSubscriptionsTable();
+    await loadSubscriptionCharges();
   } catch (err) {
     console.error("Failed to load finance subscriptions:", err);
     showToast("Error loading subscriptions: " + (err.message || err), "error");
@@ -68,7 +76,8 @@ function renderFinanceSubscriptionsTable() {
   const footer = document.getElementById("financeSubscriptionsFooter");
   if (!tbody) return;
 
-  const all = [...(FinanceState.subscriptions || [])];
+  const bookView = _subscriptionBookView();
+  const all = [...(FinanceState.subscriptions || [])].filter((s) => bookView === "consolidated" || (s.book_code || "local") === bookView);
 
   // pill and toggle counts come from the whole list
   const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
@@ -149,6 +158,7 @@ function renderFinanceSubscriptionsTable() {
         <td>${owner}</td>
         <td>${FinanceUI.dateCell(s.next_renewal_date, renewalNote, renewalTone)}</td>
         <td><div class="fv-date"><span>${billing}</span>${lastCharged ? `<span class="fv-sub">${lastCharged}</span>` : ""}</div></td>
+        <td data-label="Paid from">${s.payment_account_name ? `<div class="fv-date"><span>${esc(s.payment_account_name)}</span><span class="fv-book-chip fv-book-chip--${esc(s.book_code || "local")}" data-book-chip>${esc((s.book_code || "local") === "overseas" ? "Overseas" : "Local")}</span></div>` : `<span class="fv-muted">Not set</span>`}</td>
         <td>${FinanceUI.statusPill(s.is_active ? "active" : "inactive", s.is_active ? "Active" : "Inactive")}</td>
         <td class="cell-money fv-num">${FinanceUI.amountCell(s.amount, cur, monthlyEquiv)}</td>
         <td>${FinanceUI.rowActions({
@@ -162,6 +172,18 @@ function renderFinanceSubscriptionsTable() {
       `;
     })
     .join("");
+}
+
+async function _populateSubscriptionAccountDropdown(selectedId = null) {
+  if (!FinanceState.accounts || !FinanceState.accounts.length) {
+    try { FinanceState.accounts = await FinanceApi.getAccounts(); } catch (_) { FinanceState.accounts = []; }
+  }
+  const sel = document.getElementById("subPaymentAccount");
+  if (!sel) return;
+  const esc = FinanceUI.esc;
+  sel.innerHTML = '<option value="">No account set</option>' + (FinanceState.accounts || []).filter((a) => a.is_active)
+    .map((a) => `<option value="${a.id}">${esc(a.account_name)} (${esc(a.currency)}${a.book_name ? ` · ${esc(a.book_name)}` : ""})</option>`).join("");
+  sel.value = selectedId ? String(selectedId) : "";
 }
 
 async function _populateSubscriptionVendorDropdown(selectedId = null) {
@@ -194,6 +216,10 @@ async function openAddSubscriptionModal() {
   today.setMonth(today.getMonth() + 1);
   document.getElementById("subNextRenewal").value = today.toISOString().split("T")[0];
   document.getElementById("subAutoBill").checked = true;
+  document.getElementById("subBillingEmail").value = "";
+  document.getElementById("subProofSource").value = "none";
+  document.getElementById("subProofExpected").checked = true;
+  await _populateSubscriptionAccountDropdown(null);
 
   await _populateSubscriptionVendorDropdown();
   openModal("subscriptionModal");
@@ -219,6 +245,10 @@ async function openEditSubscriptionModal(id) {
   document.getElementById("subSeats").value = s.seats_count || "";
   document.getElementById("subContractStart").value = s.contract_start_date || "";
   document.getElementById("subContractEnd").value = s.contract_end_date || "";
+  document.getElementById("subBillingEmail").value = s.billing_email || "";
+  document.getElementById("subProofSource").value = s.proof_source || "none";
+  document.getElementById("subProofExpected").checked = !!s.proof_expected;
+  await _populateSubscriptionAccountDropdown(s.payment_account_id);
 
   await _populateSubscriptionVendorDropdown(s.vendor_id);
   openModal("subscriptionModal");
@@ -263,6 +293,10 @@ async function saveSubscription() {
     seats_count: seats,
     contract_start_date: contractStart || null,
     contract_end_date: contractEnd || null,
+    payment_account_id: document.getElementById("subPaymentAccount").value ? parseInt(document.getElementById("subPaymentAccount").value, 10) : null,
+    billing_email: document.getElementById("subBillingEmail").value.trim() || null,
+    proof_source: document.getElementById("subProofSource").value,
+    proof_expected: document.getElementById("subProofExpected").checked,
   };
 
   const btn = document.getElementById("btnSaveSubscription");
@@ -495,3 +529,197 @@ window.openLogSubscriptionChargeModal = openLogSubscriptionChargeModal;
 window.saveSubscriptionCharge = saveSubscriptionCharge;
 window.openSubscriptionHistoryModal = openSubscriptionHistoryModal;
 window.openLogChargeFromHistory = openLogChargeFromHistory;
+
+// ==========================================
+// Charges to settle and proofs missing (X5, D-031)
+// ==========================================
+let _subCharges = [];
+
+async function loadSubscriptionCharges() {
+  try {
+    const book = _subscriptionBookView();
+    const [expected, missing] = await Promise.all([
+      FinanceApi.getSubscriptionChargesV2({ status: "expected", book }),
+      FinanceApi.getSubscriptionChargesV2({ proofs_missing: true, book }),
+    ]);
+    FinanceState.subChargesExpected = expected || [];
+    FinanceState.subChargesMissing = missing || [];
+    renderSubscriptionCharges();
+  } catch (err) {
+    console.error("Failed to load subscription charges:", err);
+  }
+}
+
+function filterSubscriptionCharges(filter) {
+  _subChargeFilter = filter;
+  renderSubscriptionCharges();
+}
+
+function renderSubscriptionCharges() {
+  const body = document.getElementById("financeSubChargesBody");
+  const empty = document.getElementById("financeSubChargesEmpty");
+  if (!body) return;
+  const expected = FinanceState.subChargesExpected || [];
+  const missing = FinanceState.subChargesMissing || [];
+  const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  setText("subChgCountExpected", expected.length);
+  setText("subChgCountProofs", missing.length);
+  document.querySelectorAll("#financeSubChargePills .fv-pill").forEach((p) => {
+    const on = p.dataset.filter === _subChargeFilter;
+    p.classList.toggle("active", on);
+    p.setAttribute("aria-pressed", on ? "true" : "false");
+    p.classList.toggle("fv-pill--zero", !Number((p.querySelector(".fv-pill__count") || {}).textContent || 0));
+  });
+  const items = _subChargeFilter === "proofs_missing" ? missing : expected;
+  _subCharges = [...expected, ...missing];
+  if (!items.length) {
+    body.innerHTML = "";
+    if (empty) empty.style.display = "block";
+    return;
+  }
+  if (empty) empty.style.display = "none";
+  const esc = FinanceUI.esc;
+  const proofLabel = { attached: "Attached", pending: "Pending", unavailable: "Unavailable" };
+  body.innerHTML = items.map((c) => {
+    const today = new Date().toISOString().split("T")[0];
+    const late = c.status === "expected" && c.billing_date < today;
+    const proofTone = c.proof_status === "pending" && c.proof_expected ? "fv-note fv-note--warn" : "fv-sub";
+    const proofText = c.proof_expected ? (proofLabel[c.proof_status] || c.proof_status) : "Not expected";
+    const isOpen = c.status === "expected";
+    return `
+    <tr data-charge-id="${c.id}">
+      <td data-label="Subscription"><div class="fv-cell-main__text"><span class="fv-cell-main__name">${esc(c.subscription_name || "")}</span><span class="fv-sub">${esc(c.vendor_name || "")}</span></div></td>
+      <td data-label="Billing date">${FinanceUI.dateCell(c.billing_date, late ? "Not settled" : (isOpen ? "Expected" : "Settled"), late ? "late" : "info")}</td>
+      <td data-label="Paid from">${c.payment_account_name ? `<div class="fv-date"><span>${esc(c.payment_account_name)}</span><span class="fv-book-chip fv-book-chip--${esc(c.book_code || "local")}" data-book-chip>${(c.book_code || "local") === "overseas" ? "Overseas" : "Local"}</span></div>` : '<span class="fv-muted">Not set</span>'}</td>
+      <td data-label="Proof"><span class="${proofTone}" data-proof-status>${esc(proofText)}</span>${c.proof_note ? `<span class="fv-sub">${esc(c.proof_note)}</span>` : ""}</td>
+      <td data-label="Amount" class="cell-money fv-num">${FinanceUI.amountCell(c.amount, c.currency || "USD", "")}</td>
+      <td class="col-actions">${FinanceUI.rowActions({
+        primary: isOpen ? { label: "Settle", kind: "fill", className: "btn-charge-settle", onclick: `openSubscriptionSettleModal(${c.id})`, attrs: 'title="Settle this charge"' } : null,
+        icons: [
+          { icon: "fa-paperclip", label: "Proof of payment", className: "btn-charge-proof", onclick: `openSubscriptionProofModal(${c.id})` },
+          ...(isOpen ? [{ icon: "fa-forward", label: "Skip this charge", className: "btn-charge-skip", onclick: `skipSubscriptionCharge(${c.id})` }] : []),
+        ],
+      })}</td>
+    </tr>`;
+  }).join("");
+}
+
+async function openSubscriptionSettleModal(chargeId) {
+  const c = (FinanceState.subChargesExpected || []).find((x) => x.id === Number(chargeId));
+  if (!c) return;
+  FinanceForm.clearErrors("subSettleModal");
+  document.getElementById("subSettleChargeId").value = c.id;
+  document.getElementById("subSettleTitle").textContent = `Settle: ${c.subscription_name}`;
+  document.getElementById("subSettleSub").textContent = `${c.billing_date} · expected ${FinanceFormat.formatMoney(c.expected_amount != null ? c.expected_amount : c.amount, c.currency)}`;
+  document.getElementById("subSettleMode").value = "link_ledger";
+  document.getElementById("subSettleAmount").value = c.expected_amount != null ? c.expected_amount : c.amount;
+  document.getElementById("subSettleVarianceReason").value = "";
+  if (!FinanceState.accounts || !FinanceState.accounts.length) FinanceState.accounts = await FinanceApi.getAccounts();
+  const esc = FinanceUI.esc;
+  const accounts = (FinanceState.accounts || []).filter((a) => a.is_active && a.currency === c.currency);
+  document.getElementById("subSettleAccount").innerHTML = accounts.map((a) => `<option value="${a.id}">${esc(a.account_name)}</option>`).join("");
+  if (c.payment_account_id && accounts.some((a) => a.id === c.payment_account_id)) document.getElementById("subSettleAccount").value = String(c.payment_account_id);
+  // Payments (money out, same currency) from the accounts the charge could have been paid from
+  let options = [];
+  for (const a of accounts) {
+    try {
+      const txs = await FinanceApi.getAccountTransactions(a.id);
+      (txs || []).filter((t) => t.direction === "out" && (t.currency || a.currency) === c.currency && !t.linked_bill_id)
+        .forEach((t) => options.push(`<option value="${t.id}">${esc(a.account_name)} · ${esc(t.date)} · ${esc(FinanceFormat.formatMoney(t.amount, c.currency))} · ${esc(t.description || t.reference || "")}</option>`));
+    } catch (_) { /* an account without a ledger view is skipped */ }
+  }
+  document.getElementById("subSettleLedger").innerHTML = options.length ? options.join("") : '<option value="">No unlinked payments found</option>';
+  onSubSettleModeChanged();
+  openModal("subSettleModal");
+}
+
+function onSubSettleModeChanged() {
+  const bill = document.getElementById("subSettleMode").value === "already_paid_bill";
+  document.getElementById("subSettleLedgerGroup").style.display = bill ? "none" : "";
+  document.getElementById("subSettleAccountGroup").style.display = bill ? "" : "none";
+  document.getElementById("subSettleAmountGroup").style.display = bill ? "" : "none";
+}
+
+async function saveSubscriptionSettle() {
+  const id = Number(document.getElementById("subSettleChargeId").value);
+  const mode = document.getElementById("subSettleMode").value;
+  const payload = { mode, variance_reason: document.getElementById("subSettleVarianceReason").value.trim() || null };
+  if (mode === "link_ledger") {
+    const tx = document.getElementById("subSettleLedger").value;
+    if (!tx) { toast("Choose the payment to link.", "fa-solid fa-triangle-exclamation"); return; }
+    payload.ledger_transaction_id = parseInt(tx, 10);
+  } else {
+    payload.bank_account_id = parseInt(document.getElementById("subSettleAccount").value, 10) || null;
+    const amt = document.getElementById("subSettleAmount").value;
+    if (amt) payload.amount = parseFloat(amt);
+  }
+  const btn = document.getElementById("subSettleSaveBtn");
+  if (btn) btn.disabled = true;
+  try {
+    await FinanceApi.settleSubscriptionCharge(id, payload);
+    toast("Charge settled.", "fa-solid fa-circle-check");
+    closeModal("subSettleModal");
+    await loadFinanceSubscriptions();
+  } catch (err) {
+    toast(err.message || "Could not settle the charge", "fa-solid fa-triangle-exclamation");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function skipSubscriptionCharge(chargeId) {
+  const c = (FinanceState.subChargesExpected || []).find((x) => x.id === Number(chargeId));
+  const result = await FinanceCommand.confirmAction({
+    title: "Skip this charge",
+    summary: c ? `<strong>${FinanceUI.esc(c.subscription_name)}</strong> · ${FinanceUI.esc(c.billing_date)}` : `Charge #${chargeId}`,
+    consequence: "The charge will not be expected any more and the next renewal moves forward one cycle.",
+    actionLabel: "Skip charge",
+    actionClass: "btn btn-fill",
+    requireReason: true,
+    severity: "info",
+  });
+  if (!result.confirmed) return;
+  try {
+    await FinanceApi.skipSubscriptionCharge(Number(chargeId), { reason: result.reason });
+    toast("Charge skipped.", "fa-solid fa-circle-check");
+    await loadFinanceSubscriptions();
+  } catch (err) {
+    toast(err.message || "Could not skip the charge", "fa-solid fa-triangle-exclamation");
+  }
+}
+
+function openSubscriptionProofModal(chargeId) {
+  document.getElementById("subProofChargeId").value = chargeId;
+  document.getElementById("subProofFile").value = "";
+  document.getElementById("subProofReason").value = "";
+  openModal("subProofModal");
+}
+
+async function saveSubscriptionProof(kind) {
+  const id = Number(document.getElementById("subProofChargeId").value);
+  try {
+    if (kind === "attached") {
+      const file = document.getElementById("subProofFile").files[0];
+      if (!file) { toast("Choose the proof file first.", "fa-solid fa-triangle-exclamation"); return; }
+      await FinanceApi.uploadSubscriptionChargeProof(id, file);
+    } else {
+      const reason = document.getElementById("subProofReason").value.trim();
+      if (!reason) { toast("A reason is required when the proof is unavailable.", "fa-solid fa-triangle-exclamation"); return; }
+      await FinanceApi.setSubscriptionChargeProof(id, { proof_status: "unavailable", proof_note: reason });
+    }
+    toast("Proof updated.", "fa-solid fa-circle-check");
+    closeModal("subProofModal");
+    await loadSubscriptionCharges();
+  } catch (err) {
+    toast(err.message || "Could not update the proof", "fa-solid fa-triangle-exclamation");
+  }
+}
+
+window.filterSubscriptionCharges = filterSubscriptionCharges;
+window.openSubscriptionSettleModal = openSubscriptionSettleModal;
+window.onSubSettleModeChanged = onSubSettleModeChanged;
+window.saveSubscriptionSettle = saveSubscriptionSettle;
+window.skipSubscriptionCharge = skipSubscriptionCharge;
+window.openSubscriptionProofModal = openSubscriptionProofModal;
+window.saveSubscriptionProof = saveSubscriptionProof;
+

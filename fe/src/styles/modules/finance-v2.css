@@ -2521,3 +2521,8 @@
 .fv .fv-book-chip { font-size: 11.5px; font-weight: 600; color: var(--ink-muted); }
 .fv .fv-book-chip--overseas { color: var(--brand, inherit); }
 
+
+/* Touch targets: the book switcher stays tappable on phones (U9) */
+@media (max-width: 768px) {
+  .fv .fv-book-switch__btn { min-height: 44px; min-width: 44px; padding-left: 14px; padding-right: 14px; }
+}

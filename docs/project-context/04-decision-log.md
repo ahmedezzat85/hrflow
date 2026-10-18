@@ -434,7 +434,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-031 — Subscriptions: Expected Charges, Proof Tracking, In-App Reminders Only
 
-- **Status:** Accepted by owner, October 18, 2026. Resolves Q-016 (no email, no scheduler for now). Not implemented (slice X5).
+- **Status:** Accepted by owner, October 18, 2026. Resolves Q-016 (no email, no scheduler for now). Implemented on `feature/finance-expansion` (slice X5, migration 0040).
 - **Decision:** Subscriptions gain `billing_email`, `proof_source` (`email_inbox | vendor_portal | bank_only | none`), paid-from account (any book) and `proof_expected`. Expected charges are generated on demand and idempotently (button and on page open), status `expected → settled | skipped` with variance. Settle links an existing ledger/statement row or creates an "Already paid" bill through the settlement service (D-020) and advances the renewal date. Proof per charge is `attached | pending | unavailable` with reason, never blocks settlement, and feeds a "proofs missing" list. Reminders are in-app attention items only. Email and a background scheduler are a future standalone feature.
 - **Rationale:** Some proofs cannot be obtained; recurring charges must be visible and settled monthly without new infrastructure.
 

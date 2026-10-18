@@ -1243,6 +1243,9 @@ class SubscriptionBase(BaseModel):
     seats_count: Optional[int] = Field(None, ge=0, description="Allocated user seats / licenses count")
     auto_generate_bill: bool = Field(False, description="Whether to auto-generate vendor bills on renewal")
     is_active: bool = Field(True, description="Whether subscription is currently active")
+    billing_email: Optional[str] = Field(None, max_length=255, description="Where the vendor sends invoices and receipts (reference only; nothing is sent)")
+    proof_source: str = Field("none", description="Where proof of payment comes from: email_inbox | vendor_portal | bank_only | none")
+    proof_expected: bool = Field(True, description="Whether a proof of payment is expected for each charge")
 
 
 class SubscriptionCreate(SubscriptionBase):
@@ -1266,10 +1269,17 @@ class SubscriptionUpdate(BaseModel):
     seats_count: Optional[int] = None
     auto_generate_bill: Optional[bool] = None
     is_active: Optional[bool] = None
+    billing_email: Optional[str] = None
+    proof_source: Optional[str] = None
+    proof_expected: Optional[bool] = None
 
 
 class SubscriptionResponse(SubscriptionBase):
     id: int
+    payment_account_name: Optional[str] = None
+    book_code: Optional[str] = None  # the book of the paying account; no account = the default book
+    expected_charges_count: int = 0
+    proofs_missing_count: int = 0
     vendor_name: Optional[str] = None
     monthly_equivalent_amount: float = 0.0
     notice_deadline_date: Optional[str] = None
@@ -1297,8 +1307,43 @@ class SubscriptionChargeCreate(SubscriptionChargeBase):
     bank_account_id: Optional[int] = Field(None, description="Optional bank account to record payment outflow")
 
 
+class SubscriptionChargeSettle(BaseModel):
+    mode: str = Field(..., description="link_ledger | already_paid_bill")
+    ledger_transaction_id: Optional[int] = Field(None, description="Existing outflow to link (mode link_ledger)")
+    bank_account_id: Optional[int] = Field(None, description="Paying account for the Already paid bill; defaults to the subscription's account")
+    payment_type_id: Optional[int] = None
+    payment_date: Optional[str] = Field(None, description="Payment date (YYYY-MM-DD); defaults to the billing date")
+    amount: Optional[float] = Field(None, gt=0.0, description="Actual amount charged; defaults to the expected amount")
+    variance_reason: Optional[str] = Field(None, max_length=255)
+
+
+class SubscriptionChargeSkip(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=255)
+
+
+class SubscriptionChargeProof(BaseModel):
+    proof_status: str = Field(..., description="attached | pending | unavailable")
+    proof_note: Optional[str] = Field(None, description="Required when the proof is unavailable")
+
+
+class GenerateChargesResult(BaseModel):
+    created: int = 0
+    subscriptions_checked: int = 0
+
+
 class SubscriptionChargeResponse(SubscriptionChargeBase):
     id: int
+    status: str = "settled"
+    expected_amount: Optional[float] = None
+    proof_status: str = "pending"
+    proof_note: Optional[str] = None
+    proof_expected: bool = False
+    proof_source: Optional[str] = None
+    settled_at: Optional[datetime] = None
+    skipped_reason: Optional[str] = None
+    payment_account_id: Optional[int] = None
+    payment_account_name: Optional[str] = None
+    book_code: Optional[str] = None
     subscription_name: Optional[str] = None
     vendor_name: Optional[str] = None
     linked_transaction_id: Optional[int] = None
