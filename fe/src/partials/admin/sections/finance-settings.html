@@ -3,6 +3,7 @@
             <div class="filter-tabs fv-subnav" id="financeSettingsSubNav" role="tablist" aria-label="Finance settings sub navigation">
               <button class="filter-tab active" id="subtabSettingsCategories" role="tab" aria-selected="true" tabindex="0" data-settings-tab="categories" onclick="switchFinanceSettingsSubTab('categories', this)">Transaction categories</button>
               <button class="filter-tab" id="subtabSettingsPaymentTypes" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="payment_types" onclick="switchFinanceSettingsSubTab('payment_types', this)">Payment types</button>
+              <button class="filter-tab" id="subtabSettingsProducts" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="products" onclick="switchFinanceSettingsSubTab('products', this)">Products</button>
               <button class="filter-tab" id="subtabSettingsDisplay" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="display" onclick="switchFinanceSettingsSubTab('display', this)">Display</button>
             </div>
             <div class="fv-head-actions" id="financeSettingsActionsCategories" data-head-for="categories">
@@ -10,6 +11,9 @@
             </div>
             <div class="fv-head-actions" id="financeSettingsActionsPaymentTypes" data-head-for="payment_types" style="display:none;">
               <button class="btn btn-fill" id="financeAddPaymentTypeBtn" onclick="openAddFinancePaymentTypeModal()">Add payment type</button>
+            </div>
+            <div class="fv-head-actions" id="financeSettingsActionsProducts" data-head-for="products" style="display:none;">
+              <button class="btn btn-fill" id="financeAddProductBtn" onclick="openAddFinanceProductModal()">Add product</button>
             </div>
           </div>
 
@@ -102,6 +106,41 @@
                 <button class="btn btn-sm btn-outline" onclick="loadFinancePaymentTypes()">Retry</button>
               </div>
               <div class="fv-foot" id="financePaymentTypesFooter"></div>
+            </div>
+          </div>
+
+          <!-- PANE: Products (X3, D-030) -->
+          <div id="financeSettingsPaneProducts" style="display:none;">
+            <div class="fv-pills-row">
+              <div class="fv-pills" id="financeProductStatusPills" role="group" aria-label="Product status">
+                <button class="filter-tab fv-pill active" aria-pressed="true" data-filter="all" onclick="filterFinanceProducts('all', this)">All <span class="fv-pill__count" id="prodPillCountAll">0</span></button>
+                <button class="filter-tab fv-pill fv-pill--settled" aria-pressed="false" data-filter="active" onclick="filterFinanceProducts('active', this)"><span class="fv-pill__dot" aria-hidden="true"></span>Active <span class="fv-pill__count" id="prodPillCountActive">0</span></button>
+                <button class="filter-tab fv-pill fv-pill--closed" aria-pressed="false" data-filter="inactive" onclick="filterFinanceProducts('inactive', this)"><span class="fv-pill__dot" aria-hidden="true"></span>Inactive <span class="fv-pill__count" id="prodPillCountInactive">0</span></button>
+              </div>
+            </div>
+            <div class="fv-table-card">
+              <div class="section-loading-bar" id="financeProductsLoadingBar"><span></span></div>
+              <div class="fv-table-scroll">
+                <table class="fv-table fv-table--products responsive-card-table" id="financeProductsTable">
+                  <thead>
+                    <tr>
+                      <th>Product</th>
+                      <th>Code</th>
+                      <th>Type</th>
+                      <th>Default price</th>
+                      <th>Receives into</th>
+                      <th>Status</th>
+                      <th class="col-actions"><span class="fv-sr-only">Actions</span></th>
+                    </tr>
+                  </thead>
+                  <tbody id="financeProductsTableBody"></tbody>
+                </table>
+              </div>
+              <div class="empty-state fv-empty" id="financeProductsEmpty" style="display: none;">
+                <p>No products yet.</p>
+                <button class="btn btn-fill" onclick="openAddFinanceProductModal()">Add product</button>
+              </div>
+              <div class="fv-foot" id="financeProductsFooter">Products classify invoice lines and revenue. Deactivated products stay on past invoices.</div>
             </div>
           </div>
 

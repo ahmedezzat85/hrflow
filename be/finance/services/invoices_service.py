@@ -67,6 +67,8 @@ class InvoicesService:
                 quantity=ln.quantity,
                 unit_price=ln.unit_price,
                 line_total=ln.line_total,
+                product_id=ln.product_id,
+                product_name=ln.product.name if ln.product else None,
             )
             for ln in (invoice.lines or [])
         ]
@@ -277,11 +279,11 @@ class InvoicesService:
     def _lines_changed(invoice: SalesInvoiceDB, new_lines: List[dict]) -> bool:
         def norm(rows):
             return sorted(
-                (str(r["description"]).strip(), round(float(r.get("quantity", 1.0)), 4), round(float(r.get("unit_price", 0.0)), 4))
+                (str(r["description"]).strip(), round(float(r.get("quantity", 1.0)), 4), round(float(r.get("unit_price", 0.0)), 4), r.get("product_id") or 0)
                 for r in rows
             )
         current = [
-            {"description": ln.description, "quantity": ln.quantity, "unit_price": ln.unit_price}
+            {"description": ln.description, "quantity": ln.quantity, "unit_price": ln.unit_price, "product_id": ln.product_id}
             for ln in (invoice.lines or [])
         ]
         return norm(current) != norm(new_lines)

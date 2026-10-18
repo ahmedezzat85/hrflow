@@ -69,7 +69,7 @@ def test_rbac_models_and_seed_data(app_client):
 
         # Super-Admin has all 63 catalog keys
         sa_perm_keys = {p.key for p in super_admin.permissions}
-        assert len(sa_perm_keys) == 65
+        assert len(sa_perm_keys) == 67
         assert "system.users.manage" in sa_perm_keys
         assert "hr.employee.write" in sa_perm_keys
         assert "finance.payroll.prepare" in sa_perm_keys
@@ -81,10 +81,10 @@ def test_rbac_models_and_seed_data(app_client):
         assert "hr.employee.write" in {p.key for p in hr_admin.permissions}
         assert "finance.payroll.prepare" not in {p.key for p in hr_admin.permissions}
 
-        # Financial-Admin has 27 permissions
+        # Financial-Admin has 29 permissions
         fin_admin = db.query(RoleDB).filter(RoleDB.name == "Financial-Admin").first()
         assert fin_admin is not None
-        assert len(fin_admin.permissions) == 27
+        assert len(fin_admin.permissions) == 29
         assert "finance.payroll.approve" in {p.key for p in fin_admin.permissions}
         assert "finance.payroll.prepare" not in {p.key for p in fin_admin.permissions}
 
@@ -141,7 +141,7 @@ def test_get_user_permissions_resolution(app_client):
         admin_user = db.query(UserDB).filter(UserDB.email == "admin@hrflow.test").first()
         assert admin_user is not None
         admin_perms = get_user_permissions(admin_user.id, db)
-        assert len(admin_perms) == 65
+        assert len(admin_perms) == 67
         assert "hr.employee.write" in admin_perms
         assert "hr.employee.read" in admin_perms
         assert "self.profile.read" in admin_perms

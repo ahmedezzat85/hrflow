@@ -178,6 +178,7 @@ class InvoicesRepository:
             line_total = ln.get("line_total") or round(ln.get("quantity", 1.0) * ln.get("unit_price", 0.0), 4)
             db_line = SalesInvoiceLineDB(
                 invoice_id=invoice.id,
+                product_id=ln.get("product_id"),
                 description=ln["description"].strip(),
                 quantity=ln.get("quantity", 1.0),
                 unit_price=ln.get("unit_price", 0.0),
@@ -232,6 +233,7 @@ class InvoicesRepository:
                 line_total = ln.get("line_total") or round(ln.get("quantity", 1.0) * ln.get("unit_price", 0.0), 4)
                 db_line = SalesInvoiceLineDB(
                     invoice_id=invoice_id,
+                    product_id=ln.get("product_id"),
                     description=ln["description"].strip(),
                     quantity=ln.get("quantity", 1.0),
                     unit_price=ln.get("unit_price", 0.0),

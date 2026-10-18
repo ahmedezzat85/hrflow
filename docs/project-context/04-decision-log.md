@@ -428,7 +428,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-030 — Product Catalog and Revenue Tagging
 
-- **Status:** Accepted by owner, October 18, 2026. Not implemented (slice X3).
+- **Status:** Accepted by owner, October 18, 2026. Implemented on `feature/finance-expansion` (slice X3, migration 0037); `product_id` on revenue receipts lands with X4. Permissions `finance.product.read` / `finance.product.write` (write granted to Financial-Admin).
 - **Decision:** New Finance-owned `finance_products` (name, code, type `saas_subscription | license | implementation_service | support | other`, default currency/price, default receiving account, active). Optional `product_id` on sales invoice lines and revenue receipts; untagged revenue stays visible in reports. Invoice book is derived from its expected receiving account; `revenue_channel` is kept for history and mapped to book + source.
 - **Rationale:** The owner wants revenue by product across local and overseas accounts.
 

@@ -42,3 +42,62 @@
       </div>
     </div>
   </div>
+
+  <div class="modal-overlay fv fv-dialog fv-area-slate" id="financeProductModal">
+    <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="financeProductModalTitle">
+      <div class="modal-head">
+        <span class="modal-head-icon"><i class="fa-solid fa-box" aria-hidden="true"></i></span>
+        <div class="modal-head-text">
+          <h3 id="financeProductModalTitle">Add Product</h3>
+          <p>Products classify invoice lines and revenue receipts. They carry optional defaults only.</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('financeProductModal')" aria-label="Close dialog"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="fFinanceProductId">
+        <div class="form-section">
+          <div class="form-grid">
+            <div class="form-field full">
+              <label for="fFinanceProductName">Name <span class="req">*</span></label>
+              <input id="fFinanceProductName" placeholder="e.g. HRFlow Cloud (SaaS)">
+            </div>
+            <div class="form-field">
+              <label for="fFinanceProductCode">Code <span class="req">*</span></label>
+              <input id="fFinanceProductCode" placeholder="e.g. SAAS-CLOUD" style="text-transform:uppercase;">
+            </div>
+            <div class="form-field">
+              <label for="fFinanceProductType">Type</label>
+              <select id="fFinanceProductType">
+                <option value="saas_subscription">SaaS subscription</option>
+                <option value="license">Licence</option>
+                <option value="implementation_service">Implementation service</option>
+                <option value="support">Support</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="fFinanceProductCurrency">Default currency</label>
+              <select id="fFinanceProductCurrency" onchange="onFinanceProductCurrencyChanged()">
+                <option value="USD">USD</option>
+                <option value="EGP">EGP</option>
+                <option value="EUR">EUR</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="fFinanceProductPrice">Default price</label>
+              <input type="number" id="fFinanceProductPrice" min="0" step="0.01" placeholder="Optional">
+            </div>
+            <div class="form-field full">
+              <label for="fFinanceProductAccount">Default receiving account</label>
+              <select id="fFinanceProductAccount"><option value="">None</option></select>
+              <span style="font-size:11px;color:var(--ink-muted);margin-top:4px;display:block;">Only accounts in the product currency are offered.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="closeModal('financeProductModal')">Cancel</button>
+        <button class="btn btn-fill" id="financeProductSaveBtn" onclick="saveFinanceProduct()">Save Product</button>
+      </div>
+    </div>
+  </div>

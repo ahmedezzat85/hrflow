@@ -211,7 +211,7 @@ Plan: [../finance-module/23-finance-expansion-plan.md](../finance-module/23-fina
 | :--- | :--- | :--- | :--- |
 | X1 | **Done** (migration 0036): cheque scans (attachments) and entry shortcuts | S | — |
 | X2 | Books, account visibility, balance checkpoints, inter-book transfers, view switcher | L | — |
-| X3 | Product catalog, `product_id` on invoice lines | S | — |
+| X3 | **Done** (migration 0037): product catalog, `product_id` on invoice lines | S | — |
 | X4 | Revenue receipts by source, invoice book, revenue reports by book/product/source | M | X2, X3 |
 | X5 | Subscriptions v2: expected charges, settle, proof tracking, in-app reminders | M | X2 |
 | X6 | Analytics pass and Excel exports | M | X2–X5 |

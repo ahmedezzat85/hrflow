@@ -4,6 +4,7 @@
  * Aggregated Finance API client bundled from domain modules in fe/api/finance/:
  *   - fe/api/finance/core.js
  *   - fe/api/finance/invoices-api.js
+ *   - fe/api/finance/products-api.js
  *   - fe/api/finance/bills-api.js
  *   - fe/api/finance/accounts-api.js
  *   - fe/api/finance/cheques-api.js
@@ -130,6 +131,7 @@ async getFeatureFlags() {
   };
 
   const FinanceMockState = root.FinanceMockState || (root.FinanceMockState = {});
+  const _mockProductName = (id) => { const p = id ? (FinanceMockState.products || []).find((x) => x.id === Number(id)) : null; return p ? p.name : null; };
 
   // D-024: withholding is on the net subtotal; received plus withheld settles the invoice
   const _refreshWithholding = (inv) => {
@@ -260,6 +262,7 @@ async getFeatureFlags() {
       const lines = (payload.lines || []).map((ln, i) => ({
         id: Date.now() + i, invoice_id: FinanceMockState.invoices.length + 1,
         ...ln, line_total: ln.line_total || (ln.quantity * ln.unit_price),
+        product_id: ln.product_id || null, product_name: _mockProductName(ln.product_id),
       }));
       const subtotal = lines.reduce((s, l) => s + l.line_total, 0);
       const vatRate = payload.vat_rate !== undefined && payload.vat_rate !== null ? Number(payload.vat_rate) : (String(payload.currency || "USD").toUpperCase() === "EGP" ? 14 : 0);
@@ -303,7 +306,7 @@ async getFeatureFlags() {
         if (payload.vat_rate !== undefined && Number(payload.vat_rate) !== Number(inv.vat_rate || 0)) changed.push("vat_rate");
         if (payload.withholding_tax_rate !== undefined && Number(payload.withholding_tax_rate) !== Number(inv.withholding_tax_rate || 0)) changed.push("withholding_tax_rate");
         if (payload.lines) {
-          const norm = (rows) => JSON.stringify((rows || []).map((l) => [String(l.description).trim(), Number(l.quantity), Number(l.unit_price)]).sort());
+          const norm = (rows) => JSON.stringify((rows || []).map((l) => [String(l.description).trim(), Number(l.quantity), Number(l.unit_price), l.product_id || 0]).sort());
           if (norm(payload.lines) !== norm(inv.lines)) changed.push("lines");
         }
         if (changed.length) throw new Error(`invoice_locked: ${changed.join(", ")} cannot be changed once an invoice is issued. Void and reissue to correct.`);
@@ -311,6 +314,7 @@ async getFeatureFlags() {
         ["customer_id", "currency", "invoice_number", "issue_date", "vat_rate", "withholding_tax_rate", "lines"].forEach((k) => delete payload[k]);
       }
       Object.assign(inv, payload);
+      if (payload.lines) inv.lines = payload.lines.map((ln, i) => ({ id: Date.now() + i, invoice_id: inv.id, ...ln, product_id: ln.product_id || null, product_name: _mockProductName(ln.product_id) }));
       if (payload.expected_bank_account_id !== undefined) {
         const bank = payload.expected_bank_account_id ? (FinanceMockState.accounts || []).find((b) => b.id === parseInt(payload.expected_bank_account_id, 10)) : null;
         inv.expected_bank_account_name = bank ? bank.account_name : null;
@@ -672,6 +676,106 @@ async getFeatureFlags() {
 
   if (typeof module !== "undefined" && module.exports) {
     module.exports = FinanceInvoicesApi;
+  }
+})(typeof window !== "undefined" ? window : globalThis);
+
+
+/**
+ * fe/api/finance/products-api.js
+ * Finance API - Product catalog domain client and mock handlers (X3, D-030).
+ */
+(function (root) {
+  const _isMock = () => (typeof root._isMock === "function" ? root._isMock() : typeof window !== "undefined" && window.location && window.location.search.includes("mock="));
+
+  const FinanceMockState = root.FinanceMockState || (root.FinanceMockState = {});
+
+  if (!FinanceMockState.products) {
+    FinanceMockState.products = [
+      { id: 1, name: "HRFlow Cloud (SaaS)", code: "SAAS-CLOUD", product_type: "saas_subscription", default_currency: "USD", default_price: 1200.0, default_receiving_account_id: 1, default_receiving_account_name: "Voyance Operating USD", is_active: true },
+      { id: 2, name: "Implementation Services", code: "IMPL-SVC", product_type: "implementation_service", default_currency: "EGP", default_price: null, default_receiving_account_id: null, default_receiving_account_name: null, is_active: true },
+      { id: 3, name: "Legacy On-prem Licence", code: "LIC-LEGACY", product_type: "license", default_currency: "USD", default_price: 5000.0, default_receiving_account_id: null, default_receiving_account_name: null, is_active: false },
+    ];
+  }
+
+  const PRODUCT_TYPES = ["saas_subscription", "license", "implementation_service", "support", "other"];
+  root.FINANCE_PRODUCT_TYPES = PRODUCT_TYPES;
+
+  const _validateProduct = (payload, currentId) => {
+    const list = FinanceMockState.products;
+    if (payload.product_type && !PRODUCT_TYPES.includes(payload.product_type)) throw new Error("Invalid product_type.");
+    if (payload.code) {
+      const code = String(payload.code).trim().toUpperCase();
+      if (list.some((p) => p.code === code && p.id !== currentId)) throw new Error(`Product code '${code}' already exists`);
+    }
+    if (payload.default_receiving_account_id) {
+      const acc = (FinanceMockState.accounts || []).find((a) => a.id === parseInt(payload.default_receiving_account_id, 10));
+      if (!acc) throw new Error("Receiving account not found");
+      const cur = String(payload.default_currency || "").toUpperCase();
+      if (cur && acc.currency !== cur) throw new Error(`The default receiving account is in ${acc.currency}, but the product currency is ${cur}.`);
+    }
+  };
+
+  const _accName = (id) => {
+    const acc = (FinanceMockState.accounts || []).find((a) => a.id === parseInt(id, 10));
+    return acc ? acc.account_name : null;
+  };
+
+  const FinanceProductsApi = {
+    async getProducts(params) {
+      if (_isMock()) {
+        let list = [...FinanceMockState.products];
+        if (params && params.is_active !== undefined && params.is_active !== "") {
+          const want = params.is_active === true || params.is_active === "true";
+          list = list.filter((p) => p.is_active === want);
+        }
+        return list.sort((a, b) => a.name.localeCompare(b.name));
+      }
+      let url = "/api/finance/products";
+      if (params) {
+        const qs = new URLSearchParams(params).toString();
+        if (qs) url += `?${qs}`;
+      }
+      return apiRequest("GET", url);
+    },
+    async createProduct(payload) {
+      if (_isMock()) {
+        _validateProduct(payload, null);
+        const p = {
+          id: Math.max(0, ...FinanceMockState.products.map((x) => x.id)) + 1,
+          name: String(payload.name).trim(),
+          code: String(payload.code).trim().toUpperCase(),
+          product_type: payload.product_type || "other",
+          default_currency: (payload.default_currency || "USD").toUpperCase(),
+          default_price: payload.default_price == null ? null : Number(payload.default_price),
+          default_receiving_account_id: payload.default_receiving_account_id || null,
+          default_receiving_account_name: _accName(payload.default_receiving_account_id),
+          is_active: payload.is_active !== false,
+        };
+        FinanceMockState.products.push(p);
+        return p;
+      }
+      return apiRequest("POST", "/api/finance/products", payload);
+    },
+    async updateProduct(id, payload) {
+      if (_isMock()) {
+        const p = FinanceMockState.products.find((x) => x.id === parseInt(id, 10));
+        if (!p) throw new Error("Product not found");
+        _validateProduct({ ...payload, default_currency: payload.default_currency || p.default_currency, default_receiving_account_id: "default_receiving_account_id" in payload ? payload.default_receiving_account_id : p.default_receiving_account_id }, p.id);
+        Object.assign(p, payload);
+        if (payload.code) p.code = String(payload.code).trim().toUpperCase();
+        p.default_receiving_account_name = _accName(p.default_receiving_account_id);
+        return p;
+      }
+      return apiRequest("PATCH", `/api/finance/products/${id}`, payload);
+    },
+  };
+
+  root.FinanceProductsApi = FinanceProductsApi;
+  if (!root.FinanceApi) root.FinanceApi = {};
+  Object.assign(root.FinanceApi, FinanceProductsApi);
+
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = FinanceProductsApi;
   }
 })(typeof window !== "undefined" ? window : globalThis);
 

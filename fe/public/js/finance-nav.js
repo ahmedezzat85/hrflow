@@ -119,6 +119,7 @@ function switchFinanceSettingsSubTab(subTab, btn) {
 
   const paneCategories = document.getElementById("financeSettingsPaneCategories");
   const panePaymentTypes = document.getElementById("financeSettingsPanePaymentTypes");
+  const paneProducts = document.getElementById("financeSettingsPaneProducts");
   const paneDisplay = document.getElementById("financeSettingsPaneDisplay");
 
   document.querySelectorAll("#a-finance-settings [data-head-for]").forEach((el) => {
@@ -127,10 +128,13 @@ function switchFinanceSettingsSubTab(subTab, btn) {
 
   if (paneCategories) paneCategories.style.display = subTab === "categories" ? "block" : "none";
   if (panePaymentTypes) panePaymentTypes.style.display = subTab === "payment_types" ? "block" : "none";
+  if (paneProducts) paneProducts.style.display = subTab === "products" ? "block" : "none";
   if (paneDisplay) paneDisplay.style.display = subTab === "display" ? "block" : "none";
 
   if (subTab === "payment_types") {
     loadFinancePaymentTypes();
+  } else if (subTab === "products") {
+    loadFinanceProducts();
   } else if (subTab === "display") {
     loadFinanceDisplaySettings();
   } else {

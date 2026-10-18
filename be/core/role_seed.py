@@ -65,6 +65,7 @@ DEFAULT_ROLES: Dict[str, RoleSeedDef] = {
         base_keys=(
             "finance.customer.write",
             "finance.invoice.write",
+            "finance.product.write",
             "finance.vendor.write",
             "finance.vendor_payment.manage",
             "finance.vendor_payment.verify",

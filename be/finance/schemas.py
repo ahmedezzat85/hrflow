@@ -573,12 +573,14 @@ class SalesInvoiceLineBase(BaseModel):
 
 
 class SalesInvoiceLineCreate(SalesInvoiceLineBase):
-    pass
+    product_id: Optional[int] = Field(None, description="Optional product from the catalog (D-030)")
 
 
 class SalesInvoiceLineResponse(SalesInvoiceLineBase):
     id: int
     invoice_id: int
+    product_id: Optional[int] = None
+    product_name: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -2801,12 +2803,40 @@ class PayrollTaxSettingsResponse(BaseModel):
         from_attributes = True
 
 
+# ==========================================
+# Product Catalog Schemas (X3, D-030)
+# ==========================================
+PRODUCT_TYPES = ("saas_subscription", "license", "implementation_service", "support", "other")
 
 
+class ProductBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    code: str = Field(..., min_length=1, max_length=50)
+    product_type: str = Field("other", description="saas_subscription | license | implementation_service | support | other")
+    default_currency: str = Field("USD", min_length=3, max_length=10)
+    default_price: Optional[float] = Field(None, ge=0.0)
+    default_receiving_account_id: Optional[int] = None
+    is_active: bool = True
 
 
+class ProductCreate(ProductBase):
+    pass
 
 
+class ProductUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    code: Optional[str] = Field(None, min_length=1, max_length=50)
+    product_type: Optional[str] = None
+    default_currency: Optional[str] = Field(None, min_length=3, max_length=10)
+    default_price: Optional[float] = Field(None, ge=0.0)
+    default_receiving_account_id: Optional[int] = None
+    is_active: Optional[bool] = None
 
 
+class ProductResponse(ProductBase):
+    id: int
+    default_receiving_account_name: Optional[str] = None
+    created_at: Optional[datetime] = None
 
+    class Config:
+        from_attributes = True

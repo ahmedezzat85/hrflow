@@ -2496,3 +2496,4 @@
 }
 .fv .fv-scan-item__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fv .fv-scan-item__size { color: var(--ink-muted); font-size: 12px; }
+.fv .fv-lines__prod { width: 20%; }

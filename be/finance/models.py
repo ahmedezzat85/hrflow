@@ -127,17 +127,37 @@ class SalesInvoiceDB(Base):
     payments = relationship("PaymentDB", back_populates="sales_invoice", foreign_keys="PaymentDB.related_invoice_id")
 
 
+class ProductDB(Base):
+    """Product catalog (D-030): classifies invoice lines and revenue receipts. No cost, margin or MRR."""
+    __tablename__ = "finance_products"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(255), nullable=False)
+    code = Column(String(50), nullable=False, unique=True, index=True)
+    product_type = Column(String(40), default="other", nullable=False)  # saas_subscription | license | implementation_service | support | other
+    default_currency = Column(String(10), default="USD", nullable=False)
+    default_price = Column(Float, nullable=True)
+    default_receiving_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(String(255), nullable=True)
+
+    default_receiving_account = relationship("FinanceBankAccountDB", foreign_keys=[default_receiving_account_id])
+
+
 class SalesInvoiceLineDB(Base):
     __tablename__ = "finance_sales_invoice_lines"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     invoice_id = Column(Integer, ForeignKey("finance_sales_invoices.id", ondelete="CASCADE"), nullable=False, index=True)
+    product_id = Column(Integer, ForeignKey("finance_products.id", ondelete="SET NULL"), nullable=True, index=True)
     description = Column(String(255), nullable=False)
     quantity = Column(Float, default=1.0)
     unit_price = Column(Float, default=0.0)
     line_total = Column(Float, default=0.0)
 
     invoice = relationship("SalesInvoiceDB", back_populates="lines")
+    product = relationship("ProductDB")
 
 
 class BillDB(Base):

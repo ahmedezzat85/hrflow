@@ -21,6 +21,8 @@ from finance.repositories.ledger_repository import LedgerRepository
 from finance.services.ledger_service import LedgerService
 from finance.repositories.categories_repository import CategoriesRepository
 from finance.services.categories_service import CategoriesService
+from finance.repositories.products_repository import ProductsRepository
+from finance.services.products_service import ProductsService
 from finance.repositories.payment_types_repository import PaymentTypesRepository
 from finance.services.payment_types_service import PaymentTypesService
 
@@ -189,5 +191,9 @@ def get_statutory_service(db: Session = Depends(get_db)):
     return StatutoryObligationsService(db)
 
 
+def get_products_repo(db: Session = Depends(get_db)) -> ProductsRepository:
+    return ProductsRepository(db)
 
 
+def get_products_service(repo: ProductsRepository = Depends(get_products_repo)) -> ProductsService:
+    return ProductsService(repo)
