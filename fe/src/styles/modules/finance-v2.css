@@ -2464,3 +2464,6 @@
   color: inherit !important;
   opacity: .85;
 }
+
+/* Table headers share the HR height (line-height 1.45 gives the 42 px header row of the mocks) */
+.fv .fv-table thead th { line-height: 1.45; }

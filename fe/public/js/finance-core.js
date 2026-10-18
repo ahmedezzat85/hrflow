@@ -1077,7 +1077,7 @@ const FinanceTable = {
       const dir = isActive ? currentSort.sortDir : "none";
       th.setAttribute("aria-sort", dir === "none" ? "none" : dir === "asc" ? "ascending" : "descending");
 
-      if (opts.textArrows) {
+      if (opts.textArrows !== false) {
         // HR lists: one tall arrow (↑ / ↓) on the ordered column only, as in the mocks.
         // Before the user sorts, the column named by data-sort-default shows its starting direction.
         const shown = isActive ? currentSort.sortDir : (currentSort.sortBy == null && th.dataset.sortDefault) || "none";
@@ -1107,7 +1107,7 @@ const FinanceTable = {
 
       const handler = () => {
         let newDir = "asc";
-        if (opts.textArrows) {
+        if (opts.textArrows !== false) {
           // HR lists cycle: first click, opposite click, then back to the original order (sort cleared).
           // The column showing its starting arrow flips first and clears on the next click.
           const start = th.dataset.sortDefault;
