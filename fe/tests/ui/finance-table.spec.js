@@ -49,8 +49,7 @@ test.describe('Story 1.2 — Shared Finance Data Table', () => {
 
     // Click Due header again -> the sort clears and the original order returns
     await totalHeader.click();
-    await expect(totalHeader).not.toHaveAttribute('aria-sort', 'ascending');
-    await expect(totalHeader).not.toHaveAttribute('aria-sort', 'descending');
+    await expect(totalHeader).toHaveAttribute('aria-sort', 'descending'); // back to its starting arrow
 
     // Test Keyboard navigation (Enter key on Customer Name header)
     const customerHeader = table.locator('th[data-sort="customer_name"]');
