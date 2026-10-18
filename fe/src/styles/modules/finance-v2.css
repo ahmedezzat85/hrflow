@@ -2467,3 +2467,6 @@
 
 /* Table headers share the HR height (line-height 1.45 gives the 42 px header row of the mocks) */
 .fv .fv-table thead th { line-height: 1.45; }
+
+/* More breathing room in finance rows (finance mocks run 60-64 px per row; these were 51) */
+.fv .fv-table tbody td { padding-top: 13px; padding-bottom: 13px; }

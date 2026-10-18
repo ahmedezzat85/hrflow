@@ -1802,6 +1802,10 @@ window.sumColumn = sumColumn;
     'insuranceTableBody', 'requestsTableBody', 'dochubTableBody', 'financeAccountsTableBody'];
   const run = () => {
     ids.forEach((id) => FinanceTable.attach({ bodyId: id }));
+    // Banking and System lists: same sorter, 25 rows a page so long ledgers still read as one list
+    ['workspaceLedgerTableBody', 'workspaceStatementsTableBody', 'financeLedgerTableBody', 'financeTransfersTableBody',
+      'financeChequesTableBody', 'statementImportsTableBody', 'rolesTableBody', 'systemUsersTableBody']
+      .forEach((id) => FinanceTable.attach({ bodyId: id, pageSize: 25 }));
     ['empSearch', 'salarySearch', 'vacBalanceSearch', 'dochubSearch'].forEach((id) => FinanceTable.bindSearchChip(id));
     FinanceTable.autoCards(['salaryTableBody', 'companyRaiseHistoryBody', 'salaryHistoryBody', 'categoriesTableBody',
       'dochubTableBody', 'empDochubTableBody', 'invoiceHistoryContainer', 'tableCashAccounts', 'tableForecastObligations',

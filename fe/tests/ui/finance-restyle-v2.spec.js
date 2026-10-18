@@ -354,7 +354,7 @@ test.describe('Finance restyle v2: Banking I (S5)', () => {
     await expect(page.locator('#financeAccountsSubNav')).toBeVisible();
     await expect(page.locator('#financeLedgerAccountSelect')).toBeVisible();
     expect(await css(page, '#financeLedgerRecordBtn', 'height')).toBe('32px');
-    await expect(page.locator('#financeLedgerTable thead th')).toHaveText(['Date', 'Details', 'Category', 'Payment type', 'Amount', 'Balance', 'Actions']);
+    await expect(page.locator('#financeLedgerTable thead th')).toHaveText(['Date ↓', 'Details', 'Category', 'Payment type', 'Amount', 'Balance', 'Actions']);
     await expect(page.locator('#financeLedgerTable')).not.toContainText('Rate / Equiv');
     await expect(page.locator('#financeLedgerTotalOut')).toContainText('4,200.00');
     await expect(page.locator('#financeLedgerCurrentBalance')).toContainText('145,800.00');
