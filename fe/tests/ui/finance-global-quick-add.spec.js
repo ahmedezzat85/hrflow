@@ -157,7 +157,7 @@ test.describe('FUX-505: Global Quick-Add Transaction', () => {
     await expect(page.locator('#a-finance-accounts')).toBeVisible();
 
     // Open workspace on first account
-    await page.locator('.btn-open-workspace').first().click();
+    await page.locator('#financeAccountsTableBody .fv-name-btn').first().click();
     await expect(page.locator('#financeSubPaneWorkspace')).toBeVisible();
 
     // Click Record Transaction from workspace

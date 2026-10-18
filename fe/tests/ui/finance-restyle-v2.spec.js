@@ -376,7 +376,7 @@ test.describe('Finance restyle v2: Banking I (S5)', () => {
     await openAdmin(page);
     await openAdminPage(page, 'a-finance-accounts');
     await expect(page.locator('#financeAccountsTableBody tr').first()).toBeVisible();
-    await page.locator('.btn-open-workspace').first().click();
+    await page.locator('#financeAccountsTableBody .fv-name-btn').first().click();
     await page.click('#btnWorkspaceNewTx');
     await expect(page.locator('#financeTransactionModal.fv-dialog')).toBeVisible();
     expect(await css(page, '#fFinanceTxAmount', 'height')).toBe('36px');

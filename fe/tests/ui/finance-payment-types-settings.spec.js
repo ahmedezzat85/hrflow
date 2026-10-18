@@ -70,7 +70,7 @@ test.describe('FUX-409: Payment Method Naming, Settings Integrity, and Bank Fee 
     await expect(page.locator('#a-finance-accounts')).toBeVisible();
 
     // Open workspace on the first account
-    await page.locator('.btn-open-workspace').first().click();
+    await page.locator('#financeAccountsTableBody .fv-name-btn').first().click();
     await expect(page.locator('#financeSubPaneWorkspace')).toBeVisible();
 
     // Click Record Transaction
@@ -113,7 +113,7 @@ test.describe('FUX-409: Payment Method Naming, Settings Integrity, and Bank Fee 
     await expect(page.locator('#a-finance-accounts')).toBeVisible();
 
     // Open workspace on the first account
-    await page.locator('.btn-open-workspace').first().click();
+    await page.locator('#financeAccountsTableBody .fv-name-btn').first().click();
     await expect(page.locator('#financeSubPaneWorkspace')).toBeVisible();
 
     // Click Record Transaction

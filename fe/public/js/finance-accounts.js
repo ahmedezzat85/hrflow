@@ -225,7 +225,6 @@ function renderFinanceAccounts(allItems) {
       <td data-label="Last statement">${lastStatement}</td>
       <td data-label="Balance" class="cell-money fv-num"><div class="fv-amount"><span class="fv-amount__value"><span class="fv-cur">${esc(cur)}</span> ${esc(FinanceUI.plainNumber(bookBal, cur))}</span>${availSub ? `<span class="fv-sub">${esc(availSub)}</span>` : ""}</div></td>
       <td data-label="Actions" class="col-actions">${FinanceUI.rowActions({
-        primary: { label: "Open ledger", kind: "outline", className: "btn-open-workspace", onclick: `openAccountWorkspace(${acc.id})`, attrs: 'title="Open Account Workspace" aria-label="Open Account Workspace"' },
         icons: [
           { icon: "fa-pen", label: "Edit Account", onclick: `openEditCompanyBankAccountModal(${acc.id})` },
           { icon: acc.is_active ? "fa-power-off" : "fa-check", label: acc.is_active ? "Deactivate Account" : "Reactivate Account", className: acc.is_active ? "fv-icon-btn--danger" : "", onclick: `toggleCompanyBankAccountActive(${acc.id}, ${acc.is_active})` },

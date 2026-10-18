@@ -1799,7 +1799,7 @@ window.sumColumn = sumColumn;
 // HR tables: sortable headers and paging (U7)
 (function attachHrTables() {
   const ids = ['employeesTableBody', 'salaryTableBody', 'companyRaiseHistoryBody', 'vacationBalanceBody',
-    'insuranceTableBody', 'requestsTableBody', 'dochubTableBody'];
+    'insuranceTableBody', 'requestsTableBody', 'dochubTableBody', 'financeAccountsTableBody'];
   const run = () => {
     ids.forEach((id) => FinanceTable.attach({ bodyId: id }));
     ['empSearch', 'salarySearch', 'vacBalanceSearch', 'dochubSearch'].forEach((id) => FinanceTable.bindSearchChip(id));
