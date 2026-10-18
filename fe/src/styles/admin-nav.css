@@ -35,28 +35,19 @@
 }
 
 .sidebar.dual-rail .rail-logo {
-  width: 38px;
-  height: 38px;
-  border-radius: 11px;
-  background: var(--brand);
-  color: var(--fv-on-brand);
-  font-family: var(--font-head);
-  font-weight: 700;
-  font-size: 14px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  width: 40px;
+  height: 40px;
+  display: inline-grid;
+  place-items: center;
   margin-bottom: 10px;
+  font-size: 24px;
 }
 
-.sidebar.dual-rail .rail-logo-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #ffffff;
-  font-family: var(--font-head);
-  font-weight: 700;
-  font-size: 14px;
+.sidebar.dual-rail .rail-logo i {
+  background: linear-gradient(135deg, var(--brand), var(--brand-ink));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .sidebar.dual-rail .rail-btn {
@@ -193,47 +184,6 @@
   font-size: 12px;
   margin-top: 2px;
   line-height: 1.35;
-}
-
-.sidebar.dual-rail .panel-search-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 34px;
-  box-sizing: border-box;
-  margin: 0 2px 6px;
-  padding: 0 10px;
-  border-radius: 9px;
-  font-size: 13px;
-  text-align: left;
-  border: 1px solid var(--fv-input-border);
-  background: var(--fv-surface-soft);
-  color: var(--ink-muted);
-  cursor: pointer;
-  transition: all 0.15s ease;
-  flex-shrink: 0;
-}
-
-.sidebar.dual-rail .panel-search-btn:hover {
-  background: var(--brand-wash);
-  border-color: var(--fv-outline);
-  color: var(--ink-strong);
-}
-
-.sidebar.dual-rail .panel-search-btn span {
-  flex: 1;
-  white-space: nowrap;
-}
-
-.sidebar.dual-rail .panel-search-btn kbd {
-  padding: 1px 6px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  background: var(--fv-surface);
-  border: 1px solid var(--fv-input-border);
-  color: var(--ink-muted);
-  font-family: inherit;
 }
 
 /* Scrollable nav list inside panel */

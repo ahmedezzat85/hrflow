@@ -1359,7 +1359,8 @@ for (const theme of ['light', 'dark']) {
       await expect(headers.nth(3)).toHaveText('Monthly total');
       await expect(headers.nth(4)).toHaveText('Change');
       await expect(headers.nth(5)).toHaveText('Reason');
-      await expect(page.locator('#salaryHistoryBody tr')).toHaveCount(3);
+      // The portal mock fixture carries the two raise records shown in ESS-Salary
+      await expect(page.locator('#salaryHistoryBody tr')).toHaveCount(2);
     });
 
     test(`S6.3 Employee Payslips in ${theme}`, async ({ page }) => {

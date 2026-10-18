@@ -39,7 +39,7 @@ test.describe('FUX-505: Global Quick-Add Transaction', () => {
 
   test('Command palette and Shift+N keyboard shortcut open global quick-add modal', async ({ page }) => {
     // 1. Test Command Palette
-    await page.click('.panel-search-btn');
+    await page.keyboard.press('Control+k');
     const paletteModal = page.locator('#commandPaletteModal');
     await expect(paletteModal).toBeVisible();
 
