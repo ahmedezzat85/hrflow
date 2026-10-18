@@ -1,7 +1,7 @@
 # Frontend UI test debt (decision list)
 
 Measured 2026-10-19 on `main` + `fix/ci-workflows`, run locally against this worktree
-(`PW_PORT=8081`, Playwright, 2 workers, 1 retry): **56 failed, 597 passed, 2 skipped**.
+(`PW_PORT=8081`, Playwright, 2 workers, 1 retry): **56 failed, 597 passed, 2 skipped**; after the fixes below, 38 deterministic failures remain.
 Objective bugs already fixed on this branch: 8 undefined CSS variables, dark-theme contrast,
 phone touch targets (44px), accessible names on the raise modal.
 
@@ -29,26 +29,20 @@ The loop compares each page against `docs/finance-module/mocks/restyle-v3`. Page
 Wording differences (`TEXT-CHANGES.md` policy: the app keeps its own words) must be listed per slice in
 `helpers/parity-map.js` `keptLabels`; the unlisted ones fail today. That is a mechanical U once you confirm the list.
 
-## 2. Old design constants (U unless you want the old value back)
-| Spec | Old expectation | Now |
-|---|---|---|
-| frontend-consistency-phase-a A1 | token alias `#7a8ea8` | `#556983` |
-| phase-a A2 | payroll dark background `#0f1117` | `#0b1634` (navy theme) |
-| phase-b AC2 | field radius 10px | 9px |
-| phase-b AC4 | dark settings card `rgb(23,26,36)` | `rgb(16,29,68)` |
-| phase-c AC1 | `.section-title` 17px | 15px |
-| phase-c AC4 | stepper weight 700 | 600 |
-| component-language (3) | one Paid badge look; shared table style; type scale tokens | restyle changed these |
-| shell-foundations R3-3 | one primary button on Payroll runs | now 2 |
-| employee-table-layout | compact action-button row | View button removed |
-| finance-bills-table-restyle | bills columns | columns changed |
-| finance-semantics AC5 | `getDerivedInvoiceStatus` returns `overdue` | D-016/D-022: overdue is a server flag, not a status |
+## 2. Done on this branch (no decision needed)
+- Old design constants updated to restyle v3 (phase A/B/C, employee table, bills table, compensation plan wording, settings callouts, payroll settings intro, semantics: overdue is a server flag D-016/D-022).
+- Reports spec updated for the library flow.
+- **Real bugs found by the tests and fixed:** Annual Matrix report called a missing `FinanceApi.getMatrixReport` (report never loaded); the statement reconcile "create entry" dialog called missing `listCategories` / `listPaymentTypes` (dropdowns stayed empty, errors swallowed); dashboard "Review" button used the removed `btn-primary`.
 
-## 3. Payroll and reports UI changed (U, or B if the screens regressed)
-Selectors the tests use no longer exist or never become visible:
-`#kpiLastRunNet` (finance-guided-payroll), `.payroll-settings-header .section-title-group` and
-`.settings-card-callout.callout-blue i` (phase-a/b), `#financeReportsSubNav` (reports, 4 tests),
-`#a-salary table thead` text and the GROSS salary-basis control (finance-compensation-plan, 2),
-and click timeouts in finance-payroll-split, finance-payroll-runner-adjustments and
-finance-payroll-commission-bonus (the payroll wizard buttons moved or were renamed).
-These need a quick look in the browser: if the screen still works, update the selector; if a control disappeared, it is a bug.
+## 3. Still open - needs your decision (38 tests)
+| Group | Tests | What it is | Recommended action |
+|---|---|---|---|
+| Restyle v3 parity | 30 | See section 1 | Finish the slices (F); then confirm kept labels (U) |
+| Old payroll wizard specs | 5 | `finance-guided-payroll` (2), `finance-payroll-split`, `finance-payroll-runner-adjustments`, `finance-payroll-commission-bonus` drive a UI that no longer exists (`#btnRunPayrollWizard`, `#runPayrollWizardModal`, `#kpiLastRunNet`, `#wizardStep1..4`, `#payrollRunDetailModal` are gone from the app). The 6-step journey replaced it. | Delete or rewrite against the new journey; `payroll-journey`, `payroll-step5`, `payroll-table-cycle` specs already cover the new flow. Check they cover Split/FX and Commission/Bonus first. |
+| component-language | 2 | Paid badge differs between vocabularies (payroll pill 12px / radius vs HR 11px / 9999px); table cell padding differs (payroll runs 10px 16px, 13.5px vs HR 9px 16px). The principle "one component language" still holds, but the payroll mock uses different values. | Decide which wins: align payroll CSS to HR, or relax the test for payroll |
+| shell-foundations R3-3 | 1 | Payroll runs page shows 2 solid primary buttons (row buttons "Continue" and "Reconcile"), the rule says one. The Pay-Runs mock has per-row actions. | Decide: make row buttons secondary, or allow one solid button per row |
+
+## 4. Local flakiness (not code)
+Running the suite on this PC adds random `page.goto` timeouts (topbar-account-menu, statements, subscriptions, reports) because pages load fonts and scripts from CDNs and your DNS drops requests. They pass on retry and on GitHub. Not counted above.
+
+Local runs: use `PW_PORT=8081 npx playwright test ...` so a second checkout does not reuse your dev server on 8080.
