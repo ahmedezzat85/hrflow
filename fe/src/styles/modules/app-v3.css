@@ -878,21 +878,30 @@
 }
 
 
-/* Dialog input add-on (EGP, USD): prefix sits inside the field group (Dlg-Claim, Dlg-Category) */
+/* Dialog input add-on (EGP, USD): one bordered box holding the prefix and the value (no seam between them) */
 .fv-dialog .input-group {
   display: flex;
+  align-items: stretch;
   width: 100%;
+  box-sizing: border-box;
+  height: 36px;
+  border: 1px solid var(--fv-input-border);
+  border-radius: 9px;
+  background: var(--fv-surface);
+  overflow: hidden;
+}
+.fv-dialog .input-group:focus-within {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-wash);
 }
 .fv-dialog .input-group .input-addon {
   display: inline-flex;
   align-items: center;
-  height: 36px;
-  box-sizing: border-box;
-  padding: 0 10px;
-  border: 1px solid var(--fv-input-border);
-  border-right: 0;
-  border-radius: 9px 0 0 9px;
-  background: var(--fv-canvas);
+  padding: 0 12px;
+  border: 0 !important;
+  border-right: 1px solid var(--fv-input-border) !important;
+  border-radius: 0 !important;
+  background: var(--fv-surface-soft);
   color: var(--ink-label);
   font-size: 13px;
   font-weight: 600;
@@ -901,7 +910,11 @@
 .fv-dialog .input-group input {
   flex: 1;
   min-width: 0;
-  border-radius: 0 9px 9px 0;
+  height: 100% !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
 }
 
 /* Role dialog permission filter: icon sits inside the flex box instead of overlapping the placeholder */
