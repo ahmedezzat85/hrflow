@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
 
 from finance import invoice_status as inv_status
+from finance import revenue as revenue_mod
 from finance.models import (
     SalesInvoiceDB,
     SalesInvoiceLineDB,
@@ -341,6 +342,8 @@ class InvoicesRepository:
             payee_name=customer.name if customer else None,
             source="invoice_payment",
             linked_invoice_id=invoice.id,
+            customer_id=customer.id if customer else None,
+            revenue_source_id=revenue_mod.invoice_source_id(self.db),
             running_balance=0.0,
             created_by=data.get("created_by"),
         )
@@ -401,6 +404,8 @@ class InvoicesRepository:
             description=f"Reversal of payment #{payment.id}" + (f": {reason.strip()}" if reason and reason.strip() else ""),
             source="payment_reversal",
             linked_invoice_id=invoice_id,
+            customer_id=invoice.customer_id,
+            revenue_source_id=revenue_mod.invoice_source_id(self.db),
             running_balance=0.0,
             created_by=reversed_by,
         ))

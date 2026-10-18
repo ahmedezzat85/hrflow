@@ -13,7 +13,7 @@ Each ledger row counts toward revenue, toward spend, or toward neither:
 """
 from typing import Optional, Tuple
 
-REVERSAL_SOURCES = frozenset({"bill_payment_reversal", "cheque_reversal", "payment_reversal"})
+REVERSAL_SOURCES = frozenset({"bill_payment_reversal", "cheque_reversal", "payment_reversal", "revenue_receipt_reversal"})
 FORCED_SPEND_SOURCES = frozenset({"payroll", "statutory_remittance"})
 
 # Payment types that only move money between the company's own accounts

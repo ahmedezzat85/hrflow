@@ -2883,3 +2883,80 @@ class ProductResponse(ProductBase):
 
     class Config:
         from_attributes = True
+
+
+# ==========================================
+# Revenue sources and receipts (X4, D-029)
+# ==========================================
+class RevenueSourceCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    code: str = Field(..., min_length=1, max_length=50)
+    sort_order: int = 0
+    is_active: bool = True
+
+
+class RevenueSourceUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    sort_order: Optional[int] = None
+    is_active: Optional[bool] = None
+
+
+class RevenueSourceResponse(BaseModel):
+    id: int
+    code: str
+    name: str
+    sort_order: int = 0
+    is_active: bool = True
+    is_system: bool = False
+
+    class Config:
+        from_attributes = True
+
+
+class RevenueReceiptCreate(BaseModel):
+    account_id: int
+    date: str = Field(..., description="Receipt date (YYYY-MM-DD)")
+    amount: float = Field(..., gt=0.0, description="Amount received, in the account currency")
+    currency: str = Field("USD", min_length=3, max_length=10)
+    revenue_source_id: int
+    product_id: Optional[int] = None
+    customer_id: Optional[int] = None
+    period_start: Optional[str] = Field(None, description="Service period covered, from (YYYY-MM-DD)")
+    period_end: Optional[str] = Field(None, description="Service period covered, to (YYYY-MM-DD)")
+    memo_gross_amount: Optional[float] = Field(None, ge=0.0, description="Memo only: gross charged before fees; never affects balances")
+    memo_fee_amount: Optional[float] = Field(None, ge=0.0, description="Memo only: fees deducted; never affects balances")
+    reference: Optional[str] = Field("", max_length=255)
+    description: Optional[str] = Field("", max_length=255)
+
+
+class RevenueReceiptReverse(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=500)
+
+
+class RevenueReceiptResponse(BaseModel):
+    id: int
+    account_id: int
+    account_name: Optional[str] = None
+    book_code: Optional[str] = None
+    date: str
+    amount: float
+    currency: str
+    direction: str
+    revenue_source_id: Optional[int] = None
+    revenue_source_name: Optional[str] = None
+    product_id: Optional[int] = None
+    product_name: Optional[str] = None
+    customer_id: Optional[int] = None
+    customer_name: Optional[str] = None
+    period_start: Optional[str] = None
+    period_end: Optional[str] = None
+    memo_gross_amount: Optional[float] = None
+    memo_fee_amount: Optional[float] = None
+    reference: str = ""
+    description: str = ""
+    is_reversal: bool = False
+    has_attachment: bool = False
+    attachment_name: Optional[str] = None
+    created_at: Optional[datetime] = None
+    created_by: Optional[str] = None
+

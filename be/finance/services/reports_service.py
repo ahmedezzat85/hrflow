@@ -521,6 +521,95 @@ class ReportsService:
     # ------------------------------------------------------------------
     # 3. Category × Period Matrix
     # ------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Revenue breakdown: product x book x source x customer x month, per currency (X4, D-029/D-030)
+    # ------------------------------------------------------------------
+    def get_revenue_breakdown(
+        self,
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
+        currency: Optional[str] = "ALL",
+        book: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Cash-basis revenue (the same classification as the P&L) grouped by month, book, source, product and customer.
+        Currencies are never added together (D-026). Revenue with no product shows as 'Untagged revenue'."""
+        from finance.models import ProductDB, RevenueSourceDB, CustomerDB
+        scope = self._scope(book)
+        curr_norm = (currency or "ALL").upper()
+        q = (
+            self.db.query(LedgerTransactionDB, TransactionCategoryDB.kind)
+            .outerjoin(TransactionCategoryDB, LedgerTransactionDB.category_id == TransactionCategoryDB.id)
+        )
+        q = scope.filter(q, LedgerTransactionDB.account_id)
+        if date_from:
+            q = q.filter(LedgerTransactionDB.date >= date_from)
+        if date_to:
+            q = q.filter(LedgerTransactionDB.date <= date_to)
+        if curr_norm != "ALL":
+            q = q.filter(LedgerTransactionDB.currency == curr_norm)
+
+        sources = {s.id: s.name for s in self.db.query(RevenueSourceDB).all()}
+        products = {p.id: p.name for p in self.db.query(ProductDB).all()}
+        customers = {c.id: c.name for c in self.db.query(CustomerDB).all()}
+        UNTAGGED = "Untagged revenue"
+
+        agg: Dict[Tuple[str, str, str, str, Optional[int], str, str], float] = {}
+
+        def add(month, book_code, source, product_id, customer_id, cur, amount):
+            product_name = products.get(product_id) if product_id else UNTAGGED
+            customer_name = customers.get(customer_id) if customer_id else "No customer"
+            key = (month, book_code, source, product_name, product_id, customer_name, cur)
+            agg[key] = agg.get(key, 0.0) + amount
+
+        for t, kind in q.all():
+            cls = cash_basis.classify_view(t, kind, has_category=t.category_id is not None, scope=scope)
+            if not cls or cls[0] != cash_basis.REVENUE:
+                continue
+            _, amount, label = cls
+            cur = (t.currency or "USD").upper()
+            month = (t.date or "")[:7]
+            book_code = scope.book_of(t.account_id)
+            invoice = t.linked_invoice
+            customer_id = t.customer_id or (invoice.customer_id if invoice is not None else None)
+            source = label or (sources.get(t.revenue_source_id) if t.revenue_source_id else None) or ("Invoice" if invoice is not None else "Unspecified")
+            if t.product_id:
+                add(month, book_code, source, t.product_id, customer_id, cur, amount)
+            elif invoice is not None and invoice.lines:
+                # An invoice receipt is split across the invoice's lines by their share of the subtotal
+                total = sum(float(ln.line_total or 0.0) for ln in invoice.lines)
+                if total > 0:
+                    for ln in invoice.lines:
+                        share = float(ln.line_total or 0.0) / total
+                        add(month, book_code, source, ln.product_id, customer_id, cur, amount * share)
+                else:
+                    add(month, book_code, source, None, customer_id, cur, amount)
+            else:
+                add(month, book_code, source, None, customer_id, cur, amount)
+
+        rows = [
+            {
+                "month": k[0], "book_code": k[1], "source": k[2], "product_id": k[4], "product_name": k[3],
+                "customer_name": k[5], "currency": k[6], "amount": round(v, 2),
+            }
+            for k, v in sorted(agg.items(), key=lambda kv: (kv[0][0], kv[0][1], kv[0][2], kv[0][3], kv[0][5], kv[0][6]))
+        ]
+        totals: Dict[str, float] = {}
+        untagged: Dict[str, float] = {}
+        for r in rows:
+            totals[r["currency"]] = round(totals.get(r["currency"], 0.0) + r["amount"], 2)
+            if r["product_name"] == UNTAGGED:
+                untagged[r["currency"]] = round(untagged.get(r["currency"], 0.0) + r["amount"], 2)
+        return {
+            "book": scope.view,
+            "date_from": date_from,
+            "date_to": date_to,
+            "currency": curr_norm,
+            "rows": rows,
+            "totals_by_currency": totals,
+            "untagged_by_currency": untagged,
+            "conversion_policy": "One figure per currency. Currencies are never added together and no converted total is shown.",
+        }
+
     def get_category_by_period_matrix(
         self,
         year: int,

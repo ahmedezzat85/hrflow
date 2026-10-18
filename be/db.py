@@ -105,6 +105,15 @@ def init_db():
         import logging
         logging.getLogger(__name__).error("Book seeding failed", exc_info=True)
 
+    # Revenue sources (D-029)
+    try:
+        from finance import revenue as _revenue
+        with get_db_context() as db:
+            _revenue.ensure_sources(db)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).error("Revenue source seeding failed", exc_info=True)
+
     # Idempotently synchronize RBAC catalog permissions and Super-Admin grants
     try:
         from core.role_seed import sync_catalog

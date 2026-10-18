@@ -4,6 +4,7 @@
               <button class="filter-tab active" id="subtabSettingsCategories" role="tab" aria-selected="true" tabindex="0" data-settings-tab="categories" onclick="switchFinanceSettingsSubTab('categories', this)">Transaction categories</button>
               <button class="filter-tab" id="subtabSettingsPaymentTypes" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="payment_types" onclick="switchFinanceSettingsSubTab('payment_types', this)">Payment types</button>
               <button class="filter-tab" id="subtabSettingsProducts" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="products" onclick="switchFinanceSettingsSubTab('products', this)">Products</button>
+              <button class="filter-tab" id="subtabSettingsRevenueSources" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="revenue_sources" onclick="switchFinanceSettingsSubTab('revenue_sources', this)">Revenue sources</button>
               <button class="filter-tab" id="subtabSettingsDisplay" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="display" onclick="switchFinanceSettingsSubTab('display', this)">Display</button>
             </div>
             <div class="fv-head-actions" id="financeSettingsActionsCategories" data-head-for="categories">
@@ -11,6 +12,9 @@
             </div>
             <div class="fv-head-actions" id="financeSettingsActionsPaymentTypes" data-head-for="payment_types" style="display:none;">
               <button class="btn btn-fill" id="financeAddPaymentTypeBtn" onclick="openAddFinancePaymentTypeModal()">Add payment type</button>
+            </div>
+            <div class="fv-head-actions" id="financeSettingsActionsRevenueSources" data-head-for="revenue_sources" style="display:none;">
+              <button class="btn btn-fill" id="financeAddRevenueSourceBtn" onclick="openAddRevenueSourceModal()">Add source</button>
             </div>
             <div class="fv-head-actions" id="financeSettingsActionsProducts" data-head-for="products" style="display:none;">
               <button class="btn btn-fill" id="financeAddProductBtn" onclick="openAddFinanceProductModal()">Add product</button>
@@ -141,6 +145,26 @@
                 <button class="btn btn-fill" onclick="openAddFinanceProductModal()">Add product</button>
               </div>
               <div class="fv-foot" id="financeProductsFooter">Products classify invoice lines and revenue. Deactivated products stay on past invoices.</div>
+            </div>
+          </div>
+
+          <!-- PANE: Revenue sources (X4, D-029) -->
+          <div id="financeSettingsPaneRevenueSources" style="display:none;">
+            <div class="fv-table-card">
+              <div class="fv-table-scroll">
+                <table class="fv-table fv-table--revenue-sources responsive-card-table" id="financeRevenueSourcesTable">
+                  <thead>
+                    <tr>
+                      <th>Source</th>
+                      <th>Code</th>
+                      <th>Status</th>
+                      <th class="col-actions"><span class="fv-sr-only">Actions</span></th>
+                    </tr>
+                  </thead>
+                  <tbody id="financeRevenueSourcesTableBody"></tbody>
+                </table>
+              </div>
+              <div class="fv-foot">Where money came from. Invoice receipts always use Invoice; the rest are chosen when you record a revenue receipt.</div>
             </div>
           </div>
 

@@ -422,13 +422,13 @@ This document records durable product and architectural decisions approved by th
 
 ### D-029 — External Revenue: Receipts Tagged by Source, No Stripe Account Yet
 
-- **Status:** Accepted by owner, October 18, 2026. Resolves Q-019. Not implemented (slice X4).
+- **Status:** Accepted by owner, October 18, 2026. Resolves Q-019. Implemented on `feature/finance-expansion` (slice X4, migration 0039).
 - **Decision:** Stripe is not modelled as an account now. Money reaching a company account without an HRFlow invoice is recorded as a **revenue receipt** (a `money_in` ledger row) with `revenue_source` from an editable list (`Invoice`, `Stripe payout`, `Direct transfer`, `Cash`, `Other`), optional product and customer, period covered, and optional memo-only gross and fee amounts. When the planned revenue-service integration arrives, imported service revenue becomes the revenue record and bank payouts are matched to it; earlier payout receipts stay as historical records.
 - **Rationale:** Stripe money mostly originates from other services the owner plans to integrate directly; a Stripe account now would be replaced later.
 
 ### D-030 — Product Catalog and Revenue Tagging
 
-- **Status:** Accepted by owner, October 18, 2026. Implemented on `feature/finance-expansion` (slice X3, migration 0037); `product_id` on revenue receipts lands with X4. Permissions `finance.product.read` / `finance.product.write` (write granted to Financial-Admin).
+- **Status:** Accepted by owner, October 18, 2026. Implemented on `feature/finance-expansion` (slices X3, migration 0037, and X4, migration 0039 for `product_id` on revenue receipts). Permissions `finance.product.read` / `finance.product.write` (write granted to Financial-Admin).
 - **Decision:** New Finance-owned `finance_products` (name, code, type `saas_subscription | license | implementation_service | support | other`, default currency/price, default receiving account, active). Optional `product_id` on sales invoice lines and revenue receipts; untagged revenue stays visible in reports. Invoice book is derived from its expected receiving account; `revenue_channel` is kept for history and mapped to book + source.
 - **Rationale:** The owner wants revenue by product across local and overseas accounts.
 

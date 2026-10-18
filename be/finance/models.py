@@ -146,6 +146,18 @@ class ProductDB(Base):
     default_receiving_account = relationship("FinanceBankAccountDB", foreign_keys=[default_receiving_account_id])
 
 
+class RevenueSourceDB(Base):
+    """Editable list of where revenue came from (D-029): Invoice, Stripe payout, Direct transfer, Cash, Other."""
+    __tablename__ = "finance_revenue_sources"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(50), nullable=False, unique=True, index=True)
+    name = Column(String(100), nullable=False)
+    sort_order = Column(Integer, default=0, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    is_system = Column(Boolean, default=False, nullable=False)  # the Invoice source is set by invoice receipts and cannot be removed
+
+
 class SalesInvoiceLineDB(Base):
     __tablename__ = "finance_sales_invoice_lines"
 
@@ -345,6 +357,14 @@ class LedgerTransactionDB(Base):
     linked_cheque_id = Column(Integer, ForeignKey("finance_cheques.id", ondelete="SET NULL", use_alter=True), nullable=True, index=True)
     linked_statutory_obligation_id = Column(Integer, ForeignKey("finance_statutory_obligations.id", ondelete="SET NULL"), nullable=True, index=True)
     destination_cash_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True)
+    # Revenue tagging (X4, D-029/D-030). The memo amounts never affect balances.
+    product_id = Column(Integer, ForeignKey("finance_products.id", ondelete="SET NULL"), nullable=True, index=True)
+    customer_id = Column(Integer, ForeignKey("finance_customers.id", ondelete="SET NULL"), nullable=True, index=True)
+    revenue_source_id = Column(Integer, ForeignKey("finance_revenue_sources.id", ondelete="SET NULL"), nullable=True, index=True)
+    period_start = Column(String(20), nullable=True)  # service period the receipt covers, YYYY-MM-DD
+    period_end = Column(String(20), nullable=True)
+    memo_gross_amount = Column(Float, nullable=True)
+    memo_fee_amount = Column(Float, nullable=True)
     running_balance = Column(Float, default=0.0, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(String(255), nullable=True)

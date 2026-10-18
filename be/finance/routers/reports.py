@@ -127,6 +127,19 @@ def review_attention_item(
     }
 
 
+@router.get("/revenue-breakdown", response_model=Dict[str, Any])
+def get_revenue_breakdown(
+    date_from: Optional[str] = Query(None, description="From date (YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="To date (YYYY-MM-DD)"),
+    currency: str = Query("ALL", description="Currency filter, or ALL for one figure per currency"),
+    book: Optional[str] = Query(None, description="Book view: local | overseas | consolidated. Omitted = every account."),
+    service: ReportsService = Depends(get_reports_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+):
+    """Cash-basis revenue by month, book, source, product and customer, with an Untagged revenue row (X4)."""
+    return service.get_revenue_breakdown(date_from=date_from, date_to=date_to, currency=currency, book=book)
+
+
 @router.get("/cash-forecast", response_model=CashForecastResponse)
 def get_cash_forecast(
     currency: str = Query("all", description="Currency filter: all, USD, EGP"),
