@@ -78,7 +78,7 @@ test.describe('U3 truthful screens', () => {
       PayrollApp.currentRun = { id: 901, status: 'finalized', lines: [], exceptions: [] };
       PayrollApp.setStep(1);
     });
-    await expect(page.locator('#payrollLockNote')).toBeVisible();
+    await expect(page.locator('#payrollLockNote')).toBeHidden();
     await expect(page.locator('#btnP2SaveDraft')).toBeHidden();
     await expect(page.locator('#btnP2Approve')).toBeHidden();
     const plus = page.locator('#payrollTableBody .plus');

@@ -146,7 +146,8 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     await expect(page.locator('#payrollStepper .payroll-step-pill.active')).toContainText('Statutory');
 
     // Finalized lock note is visible
-    await expect(page.locator('#payrollLockNote')).toBeVisible();
+    // The finalized state is shown by the status pill and the blue snapshot strip (no amber note)
+    await expect(page.locator('#payrollLockNote')).toBeHidden();
 
     // Screen 3 table contains backend statutory snapshots (deduplicated per employee)
     const procTable = page.locator('#payrollProcessingTableBody tr');

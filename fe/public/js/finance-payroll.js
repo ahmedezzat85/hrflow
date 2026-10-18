@@ -715,7 +715,6 @@
           if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.finalizePayrollRun === 'function') {
             await FinanceApi.finalizePayrollRun(this.currentRun.id);
             this.currentRun = await FinanceApi.getPayrollRun(this.currentRun.id);
-            this.showBanner('Payroll run finalized and locked. Backend snapshots populated.', 'blue');
           }
         } catch (err) {
           this.showBanner(err.message || 'Finalization failed. Statutory snapshot could not be generated.', 'red');
@@ -759,12 +758,9 @@
       const lockNote = document.getElementById('payrollLockNote');
       const lockText = document.getElementById('payrollLockText');
       if (lockNote && lockText) {
-        if (idx >= 2 || this.isRunLocked()) {
-          lockNote.classList.remove('payroll-hidden');
-          lockText.textContent = 'This run is finalized. Compensation and additions are read-only.';
-        } else {
-          lockNote.classList.add('payroll-hidden');
-        }
+        // The blue "Finalized snapshot" strip and the status pill already say this (mock): keep the note hidden
+        lockText.textContent = 'This run is finalized. Compensation and additions are read-only.';
+        lockNote.classList.add('payroll-hidden');
       }
     },
 
@@ -997,7 +993,7 @@
         const allowed = awaitingApproval ? this.canPermission('finance.payroll.approve') : this.canPermission('finance.payroll.prepare');
         p2ApproveBtn.innerHTML = awaitingApproval
           ? 'Approve <i class="fa-solid fa-check"></i>'
-          : 'Submit for approval <i class="fa-solid fa-paper-plane"></i>';
+          : 'Submit for approval';
         p2ApproveBtn.style.display = allowed && !pastApproval ? '' : 'none';
         const blockers = awaitingApproval ? 0 : this.blockingIssues().length;
         p2ApproveBtn.disabled = blockers > 0;
@@ -1674,7 +1670,7 @@
         if (isMissingBank) {
           bankBadgeHtml = `
             <a class="pv-pill pv-pill--open payroll-missing-bank-link" href="${empBankHref}" data-action="open-employee-bank" data-employee-id="${escapeHtml(r.id)}" style="display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600; text-decoration:none; background:var(--warning-soft); color:var(--warning-text, var(--warning));">
-              <span class="pv-dot" style="width:7px; height:7px; border-radius:50%; background:currentColor;"></span>Missing bank details
+              Missing bank details
             </a>
             <div class="pv-emp-sub" style="font-size:12px; color:var(--ink-muted); margin-top:2px;">Pay outside HRFlow and record it here</div>
           `;
@@ -1752,8 +1748,10 @@
       const t = this.rollup();
       const p = this.currentPreview;
 
-      const extBankName = (this.banks.find(b => String(b.id) === String(this.selectedExternalAccountId)) || {}).name || '—';
-      const intBankName = (this.banks.find(b => String(b.id) === String(this.selectedInternalAccountId)) || {}).name || '—';
+      const extBankObj = this.banks.find(b => String(b.id) === String(this.selectedExternalAccountId));
+      const intBankObj = this.banks.find(b => String(b.id) === String(this.selectedInternalAccountId));
+      const extBankName = extBankObj ? this.fundingAccountLabel(extBankObj) : '—';
+      const intBankName = intBankObj ? this.fundingAccountLabel(intBankObj) : '—';
 
       const { ext: extTotal, int: intTotal } = this.paymentTotals();
 
@@ -1783,13 +1781,13 @@
       if (p5ExtAcc) p5ExtAcc.textContent = extBankName;
       if (p5ExtRec) p5ExtRec.textContent = 'External salaries';
       if (p5ExtRecCount) p5ExtRecCount.textContent = `${extRecipients} employee${extRecipients === 1 ? '' : 's'}`;
-      if (p5ExtDate) p5ExtDate.textContent = this.payDate;
+      if (p5ExtDate) p5ExtDate.textContent = fmtDateShort(this.payDate);
 
       if (p5IntTot) p5IntTot.textContent = this.money(intTotal);
       if (p5IntAcc) p5IntAcc.textContent = intBankName;
       if (p5IntRec) p5IntRec.textContent = 'Internal salaries';
       if (p5IntRecCount) p5IntRecCount.textContent = `${intRecipients} employee${intRecipients === 1 ? '' : 's'}`;
-      if (p5IntDate) p5IntDate.textContent = this.payDate;
+      if (p5IntDate) p5IntDate.textContent = fmtDateShort(this.payDate);
 
       if (extEl) extEl.textContent = `${this.money(extTotal)} (${extBankName})`;
       if (intEl) intEl.textContent = `${this.money(intTotal)} (${intBankName})`;
@@ -2459,6 +2457,8 @@
       const onRun = page === 'run';
       const statusBadge = document.getElementById('payrollStatusBadge');
       if (statusBadge) statusBadge.hidden = !onRun;
+      const topRevert = document.getElementById('payrollTopRevertBtn');
+      if (topRevert && !onRun) topRevert.hidden = true;
       const fxEl = document.getElementById('payrollFxStrip');
       if (fxEl) fxEl.hidden = true;
       const areaEl = document.getElementById('adminAreaName');
@@ -2493,18 +2493,23 @@
       const badge = document.getElementById('payrollStatusBadge');
       if (!badge) return;
       const key = this.currentStatusKey();
+      // Finalized runs read "Approved" until the payment step, then "Finalized · not paid yet" (mock Pay-Run-*)
+      const finalizedLabel = this.stepIndex >= 4 ? 'Finalized · not paid yet' : 'Approved';
       const statusMap = {
         draft: ['Draft', 'b-gray'],
         submitted: ['Submitted', 'b-blue'],
         approved: ['Approved', 'b-blue'],
-        finalized: ['Finalized', 'b-blue'],
+        finalized: [finalizedLabel, 'b-blue'],
         processing: ['Processing', 'b-orange'],
         partially_paid: ['Partially paid', 'b-orange'],
         paid: ['Salaries paid', 'b-green']
       };
       const info = statusMap[key] || ['Draft', 'b-gray'];
       badge.textContent = info[0];
-      badge.className = `p-badge ${info[1]}`;
+      badge.className = `p-badge ${info[1]} topbar-run-status`;
+      // "Revert to draft" sits in the top bar while the run is approved (before the payment step)
+      const revertBtn = document.getElementById('payrollTopRevertBtn');
+      if (revertBtn) revertBtn.hidden = badge.hidden || info[0] !== 'Approved';
     },
 
     drawFundingAccounts() {

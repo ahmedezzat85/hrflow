@@ -327,7 +327,7 @@
               <!-- ==================== SCREEN 5: PAYMENT CONFIRMATION ==================== -->
               <div class="payroll-screen-view screen payroll-hidden" id="payrollScreen5">
                 <div class="title-row">
-                  <div class="section-title">Payment confirmation</div>
+                  <div class="section-title sr-only">Payment confirmation</div>
                   <div style="display:flex; align-items:center; gap:8px;">
                     <span class="p-badge b-green" id="p5RunStatusBadge" style="display:none;">Salaries paid</span>
                     <span class="p-badge b-gray" id="p5StatutoryBadge" style="display:none;">Statutory not recorded</span>
@@ -342,8 +342,8 @@
                   <!-- Rail Card 1: Internal Salaries -->
                   <section class="disburse-card internal pv-s5-card" style="background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: var(--pv-r, 14px); padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;">
                     <div style="display: flex; align-items: baseline; justify-content: space-between;">
-                      <h2 style="margin: 0; font-family: var(--font-display, Sora, sans-serif); font-size: 15px; font-weight: 700; color: var(--ink-strong);">Internal salaries</h2>
-                      <span style="font-family: var(--font-display, Sora, sans-serif); font-weight: 700; font-size: 20px; color: var(--ink-strong);" id="p5IntTotal">$0.00</span>
+                      <h2 style="margin: 0; font-family: var(--font-display, Sora, sans-serif); font-size: 15px; font-weight: 700; color: var(--ink-strong);"><span class="pv-area-tile pv-area-tile--green" aria-hidden="true"><i class="fa-solid fa-money-bill-wave"></i></span>Internal salaries</h2>
+                      <span style="font-family: var(--font-display, Sora, sans-serif); font-weight: 700; font-size: 20px; color: var(--ink-strong);" class="pv-s5-amount pv-s5-amount--green" id="p5IntTotal">$0.00</span>
                     </div>
                     <div class="disburse-meta" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;">
                       <div class="disburse-row pv-tile-cell" style="padding: 9px 12px; border-radius: 12px; background: var(--fv-surface-soft);">
@@ -365,8 +365,8 @@
                   <!-- Rail Card 2: External Salaries -->
                   <section class="disburse-card external pv-s5-card" style="background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: var(--pv-r, 14px); padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;">
                     <div style="display: flex; align-items: baseline; justify-content: space-between;">
-                      <h2 style="margin: 0; font-family: var(--font-display, Sora, sans-serif); font-size: 15px; font-weight: 700; color: var(--ink-strong);">External salaries</h2>
-                      <span style="font-family: var(--font-display, Sora, sans-serif); font-weight: 700; font-size: 20px; color: var(--ink-strong);" id="p5ExtTotal">$0.00</span>
+                      <h2 style="margin: 0; font-family: var(--font-display, Sora, sans-serif); font-size: 15px; font-weight: 700; color: var(--ink-strong);"><span class="pv-area-tile pv-area-tile--blue" aria-hidden="true"><i class="fa-solid fa-building-columns"></i></span>External salaries</h2>
+                      <span style="font-family: var(--font-display, Sora, sans-serif); font-weight: 700; font-size: 20px; color: var(--ink-strong);" class="pv-s5-amount pv-s5-amount--blue" id="p5ExtTotal">$0.00</span>
                     </div>
                     <div class="disburse-meta" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;">
                       <div class="disburse-row pv-tile-cell" style="padding: 9px 12px; border-radius: 12px; background: var(--fv-surface-soft);">
@@ -397,6 +397,9 @@
                     <span id="p5ConfirmHint" style="font-size: 12.5px; color: var(--ink-muted);">Records the payment in HRFlow. No money is sent from here.</span>
                     <button type="button" class="btn btn-fill" id="btnP5ConfirmDisburse" onclick="PayrollApp.confirmDisbursement()">
                       Confirm and record as paid
+                    </button>
+                    <button class="btn btn-fill" id="btnP5ProceedStatutory" onclick="PayrollApp.setStep(5)">
+                      Next: Statutory payments
                     </button>
                   </div>
                 </div>
@@ -443,19 +446,12 @@
                   </div>
                 </div>
 
-                <div class="footer payroll-footer-actions">
-                  <div class="left-info" style="display:none;">Step 5 of 6 — Disbursement execution complete. Proceed to statutory tax and social insurance reconciliation.</div>
-                  <button class="btn btn-ghost" onclick="PayrollApp.setStep(3)">Back</button>
-                  <button class="btn btn-fill" id="btnP5ProceedStatutory" onclick="PayrollApp.setStep(5)">
-                    Next: Statutory payments
-                  </button>
-                </div>
               </div>
 
               <!-- ==================== SCREEN 6: STATUTORY RECONCILIATION ==================== -->
               <div class="payroll-screen-view screen payroll-hidden" id="payrollScreen6">
                 <div class="title-row">
-                  <div class="section-title">Statutory reconciliation</div>
+                  <div class="section-title sr-only">Statutory reconciliation</div>
                   <div style="display:flex; align-items:center; gap:8px;">
                     <span class="p-badge b-blue" id="p6StatutoryBadge">Recorded — Unpaid</span>
                   </div>
@@ -466,7 +462,7 @@
                   <div class="stat-obl-card si pv-s6-card" id="siCard" style="background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: var(--pv-r, 14px); padding: 14px 16px; display: flex; flex-direction: column; gap: 12px;">
                     <div style="display: flex; align-items: center; gap: 10px;">
                       <div style="flex: 1;">
-                        <h2 style="margin: 0; font-family: var(--font-display, Sora, sans-serif); font-size: 15px; font-weight: 700; color: var(--ink-strong);">Social insurance</h2>
+                        <h2 style="margin: 0; font-family: var(--font-display, Sora, sans-serif); font-size: 15px; font-weight: 700; color: var(--ink-strong);"><span class="pv-area-tile pv-area-tile--teal" aria-hidden="true"><i class="fa-solid fa-shield-halved"></i></span>Social insurance</h2>
                         <div style="font-size: 12.5px; color: var(--ink-muted);">Employee and employer contributions</div>
                       </div>
                       <span class="stage-badge unrecorded" id="p6SiStatusBadge">Not recorded</span>
@@ -515,7 +511,7 @@
                   <div class="stat-obl-card tax pv-s6-card" id="taxCard" style="background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: var(--pv-r, 14px); padding: 14px 16px; display: flex; flex-direction: column; gap: 12px;">
                     <div style="display: flex; align-items: center; gap: 10px;">
                       <div style="flex: 1;">
-                        <h2 style="margin: 0; font-family: var(--font-display, Sora, sans-serif); font-size: 15px; font-weight: 700; color: var(--ink-strong);">Salary income tax</h2>
+                        <h2 style="margin: 0; font-family: var(--font-display, Sora, sans-serif); font-size: 15px; font-weight: 700; color: var(--ink-strong);"><span class="pv-area-tile pv-area-tile--ochre" aria-hidden="true"><i class="fa-solid fa-receipt"></i></span>Salary income tax</h2>
                         <div style="font-size: 12.5px; color: var(--ink-muted);">Withheld from salaries</div>
                       </div>
                       <span class="stage-badge unrecorded" id="p6TaxStatusBadge">Not recorded</span>

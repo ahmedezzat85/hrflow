@@ -1380,3 +1380,65 @@
   background-repeat: no-repeat;
   background-position: right 13px center;
 }
+
+/* ---------- Run page chrome ---------- */
+/* Approved / finalized status pill: blue with a dot (mock Pay-Run-Processing, Pay-Run-Confirm) */
+#payrollStatusBadge.topbar-run-status.b-blue {
+  color: var(--brand-ink);
+  border: 1px solid transparent;
+  background: var(--brand-tint);
+}
+#payrollStatusBadge.topbar-run-status.b-blue::before { background: var(--brand); }
+#payrollStatusBadge.topbar-run-status.b-orange {
+  color: var(--warning);
+  border: 1px solid transparent;
+  background: var(--warning-soft);
+}
+#payrollStatusBadge.topbar-run-status.b-orange::before { background: var(--warning); }
+/* The amber lock note and the Step 6 status pill are not part of the mock design */
+#a-finance-payroll #payrollLockNote,
+#a-finance-payroll #p6StatutoryBadge { display: none !important; }
+
+/* Review pay: one-line role under the name, so rows keep a steady height */
+#a-finance-payroll #payrollScreen2 .pv-emp-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+
+/* ---------- Colour per data type (Steps 5 and 6) ---------- */
+/* Same colours as the rest of the app: internal green, external blue, social insurance teal, income tax ochre */
+.pv-area-tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-right: 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  vertical-align: middle;
+}
+.pv-area-tile--green { background: color-mix(in srgb, var(--id-green) 16%, transparent); color: var(--id-green-ink); }
+.pv-area-tile--blue  { background: color-mix(in srgb, var(--id-blue) 14%, transparent);  color: var(--id-blue-ink); }
+.pv-area-tile--teal  { background: color-mix(in srgb, var(--id-teal) 16%, transparent);  color: var(--id-teal-ink); }
+.pv-area-tile--ochre { background: color-mix(in srgb, var(--id-ochre) 18%, transparent); color: var(--id-ochre-ink); }
+
+/* Step 5 (option A): headline amount takes the rail colour */
+#a-finance-payroll .pv-s5-amount--green { color: var(--id-green-ink) !important; }
+#a-finance-payroll .pv-s5-amount--blue  { color: var(--id-blue-ink) !important; }
+
+/* Step 6 (option B): tinted card with a coloured top rule */
+#a-finance-payroll .pv-s6-card.si {
+  background: color-mix(in srgb, var(--id-teal) 7%, var(--fv-surface)) !important;
+  border-top: 3px solid var(--id-teal) !important;
+}
+#a-finance-payroll .pv-s6-card.tax {
+  background: color-mix(in srgb, var(--id-ochre) 8%, var(--fv-surface)) !important;
+  border-top: 3px solid var(--id-ochre) !important;
+}
+#a-finance-payroll .pv-s6-card .pv-tile-cell { background: var(--fv-surface) !important; }
+#a-finance-payroll .pv-s6-card.si .stat-obl-amount  { color: var(--id-teal-ink); }
+#a-finance-payroll .pv-s6-card.tax .stat-obl-amount { color: var(--id-ochre-ink); }
+
+/* Steps 5 and 6: the heading is screen-reader text only, so the title row must not leave a gap */
+#a-finance-payroll #payrollScreen5 > .title-row,
+#a-finance-payroll #payrollScreen6 > .title-row { margin: 0; min-height: 0; }
+#a-finance-payroll #payrollScreen5 > .title-row:not(:has(.p-badge:not([style*="display: none"]))),
+#a-finance-payroll #payrollScreen6 > .title-row { height: 0; overflow: visible; }

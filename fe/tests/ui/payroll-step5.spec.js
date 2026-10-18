@@ -98,7 +98,7 @@ test.describe('R6 payroll step 5', () => {
     const btn = page.locator('#btnP5ConfirmDisburse');
     await expect(btn).toBeDisabled();
     await expect(btn).toContainText(/^\s*Recorded as paid on \d{2} \w{3} \d{4}\s*$/);
-    await expect(page.locator('#payrollLockText')).toHaveText('This run is finalized. Compensation and additions are read-only.');
+    await expect(page.locator('#payrollLockNote')).toBeHidden();
     const fx = (await page.locator('#payrollFxStrip').innerText()).replace(/\s+/g, ' ');
     expect(fx).toMatch(/(?:FX rate:\s*)?1 USD = \d+\.\d{4} EGP(?:,| ·) (?:manual override|system fallback rate|fallback rate|from transfer history)/);
   });
