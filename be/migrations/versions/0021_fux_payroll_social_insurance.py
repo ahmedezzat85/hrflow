@@ -28,7 +28,7 @@ def upgrade() -> None:
             'employee_social_insurance',
             sa.Column('id', sa.Integer(), primary_key=True, autoincrement=True),
             sa.Column('employee_id', sa.Integer(), sa.ForeignKey('employees.id', ondelete='CASCADE'), nullable=False, index=True),
-            sa.Column('insured_flag', sa.Boolean(), nullable=False, server_default=sa.text('0')),
+            sa.Column('insured_flag', sa.Boolean(), nullable=False, server_default=sa.false()),
             sa.Column('insured_base', sa.Float(), nullable=True),
             sa.Column('currency', sa.String(length=10), nullable=False, server_default='USD'),
             sa.Column('effective_start_date', sa.String(length=20), nullable=False, index=True),
