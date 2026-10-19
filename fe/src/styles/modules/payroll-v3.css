@@ -1493,3 +1493,6 @@ tr:hover .pv-bonus-x, .pv-bonus-x:focus-visible { opacity: 1; }
 #financeConfirmModal #financeConfirmDescription { font-size: 13px; color: var(--ink-label); line-height: 1.5; }
 #financeConfirmModal .modal-body { display: flex; flex-direction: column; gap: 12px; padding: 16px 22px; }
 #financeConfirmModal .fv-confirm-tiles { margin-bottom: 0 !important; }
+
+/* Payroll runs table cells follow the shared table scale: 9px 16px padding, 13.5px text (issue 17) */
+#a-finance-payroll table.runs-table td { padding-top: 9px; padding-bottom: 9px; font-size: 13.5px; }
