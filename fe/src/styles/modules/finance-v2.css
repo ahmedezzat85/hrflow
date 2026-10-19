@@ -2524,9 +2524,9 @@
   cursor: pointer;
 }
 .fv .fv-book-switch__btn + .fv-book-switch__btn { border-left: 1px solid var(--border); }
-.fv .fv-book-switch__btn.is-active { background: var(--brand-soft, var(--border)); color: var(--ink, inherit); }
+.fv .fv-book-switch__btn.is-active { background: var(--brand-tint); color: var(--ink-strong); }
 .fv .fv-book-chip { font-size: 11.5px; font-weight: 600; color: var(--ink-muted); }
-.fv .fv-book-chip--overseas { color: var(--brand, inherit); }
+.fv .fv-book-chip--overseas { color: var(--brand-text); }
 
 
 /* Touch targets: the book switcher stays tappable on phones (U9) */
