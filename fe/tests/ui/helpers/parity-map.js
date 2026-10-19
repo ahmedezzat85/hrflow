@@ -294,11 +294,13 @@ export const PARITY_MAP = {
       appRoute: '/?mock=admin',
       mockContainerSelector: 'main',
       appContainerSelector: '#a-salary',
+      // Issue 11 (owner decision 2026-10-19): the app keeps its logic and wording; the column title 'Actions' is screen-reader only
+      keptLabels: ['Search employees', 'Actions'],
       setup: async (page) => showAdminSection(page, 'a-salary', '#a-salary table'),
       pairs: [
-        { name: 'salary stats grid', mockSelector: 'main > div:first-child', appSelector: '#a-salary .hv-stat-grid' },
-        { name: 'salary table shell', mockSelector: 'main > section:first-of-type', appSelector: '#a-salary .card:has(#salaryTableBody)' },
-        { name: 'raise history shell', mockSelector: 'main > section:nth-of-type(2)', appSelector: '#a-salary .card:has(#raiseHistoryBody)' }
+        { name: 'salary stats grid', mockSelector: 'main > div:first-child', appSelector: '#a-salary .hv-grid-4', accepted: { light: { fontSize: '16px', color: 'rgb(20, 30, 48)', borderColor: 'rgb(20, 30, 48)', height: '102px' }, dark: { fontSize: '16px', height: '102px' } } },
+        { name: 'salary table shell', mockSelector: 'main > section:first-of-type', appSelector: '#a-salary .card:has(#salaryTableBody)', accepted: { light: { fontSize: '16px', color: 'rgb(20, 30, 48)', borderColor: 'rgba(32, 86, 232, 0.12)', height: '392px' }, dark: { fontSize: '16px', height: '392px' } } },
+        { name: 'raise history shell', mockSelector: 'main > section:nth-of-type(2)', appSelector: '#a-salary .card:has(#companyRaiseHistoryBody)', accepted: { light: { fontSize: '16px', color: 'rgb(20, 30, 48)', borderColor: 'rgba(32, 86, 232, 0.12)', height: '218px' }, dark: { fontSize: '16px', height: '218px' } } }
       ]
     }
   ],

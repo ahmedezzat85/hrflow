@@ -1262,3 +1262,7 @@
 #a-employee-detail #bankAccountCard.is-missing .card-head { padding: 0; border: 0; }
 #a-employee-detail #bankAccountCard.is-missing .status-line.is-missing { margin: 0; padding: 0; border: 0; background: none; }
 #a-employee-detail #bankAccountCard.is-missing .ed-alert-text { margin: 0 0 10px; font-size: 13px; color: var(--ink-label); }
+
+/* Salary table: the edit (pencil) icon is a bare icon like the other tables, no boxed tile */
+#a-salary #salaryTableBody .icon-action { width: 28px; height: 28px; border: 0; background: transparent; box-shadow: none; color: var(--ink-muted); }
+#a-salary #salaryTableBody .icon-action:hover { background: var(--brand-wash); color: var(--brand-text); border: 0; }
