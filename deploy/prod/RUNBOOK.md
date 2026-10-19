@@ -3,7 +3,7 @@
 Host folder (never committed): `D:/services/hrflow-prod/` containing `.env`, `data/documents`, `data/logs`, `backups/`.
 Database lives in the Docker named volume `hrflow-prod_pgdata` (use backups, not file copies).
 
-All commands run from the repo root (the `feature/prod-deployment` / main checkout used for building):
+All commands run from the repo root of a checkout of `main`. (The automatic deploy builds from the runner's own checkout of the release tag, `D:/services/actions-runner/_work/hrflow/hrflow`; nothing in the stack depends on any other folder or branch.)
 
 ```bash
 C="docker compose --env-file D:/services/hrflow-prod/.env -f deploy/prod/docker-compose.yml"
