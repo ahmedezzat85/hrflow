@@ -47,3 +47,8 @@ Wording differences (`TEXT-CHANGES.md` policy: the app keeps its own words) must
 Running the suite on this PC adds random `page.goto` timeouts (topbar-account-menu, statements, subscriptions, reports) because pages load fonts and scripts from CDNs and your DNS drops requests. They pass on retry and on GitHub. Not counted above.
 
 Local runs: use `PW_PORT=8081 npx playwright test ...` so a second checkout does not reuse your dev server on 8080.
+
+## 5. Backend (GitHub run 39171913489: 650 passed, 2 failed, 5 errors)
+- 5 errors fixed: `test_db_config.py` reloaded the config module and left a PostgreSQL `Config` for later tests (connection refused on localhost:5432). Now restored after each test.
+- `test_cookie_secure_flag_is_reflected_in_production_response` fixed: the login route resolves the access context from the database right after setting the cookie; the test returned no real user, so it got 401. The test now supplies a fixed context and still asserts `Secure` and `HttpOnly`.
+- **Open, needs your decision:** `test_finance_payroll_spend_reporting.py::test_statutory_remitted_report_and_payable_status` (line 392). In the single-employee payable-status view, the test expects `insurance_obligation` to be `settled` (the employee has no employee-level insurance deduction, and the company-level 170 stays pending). The API returns `pending`. Which is right: should a single employee's view show the company's unpaid obligation as pending, or settled because the employee owes nothing?

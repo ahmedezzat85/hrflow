@@ -212,6 +212,14 @@ def test_cookie_secure_flag_is_reflected_in_production_response(monkeypatch, fak
     def fake_login_with_google(credential, user_repo=None):
         return {"token": "fake.jwt.token", "role": "admin", "employee_id": 1, "name": "Admin", "email": "admin@hrflow.test"}
     monkeypatch.setattr(auth_router_module, "login_with_google", fake_login_with_google)
+    # The login route resolves the access context from the database right after the cookie is set;
+    # this test only checks the cookie flags, so use a fixed context instead of seeding a user.
+    class _Ctx:
+        portal = "admin"
+        role_names = ["Super-Admin"]
+        employee_id = 1
+        permissions = set()
+    monkeypatch.setattr(auth_router_module, "resolve_access", lambda db, user_payload: _Ctx())
 
     from fastapi.testclient import TestClient
     prod_client = TestClient(main_module.app)
