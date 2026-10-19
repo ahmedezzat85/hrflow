@@ -194,6 +194,7 @@ def test_cookie_secure_flag_is_reflected_in_production_response(monkeypatch, fak
     monkeypatch.setenv("ALLOWED_WORKSPACE_DOMAIN", "hrflow.example.com")
 
     import config as config_module
+    original_config_cls = config_module.Config  # carries the conftest overrides (cache TTL, DB URL)
     importlib.reload(config_module)
 
     import routers.auth as auth_router_module
@@ -241,6 +242,8 @@ def test_cookie_secure_flag_is_reflected_in_production_response(monkeypatch, fak
     monkeypatch.setenv("SECRET_KEY", "test-secret-key-for-pytest-only-do-not-use-in-prod")
     monkeypatch.setenv("ALLOWED_ORIGINS", "*")
     monkeypatch.delenv("ALLOWED_WORKSPACE_DOMAIN", raising=False)
-    importlib.reload(config_module)
+    # Put back the original Config class instead of reloading it: a reload would drop the conftest
+    # overrides (e.g. SHEETS_CACHE_TTL_SECONDS=0) and break later tests that rely on them.
+    config_module.Config = original_config_cls
     importlib.reload(auth_router_module)
     importlib.reload(main_module)
