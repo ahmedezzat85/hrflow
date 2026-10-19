@@ -23,11 +23,8 @@ test.describe('Employee Directory Table Layout & Action Columns', () => {
     const count = await actionButtons.count();
     expect(count).toBe(3);
 
-    const buttonBoxes = [];
-    for (let i = 0; i < count; i++) {
-      const box = await actionButtons.nth(i).boundingBox();
-      buttonBoxes.push(box);
-    }
+    // Read all boxes in one browser call: reading them one by one let a settling layout move them between reads (Linux CI)
+    const buttonBoxes = await firstRow.locator('td.col-actions .icon-action').evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; }));
 
     console.log('Button boxes Y coordinates:', buttonBoxes.map(b => b.y));
 
