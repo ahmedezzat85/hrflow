@@ -1,0 +1,5 @@
+# PostgreSQL with the first-start init script baked in, so the container does not depend on a folder of the repo checkout.
+# Build context: repository root.
+FROM postgres:16-alpine
+COPY deploy/prod/postgres-init/ /docker-entrypoint-initdb.d/
+RUN chmod 0755 /docker-entrypoint-initdb.d/*.sh
