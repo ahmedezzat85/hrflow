@@ -170,6 +170,11 @@ for (const [sliceId, screenConfigs] of Object.entries(PARITY_MAP)) {
               const mockValue = mockStyles[prop] || '';
               const appValue = appStyles[prop] || '';
 
+              // Owner-approved differences: the app's own value is recorded per theme in the parity map
+              // (pair.accepted) and stays enforced, so a later change to it fails the test again.
+              const acceptedValue = pair.accepted && pair.accepted[theme] && pair.accepted[theme][prop];
+              if (acceptedValue !== undefined && String(appValue).trim().toLowerCase() === String(acceptedValue).trim().toLowerCase()) continue;
+
               if (theme === 'dark' && ['color', 'backgroundColor', 'borderColor'].includes(prop)) {
                 const normalizedApp = normalizeColor(appValue);
                 const transparentMatch = normalizeColor(mockValue) === 'rgba(0,0,0,0)' && normalizedApp === 'rgba(0,0,0,0)';

@@ -119,11 +119,14 @@ export const PARITY_MAP = {
       appRoute: '/?mock=admin',
       mockContainerSelector: 'main',
       appContainerSelector: '#a-employees',
+      // Issue 1 (owner decision 2026-10-19): the app keeps 13.5px table text and its own border tones,
+      // the View button stays removed, and the search box is an input placeholder (not a text label).
+      keptLabels: ['Search employees', 'View'],
       setup: async (page) => showAdminSection(page, 'a-employees', '#a-employees table'),
       pairs: [
         { name: 'table header cells', mockSelector: 'table thead th:first-child', appSelector: '#a-employees table thead th:first-child', props: ['fontSize', 'fontWeight', 'paddingTop', 'paddingBottom'] },
-        { name: 'table body first cell', mockSelector: 'table tbody tr:first-child td:first-child', appSelector: '#employeesTableBody tr:first-child td:first-child', props: ['fontSize', 'paddingTop', 'paddingBottom', 'paddingLeft', 'borderColor'] },
-        { name: 'employees table shell', mockSelector: 'main > div:last-child', appSelector: '#a-employees .card:has(table)', props: ['backgroundColor', 'borderRadius', 'borderColor'] }
+        { name: 'table body first cell', mockSelector: 'table tbody tr:first-child td:first-child', appSelector: '#employeesTableBody tr:first-child td:first-child', props: ['fontSize', 'paddingTop', 'paddingBottom', 'paddingLeft', 'borderColor'], accepted: { light: { fontSize: '13.5px', borderColor: 'rgb(22, 36, 94) rgb(22, 36, 94) rgba(32, 86, 232, 0.1)' }, dark: { fontSize: '13.5px', borderColor: 'rgb(233, 238, 255) rgb(233, 238, 255) rgb(38, 57, 111)' } } },
+        { name: 'employees table shell', mockSelector: 'main > div:last-child', appSelector: '#a-employees .card:has(table)', props: ['backgroundColor', 'borderRadius', 'borderColor'], accepted: { light: { borderColor: 'rgba(32, 86, 232, 0.12)' } } }
       ]
     }
   ],
