@@ -4,7 +4,10 @@ name: hrflow-prod
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: hrflow-postgres:${HRFLOW_VERSION:-latest}
+    build:
+      context: ../..
+      dockerfile: deploy/prod/Dockerfile.postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
@@ -14,7 +17,6 @@ services:
       APP_DB_NAME: ${POSTGRES_DB:-hrflow}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./postgres-init:/docker-entrypoint-initdb.d:ro
     networks: [internal]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${APP_DB_USER} -d $${APP_DB_NAME}"]

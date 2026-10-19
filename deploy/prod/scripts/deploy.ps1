@@ -37,6 +37,11 @@ Write-Host "Deploying $Version (currently running: $(if ($prev) { $prev } else {
 
 # 2. Backup first (uses the image that is running now)
 if ($prev) { $env:HRFLOW_VERSION = $prev }
+# Bring the database container in line with the current compose file before backing up (data volume is untouched)
+& docker compose --env-file $script:EnvFile -f $script:ComposeFile up -d postgres
+if ($LASTEXITCODE -ne 0) { throw 'Could not start the database container; deploy aborted' }
+$pgDeadline = (Get-Date).AddSeconds(90)
+while ((Get-Date) -lt $pgDeadline) { $st = (& docker inspect --format '{{.State.Health.Status}}' (& docker compose --env-file $script:EnvFile -f $script:ComposeFile ps -q postgres) 2>$null); if ($st -eq 'healthy') { break }; Start-Sleep -Seconds 3 }
 try { & "$PSScriptRoot\backup.ps1" } catch { throw "Backup failed, deploy aborted: $($_.Exception.Message)" }
 if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) { throw "Backup failed (exit $LASTEXITCODE), deploy aborted" }
 
