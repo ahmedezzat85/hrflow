@@ -1250,3 +1250,15 @@
 /* Dashboard chart cards follow the mock: 14px body text, ink-body colour, softer hairline, 7px shorter (S3.1) */
 #a-dashboard .grid.g-2-1 > .card { font-size: 14px; color: var(--ink-body); border-color: var(--hv-card-line); }
 #a-dashboard .grid.g-2-1 .chart-wrap { height: 223px; }
+
+/* Bank account card with no details on file: the whole card is a warning (orange hairline, plain text, one action), as in the mock */
+#a-employee-detail #bankAccountCard.is-missing {
+  border-color: var(--hv-warn-line);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+#a-employee-detail #bankAccountCard.is-missing .card-head { padding: 0; border: 0; }
+#a-employee-detail #bankAccountCard.is-missing .status-line.is-missing { margin: 0; padding: 0; border: 0; background: none; }
+#a-employee-detail #bankAccountCard.is-missing .ed-alert-text { margin: 0 0 10px; font-size: 13px; color: var(--ink-label); }

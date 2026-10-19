@@ -334,7 +334,15 @@ const Api = {
   createEmployeeNote(empId, payload) { return apiRequest("POST", `/api/employees/${empId}/notes`, payload); },
   deleteEmployeeNote(noteId) { return apiRequest("DELETE", `/api/employees/notes/${noteId}`); },
 
-  getEmployeeDocuments(empId) { return apiRequest("GET", `/api/employees/${empId}/documents`); },
+  getEmployeeDocuments(empId) {
+    if (typeof _isMock === "function" && _isMock()) {
+      return Promise.resolve([
+        { id: 1, name: "Employment contract", file_type: "pdf", uploaded_at: "PDF · uploaded 15 Jan 2023" },
+        { id: 2, name: "National ID copy", file_type: "pdf", uploaded_at: "PDF · uploaded 15 Jan 2023" }
+      ]);
+    }
+    return apiRequest("GET", `/api/employees/${empId}/documents`);
+  },
   uploadEmployeeDocument(empId, payload) { return apiRequest("POST", `/api/employees/${empId}/documents`, payload); },
   uploadEmployeeDocumentWithProgress(empId, payload, onProgress) {
     return apiRequestWithProgress("POST", `/api/employees/${empId}/documents`, payload, onProgress);
@@ -498,6 +506,8 @@ const Api = {
 
 
   getBankAccount(empId) {
+    // Mock mode shows the "Missing" state so the warning card is visible
+    if (typeof _isMock === "function" && _isMock()) return Promise.resolve({ has_details: false, bank_name: "", iban: "", swift_code: "" });
     return apiRequest("GET", `/api/employees/${encodeURIComponent(empId)}/bank-account`);
   },
   getBankAccountRevealed(empId) {

@@ -310,7 +310,9 @@ async function viewProfile(id, section) {
     if (window.location && window.location.search && window.location.search.includes('mock=')) {
       document.getElementById('detailVacationBody').innerHTML = renderEmptyTableRow(2, 'No vacation records in mock view.');
       document.getElementById('detailClaimsBody').innerHTML = renderEmptyTableRow(2, 'No insurance claims in mock view.');
-      document.getElementById('detailDocumentsBody').innerHTML = renderEmptyTableRow(2, 'No employee documents in mock view.');
+      // Documents and bank status have mock data, so the mock view shows their real states (Preview buttons, Missing bank card)
+      await loadEmployeeDocuments(id);
+      await loadBankAccountStatus(id);
       return;
     }
     try {
@@ -826,6 +828,8 @@ async function loadBankAccountStatus(empId) {
   if (statusText) statusText.hidden = true;
   if (btn) btn.hidden = false;
   if (statusLine) statusLine.classList.remove('is-missing');
+  const bankCard = document.getElementById('bankAccountCard');
+  if (bankCard) bankCard.classList.remove('is-missing');
   if (detailsBody) detailsBody.hidden = false;
   if (!pill) return;
   pill.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading...';
@@ -849,10 +853,11 @@ async function loadBankAccountStatus(empId) {
     } else {
       // Missing bank details are a visible flag only; payroll is never blocked (payroll policy R4)
       pill.innerHTML = '<span class="hv-dot"></span> Missing';
-      pill.style.cssText = 'background:var(--danger-soft);color:var(--danger);';
+      pill.style.cssText = 'background:var(--warning-soft);color:var(--warning);';
       setCardStatusAction('bankAccountStatusActionBtn', 'Add bank details', () => openBankAccountModal());
       if (statusText) statusText.hidden = false;
       if (statusLine) statusLine.classList.add('is-missing');
+      if (bankCard) bankCard.classList.add('is-missing'); // warning-style card: orange hairline, plain text and action
       if (detailsBody) detailsBody.hidden = true;
       if (btn) {
         btn.textContent = 'Add';

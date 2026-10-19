@@ -115,6 +115,7 @@
   --fv-dialog-foot: #fbfcff;
   --fv-line: rgba(32, 86, 232, .12);
   --hv-card-line: rgba(32, 86, 232, .10);   /* dashboard chart cards (mock hairline) */
+  --hv-warn-line: rgba(214, 116, 43, .40);  /* warning card hairline (bank account missing) */
   --fv-line-strong: rgba(32, 86, 232, .16);
   --fv-line-row: rgba(32, 86, 232, .10);
   --fv-input-border: rgba(32, 86, 232, .18);
@@ -229,6 +230,7 @@
   --fv-dialog-foot: #15275a;
   --fv-line: #26396f;
   --hv-card-line: var(--fv-line);
+  --hv-warn-line: rgba(214, 116, 43, .40);
   --fv-line-strong: #26396f;
   --fv-line-row: #26396f;
   --fv-input-border: rgba(160, 180, 230, .22);
