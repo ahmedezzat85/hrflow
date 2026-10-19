@@ -258,6 +258,9 @@ export const PARITY_MAP = {
         const empId = await page.evaluate(() => String(employees[0].id));
         await page.evaluate(async (id) => { await viewProfile(id); }, empId);
         await page.locator('#detailProfileHead .esc-head').waitFor({ state: 'visible' });
+        // The bank card and the documents load asynchronously; measure only after they settle
+        await page.waitForFunction(() => /Missing|On file/.test((document.getElementById('bankAccountPill') || {}).textContent || ''));
+        await page.locator('#detailDocumentsBody [data-action="preview-employee-doc"]').first().waitFor({ state: 'visible' });
       },
       pairs: [
         { name: 'profile header card', mockSelector: 'main > section:first-child', appSelector: '#a-employee-detail .emp-summary-card', accepted: { light: { fontSize: '16px', color: 'rgb(20, 30, 48)', borderColor: 'rgba(30, 60, 140, 0.08)', height: '169px' }, dark: { fontSize: '16px', height: '169px' } } },
