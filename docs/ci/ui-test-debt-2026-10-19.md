@@ -53,3 +53,12 @@ Local runs: use `PW_PORT=8081 npx playwright test ...` so a second checkout does
 - `test_cookie_secure_flag_is_reflected_in_production_response` fixed: the login route resolves the access context from the database right after setting the cookie; the test returned no real user, so it got 401. The test now supplies a fixed context and still asserts `Secure` and `HttpOnly`.
 - **Decided and fixed:** in the payable-status report, the per-employee insurance flow counted the employer's own social insurance cost (`employer_cost_extra`, 282.22 in the test) as something the employee owes, so the single-employee view showed `pending`. It now counts only the employee's deducted share (`deductions_total`), so an employee who owes nothing shows `settled`. The employee breakdown table uses the same figures, so its per-employee insurance amounts no longer include the employer share.
 - `test_repositories.py::test_employee_repository_crud` was only passing while a leaked PostgreSQL config made the SQL read fail; it is now in-memory only.
+
+## 6. Resolved with the owner, 2026-10-19 (all 33 design items)
+
+All 18 distinct issues were decided one by one and applied; the full local frontend run is 674 passed, 1 failed (finance-revenue, passes alone, local timeout), 2 skipped.
+
+- Parity map (`fe/tests/ui/helpers/parity-map.js`): each page keeps its owner-approved differences as `accepted` values per theme and `keptLabels`; they stay enforced. Width/height compare rendered layout sizes (offsetWidth/Height), not computed content-box sizes.
+- App changes: dashboard chart cards match the mock; Employee detail mock view shows documents (Preview) and the Missing bank warning card, 'Starting pay' hire row; requests list Pending first; bare edit/eye icons in the Salary and Vacations tables; Vacations Remaining bold; one status badge size for every screen (12px, semibold, 1px border); Payroll runs table on the shared 9px/13.5px scale.
+- Rules kept by decision: Payroll runs next-step buttons (Continue, Reconcile) are solid as in the mock; the Review worksheet keeps its 8px rows (Pay-Run-Review mock).
+- Not built (owner decision): sidebar search box, dashboard top-bar icon/breadcrumb, mock's flat Generated docs list, 'Average raise' tile change, categories header row removal, file size line.
