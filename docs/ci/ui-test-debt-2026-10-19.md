@@ -1,6 +1,6 @@
 # Frontend UI test debt (decision list)
 
-Measured 2026-10-19 on `main` + `fix/ci-workflows`, run locally against this worktree
+Measured 2026-10-19 on `main` plus the CI fix work (since merged into `main`), run locally
 (`PW_PORT=8081`, Playwright, 2 workers, 1 retry): **56 failed, 597 passed, 2 skipped**; after the fixes below, 38 deterministic failures remain.
 Objective bugs already fixed on this branch: 8 undefined CSS variables, dark-theme contrast,
 phone touch targets (44px), accessible names on the raise modal.
