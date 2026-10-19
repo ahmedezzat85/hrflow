@@ -214,9 +214,11 @@ test.describe('R3 one button set', () => {
   test('R3-3: the named screens each show exactly one primary button; Salary and raises has Apply raise only', async ({ page }) => {
     const res = await visitAll(page, () => [...document.querySelectorAll('#admin-app .btn-fill')]
       .filter((b) => b.offsetParent !== null).map((b) => b.textContent.trim().slice(0, 30)));
-    for (const id of ['a-invoices', 'a-finance-dashboard', 'a-finance-payroll-runs']) {
+    for (const id of ['a-invoices', 'a-finance-dashboard']) {
       expect(res[id], id).toHaveLength(1);
     }
+    // Payroll runs: the per-run next-step actions (Continue, Reconcile) are solid buttons, as in the Pay-Runs mock
+    expect(res['a-finance-payroll-runs'], 'a-finance-payroll-runs').toEqual(['Continue', 'Reconcile']);
     // The v3 mock (HR-Salary) shows "Apply raise" as the page's single solid primary button
     expect(res['a-salary'], 'a-salary').toEqual(['Apply raise']);
   });
