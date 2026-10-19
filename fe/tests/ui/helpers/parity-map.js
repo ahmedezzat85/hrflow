@@ -233,11 +233,13 @@ export const PARITY_MAP = {
       appRoute: '/?mock=admin',
       mockContainerSelector: 'main',
       appContainerSelector: '#a-employees',
+      // Same owner decision as issue 1 (S1.3): the View button stays removed, the search box is a placeholder
+      keptLabels: ['Search employees', 'View'],
       setup: async (page) => showAdminSection(page, 'a-employees', '#a-employees table'),
       pairs: [
-        { name: 'employees table shell', mockSelector: 'main > div:last-child', appSelector: '#a-employees .card:has(table)' },
-        { name: 'employee header', mockSelector: 'table th:first-child', appSelector: '#a-employees table th:first-child' },
-        { name: 'first employee cell', mockSelector: 'table tbody tr:first-child td:first-child', appSelector: '#employeesTableBody tr:first-child td:first-child' }
+        { name: 'employees table shell', mockSelector: 'main > div:last-child', appSelector: '#a-employees .card:has(table)', accepted: { light: { fontSize: '16px', color: 'rgb(20, 30, 48)', borderColor: 'rgba(32, 86, 232, 0.12)', height: '378px' }, dark: { fontSize: '16px', height: '378px' } } },
+        { name: 'employee header', mockSelector: 'table th:first-child', appSelector: '#a-employees table th:first-child', accepted: { light: { backgroundColor: 'rgb(255, 255, 255)', borderColor: 'rgb(32, 86, 232) rgb(32, 86, 232) rgba(32, 86, 232, 0.16)', width: '299px' }, dark: { borderColor: /rgb\(38, 57, 111\)$/, width: '299px' } } },
+        { name: 'first employee cell', mockSelector: 'table tbody tr:first-child td:first-child', appSelector: '#employeesTableBody tr:first-child td:first-child', accepted: { light: { fontSize: '13.5px', fontWeight: '600', color: 'rgb(22, 36, 94)', borderColor: 'rgb(22, 36, 94) rgb(22, 36, 94) rgba(32, 86, 232, 0.1)', width: '299px', gap: '10px' }, dark: { fontSize: '13.5px', fontWeight: '600', borderColor: /rgb\(38, 57, 111\)$/, width: '299px', gap: '10px' } } }
       ]
     }
   ],
