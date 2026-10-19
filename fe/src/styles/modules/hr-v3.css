@@ -763,8 +763,8 @@
 #a-insurance .grid .empty-state, #a-insurance .g4 .empty-state { grid-column: 1 / -1; width: 100%; }
 
 /* Vacations: balance cells are rendered by vacations.js with inline tone colours; the mock uses plain ink and bold remaining */
-#a-vacations tbody td:nth-child(3), #a-vacations tbody td:nth-child(4) { color: var(--ink-body) !important; font-weight: 400 !important; }
-#a-vacations tbody td:nth-child(5) { color: var(--ink-strong) !important; font-weight: 700 !important; }
+#a-vacations tbody td:nth-child(2), #a-vacations tbody td:nth-child(3) { color: var(--ink-body) !important; font-weight: 400 !important; }
+#a-vacations tbody td:nth-child(4) { color: var(--ink-strong) !important; font-weight: 700 !important; }
 #a-vacations .btn { white-space: nowrap; }
 #a-vacations .hv-card-head .btn-fill { min-width: max-content; }
 
@@ -1266,3 +1266,7 @@
 /* Salary table: the edit (pencil) icon is a bare icon like the other tables, no boxed tile */
 #a-salary #salaryTableBody .icon-action { width: 28px; height: 28px; border: 0; background: transparent; box-shadow: none; color: var(--ink-muted); }
 #a-salary #salaryTableBody .icon-action:hover { background: var(--brand-wash); color: var(--brand-text); border: 0; }
+
+/* Vacations table: the profile (eye) icon is a bare icon, no boxed tile */
+#a-vacations tbody .icon-action { width: 28px; height: 28px; border: 0; background: transparent; box-shadow: none; color: var(--ink-muted); }
+#a-vacations tbody .icon-action:hover { background: var(--brand-wash); color: var(--brand-text); border: 0; }

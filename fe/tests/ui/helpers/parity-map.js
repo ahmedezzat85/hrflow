@@ -336,11 +336,13 @@ export const PARITY_MAP = {
       appRoute: '/?mock=admin',
       mockContainerSelector: 'main',
       appContainerSelector: '#a-vacations',
+      // Issue 13 (owner decision 2026-10-19): bare eye icon and bold Remaining applied; the search box is an input placeholder
+      keptLabels: ['Search employees'],
       setup: async (page) => showAdminSection(page, 'a-vacations', '#a-vacations table'),
       pairs: [
-        { name: 'vacation stat tile', mockSelector: 'main > div:first-child > div:first-child', appSelector: '#a-vacations .hv-stat-tile:first-child' },
-        { name: 'vacations balance shell', mockSelector: 'main > section', appSelector: '#a-vacations .card:has(table)' },
-        { name: 'usage progress', mockSelector: 'table tbody tr:first-child td:last-child span span', appSelector: '#a-vacations tbody tr:first-child .vac-usage-fill', props: ['height', 'borderRadius', 'backgroundColor'] }
+        { name: 'vacation stat tile', mockSelector: 'main > div:first-child > div:first-child', appSelector: '#a-vacations .hv-stat-tile:first-child', accepted: { light: { fontSize: '16px', color: 'rgb(20, 30, 48)', borderColor: 'rgba(30, 60, 140, 0.08)', height: '100px' }, dark: { fontSize: '16px', height: '100px' } } },
+        { name: 'vacations balance shell', mockSelector: 'main > section', appSelector: '#a-vacations .card:has(table)', accepted: { light: { fontSize: '16px', color: 'rgb(20, 30, 48)', borderColor: 'rgba(32, 86, 232, 0.12)' }, dark: { fontSize: '16px' } } },
+        { name: 'usage progress', mockSelector: 'table tbody tr:first-child td:nth-child(5) > span > span > span', appSelector: '#a-vacations tbody tr:first-child td:nth-child(5) > div > div > div', props: ['height', 'borderRadius', 'backgroundColor'], accepted: { light: { backgroundColor: 'rgb(15, 157, 140)' } } }
       ]
     }
   ],
