@@ -12,12 +12,11 @@ test.describe('Frontend Consistency — Phase B Verification (Payroll Settings)'
     await page.waitForTimeout(500);
   });
 
-  test('AC 1: Standard section-title-group header; hero & duplicate buttons removed; Save/Cancel bar preserved', async ({ page }) => {
-    // Header check
-    const headerGroup = page.locator('#payrollViewSettings .payroll-settings-header .section-title-group');
-    await expect(headerGroup).toBeVisible();
-    await expect(headerGroup.locator('.section-title')).toContainText('Payroll Settings');
-    await expect(headerGroup.locator('.section-subtitle')).toContainText('Configure disbursement funding accounts');
+  test('AC 1: One intro line (no in-page title block, restyle v3); hero & duplicate buttons removed; Save/Cancel bar preserved', async ({ page }) => {
+    // The page title lives in the top bar; the page body opens with a single intro line
+    const intro = page.locator('#payrollViewSettings .pv-settings-intro');
+    await expect(intro).toBeVisible();
+    await expect(intro).toContainText('Defaults for every new payroll run');
 
     // Hero, Configuration pill, and duplicate top buttons should NOT exist
     await expect(page.locator('#payrollViewSettings .payroll-settings-hero')).toHaveCount(0);
@@ -30,7 +29,7 @@ test.describe('Frontend Consistency — Phase B Verification (Payroll Settings)'
     await expect(saveBar.locator('button:has-text("Save settings")')).toBeVisible();
   });
 
-  test('AC 2: Field dimensions match modal standards (13.5px text, 10px radius, 40px height, 1px border)', async ({ page }) => {
+  test('AC 2: Field dimensions match modal standards (13.5px text, 9px radius, 36px height, 1px border (restyle v3))', async ({ page }) => {
     const inputMetrics = await page.evaluate(() => {
       const input = document.getElementById('payrollTaxEffectiveFrom');
       const select = document.getElementById('payrollTargetExternalAccount');
@@ -52,13 +51,13 @@ test.describe('Frontend Consistency — Phase B Verification (Payroll Settings)'
     });
 
     expect(inputMetrics.inputFontSize).toBe('13.5px');
-    expect(inputMetrics.inputBorderRadius).toBe('10px');
-    expect(inputMetrics.inputHeight).toBe(40);
+    expect(inputMetrics.inputBorderRadius).toBe('9px');
+    expect(inputMetrics.inputHeight).toBe(36);
     expect(inputMetrics.inputBorderWidth).toBe('1px');
 
     expect(inputMetrics.selectFontSize).toBe('13.5px');
-    expect(inputMetrics.selectBorderRadius).toBe('10px');
-    expect(inputMetrics.selectHeight).toBe(40);
+    expect(inputMetrics.selectBorderRadius).toBe('9px');
+    expect(inputMetrics.selectHeight).toBe(36);
     expect(inputMetrics.selectBorderWidth).toBe('1px');
   });
 
@@ -97,8 +96,8 @@ test.describe('Frontend Consistency — Phase B Verification (Payroll Settings)'
       };
     });
 
-    // Dark surface color #171a24 = rgb(23, 26, 36)
-    expect(darkStyles.selectBg).toBe('rgb(23, 26, 36)');
-    expect(darkStyles.cardBg).toBe('rgb(23, 26, 36)');
+    // Dark surface (restyle v3 navy) #101d44 = rgb(16, 29, 68)
+    expect(darkStyles.selectBg).toBe('rgb(16, 29, 68)');
+    expect(darkStyles.cardBg).toBe('rgb(16, 29, 68)');
   });
 });

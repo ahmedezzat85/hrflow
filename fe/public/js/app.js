@@ -179,7 +179,7 @@ function renderAdminPortal() {
           </div>
         </td>
         <td data-label="Actions" class="col-actions hv-right">
-          <button class="btn btn-sm btn-primary" onclick="showSection('a-requests','admin')" title="Review in Pending Requests Queue">
+          <button class="btn btn-sm btn-outline" onclick="showSection('a-requests','admin')" title="Review in Pending Requests Queue">
             Review
           </button>
         </td>
@@ -341,7 +341,7 @@ function renderEmployeePortal() {
           : '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 0 1 9 9H3a9 9 0 0 1 9-9M12 12v7a2 2 0 0 0 4 0"></path></svg>';
         return `
           <div style="display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--fv-line);">
-            <span style="width: 32px; height: 32px; flex: none; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; background: var(--teal-soft, #e0f4f1); color: var(--teal-ink, #0b7a6d);">${iconSvg}</span>
+            <span style="width: 32px; height: 32px; flex: none; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; background: var(--fv-area-teal-bg, #e0f4f1); color: var(--id-teal-ink, #0b7a6d);">${iconSvg}</span>
             <span style="flex: 1; min-width: 0;">
               <span style="display: block; font-weight: 600; color: var(--ink-strong); font-size: 13.5px;">${x.title}</span>
               <span style="font-size: 12px; color: var(--ink-muted);">${x.sub}</span>

@@ -2471,6 +2471,13 @@
 /* More breathing room in finance rows (finance mocks run 60-64 px per row; these were 51) */
 .fv .fv-table tbody td { padding-top: 13px; padding-bottom: 13px; }
 
+/* Dark theme: muted status text reached only 3.8-4.3:1 on the closed/neutral tints; lift to the muted ink (4.5:1 minimum) */
+[data-theme="dark"] .fv .fv-status--closed,
+[data-theme="dark"] .fv .fv-pill--closed,
+[data-theme="dark"] .fv .fv-pill--closed .fv-pill__count,
+[data-theme="dark"] .fv .fv-impact__tile--dir { color: var(--ink-muted); }
+[data-theme="dark"] .fv-dialog [role="radiogroup"] small { opacity: 1; }
+
 /* Cheque scans (X1, D-032): scan chip in the register row and the scan lists in the dialogs */
 .fv .fv-note--btn {
   background: none;
@@ -2517,9 +2524,9 @@
   cursor: pointer;
 }
 .fv .fv-book-switch__btn + .fv-book-switch__btn { border-left: 1px solid var(--border); }
-.fv .fv-book-switch__btn.is-active { background: var(--brand-soft, var(--border)); color: var(--ink, inherit); }
+.fv .fv-book-switch__btn.is-active { background: var(--brand-tint); color: var(--ink-strong); }
 .fv .fv-book-chip { font-size: 11.5px; font-weight: 600; color: var(--ink-muted); }
-.fv .fv-book-chip--overseas { color: var(--brand, inherit); }
+.fv .fv-book-chip--overseas { color: var(--brand-text); }
 
 
 /* Touch targets: the book switcher stays tappable on phones (U9) */

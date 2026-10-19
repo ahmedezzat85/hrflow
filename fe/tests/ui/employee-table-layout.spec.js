@@ -18,10 +18,10 @@ test.describe('Employee Directory Table Layout & Action Columns', () => {
     console.log('Current employee row height:', rowBox.height);
     expect(rowBox.height).toBeLessThanOrEqual(65);
 
-    // Check that all 4 action buttons inside td.col-actions are on the same horizontal line
+    // Check that all 3 action buttons (the View button was removed, D-0xx restyle v3) inside td.col-actions are on the same horizontal line
     const actionButtons = firstRow.locator('td.col-actions .icon-action');
     const count = await actionButtons.count();
-    expect(count).toBe(4);
+    expect(count).toBe(3);
 
     const buttonBoxes = [];
     for (let i = 0; i < count; i++) {

@@ -54,6 +54,10 @@ def test_repository_dependency_injection_returns_interfaces():
 
 
 def test_employee_repository_crud(fake_sheets_client):
+    # The fake client reads Employees from the SQL engine unless it is in backfill mode, while create/delete
+    # act on its in-memory rows. Keep this CRUD check purely in-memory so it does not depend on SQL state.
+    fake_sheets_client.is_backfilling = True
+    fake_sheets_client.auto_sync_to_sql = False
     repo = SheetsEmployeeRepository(client=fake_sheets_client)
     emp_id = repo.create({
         "name": "Test Engineer",

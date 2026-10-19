@@ -2,7 +2,7 @@ name: Frontend build & smoke test
 
 on:
   push:
-    branches: [refactor/frontend-modular]
+    branches: [main]
     paths: ['fe/**', '.github/workflows/frontend-build-check.yml']
   pull_request:
     paths: ['fe/**', '.github/workflows/frontend-build-check.yml']
@@ -88,14 +88,26 @@ jobs:
           const browser = await chromium.launch();
           const page = await browser.newPage();
 
+          // No backend runs in this smoke test and the Google client ID is a placeholder, so
+          // API/network failures and Google Sign-In loader errors are expected. Only genuine
+          // script errors (uncaught exceptions, console errors from app code) fail the job.
+          const EXPECTED = [
+            /Failed to load resource/,
+            /GSI_LOGGER/,
+            /ERR_CONNECTION_REFUSED/,
+          ];
           page.on('console', (msg) => {
-            if (msg.type() === 'error') errors.push(`[console.error] ${msg.text()}`);
+            if (msg.type() === 'error' && !EXPECTED.some((re) => re.test(msg.text()))) {
+              errors.push(`[console.error] ${msg.text()}`);
+            }
           });
           page.on('pageerror', (err) => {
             errors.push(`[uncaught exception] ${err.message}`);
           });
           page.on('requestfailed', (req) => {
-            errors.push(`[network] Failed to load: ${req.url()} (${req.failure()?.errorText || 'unknown'})`);
+            const u = req.url();
+            if (u.includes('localhost:5000') || u.includes('accounts.google.com') || u.includes('gstatic.com')) return;
+            errors.push(`[network] Failed to load: ${u} (${req.failure()?.errorText || 'unknown'})`);
           });
 
           await page.goto('http://localhost:4173/_ci_preview.html', { waitUntil: 'networkidle', timeout: 15000 });

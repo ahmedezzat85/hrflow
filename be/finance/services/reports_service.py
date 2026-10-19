@@ -2917,7 +2917,9 @@ class ReportsService:
 
             # Accumulate employee local tax & SI contributions from lines
             emp_tax = float(line.tax_amount or 0.0)
-            emp_si = float(line.deductions_total or 0.0) + float(line.employer_cost_extra or 0.0)
+            # Only what is owed by the employee (their deducted share). The employer's own social insurance
+            # cost (employer_cost_extra) is a company obligation and never makes an employee's flow pending.
+            emp_si = float(line.deductions_total or 0.0)
             # Will be distributed as settled/pending based on statutory obligation status below
             es["_raw_tax"] = es.get("_raw_tax", 0.0) + emp_tax
             es["_raw_si"] = es.get("_raw_si", 0.0) + emp_si

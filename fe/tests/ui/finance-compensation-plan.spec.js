@@ -22,8 +22,8 @@ test.describe('FUX-416: Employee Compensation Plan', () => {
     await openAdminPage(page, 'a-salary');
     const header = page.locator('#a-salary table').first().locator('thead');
     await expect(header).toContainText('External USD');
-    await expect(header).toContainText('Internal USD Cash');
-    await expect(header).toContainText('Total Monthly');
+    await expect(header).toContainText('Internal USD cash');
+    await expect(header).toContainText('Monthly total');
     const firstRow = page.locator('#salaryTableBody tr').first();
     await expect(firstRow.locator('.comp-val-external')).toBeVisible();
     await expect(firstRow.locator('.comp-val-internal')).toBeVisible();
@@ -71,7 +71,8 @@ test.describe('FUX-416: Employee Compensation Plan', () => {
     await modal.locator('#compPlanNotes').fill('Internal Gross basis test');
     await modal.locator('#compPlanSaveBtn').click();
 
-    await expect(modal.locator('#compPlanActiveInternal')).toContainText('GROSS');
+    await expect(modal.locator('#compPlanActiveInternal')).toContainText('$6,500');
+    await expect(modal.locator('#compPlanIntBasis')).toContainText('Gross');
     await expect(modal.locator('#compPlanHistoryBody')).toContainText('GROSS');
 
     await modal.locator('#compPlanComponentType').selectOption('external_usd');

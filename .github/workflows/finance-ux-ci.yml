@@ -2,7 +2,7 @@ name: Finance UX CI
 
 on:
   push:
-    branches: [refactor/finance-ux]
+    branches: [main]
     paths:
       - 'be/**'
       - 'fe/**'
@@ -32,7 +32,8 @@ jobs:
     env:
       DB_TYPE: sqlite
       DATABASE_URL: sqlite:///./ci.db
-      JWT_SECRET: ci-only-secret-not-for-production
+      ENVIRONMENT: development
+      SECRET_KEY: ci-only-secret-not-for-production
       PYTHONUNBUFFERED: '1'
     steps:
       - name: Checkout
@@ -50,11 +51,12 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
 
+      # Migrations first: importing main runs init_db(), which would pre-create the tables.
+      - name: Verify Alembic migrations (fresh database)
+        run: alembic upgrade head
+
       - name: Verify application imports
         run: python -c "import main; print('Backend import OK')"
-
-      - name: Verify Alembic migrations
-        run: alembic upgrade head
 
       - name: Run backend test suite
         run: python -m pytest -ra --junitxml=pytest-results.xml

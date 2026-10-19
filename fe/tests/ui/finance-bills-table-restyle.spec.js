@@ -14,7 +14,9 @@ test.describe('Bills table, direction A', () => {
   });
 
   test('columns are Bill, Bill date, Category, Status, Amount, Actions; category shows no department', async ({ page }) => {
-    await expect(page.locator('#financeBillsTable thead th')).toHaveText(['Bill', 'Bill date', 'Category', 'Status', 'Amount', 'Actions']);
+    // Sortable headers carry a sort arrow (Bill date is the default sort), so compare the labels without it
+    const heads = (await page.locator('#financeBillsTable thead th').allInnerTexts()).map((t) => t.replace(/[\s↑↓⇅]+$/, '').trim());
+    expect(heads).toEqual(['Bill', 'Bill date', 'Category', 'Status', 'Amount', 'Actions']);
     const row = page.locator('#financeBillsTableBody tr:has-text("BILL-2026-001")').first();
     const cells = row.locator('td');
     await expect(cells.nth(0)).toContainText('Amazon Web Services');

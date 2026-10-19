@@ -104,7 +104,7 @@ function initMockAdminData(){
   };
 
   employees = [
-    { id: 'EMP001', name: 'Sarah Connor', email: 'sarah@voyance.com', role: 'Engineering Lead', department: 'Engineering', dept: 'Engineering', status: 'Active', hireDate: '2023-01-15', salary: 12500, internalSalaryUsd: 5000, externalSalaryUsd: 7500, vacTotal: 21, vacUsed: 8, join: '2023-01-15', phone: '+1 555-0101', nextRaise: getFutureDate(45), salaryHistory: [{ date: '2023-01-15', salary: 11000, newInternal: 4500, newExternal: 6500, prevInternal: 4500, prevExternal: 6500, reason: 'Hire package' }, { date: '2024-01-15', salary: 12500, pct: '+13.6%', newInternal: 5000, newExternal: 7500, prevInternal: 4500, prevExternal: 6500, reason: 'Annual performance raise' }] },
+    { id: 'EMP001', name: 'Sarah Connor', email: 'sarah@voyance.com', role: 'Engineering Lead', department: 'Engineering', dept: 'Engineering', status: 'Active', hireDate: '2023-01-15', salary: 12500, internalSalaryUsd: 5000, externalSalaryUsd: 7500, vacTotal: 21, vacUsed: 8, join: '2023-01-15', phone: '+1 555-0101', nextRaise: getFutureDate(45), salaryHistory: [{ date: '2023-01-15', salary: 11000, newInternal: 4500, newExternal: 6500, prevInternal: 0, prevExternal: 0, reason: 'Hire package' }, { date: '2024-01-15', salary: 12500, pct: '+13.6%', newInternal: 5000, newExternal: 7500, prevInternal: 4500, prevExternal: 6500, reason: 'Annual performance raise' }] },
     { id: 'EMP002', name: 'John Doe', email: 'john@voyance.com', role: 'Product Designer', department: 'Design', dept: 'Design', status: 'Active', hireDate: '2023-04-10', salary: 9000, internalSalaryUsd: 3000, externalSalaryUsd: 6000, vacTotal: 21, vacUsed: 2, join: '2023-04-10', phone: '+1 555-0102', nextRaise: getFutureDate(75), salaryHistory: [] },
     { id: 'EMP003', name: 'Alex Rivera', email: 'alex@voyance.com', role: 'QA Analyst', department: 'Engineering', dept: 'Engineering', status: 'Active', hireDate: '2023-08-01', salary: 8000, internalSalaryUsd: 2500, externalSalaryUsd: 5500, vacTotal: 21, vacUsed: 2, join: '2023-08-01', phone: '+1 555-0103', nextRaise: getFutureDate(110), salaryHistory: [] },
     { id: 'EMP004', name: 'Elena Rostova', email: 'elena@voyance.com', role: 'Operations Manager', department: 'Operations', dept: 'Operations', status: 'Active', hireDate: '2022-11-20', salary: 10500, internalSalaryUsd: 3500, externalSalaryUsd: 7000, vacTotal: 21, vacUsed: 0, join: '2022-11-20', phone: '+1 555-0104', salaryHistory: [] },
@@ -213,7 +213,7 @@ function initMockEmployeeData(){
     annualLeaveBalance: 13,
     annualLeaveTotal: 21,
     salaryHistory: [
-      { date: '2023-01-15', salary: 11000, newInternal: 4500, newExternal: 6500, prevInternal: 4500, prevExternal: 6500, reason: 'Hire package' },
+      { date: '2023-01-15', salary: 11000, newInternal: 4500, newExternal: 6500, prevInternal: 0, prevExternal: 0, reason: 'Hire package' },
       { date: '2024-01-15', salary: 12500, pct: '+13.6%', newInternal: 5000, newExternal: 7500, prevInternal: 4500, prevExternal: 6500, reason: 'Annual performance raise' }
     ]
   };

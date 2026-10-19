@@ -177,7 +177,7 @@
                           <td class="num payroll-num" id="fBaseInt" style="padding: 10px 12px; text-align: right; font-weight: 700; color: var(--ink-strong);">-</td>
                           <td class="num payroll-num" id="fBonus" style="padding: 10px 12px; font-weight: 700; color: var(--ink-strong); text-align: left;">-</td>
                           <td class="payroll-reason-col"></td>
-                          <td class="num payroll-num strong accent" id="fNet" style="padding: 10px 16px; text-align: right; font-family: var(--font-display, Sora, sans-serif); font-weight: 700; color: var(--brand-text);">-</td>
+                          <td class="num payroll-num strong accent" id="fNet" style="padding: 10px 16px; text-align: right; font-family: var(--font-head, Sora, sans-serif); font-weight: 700; color: var(--brand-text);">-</td>
                           <td class="col-actions" style="width: 40px; text-align: center; padding: 10px 8px;"></td>
                         </tr>
                       </tfoot>
@@ -243,7 +243,7 @@
                           <td class="num payroll-num" id="p3TotEmprSi" style="padding: 10px 12px; text-align: right; font-weight: 700; color: var(--ink-strong);">-</td>
                           <td class="num payroll-num" id="p3TotSi" style="padding: 10px 12px; text-align: right; font-weight: 700; color: var(--ink-strong);">-</td>
                           <td class="num payroll-num" id="p3TotTax" style="padding: 10px 12px; text-align: right; font-weight: 700; color: var(--ink-strong);">-</td>
-                          <td class="num payroll-num strong accent" id="p3TotNetUsd" style="padding: 10px 16px; text-align: right; font-family: var(--font-display, Sora, sans-serif); font-weight: 700; color: var(--brand-text);">-</td>
+                          <td class="num payroll-num strong accent" id="p3TotNetUsd" style="padding: 10px 16px; text-align: right; font-family: var(--font-head, Sora, sans-serif); font-weight: 700; color: var(--brand-text);">-</td>
                         </tr>
                       </tfoot>
                     </table>
@@ -276,7 +276,7 @@
                   </div>
                   <div class="stat payroll-card payroll-stat pv-stat-tile">
                     <div class="lbl label">Total net pay</div>
-                    <div class="val value accent val-accent" id="p4TotalNet" style="color: var(--brand-text); font-family: var(--font-display, Sora, sans-serif);">$0.00</div>
+                    <div class="val value accent val-accent" id="p4TotalNet" style="color: var(--brand-text); font-family: var(--font-head, Sora, sans-serif);">$0.00</div>
                     <div class="hint sub">cash and transfer</div>
                   </div>
                   <div class="stat payroll-card payroll-stat pv-stat-tile" id="p4RecipientsCard">
@@ -311,7 +311,7 @@
                           <td id="p4TotalsLabel" style="padding: 10px 16px; font-weight: 700; color: var(--ink-strong);" colspan="2">Totals</td>
                           <td class="num payroll-num" id="p4TotExt" style="padding: 10px 12px; text-align: right; font-weight: 700; color: var(--ink-strong);">-</td>
                           <td class="num payroll-num" id="p4TotInt" style="padding: 10px 12px; text-align: right; font-weight: 700; color: var(--ink-strong);">-</td>
-                          <td class="num payroll-num strong accent" id="p4TotNet" style="padding: 10px 16px; text-align: right; font-family: var(--font-display, Sora, sans-serif); font-weight: 700; color: var(--brand-text);">-</td>
+                          <td class="num payroll-num strong accent" id="p4TotNet" style="padding: 10px 16px; text-align: right; font-family: var(--font-head, Sora, sans-serif); font-weight: 700; color: var(--brand-text);">-</td>
                         </tr>
                       </tfoot>
                     </table>
@@ -344,8 +344,8 @@
                   <!-- Rail Card 1: Internal Salaries -->
                   <section class="disburse-card internal pv-s5-card" style="background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: var(--pv-r, 14px); padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;">
                     <div style="display: flex; align-items: baseline; justify-content: space-between;">
-                      <h2 style="margin: 0; font-family: var(--font-display, Sora, sans-serif); font-size: 15px; font-weight: 700; color: var(--ink-strong);"><span class="pv-area-tile pv-area-tile--green" aria-hidden="true"><i class="fa-solid fa-money-bill-wave"></i></span>Internal salaries</h2>
-                      <span style="font-family: var(--font-display, Sora, sans-serif); font-weight: 700; font-size: 20px; color: var(--ink-strong);" class="pv-s5-amount pv-s5-amount--green" id="p5IntTotal">$0.00</span>
+                      <h2 style="margin: 0; font-family: var(--font-head, Sora, sans-serif); font-size: 15px; font-weight: 700; color: var(--ink-strong);"><span class="pv-area-tile pv-area-tile--green" aria-hidden="true"><i class="fa-solid fa-money-bill-wave"></i></span>Internal salaries</h2>
+                      <span style="font-family: var(--font-head, Sora, sans-serif); font-weight: 700; font-size: 20px; color: var(--ink-strong);" class="pv-s5-amount pv-s5-amount--green" id="p5IntTotal">$0.00</span>
                     </div>
                     <div class="disburse-meta" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;">
                       <div class="disburse-row pv-tile-cell" style="padding: 9px 12px; border-radius: 12px; background: var(--fv-surface-soft);">
@@ -367,8 +367,8 @@
                   <!-- Rail Card 2: External Salaries -->
                   <section class="disburse-card external pv-s5-card" style="background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: var(--pv-r, 14px); padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;">
                     <div style="display: flex; align-items: baseline; justify-content: space-between;">
-                      <h2 style="margin: 0; font-family: var(--font-display, Sora, sans-serif); font-size: 15px; font-weight: 700; color: var(--ink-strong);"><span class="pv-area-tile pv-area-tile--blue" aria-hidden="true"><i class="fa-solid fa-building-columns"></i></span>External salaries</h2>
-                      <span style="font-family: var(--font-display, Sora, sans-serif); font-weight: 700; font-size: 20px; color: var(--ink-strong);" class="pv-s5-amount pv-s5-amount--blue" id="p5ExtTotal">$0.00</span>
+                      <h2 style="margin: 0; font-family: var(--font-head, Sora, sans-serif); font-size: 15px; font-weight: 700; color: var(--ink-strong);"><span class="pv-area-tile pv-area-tile--blue" aria-hidden="true"><i class="fa-solid fa-building-columns"></i></span>External salaries</h2>
+                      <span style="font-family: var(--font-head, Sora, sans-serif); font-weight: 700; font-size: 20px; color: var(--ink-strong);" class="pv-s5-amount pv-s5-amount--blue" id="p5ExtTotal">$0.00</span>
                     </div>
                     <div class="disburse-meta" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;">
                       <div class="disburse-row pv-tile-cell" style="padding: 9px 12px; border-radius: 12px; background: var(--fv-surface-soft);">
@@ -464,7 +464,7 @@
                   <div class="stat-obl-card si pv-s6-card" id="siCard" style="background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: var(--pv-r, 14px); padding: 14px 16px; display: flex; flex-direction: column; gap: 12px;">
                     <div style="display: flex; align-items: center; gap: 10px;">
                       <div style="flex: 1;">
-                        <h2 style="margin: 0; font-family: var(--font-display, Sora, sans-serif); font-size: 15px; font-weight: 700; color: var(--ink-strong);"><span class="pv-area-tile pv-area-tile--teal" aria-hidden="true"><i class="fa-solid fa-shield-halved"></i></span>Social insurance</h2>
+                        <h2 style="margin: 0; font-family: var(--font-head, Sora, sans-serif); font-size: 15px; font-weight: 700; color: var(--ink-strong);"><span class="pv-area-tile pv-area-tile--teal" aria-hidden="true"><i class="fa-solid fa-shield-halved"></i></span>Social insurance</h2>
                         <div style="font-size: 12.5px; color: var(--ink-muted);">Employee and employer contributions</div>
                       </div>
                       <span class="stage-badge unrecorded" id="p6SiStatusBadge">Not recorded</span>
@@ -513,7 +513,7 @@
                   <div class="stat-obl-card tax pv-s6-card" id="taxCard" style="background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: var(--pv-r, 14px); padding: 14px 16px; display: flex; flex-direction: column; gap: 12px;">
                     <div style="display: flex; align-items: center; gap: 10px;">
                       <div style="flex: 1;">
-                        <h2 style="margin: 0; font-family: var(--font-display, Sora, sans-serif); font-size: 15px; font-weight: 700; color: var(--ink-strong);"><span class="pv-area-tile pv-area-tile--ochre" aria-hidden="true"><i class="fa-solid fa-receipt"></i></span>Salary income tax</h2>
+                        <h2 style="margin: 0; font-family: var(--font-head, Sora, sans-serif); font-size: 15px; font-weight: 700; color: var(--ink-strong);"><span class="pv-area-tile pv-area-tile--ochre" aria-hidden="true"><i class="fa-solid fa-receipt"></i></span>Salary income tax</h2>
                         <div style="font-size: 12.5px; color: var(--ink-muted);">Withheld from salaries</div>
                       </div>
                       <span class="stage-badge unrecorded" id="p6TaxStatusBadge">Not recorded</span>
@@ -562,7 +562,7 @@
                 <!-- Linked Statutory Obligations Table -->
                 <div class="pv-linked" style="background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: var(--pv-r, 14px); overflow: hidden; margin-bottom: 14px;">
                   <div style="padding: 12px 16px; border-bottom: 1px solid var(--fv-line);">
-                    <h2 style="margin: 0; font-family: var(--font-display, Sora, sans-serif); font-size: 15px; font-weight: 700; color: var(--ink-strong);">Statutory obligations for this run</h2>
+                    <h2 style="margin: 0; font-family: var(--font-head, Sora, sans-serif); font-size: 15px; font-weight: 700; color: var(--ink-strong);">Statutory obligations for this run</h2>
                   </div>
                   <div class="payroll-table-wrap" style="border: 0; border-radius: 0; box-shadow: none;">
                     <table class="payroll-worksheet fv-table" id="payrollStatutoryRecordsTable">

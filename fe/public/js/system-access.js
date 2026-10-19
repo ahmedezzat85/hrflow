@@ -296,10 +296,10 @@
           <td data-label="Description" style="padding: 10px 12px; color: var(--ink-body); font-size: 13.5px;">${escHtml(role.description) || '—'}</td>
           <td data-label="Users" style="padding: 10px 12px; text-align: right; font-weight: 600; color: var(--ink-strong); font-variant-numeric: tabular-nums;">${escHtml(role.user_count ?? (role.users ? role.users.length : 0))}</td>
           <td data-label="Permissions" style="padding: 10px 12px;">
-            <span style="padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--brand-dark, #1a46bd); background: var(--brand-soft, #e8eeff); white-space: nowrap;">${escHtml(permText)}</span>
+            <span style="padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--brand-ink, #1a46bd); background: var(--brand-tint, #e8eeff); white-space: nowrap;">${escHtml(permText)}</span>
           </td>
           <td data-label="Actions" class="col-actions" style="padding: 10px 16px; text-align: right; white-space: nowrap;">
-            <button class="btn btn-sm btn-outline btn-edit-role" onclick="openEditRoleModal(${rid})" title="${isLocked ? 'View role permissions (read-only)' : 'Edit role permissions'}" style="display: inline-flex; align-items: center; box-sizing: border-box; height: 28px; padding: 0 11px; border-radius: 8px; border: 1px solid var(--fv-outline); background: var(--fv-surface); color: var(--brand-dark, #1a46bd); font-weight: 600; font-size: 12.5px; vertical-align: middle;">
+            <button class="btn btn-sm btn-outline btn-edit-role" onclick="openEditRoleModal(${rid})" title="${isLocked ? 'View role permissions (read-only)' : 'Edit role permissions'}" style="display: inline-flex; align-items: center; box-sizing: border-box; height: 28px; padding: 0 11px; border-radius: 8px; border: 1px solid var(--fv-outline); background: var(--fv-surface); color: var(--brand-ink, #1a46bd); font-weight: 600; font-size: 12.5px; vertical-align: middle;">
               ${isLocked ? 'View' : 'Edit'}
             </button>
             <button class="btn-delete-role" onclick="${noDelete ? '' : `deleteRole(${rid})`}" ${noDelete ? 'disabled' : ''} title="${escHtml(deleteTitle)}" aria-label="${escHtml(deleteTitle)}" style="display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; margin-left: 2px; border: 0; background: transparent; border-radius: 8px; color: var(--ink-muted, #5d6b8f); vertical-align: middle; cursor: ${noDelete ? 'not-allowed' : 'pointer'}; opacity: ${noDelete ? '0.45' : '1'};">
@@ -639,12 +639,12 @@
     }
 
     const AVATAR_PALETTE = [
-      'background: var(--brand-soft, #e8eeff); color: var(--brand-dark, #1a46bd);',
+      'background: var(--brand-tint, #e8eeff); color: var(--brand-ink, #1a46bd);',
       'background: var(--warning-soft, #fdf0e1); color: var(--warning-text, #b2560f);',
-      'background: var(--teal-soft, #e0f4f1); color: var(--teal-ink, #0b7a6d);',
+      'background: var(--fv-area-teal-bg, #e0f4f1); color: var(--id-teal-ink, #0b7a6d);',
       'background: var(--violet-soft, #f1eafe); color: var(--violet-ink, #6236c0);',
       'background: var(--pink-soft, #fbe7f0); color: var(--pink-text, #ad3469);',
-      'background: var(--sky-soft, #e2f2fb); color: var(--sky-ink, #146fa3);'
+      'background: var(--info-soft, #e2f2fb); color: var(--id-sky-ink, #146fa3);'
     ];
 
     tbody.innerHTML = filtered.map((u, idx) => {
@@ -667,7 +667,7 @@
         actions = '<span style="color:var(--ink-muted); font-size:12.5px;">—</span>';
       } else {
         actions = `
-            <button class="btn btn-sm btn-outline btn-assign-roles" onclick="openAssignRolesModal(${uid})" ${isSelf ? `disabled title="${selfTitle}" style="display: inline-flex; align-items: center; box-sizing: border-box; height: 28px; padding: 0 11px; border-radius: 8px; border: 1px solid var(--fv-outline); background: var(--fv-surface); color: var(--brand-dark, #1a46bd); font-weight: 600; font-size: 12.5px; vertical-align: middle; opacity: 0.4; cursor: not-allowed;"` : 'title="Assign role" style="display: inline-flex; align-items: center; box-sizing: border-box; height: 28px; padding: 0 11px; border-radius: 8px; border: 1px solid var(--fv-outline); background: var(--fv-surface); color: var(--brand-dark, #1a46bd); font-weight: 600; font-size: 12.5px; vertical-align: middle;"'}>
+            <button class="btn btn-sm btn-outline btn-assign-roles" onclick="openAssignRolesModal(${uid})" ${isSelf ? `disabled title="${selfTitle}" style="display: inline-flex; align-items: center; box-sizing: border-box; height: 28px; padding: 0 11px; border-radius: 8px; border: 1px solid var(--fv-outline); background: var(--fv-surface); color: var(--brand-ink, #1a46bd); font-weight: 600; font-size: 12.5px; vertical-align: middle; opacity: 0.4; cursor: not-allowed;"` : 'title="Assign role" style="display: inline-flex; align-items: center; box-sizing: border-box; height: 28px; padding: 0 11px; border-radius: 8px; border: 1px solid var(--fv-outline); background: var(--fv-surface); color: var(--brand-ink, #1a46bd); font-weight: 600; font-size: 12.5px; vertical-align: middle;"'}>
               Change role
             </button>
             <button class="btn-archive-user" onclick="${isSelf ? '' : `archiveUser(${uid})`}" ${isSelf ? `disabled title="${selfTitle}" style="display: inline-flex; width: 30px; height: 30px; margin-left: 2px; border: 0; background: transparent; opacity: 0; pointer-events: none; vertical-align: middle; cursor: default;"` : `title="Archive user account" aria-label="Archive ${escHtml(u.name || u.email)}" style="display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; margin-left: 2px; border: 0; background: transparent; border-radius: 8px; color: var(--ink-muted, #5d6b8f); vertical-align: middle; cursor: pointer;"`}>

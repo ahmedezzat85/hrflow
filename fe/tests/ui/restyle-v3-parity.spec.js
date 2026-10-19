@@ -136,6 +136,8 @@ for (const [sliceId, screenConfigs] of Object.entries(PARITY_MAP)) {
             if (typeof applyTheme === 'function') applyTheme(selectedTheme);
             else document.documentElement.setAttribute('data-theme', selectedTheme);
           }, theme);
+          // Let the colour transitions of the theme switch finish before measuring computed colours
+          await appPage.waitForTimeout(400);
 
           if (config.setup) await config.setup(appPage);
 
@@ -159,16 +161,30 @@ for (const [sliceId, screenConfigs] of Object.entries(PARITY_MAP)) {
 
             const mockStyles = await mockPage.locator(pair.mockSelector).first().evaluate((element, props) => {
               const style = getComputedStyle(element);
-              return Object.fromEntries(props.map((prop) => [prop, style[prop] || style.getPropertyValue(prop)]));
+              // width/height use the rendered border box: the mocks are content-box, the app is border-box, so the
+              // computed (content) size differs even when both render the same box
+              // offsetWidth/Height are layout sizes: unlike getBoundingClientRect they ignore the open-animation scale of dialogs
+              return Object.fromEntries(props.map((prop) => [prop, prop === 'width' ? `${element.offsetWidth}px` : prop === 'height' ? `${element.offsetHeight}px` : (style[prop] || style.getPropertyValue(prop))]));
             }, propsToCompare);
             const appStyles = await appPage.locator(pair.appSelector).first().evaluate((element, props) => {
               const style = getComputedStyle(element);
-              return Object.fromEntries(props.map((prop) => [prop, style[prop] || style.getPropertyValue(prop)]));
+              // width/height use the rendered border box: the mocks are content-box, the app is border-box, so the
+              // computed (content) size differs even when both render the same box
+              // offsetWidth/Height are layout sizes: unlike getBoundingClientRect they ignore the open-animation scale of dialogs
+              return Object.fromEntries(props.map((prop) => [prop, prop === 'width' ? `${element.offsetWidth}px` : prop === 'height' ? `${element.offsetHeight}px` : (style[prop] || style.getPropertyValue(prop))]));
             }, propsToCompare);
 
             for (const prop of propsToCompare) {
               const mockValue = mockStyles[prop] || '';
               const appValue = appStyles[prop] || '';
+
+              // Owner-approved differences: the app's own value is recorded per theme in the parity map
+              // (pair.accepted) and stays enforced, so a later change to it fails the test again.
+              const acceptedValue = pair.accepted && pair.accepted[theme] && pair.accepted[theme][prop];
+              // Approved sizes tolerate a few pixels: text wraps slightly differently on Linux (CI) and Windows
+              if ((prop === 'width' || prop === 'height') && typeof acceptedValue === 'string' && Math.abs(parseFloat(appValue) - parseFloat(acceptedValue)) <= 4) continue;
+              // A RegExp accepts any matching value (e.g. an element whose border colour follows a transitioning text colour)
+              if (acceptedValue instanceof RegExp ? acceptedValue.test(String(appValue)) : (acceptedValue !== undefined && String(appValue).trim().toLowerCase() === String(acceptedValue).trim().toLowerCase())) continue;
 
               if (theme === 'dark' && ['color', 'backgroundColor', 'borderColor'].includes(prop)) {
                 const normalizedApp = normalizeColor(appValue);
@@ -183,6 +199,8 @@ for (const [sliceId, screenConfigs] of Object.entries(PARITY_MAP)) {
               const isColor = ['color', 'backgroundColor', 'borderColor'].includes(prop);
               const normalizedMock = isDimension ? normalizeDimension(mockValue) : (isColor ? normalizeColor(mockValue) : String(mockValue).trim());
               const normalizedApp = isDimension ? normalizeDimension(appValue) : (isColor ? normalizeColor(appValue) : String(appValue).trim());
+              // Rendered sizes may differ by a sub-pixel because of font rounding
+              if ((prop === 'width' || prop === 'height') && Math.abs(parseFloat(normalizedMock) - parseFloat(normalizedApp)) <= 1) continue;
               if (normalizedMock !== normalizedApp) {
                 failures.push({ element: pair.name, prop, mockValue, appValue });
               }

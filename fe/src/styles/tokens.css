@@ -9,7 +9,7 @@
   /* Semantic State Colors */
   --success: #06703f;
   --success-soft: rgba(14, 169, 102, .12);
-  --warning: #9c5000;
+  --warning: #8f4a00;
   --warning-soft: rgba(224, 125, 16, .12);
   --danger: #b92424;
   --danger-soft: rgba(214, 59, 59, .12);
@@ -114,6 +114,8 @@
   --fv-surface-soft: #f7f9ff;
   --fv-dialog-foot: #fbfcff;
   --fv-line: rgba(32, 86, 232, .12);
+  --hv-card-line: rgba(32, 86, 232, .10);   /* dashboard chart cards (mock hairline) */
+  --hv-warn-line: rgba(214, 116, 43, .40);  /* warning card hairline (bank account missing) */
   --fv-line-strong: rgba(32, 86, 232, .16);
   --fv-line-row: rgba(32, 86, 232, .10);
   --fv-input-border: rgba(32, 86, 232, .18);
@@ -227,6 +229,8 @@
   --fv-surface-soft: #15275a;
   --fv-dialog-foot: #15275a;
   --fv-line: #26396f;
+  --hv-card-line: var(--fv-line);
+  --hv-warn-line: rgba(214, 116, 43, .40);
   --fv-line-strong: #26396f;
   --fv-line-row: #26396f;
   --fv-input-border: rgba(160, 180, 230, .22);

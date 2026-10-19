@@ -203,7 +203,7 @@
   font-size: 14px;
 }
 .topbar h1 .topbar-crumb-cur {
-  font-family: var(--font-display, Sora, sans-serif);
+  font-family: var(--font-head, Sora, sans-serif);
   font-weight: 700;
   font-size: 16px;
   color: var(--ink-strong);
@@ -361,7 +361,7 @@
 #a-finance-payroll .stat-obl-title i { display: none; }
 #a-finance-payroll .stat-obl-sub { font-size: 12.5px; font-weight: 400; color: var(--ink-muted); margin: 0; }
 #a-finance-payroll .stage-badge {
-  display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 0; border-radius: 999px;
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid transparent; border-radius: 999px;
   font-size: 12px; font-weight: 600; white-space: nowrap; background: var(--fv-canvas); color: var(--ink-label);
 }
 #a-finance-payroll .stage-badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
@@ -676,7 +676,7 @@
 }
 #a-finance-payroll #payrollScreen1 .pv-s1-card h2 {
   margin: 0;
-  font-family: var(--font-display, Sora, sans-serif);
+  font-family: var(--font-head, Sora, sans-serif);
   font-size: 15px;
   font-weight: 700;
   color: var(--ink-strong);
@@ -758,7 +758,7 @@
   color: var(--ink-label);
 }
 #a-finance-payroll #payrollScreen1 .pv-stat-tile .value {
-  font-family: var(--font-display, Sora, sans-serif);
+  font-family: var(--font-head, Sora, sans-serif);
   font-weight: 700;
   font-size: 22px;
   line-height: 1.3;
@@ -820,7 +820,7 @@
 }
 #a-finance-payroll #payrollScreen2 .pv-s2-card-header h2 {
   margin: 0;
-  font-family: var(--font-display, Sora, sans-serif);
+  font-family: var(--font-head, Sora, sans-serif);
   font-size: 15px;
   font-weight: 700;
   color: var(--ink-strong);
@@ -936,7 +936,7 @@
 #a-finance-payroll #payrollScreen2 table.payroll-worksheet tfoot td#fNet {
   padding-right: 16px;
   text-align: right;
-  font-family: var(--font-display, Sora, sans-serif);
+  font-family: var(--font-head, Sora, sans-serif);
   font-weight: 700;
   color: var(--brand);
   font-variant-numeric: tabular-nums;
@@ -1000,7 +1000,7 @@
 }
 #a-finance-payroll #payrollScreen3 .pv-s3-card-header h2 {
   margin: 0;
-  font-family: var(--font-display, Sora, sans-serif);
+  font-family: var(--font-head, Sora, sans-serif);
   font-size: 15px;
   font-weight: 700;
   color: var(--ink-strong);
@@ -1066,7 +1066,7 @@
   color: var(--ink-label);
 }
 #a-finance-payroll #payrollScreen4 .pv-stat-tile .value {
-  font-family: var(--font-display, Sora, sans-serif);
+  font-family: var(--font-head, Sora, sans-serif);
   font-weight: 700;
   font-size: 22px;
   line-height: 1.3;
@@ -1091,7 +1091,7 @@
 }
 #a-finance-payroll #payrollScreen4 .pv-s4-card-header h2 {
   margin: 0;
-  font-family: var(--font-display, Sora, sans-serif);
+  font-family: var(--font-head, Sora, sans-serif);
   font-size: 15px;
   font-weight: 700;
   color: var(--ink-strong);
@@ -1141,7 +1141,7 @@
 }
 #a-finance-payroll #payrollScreen5 .pv-s5-card h2 {
   margin: 0;
-  font-family: var(--font-display, Sora, sans-serif);
+  font-family: var(--font-head, Sora, sans-serif);
   font-size: 15px;
   font-weight: 700;
   color: var(--ink-strong);
@@ -1224,7 +1224,7 @@
 }
 #a-finance-payroll .payroll-settings-card-header h2 {
   margin: 0;
-  font-family: var(--font-display, Sora, sans-serif);
+  font-family: var(--font-head, Sora, sans-serif);
   font-size: 15px;
   font-weight: 700;
   color: var(--ink-strong);
@@ -1493,3 +1493,6 @@ tr:hover .pv-bonus-x, .pv-bonus-x:focus-visible { opacity: 1; }
 #financeConfirmModal #financeConfirmDescription { font-size: 13px; color: var(--ink-label); line-height: 1.5; }
 #financeConfirmModal .modal-body { display: flex; flex-direction: column; gap: 12px; padding: 16px 22px; }
 #financeConfirmModal .fv-confirm-tiles { margin-bottom: 0 !important; }
+
+/* Payroll runs table cells follow the shared table scale: 9px 16px padding, 13.5px text (issue 17) */
+#a-finance-payroll table.runs-table td { padding-top: 9px; padding-bottom: 9px; font-size: 13.5px; }

@@ -1281,6 +1281,7 @@
     },
 
     async deleteBonus(empId, bonusIdx, adjId) {
+      if (this.isRunLocked()) return; // a finalized or paid run is read-only
       if (adjId && typeof FinanceApi !== 'undefined' && typeof FinanceApi.deletePreviewAdjustment === 'function' && this.currentPreview && this.currentPreview.preview_id) {
         try {
           await FinanceApi.deletePreviewAdjustment(this.currentPreview.preview_id, adjId);

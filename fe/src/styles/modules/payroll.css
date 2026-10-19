@@ -1924,6 +1924,7 @@
 
 /* Finalized or paid run: editing controls are hidden on every step */
 #a-finance-payroll.payroll-locked table.payroll-worksheet .plus,
+#a-finance-payroll.payroll-locked table.payroll-worksheet .pv-bonus-x,
 #a-finance-payroll.payroll-locked table.payroll-worksheet .p-bonus-pill button {
   display: none;
 }

@@ -10,6 +10,8 @@ test.describe('Financial Reports & Excel Export UI Testing', () => {
 
     // Navigate to Financial Reports via sidebar
     await openAdminPage(page, 'a-finance-reports');
+    // Reports open on the library; the sub navigation lives in the report shell (S8 library redesign)
+    await page.evaluate(() => window.openReportFromLibrary('category-summary'));
     await page.waitForTimeout(400);
   });
 
@@ -30,9 +32,11 @@ test.describe('Financial Reports & Excel Export UI Testing', () => {
     const categoryPane = page.locator('#reportPaneCategorySummary');
     await expect(categoryPane).toBeVisible();
 
-    // Export button exists
-    const exportBtn = categoryPane.locator('button:has-text("Export to Excel")');
+    // Export lives in the shared report shell menu (Excel, CSV, PDF)
+    const exportBtn = page.locator('#reportShellExportBtn');
     await expect(exportBtn).toBeVisible();
+    await exportBtn.click();
+    await expect(page.locator('#reportShellExportMenu')).toContainText('Excel');
   });
 
   test('Annual Matrix Tab: switches tab, renders month columns and summary row', async ({ page }) => {

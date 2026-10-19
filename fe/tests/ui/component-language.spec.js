@@ -61,7 +61,10 @@ test.describe('U2 one component language', () => {
       };
       return { hr: probe('#a-employees'), fin: probe('#a-finance-invoices'), runs: probe('#a-finance-payroll', 'runs-table'), sheet: probe('#a-finance-payroll', 'payroll-worksheet'), sys: probe('#a-system-users') };
     });
-    for (const k of ['fin', 'runs', 'sheet', 'sys']) expect(metrics[k], k).toEqual(metrics.hr);
+    for (const k of ['fin', 'runs', 'sys']) expect(metrics[k], k).toEqual(metrics.hr);
+    // The Review worksheet is denser by design (Pay-Run-Review mock: 8px row padding); everything else is shared
+    expect({ ...metrics.sheet, tdPad: metrics.hr.tdPad }, 'sheet').toEqual(metrics.hr);
+    expect(metrics.sheet.tdPad).toBe('8px 16px');
   });
 
   test('type scale tokens exist and button variants are documented', async ({ page }) => {

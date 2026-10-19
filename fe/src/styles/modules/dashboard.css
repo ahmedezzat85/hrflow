@@ -241,3 +241,6 @@ select option {
   }
 }
 
+/* Dark theme: the brand blue is only 3.4:1 on the navy cards; use the brand text tone (4.5:1 minimum) */
+[data-theme="dark"] .hero-card-link { color: var(--brand-text); }
+[data-theme="dark"] .hero-card-accent .hero-card-link { color: #fff; }

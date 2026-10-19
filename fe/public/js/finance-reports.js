@@ -1145,7 +1145,7 @@ async function loadReportMatrix() {
   const includeInternal = document.getElementById("reportShellIncludeInternal") ? document.getElementById("reportShellIncludeInternal").checked : true;
 
   try {
-    const report = await FinanceApi.getMatrixReport({
+    const report = await FinanceApi.getCategoryMatrixReport({
       year: parseInt(year, 10),
       period_group: _currentMatrixPeriodGroup,
       include_internal: includeInternal,

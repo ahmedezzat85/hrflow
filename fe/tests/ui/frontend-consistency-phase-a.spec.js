@@ -25,7 +25,7 @@ test.describe('Frontend Consistency — Phase A Verification', () => {
     });
 
     expect(lightTokens.primary).toBe('#2056e8');
-    expect(lightTokens.textMuted).toBe('#7a8ea8');
+    expect(lightTokens.textMuted).toBe('#556983');
     expect(lightTokens.bgSecondary).toBe('#fafbfd');
 
     // Toggle to Dark mode
@@ -42,9 +42,9 @@ test.describe('Frontend Consistency — Phase A Verification', () => {
       };
     });
 
-    expect(darkTokens.primary).toBe('#3e72f8');
-    expect(darkTokens.textMuted).toBe('#9aa0b4');
-    expect(darkTokens.bgSecondary).toBe('#1d2130');
+    expect(darkTokens.primary).toBe('#3566ef');
+    expect(darkTokens.textMuted).toBe('#9fb0dc');
+    expect(darkTokens.bgSecondary).toBe('#15275a');
   });
 
   test('A2 Payroll Dark Mode: #a-finance-payroll inherits theme tokens and renders dark background', async ({ page }) => {
@@ -65,22 +65,22 @@ test.describe('Frontend Consistency — Phase A Verification', () => {
       };
     });
 
-    expect(payrollColors.bgVar).toBe('#0f1117');
-    expect(payrollColors.surfaceVar).toBe('#171a24');
-    expect(payrollColors.textVar).toBe('#f1f2f6');
+    expect(payrollColors.bgVar).toBe('#0b1634');
+    expect(payrollColors.surfaceVar).toBe('#101d44');
+    expect(payrollColors.textVar).toBe('#e9eeff');
   });
 
-  test('A3 Icon Fix: fa-shield-halved renders with visible dimensions in callout', async ({ page }) => {
+  test('A3 Callouts: settings callouts render as text-only pv-callout boxes (the shield icon was dropped in restyle v3)', async ({ page }) => {
     await page.click('#payrollRailBtn');
     await page.waitForTimeout(300);
     await page.click('#payrollNavSettings');
     await page.waitForTimeout(400);
 
-    const icon = page.locator('#a-finance-payroll .settings-card-callout.callout-blue i');
-    await expect(icon).toBeVisible();
-    await expect(icon).toHaveClass(/fa-shield-halved/);
+    const callout = page.locator('#payrollViewSettings .pv-callout').first();
+    await expect(callout).toBeVisible();
+    await expect(callout.locator('i, svg')).toHaveCount(0);
 
-    const box = await icon.boundingBox();
+    const box = await callout.boundingBox();
     expect(box).not.toBeNull();
     expect(box.width).toBeGreaterThan(0);
     expect(box.height).toBeGreaterThan(0);

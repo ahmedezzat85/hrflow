@@ -758,13 +758,13 @@
   border: none;
 }
 #a-dashboard td.col-actions .btn:hover {
-  background: var(--brand-hover, var(--brand));
+  background: var(--brand-ink, var(--brand));
 }
 #a-insurance .grid .empty-state, #a-insurance .g4 .empty-state { grid-column: 1 / -1; width: 100%; }
 
 /* Vacations: balance cells are rendered by vacations.js with inline tone colours; the mock uses plain ink and bold remaining */
-#a-vacations tbody td:nth-child(3), #a-vacations tbody td:nth-child(4) { color: var(--ink-body) !important; font-weight: 400 !important; }
-#a-vacations tbody td:nth-child(5) { color: var(--ink-strong) !important; font-weight: 700 !important; }
+#a-vacations tbody td:nth-child(2), #a-vacations tbody td:nth-child(3) { color: var(--ink-body) !important; font-weight: 400 !important; }
+#a-vacations tbody td:nth-child(4) { color: var(--ink-strong) !important; font-weight: 700 !important; }
 #a-vacations .btn { white-space: nowrap; }
 #a-vacations .hv-card-head .btn-fill { min-width: max-content; }
 
@@ -1236,3 +1236,37 @@
 .fv .hv-reqtype__dot--sky { background: var(--id-sky); }
 .fv .hv-reqtype__dot--pink { background: var(--id-pink); }
 #a-requests td[data-label="Request"] .hv-sub-line { margin-top: 0; }
+
+[data-theme="dark"] .fv .hv-text-brand { color: var(--brand-text); }
+
+/* Phone layouts: every tap target is at least 44px (inline sizes on the role/user buttons need !important) */
+@media (max-width: 768px) {
+  #a-employees td a[onclick^="viewProfile"] { min-height: 44px; padding: 12px 0; box-sizing: border-box; }
+  #a-employee-detail .ed-link-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; }
+  #a-invoices .hv-select, #a-invoices .hv-link-btn { min-height: 44px; }
+  #a-system-roles .btn-delete-role, #a-system-users .btn-archive-user { width: 44px !important; height: 44px !important; }
+}
+
+/* Dashboard chart cards follow the mock: 14px body text, ink-body colour, softer hairline, 7px shorter (S3.1) */
+#a-dashboard .grid.g-2-1 > .card { font-size: 14px; color: var(--ink-body); border-color: var(--hv-card-line); }
+#a-dashboard .grid.g-2-1 .chart-wrap { height: 223px; }
+
+/* Bank account card with no details on file: the whole card is a warning (orange hairline, plain text, one action), as in the mock */
+#a-employee-detail #bankAccountCard.is-missing {
+  border-color: var(--hv-warn-line);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+#a-employee-detail #bankAccountCard.is-missing .card-head { padding: 0; border: 0; }
+#a-employee-detail #bankAccountCard.is-missing .status-line.is-missing { margin: 0; padding: 0; border: 0; background: none; }
+#a-employee-detail #bankAccountCard.is-missing .ed-alert-text { margin: 0 0 10px; font-size: 13px; color: var(--ink-label); }
+
+/* Salary table: the edit (pencil) icon is a bare icon like the other tables, no boxed tile */
+#a-salary #salaryTableBody .icon-action { width: 28px; height: 28px; border: 0; background: transparent; box-shadow: none; color: var(--ink-muted); }
+#a-salary #salaryTableBody .icon-action:hover { background: var(--brand-wash); color: var(--brand-text); border: 0; }
+
+/* Vacations table: the profile (eye) icon is a bare icon, no boxed tile */
+#a-vacations tbody .icon-action { width: 28px; height: 28px; border: 0; background: transparent; box-shadow: none; color: var(--ink-muted); }
+#a-vacations tbody .icon-action:hover { background: var(--brand-wash); color: var(--brand-text); border: 0; }
