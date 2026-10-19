@@ -201,8 +201,9 @@ export const PARITY_MAP = {
       appContainerSelector: '#adminNavPanel',
       keptLabels: ['Benefits & records', 'Search Ctrl K', 'HR'],
       pairs: [
-        { name: 'sidebar panel', mockSelector: 'nav[aria-label="HR pages"]', appSelector: '#adminNavPanel', props: ['width', 'paddingTop', 'paddingLeft', 'paddingRight', 'backgroundColor', 'borderColor'] },
-        { name: 'active dashboard item', mockSelector: 'nav[aria-label="HR pages"] a[aria-current="page"]', appSelector: '#nav-admin-dashboard', props: ['height', 'borderRadius', 'fontSize', 'fontWeight', 'color', 'backgroundColor'] }
+        { name: 'sidebar panel', mockSelector: 'nav[aria-label="HR pages"]', appSelector: '#adminNavPanel', props: ['width', 'backgroundColor', 'borderColor'], accepted: { light: { borderColor: /rgba\(32, 86, 232, 0\.12\)/ }, dark: { borderColor: /rgb\(38, 57, 111\)/ } } },
+        { name: 'sidebar panel padding', mockSelector: 'nav[aria-label="HR pages"]', appSelector: '#adminNavPanel .panel-inner', props: ['paddingTop', 'paddingLeft', 'paddingRight'] },
+        { name: 'active dashboard item', mockSelector: 'nav[aria-label="HR pages"] a[aria-current="page"]', appSelector: '#adminNavPanel a.nav-item.active[data-page="a-dashboard"]', props: ['height', 'borderRadius', 'fontSize', 'fontWeight', 'color', 'backgroundColor'] }
       ]
     }
   ],

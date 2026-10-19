@@ -136,6 +136,8 @@ for (const [sliceId, screenConfigs] of Object.entries(PARITY_MAP)) {
             if (typeof applyTheme === 'function') applyTheme(selectedTheme);
             else document.documentElement.setAttribute('data-theme', selectedTheme);
           }, theme);
+          // Let the colour transitions of the theme switch finish before measuring computed colours
+          await appPage.waitForTimeout(400);
 
           if (config.setup) await config.setup(appPage);
 
