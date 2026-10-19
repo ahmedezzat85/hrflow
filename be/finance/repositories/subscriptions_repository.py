@@ -89,6 +89,9 @@ class SubscriptionsRepository:
             monthly_equivalent_amount=monthly_equiv,
             auto_generate_bill=data.auto_generate_bill,
             is_active=data.is_active,
+            billing_email=(data.billing_email or "").strip() or None,
+            proof_source=data.proof_source or "none",
+            proof_expected=bool(data.proof_expected),
             created_at=datetime.utcnow(),
         )
         self.db.add(sub)
@@ -260,20 +263,45 @@ class SubscriptionsRepository:
             self.db.commit()
             self.ledger_repo.recalculate_account_running_balances(bank.id)
 
-        charge = SubscriptionChargeDB(
-            subscription_id=data.subscription_id,
-            billing_date=data.billing_date,
-            amount=data.amount,
-            currency=data.currency.upper(),
-            linked_transaction_id=linked_tx_id,
-            linked_bill_id=linked_bill_id,
-            variance_amount=variance_amount,
-            variance_reason=data.variance_reason if variance_amount != 0.0 else None,
-            note=data.note or "",
-            created_at=datetime.utcnow(),
-            created_by=created_by,
+        expected = (
+            self.db.query(SubscriptionChargeDB)
+            .filter(
+                SubscriptionChargeDB.subscription_id == data.subscription_id,
+                SubscriptionChargeDB.billing_date == data.billing_date,
+                SubscriptionChargeDB.status == "expected",
+            )
+            .first()
         )
-        self.db.add(charge)
+        if expected is not None:
+            charge = expected
+            charge.amount = data.amount
+            charge.currency = data.currency.upper()
+            charge.linked_transaction_id = linked_tx_id
+            charge.linked_bill_id = linked_bill_id
+            charge.variance_amount = variance_amount
+            charge.variance_reason = data.variance_reason if variance_amount != 0.0 else None
+            charge.note = data.note or ""
+            charge.created_by = created_by
+            charge.status = "settled"
+            charge.settled_at = datetime.utcnow()
+        else:
+            charge = SubscriptionChargeDB(
+                subscription_id=data.subscription_id,
+                billing_date=data.billing_date,
+                amount=data.amount,
+                currency=data.currency.upper(),
+                linked_transaction_id=linked_tx_id,
+                linked_bill_id=linked_bill_id,
+                variance_amount=variance_amount,
+                variance_reason=data.variance_reason if variance_amount != 0.0 else None,
+                note=data.note or "",
+                created_at=datetime.utcnow(),
+                created_by=created_by,
+                status="settled",
+                settled_at=datetime.utcnow(),
+                proof_status="pending" if sub.proof_expected else "unavailable",
+            )
+            self.db.add(charge)
         self.db.commit()
         self.db.refresh(charge)
         return self.get_charge_by_id(charge.id)
@@ -309,3 +337,75 @@ class SubscriptionsRepository:
             .filter(FinanceAttachmentDB.id == attachment_id)
             .first()
         )
+
+    # ------------------------------------------------------------------
+    # Subscriptions v2 (X5, D-031)
+    # ------------------------------------------------------------------
+    def charge_exists(self, subscription_id: int, billing_date: str) -> bool:
+        return (
+            self.db.query(SubscriptionChargeDB.id)
+            .filter(SubscriptionChargeDB.subscription_id == subscription_id, SubscriptionChargeDB.billing_date == billing_date)
+            .first()
+            is not None
+        )
+
+    def add_expected_charge(self, sub: SubscriptionDB, billing_date: str) -> bool:
+        """Insert one expected charge; returns False when another request created it first (unique index)."""
+        from sqlalchemy.exc import IntegrityError
+        charge = SubscriptionChargeDB(
+            subscription_id=sub.id,
+            billing_date=billing_date,
+            amount=float(sub.amount),
+            expected_amount=float(sub.amount),
+            currency=(sub.currency or "USD").upper(),
+            variance_amount=0.0,
+            note="",
+            status="expected",
+            proof_status="pending" if sub.proof_expected else "unavailable",
+            proof_note=None if sub.proof_expected else "No proof expected for this subscription",
+            created_at=datetime.utcnow(),
+            created_by="system",
+        )
+        self.db.add(charge)
+        try:
+            self.db.commit()
+            return True
+        except IntegrityError:
+            self.db.rollback()
+            return False
+
+    def list_charges_filtered(
+        self,
+        subscription_id: Optional[int] = None,
+        status: Optional[str] = None,
+        proof_status: Optional[str] = None,
+        proofs_missing: bool = False,
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
+    ) -> List[SubscriptionChargeDB]:
+        q = (
+            self.db.query(SubscriptionChargeDB)
+            .join(SubscriptionDB, SubscriptionChargeDB.subscription_id == SubscriptionDB.id)
+            .options(
+                joinedload(SubscriptionChargeDB.subscription).joinedload(SubscriptionDB.vendor),
+                joinedload(SubscriptionChargeDB.attachments),
+            )
+        )
+        if subscription_id is not None:
+            q = q.filter(SubscriptionChargeDB.subscription_id == subscription_id)
+        if status:
+            q = q.filter(SubscriptionChargeDB.status == status)
+        if proof_status:
+            q = q.filter(SubscriptionChargeDB.proof_status == proof_status)
+        if proofs_missing:
+            q = q.filter(
+                SubscriptionChargeDB.proof_status == "pending",
+                SubscriptionChargeDB.status.in_(["expected", "settled"]),
+                SubscriptionDB.proof_expected == True,  # noqa: E712
+            )
+        if date_from:
+            q = q.filter(SubscriptionChargeDB.billing_date >= date_from)
+        if date_to:
+            q = q.filter(SubscriptionChargeDB.billing_date <= date_to)
+        return q.order_by(desc(SubscriptionChargeDB.billing_date), desc(SubscriptionChargeDB.id)).all()
+

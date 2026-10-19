@@ -72,6 +72,7 @@
 // 10. Financial Reports & Excel Export (Phase 8)
   // ==========================================
   async getCategorySummaryReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       return {
         date_from: params.date_from || "2026-09-01",
@@ -92,6 +93,7 @@
   },
 
   async getCategoryMatrixReport(params = {}) {
+    params = _withBook(params, "reports");
     const yr = params.year || 2026;
     const grp = params.period_group || "month";
     if (_isMock()) {
@@ -141,6 +143,7 @@
   },
 
   async getBalancesReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       return {
         as_of_date: params.as_of_date || new Date().toISOString().slice(0, 10),
@@ -170,6 +173,7 @@
   },
 
   async getTransactionsReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       return {
         date_from: params.date_from || "2026-09-01",
@@ -243,6 +247,7 @@
   },
 
   async getChequesReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       const fy = params.fiscal_year || 2026;
       const list = FinanceMockState.cheques || [];
@@ -426,6 +431,39 @@
             badge: "Payables",
           },
           {
+            key: "revenue-breakdown",
+            title: "Revenue by Product, Book and Source",
+            category: "Performance",
+            business_question: "Which products, sources and books does our revenue come from, per currency?",
+            description: "Cash-basis revenue by month, book, source, product and customer, with an Untagged revenue row. One figure per currency.",
+            icon: "fa-solid fa-sack-dollar",
+            supported_basis: ["cash"],
+            supported_formats: ["json", "xlsx", "csv"],
+            badge: "Revenue",
+          },
+          {
+            key: "subscription-spend",
+            title: "Subscription Spend",
+            category: "Spend & Payables",
+            business_question: "What do our subscriptions cost by vendor, department and book?",
+            description: "Settled subscription charges by month, vendor, department and the book of the paying account.",
+            icon: "fa-solid fa-repeat",
+            supported_basis: ["cash"],
+            supported_formats: ["json", "xlsx", "csv"],
+            badge: "Subscriptions",
+          },
+          {
+            key: "subscription-proofs-missing",
+            title: "Subscription Proofs Missing",
+            category: "Audit & Compliance",
+            business_question: "Which subscription charges still have no proof of payment?",
+            description: "Charges that expect a proof and have neither a file nor a reason it is unavailable.",
+            icon: "fa-solid fa-paperclip",
+            supported_basis: ["cash"],
+            supported_formats: ["json", "xlsx", "csv"],
+            badge: "Controls",
+          },
+          {
             key: "transactions",
             title: "Continuous Transaction Ledger",
             category: "Audit & Compliance",
@@ -573,6 +611,7 @@
   },
 
   async getReportDrilldown(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       const isCat = params.drilldown_type === "category";
       return {
@@ -610,7 +649,67 @@
     return apiRequest("GET", `/api/finance/reports/drilldown${qs ? "?" + qs : ""}`);
   },
 
+  async getSubscriptionSpendReport(params = {}) {
+    params = _withBook(params, "reports");
+    if (_isMock()) {
+      const settled = (FinanceMockState.subscriptionCharges || []).filter((c) => c.status === "settled");
+      const rows = {};
+      const totals = {};
+      const roll = { vendor: {}, department: {}, book_code: {} };
+      settled.forEach((c) => {
+        const sub = (FinanceMockState.subscriptions || []).find((s) => s.id === c.subscription_id) || {};
+        const acc = (FinanceMockState.accounts || []).find((a) => a.id === sub.payment_account_id);
+        const book = acc ? acc.book_code : "local";
+        if (params.book && params.book !== "consolidated" && params.book !== book) return;
+        if (params.currency && String(params.currency).toUpperCase() !== "ALL" && c.currency !== String(params.currency).toUpperCase()) return;
+        const dept = sub.department || "No department";
+        const vendor = sub.vendor_name || "Unknown vendor";
+        const key = [c.billing_date.slice(0, 7), vendor, dept, sub.name, book, c.currency].join("|");
+        rows[key] = rows[key] || { month: c.billing_date.slice(0, 7), vendor, department: dept, subscription: sub.name, book_code: book, paid_from: acc ? acc.account_name : "Not set", currency: c.currency, amount: 0, variance: 0 };
+        rows[key].amount = round(rows[key].amount + c.amount, 2);
+        rows[key].variance = round(rows[key].variance + (c.variance_amount || 0), 2);
+        totals[c.currency] = round((totals[c.currency] || 0) + c.amount, 2);
+        [["vendor", vendor], ["department", dept], ["book_code", book]].forEach(([k, v]) => { const kk = v + "|" + c.currency; roll[k][kk] = round((roll[k][kk] || 0) + c.amount, 2); });
+      });
+      const rollList = (k) => Object.entries(roll[k]).map(([kk, amount]) => { const [name, currency] = kk.split("|"); return { [k]: name, currency, amount }; }).sort((a, b) => b.amount - a.amount);
+      return { report_title: "Subscription Spend", book: params.book || null, currency: (params.currency || "ALL").toUpperCase(), rows: Object.values(rows), by_vendor: rollList("vendor"), by_department: rollList("department"), by_book: rollList("book_code"), totals_by_currency: totals, conversion_policy: "One figure per currency. Currencies are never added together and no converted total is shown." };
+    }
+    const qs = new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ""))).toString();
+    return apiRequest("GET", `/api/finance/reports/subscription-spend${qs ? "?" + qs : ""}`);
+  },
+
+  async getSubscriptionProofsMissingReport(params = {}) {
+    params = _withBook(params, "reports");
+    if (_isMock()) {
+      const charges = await FinanceApi.getSubscriptionChargesV2({ proofs_missing: true, book: params.book });
+      const totals = {};
+      const rows = charges.map((c) => {
+        totals[c.currency] = round((totals[c.currency] || 0) + c.amount, 2);
+        const sub = (FinanceMockState.subscriptions || []).find((s) => s.id === c.subscription_id) || {};
+        return { charge_id: c.id, billing_date: c.billing_date, subscription: c.subscription_name, vendor: c.vendor_name, status: c.status, currency: c.currency, amount: c.amount, proof_source: c.proof_source || "none", billing_email: sub.billing_email || "", book_code: c.book_code, paid_from: c.payment_account_name || "Not set" };
+      });
+      return { report_title: "Subscription Proofs Missing", book: params.book || null, rows, totals_by_currency: totals };
+    }
+    const qs = new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ""))).toString();
+    return apiRequest("GET", `/api/finance/reports/subscription-proofs-missing${qs ? "?" + qs : ""}`);
+  },
+
   async getProfitAndLossReport(params = {}) {
+    params = _withBook(params, "reports");
+    if (_isMock() && params.book === "overseas" && String(params.currency || "USD").toUpperCase() !== "ALL") {
+      // Overseas book (X2, D-028): the worked example from plan 23; the inter-book transfer is not an operating expense
+      const usd = String(params.currency || "USD").toUpperCase() === "USD";
+      return {
+        report_title: "Profit & Loss Statement", entity: params.entity || "Voyance Health (Consolidated)", basis: params.basis || "cash",
+        currency: params.currency || "USD", period_start: params.date_from || "2026-09-01", period_end: params.date_to || "2026-09-30",
+        comparison_type: "none", book: "overseas",
+        revenue_items: usd ? [{ category_name: "Overseas client invoices", amount: 10000.0, percentage: 71.4 }, { category_name: "Stripe payout", amount: 4000.0, percentage: 28.6 }] : [],
+        total_revenue: usd ? 14000.0 : 0.0,
+        expense_items: usd ? [{ category_name: "External salaries", amount: 3000.0, percentage: 89.7 }, { category_name: "Tools", amount: 345.0, percentage: 10.3 }] : [],
+        total_expenses: usd ? 3345.0 : 0.0, net_income: usd ? 10655.0 : 0.0, net_margin_pct: usd ? 76.1 : 0.0,
+        inter_book_items: usd ? [{ label: "Transferred to local entity", amount: 5000.0 }] : [],
+      };
+    }
     if (_isMock()) {
       const basis = params.basis || "cash";
       const note = basis === "accrual" ? "Partial: excludes payroll, statutory and bank fees" : null;
@@ -661,6 +760,7 @@
   },
 
   async getBalanceSheetReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       return {
         report_title: "Balance Sheet",
@@ -702,6 +802,7 @@
   },
 
   async getTrialBalanceReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       return {
         report_title: "Trial Balance",
@@ -726,6 +827,20 @@
   },
 
   async getCashFlowReport(params = {}) {
+    params = _withBook(params, "reports");
+    if (_isMock() && params.book === "overseas") {
+      return {
+        report_title: "Statement of Cash Flows", entity: params.entity || "Voyance Health (Consolidated)", currency: params.currency || "USD",
+        date_from: params.date_from || "2026-09-01", date_to: params.date_to || "2026-09-30",
+        operating_activities: [
+          { name: "Cash Receipts from Customers & Operational Inflows", amount: 14000.0, activity_type: "operating" },
+          { name: "Cash Payments for Suppliers & Operational Outflows", amount: -3345.0, activity_type: "operating" },
+        ],
+        net_cash_operating: 10655.0, investing_activities: [], net_cash_investing: 0.0,
+        financing_activities: [{ name: "Transferred to local entity", amount: -5000.0, activity_type: "financing" }],
+        net_cash_financing: -5000.0, net_change_in_cash: 5655.0, beginning_cash_balance: 24345.0, ending_cash_balance: 30000.0, is_reconciled: true,
+      };
+    }
     if (_isMock()) {
       return {
         report_title: "Statement of Cash Flows",
@@ -753,6 +868,7 @@
   },
 
   async getArAgingReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       return {
         report_title: "Accounts Receivable (AR) Aging",
@@ -783,6 +899,7 @@
   },
 
   async getApAgingReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       return {
         report_title: "Accounts Payable (AP) Aging",

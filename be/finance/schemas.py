@@ -26,6 +26,8 @@ class BankAccountBase(BaseModel):
 
 class BankAccountCreate(BankAccountBase):
     account_number: str = Field(..., min_length=4, max_length=50, description="Full bank account number")
+    book_id: Optional[int] = Field(None, description="Book the account belongs to; defaults to the default (Local) book")
+    visibility: str = Field("full", description="full | partial (partial = not every movement is recorded; use balance checkpoints)")
 
 
 class BankAccountUpdate(BaseModel):
@@ -38,10 +40,47 @@ class BankAccountUpdate(BaseModel):
     account_type: Optional[str] = Field(None, description="Account type: bank or cash")
     country: Optional[str] = Field(None, description="Country location")
     is_active: Optional[bool] = None
+    book_id: Optional[int] = None
+    visibility: Optional[str] = None
+
+
+class BalanceCheckpointCreate(BaseModel):
+    date: str = Field(..., description="Date the balance was observed (YYYY-MM-DD)")
+    balance: float = Field(..., description="Balance the owner observed on that date")
+    note: Optional[str] = Field(None, max_length=1000)
+
+
+class BalanceCheckpointResponse(BaseModel):
+    id: int
+    account_id: int
+    date: str
+    balance: float
+    note: Optional[str] = None
+    computed_balance: Optional[float] = None  # ledger balance on the checkpoint date
+    unrecorded_difference: Optional[float] = None  # checkpoint balance minus computed balance; never auto-adjusted
+    has_attachment: bool = False
+    attachment_name: Optional[str] = None
+    created_at: Optional[datetime] = None
+    created_by: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class BookResponse(BaseModel):
+    id: int
+    code: str
+    name: str
+    is_default: bool = False
 
 
 class BankAccountResponse(BankAccountBase):
     id: int
+    book_id: Optional[int] = None
+    book_code: Optional[str] = None
+    book_name: Optional[str] = None
+    visibility: str = "full"
+    latest_checkpoint: Optional[BalanceCheckpointResponse] = None  # partial accounts only
     account_number: str = Field(..., description="Masked or revealed account number")
     current_balance: float
     is_active: bool
@@ -326,6 +365,7 @@ class CustomerBase(BaseModel):
     default_currency: Optional[str] = Field("USD", max_length=10)
     payment_terms_days: Optional[int] = Field(30, ge=0)
     withholding_tax_rate: Optional[float] = Field(0.0, ge=0.0, le=100.0, description="Default withholding tax percent copied to new invoices (normally 0)")
+    is_intercompany: bool = Field(False, description="The overseas entity or another group company: receipts are eliminated in the Consolidated view (D-028)")
     owner: Optional[str] = Field(None, max_length=255)
     notes: Optional[str] = None
 
@@ -336,6 +376,7 @@ class CustomerCreate(CustomerBase):
 
 class CustomerUpdate(BaseModel):
     withholding_tax_rate: Optional[float] = Field(None, ge=0.0, le=100.0)
+    is_intercompany: Optional[bool] = None
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     legal_name: Optional[str] = Field(None, max_length=255)
     contact_email: Optional[str] = Field(None, max_length=255)
@@ -573,12 +614,14 @@ class SalesInvoiceLineBase(BaseModel):
 
 
 class SalesInvoiceLineCreate(SalesInvoiceLineBase):
-    pass
+    product_id: Optional[int] = Field(None, description="Optional product from the catalog (D-030)")
 
 
 class SalesInvoiceLineResponse(SalesInvoiceLineBase):
     id: int
     invoice_id: int
+    product_id: Optional[int] = None
+    product_name: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -1125,6 +1168,8 @@ class ChequeResponse(ChequeBase):
     signer_name: Optional[str] = None
     authorized_by: Optional[str] = None
     attachment_url: Optional[str] = None
+    attachment_count: int = 0
+    has_scan: bool = False
     exception_reason: Optional[str] = None
     exception_evidence: Optional[str] = None
     replacement_cheque_id: Optional[int] = None
@@ -1145,6 +1190,26 @@ class ChequeResponse(ChequeBase):
 # ==========================================
 # Subscription & Attachment Schemas (Phase 6)
 # ==========================================
+class ChequeAttachmentResponse(BaseModel):
+    """Cheque scan metadata. Never exposes the storage path (AGENTS.md non-negotiables)."""
+    id: int
+    cheque_id: int
+    file_name: str
+    file_size: int = 0
+    mime_type: str = "application/octet-stream"
+    uploaded_at: Optional[datetime] = None
+    uploaded_by: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class NextChequeNumberResponse(BaseModel):
+    account_id: int
+    next_cheque_number: Optional[str] = None
+    last_cheque_number: Optional[str] = None
+
+
 class FinanceAttachmentResponse(BaseModel):
     id: int
     subscription_charge_id: Optional[int] = None
@@ -1178,6 +1243,9 @@ class SubscriptionBase(BaseModel):
     seats_count: Optional[int] = Field(None, ge=0, description="Allocated user seats / licenses count")
     auto_generate_bill: bool = Field(False, description="Whether to auto-generate vendor bills on renewal")
     is_active: bool = Field(True, description="Whether subscription is currently active")
+    billing_email: Optional[str] = Field(None, max_length=255, description="Where the vendor sends invoices and receipts (reference only; nothing is sent)")
+    proof_source: str = Field("none", description="Where proof of payment comes from: email_inbox | vendor_portal | bank_only | none")
+    proof_expected: bool = Field(True, description="Whether a proof of payment is expected for each charge")
 
 
 class SubscriptionCreate(SubscriptionBase):
@@ -1201,10 +1269,17 @@ class SubscriptionUpdate(BaseModel):
     seats_count: Optional[int] = None
     auto_generate_bill: Optional[bool] = None
     is_active: Optional[bool] = None
+    billing_email: Optional[str] = None
+    proof_source: Optional[str] = None
+    proof_expected: Optional[bool] = None
 
 
 class SubscriptionResponse(SubscriptionBase):
     id: int
+    payment_account_name: Optional[str] = None
+    book_code: Optional[str] = None  # the book of the paying account; no account = the default book
+    expected_charges_count: int = 0
+    proofs_missing_count: int = 0
     vendor_name: Optional[str] = None
     monthly_equivalent_amount: float = 0.0
     notice_deadline_date: Optional[str] = None
@@ -1232,8 +1307,43 @@ class SubscriptionChargeCreate(SubscriptionChargeBase):
     bank_account_id: Optional[int] = Field(None, description="Optional bank account to record payment outflow")
 
 
+class SubscriptionChargeSettle(BaseModel):
+    mode: str = Field(..., description="link_ledger | already_paid_bill")
+    ledger_transaction_id: Optional[int] = Field(None, description="Existing outflow to link (mode link_ledger)")
+    bank_account_id: Optional[int] = Field(None, description="Paying account for the Already paid bill; defaults to the subscription's account")
+    payment_type_id: Optional[int] = None
+    payment_date: Optional[str] = Field(None, description="Payment date (YYYY-MM-DD); defaults to the billing date")
+    amount: Optional[float] = Field(None, gt=0.0, description="Actual amount charged; defaults to the expected amount")
+    variance_reason: Optional[str] = Field(None, max_length=255)
+
+
+class SubscriptionChargeSkip(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=255)
+
+
+class SubscriptionChargeProof(BaseModel):
+    proof_status: str = Field(..., description="attached | pending | unavailable")
+    proof_note: Optional[str] = Field(None, description="Required when the proof is unavailable")
+
+
+class GenerateChargesResult(BaseModel):
+    created: int = 0
+    subscriptions_checked: int = 0
+
+
 class SubscriptionChargeResponse(SubscriptionChargeBase):
     id: int
+    status: str = "settled"
+    expected_amount: Optional[float] = None
+    proof_status: str = "pending"
+    proof_note: Optional[str] = None
+    proof_expected: bool = False
+    proof_source: Optional[str] = None
+    settled_at: Optional[datetime] = None
+    skipped_reason: Optional[str] = None
+    payment_account_id: Optional[int] = None
+    payment_account_name: Optional[str] = None
+    book_code: Optional[str] = None
     subscription_name: Optional[str] = None
     vendor_name: Optional[str] = None
     linked_transaction_id: Optional[int] = None
@@ -1860,6 +1970,8 @@ class ProfitAndLossResponse(BaseModel):
     net_margin_pct: float = 0.0
     basis_note: Optional[str] = None  # accrual view is labelled partial until payroll, statutory and bank fees are included
     by_currency: List[Dict[str, Any]] = []  # currency "ALL": one statement per currency, never added together
+    book: Optional[str] = None  # local | overseas | consolidated; None = every account (legacy)
+    inter_book_items: List[Dict[str, Any]] = []  # inter-book movements, shown apart from operating revenue and spend (D-028)
 
 
 class BalanceSheetSectionItem(BaseModel):
@@ -2779,12 +2891,117 @@ class PayrollTaxSettingsResponse(BaseModel):
         from_attributes = True
 
 
+# ==========================================
+# Product Catalog Schemas (X3, D-030)
+# ==========================================
+PRODUCT_TYPES = ("saas_subscription", "license", "implementation_service", "support", "other")
 
 
+class ProductBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    code: str = Field(..., min_length=1, max_length=50)
+    product_type: str = Field("other", description="saas_subscription | license | implementation_service | support | other")
+    default_currency: str = Field("USD", min_length=3, max_length=10)
+    default_price: Optional[float] = Field(None, ge=0.0)
+    default_receiving_account_id: Optional[int] = None
+    is_active: bool = True
 
 
+class ProductCreate(ProductBase):
+    pass
 
 
+class ProductUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    code: Optional[str] = Field(None, min_length=1, max_length=50)
+    product_type: Optional[str] = None
+    default_currency: Optional[str] = Field(None, min_length=3, max_length=10)
+    default_price: Optional[float] = Field(None, ge=0.0)
+    default_receiving_account_id: Optional[int] = None
+    is_active: Optional[bool] = None
 
 
+class ProductResponse(ProductBase):
+    id: int
+    default_receiving_account_name: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+# ==========================================
+# Revenue sources and receipts (X4, D-029)
+# ==========================================
+class RevenueSourceCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    code: str = Field(..., min_length=1, max_length=50)
+    sort_order: int = 0
+    is_active: bool = True
+
+
+class RevenueSourceUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    sort_order: Optional[int] = None
+    is_active: Optional[bool] = None
+
+
+class RevenueSourceResponse(BaseModel):
+    id: int
+    code: str
+    name: str
+    sort_order: int = 0
+    is_active: bool = True
+    is_system: bool = False
+
+    class Config:
+        from_attributes = True
+
+
+class RevenueReceiptCreate(BaseModel):
+    account_id: int
+    date: str = Field(..., description="Receipt date (YYYY-MM-DD)")
+    amount: float = Field(..., gt=0.0, description="Amount received, in the account currency")
+    currency: str = Field("USD", min_length=3, max_length=10)
+    revenue_source_id: int
+    product_id: Optional[int] = None
+    customer_id: Optional[int] = None
+    period_start: Optional[str] = Field(None, description="Service period covered, from (YYYY-MM-DD)")
+    period_end: Optional[str] = Field(None, description="Service period covered, to (YYYY-MM-DD)")
+    memo_gross_amount: Optional[float] = Field(None, ge=0.0, description="Memo only: gross charged before fees; never affects balances")
+    memo_fee_amount: Optional[float] = Field(None, ge=0.0, description="Memo only: fees deducted; never affects balances")
+    reference: Optional[str] = Field("", max_length=255)
+    description: Optional[str] = Field("", max_length=255)
+
+
+class RevenueReceiptReverse(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=500)
+
+
+class RevenueReceiptResponse(BaseModel):
+    id: int
+    account_id: int
+    account_name: Optional[str] = None
+    book_code: Optional[str] = None
+    date: str
+    amount: float
+    currency: str
+    direction: str
+    revenue_source_id: Optional[int] = None
+    revenue_source_name: Optional[str] = None
+    product_id: Optional[int] = None
+    product_name: Optional[str] = None
+    customer_id: Optional[int] = None
+    customer_name: Optional[str] = None
+    period_start: Optional[str] = None
+    period_end: Optional[str] = None
+    memo_gross_amount: Optional[float] = None
+    memo_fee_amount: Optional[float] = None
+    reference: str = ""
+    description: str = ""
+    is_reversal: bool = False
+    has_attachment: bool = False
+    attachment_name: Optional[str] = None
+    created_at: Optional[datetime] = None
+    created_by: Optional[str] = None
 

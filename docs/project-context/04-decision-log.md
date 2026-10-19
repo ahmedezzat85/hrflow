@@ -2,7 +2,7 @@
 
 **Status:** Draft — needs owner review  
 **Last verified against:** `feature/rbac` at `c236b00cb6fea09cb3474cb8d5fbda66eb23135e` (equal to `main`)  
-**Last updated:** October 10, 2026  
+**Last updated:** October 18, 2026  
 **Branch note:** D-011 to D-013 and the D-008/D-009/D-010 amendments were added on `feature/rbac` (base `c236b00`) and accepted by the owner on October 1, 2026. They are not part of `main` until the branch is merged. The bullet tagged **[Pending owner OK]** (startup seeding) was found during the October 1, 2026 code reconciliation, after that approval, and is not yet accepted.  
 **Authority:** Owner-approved decisions, reconciled against repository context documents  
 
@@ -407,6 +407,42 @@ This document records durable product and architectural decisions approved by th
   - Payroll Runs and Payroll Settings are out of scope (separate plan later).
 - **Scope:** Visual and small UI-level changes (control types, client-side counts and sums, removal of obsolete columns). Three additive API fields (doc 22). No workflow, permission or calculation change; D-016 to D-026 unchanged.
 - **Rationale:** The owner wants a calmer, more colourful Finance module that uses the brand colour and stays readable; the Bills restyle proved the table pattern, and the full design was reviewed screen by screen in a clickable prototype before approval.
+
+### D-028 — Books: Local and Overseas, Three Report Views
+
+- **Status:** Accepted by owner, October 18, 2026. Resolves Q-017 and Q-020. Implemented on `feature/finance-expansion` (slice X2, migration 0038); plan in [../finance-module/23-finance-expansion-plan.md](../finance-module/23-finance-expansion-plan.md) (slice X2).
+- **Decision:**
+  - New `finance_books`: `Local` (Egyptian entity, default; every existing account migrates here) and `Overseas` (overseas entity). Every company account has a required book and a visibility of `full` or `partial`.
+  - A `partial` account (the overseas bank account) shows its balance as known movements plus owner-entered balance checkpoints; the gap is shown as "Unrecorded difference" and is never auto-adjusted.
+  - Money moving between the two entities is recorded once, as an inter-book transfer, and read three ways: **Local** = "Income from overseas entity" (counts as Local revenue); **Overseas** = "Transferred to local entity" (outflow, not an operating expense); **Consolidated** = eliminated on both sides (same rule as D-026 own-account movements). An invoice from the local entity to the overseas entity uses a customer marked intercompany and is eliminated the same way in Consolidated.
+  - Finance pages get a `Local | Overseas | Consolidated` switcher, remembered per user. First defaults: dashboard, cash-basis P&L and cash flow = Local (unchanged from today); accounts = all accounts grouped by book; revenue analytics = Consolidated; spend/subscriptions/vendors/categories = Consolidated with a "Paid from" book column.
+  - Overseas external salaries stay in HRFlow payroll runs using the existing `external_funding_account_id` (overseas account); no payroll model change.
+  - Legal and tax treatment of the two entities is outside the system; HRFlow labels and separates only. D-026 currency rule unchanged (no converted totals).
+- **Rationale:** The two entities are legally separate but one company logically; local income tracking must count overseas money as income while company-wide figures must not double count it.
+
+### D-029 — External Revenue: Receipts Tagged by Source, No Stripe Account Yet
+
+- **Status:** Accepted by owner, October 18, 2026. Resolves Q-019. Implemented on `feature/finance-expansion` (slice X4, migration 0039).
+- **Decision:** Stripe is not modelled as an account now. Money reaching a company account without an HRFlow invoice is recorded as a **revenue receipt** (a `money_in` ledger row) with `revenue_source` from an editable list (`Invoice`, `Stripe payout`, `Direct transfer`, `Cash`, `Other`), optional product and customer, period covered, and optional memo-only gross and fee amounts. When the planned revenue-service integration arrives, imported service revenue becomes the revenue record and bank payouts are matched to it; earlier payout receipts stay as historical records.
+- **Rationale:** Stripe money mostly originates from other services the owner plans to integrate directly; a Stripe account now would be replaced later.
+
+### D-030 — Product Catalog and Revenue Tagging
+
+- **Status:** Accepted by owner, October 18, 2026. Implemented on `feature/finance-expansion` (slices X3, migration 0037, and X4, migration 0039 for `product_id` on revenue receipts). Permissions `finance.product.read` / `finance.product.write` (write granted to Financial-Admin).
+- **Decision:** New Finance-owned `finance_products` (name, code, type `saas_subscription | license | implementation_service | support | other`, default currency/price, default receiving account, active). Optional `product_id` on sales invoice lines and revenue receipts; untagged revenue stays visible in reports. Invoice book is derived from its expected receiving account; `revenue_channel` is kept for history and mapped to book + source.
+- **Rationale:** The owner wants revenue by product across local and overseas accounts.
+
+### D-031 — Subscriptions: Expected Charges, Proof Tracking, In-App Reminders Only
+
+- **Status:** Accepted by owner, October 18, 2026. Resolves Q-016 (no email, no scheduler for now). Implemented on `feature/finance-expansion` (slice X5, migration 0040).
+- **Decision:** Subscriptions gain `billing_email`, `proof_source` (`email_inbox | vendor_portal | bank_only | none`), paid-from account (any book) and `proof_expected`. Expected charges are generated on demand and idempotently (button and on page open), status `expected → settled | skipped` with variance. Settle links an existing ledger/statement row or creates an "Already paid" bill through the settlement service (D-020) and advances the renewal date. Proof per charge is `attached | pending | unavailable` with reason, never blocks settlement, and feeds a "proofs missing" list. Reminders are in-app attention items only. Email and a background scheduler are a future standalone feature.
+- **Rationale:** Some proofs cannot be obtained; recurring charges must be visible and settled monthly without new infrastructure.
+
+### D-032 — Cheque Scans and Manual Entry; No Extraction
+
+- **Status:** Accepted by owner, October 18, 2026. Resolves Q-015. Implemented on `feature/finance-expansion` (slice X1, migration 0036). Scans use the finance-attachment local store (same as subscription charges); read/write use `finance.account.read` / `finance.account.write`, the existing cheque-register permissions.
+- **Decision:** No external OCR or AI service and no extraction. Cheques get one or more stored scans (front, back, bank stamp) through `finance_attachments` (`cheque_id`), with a "scan missing" flag and filter; existing `attachment_url` values are migrated and the column deprecated. Entry shortcuts: next cheque number suggested per account; payee, amount and currency prefilled from a linked bill.
+- **Rationale:** The owner will not subscribe to an external service; free local OCR cannot read handwritten cheques reliably.
 
 ---
 

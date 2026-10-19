@@ -36,6 +36,8 @@ SEED_PERMISSIONS: List[Dict[str, str]] = [
     {"key": "finance.vendor_payment.verify", "description": "Verify and approve vendor payment instructions"},
     {"key": "finance.invoice.read", "description": "View sales invoices"},
     {"key": "finance.invoice.write", "description": "Create, update, and void sales invoices"},
+    {"key": "finance.product.read", "description": "View the product catalog"},
+    {"key": "finance.product.write", "description": "Create, update, and deactivate catalog products"},
     {"key": "finance.bill.read", "description": "View vendor bills"},
     {"key": "finance.bill.write", "description": "Create, update, and void vendor bills"},
     {"key": "finance.payroll.read", "description": "View company payroll runs and history"},

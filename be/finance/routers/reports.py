@@ -55,11 +55,13 @@ def get_finance_summary(
     period: str = Query("MTD", description="Period filter: MTD, QTD, YTD, all"),
     basis: str = Query("cash", pattern="^(cash|accrual)$", description="Accounting basis: cash or accrual"),
     currency: str = Query("USD", description="Currency filter: USD, EGP, all"),
+    book: Optional[str] = Query(None, description="Book view: local | overseas | consolidated. Omitted = every account (legacy)."),
     service: ReportsService = Depends(get_reports_service),
     current_user: dict = Depends(require_permission("finance.report.read")),
 ):
     """KPI metric summary for executive finance dashboard with contextual scoping and metadata."""
     return service.get_finance_summary(
+        book=book,
         entity=entity,
         period=period,
         basis=basis,
@@ -75,6 +77,7 @@ def get_attention_queue(
     search: Optional[str] = Query(None, description="Keyword search in title, counterparty, and description"),
     include_reviewed: bool = Query(False, description="Whether to include previously reviewed/resolved items"),
     limit: int = Query(50, ge=1, le=200, description="Max items to return"),
+    book: Optional[str] = Query(None, description="Book view: local | overseas | consolidated. Omitted = every account (legacy)."),
     service: AttentionQueueService = Depends(get_attention_service),
     current_user: dict = Depends(require_permission("finance.report.read")),
     user_permissions: Set[str] = Depends(get_current_user_permissions),
@@ -84,6 +87,7 @@ def get_attention_queue(
     Aggregates exceptions across authorized finance domains with deterministic priority rules.
     """
     return service.get_attention_queue(
+        book=book,
         current_user=current_user,
         user_permissions=user_permissions,
         severity=severity,
@@ -123,11 +127,48 @@ def review_attention_item(
     }
 
 
+@router.get("/revenue-breakdown", response_model=Dict[str, Any])
+def get_revenue_breakdown(
+    date_from: Optional[str] = Query(None, description="From date (YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="To date (YYYY-MM-DD)"),
+    currency: str = Query("ALL", description="Currency filter, or ALL for one figure per currency"),
+    book: Optional[str] = Query(None, description="Book view: local | overseas | consolidated. Omitted = every account."),
+    service: ReportsService = Depends(get_reports_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+):
+    """Cash-basis revenue by month, book, source, product and customer, with an Untagged revenue row (X4)."""
+    return service.get_revenue_breakdown(date_from=date_from, date_to=date_to, currency=currency, book=book)
+
+
+@router.get("/subscription-spend", response_model=Dict[str, Any])
+def get_subscription_spend(
+    date_from: Optional[str] = Query(None, description="From billing date (YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="To billing date (YYYY-MM-DD)"),
+    currency: str = Query("ALL", description="Currency filter, or ALL for one figure per currency"),
+    book: Optional[str] = Query(None, description="Book of the paying account: local | overseas | consolidated. Omitted = all."),
+    service: ReportsService = Depends(get_reports_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+):
+    """Settled subscription charges by month, vendor, department and book (X6)."""
+    return service.get_subscription_spend(date_from=date_from, date_to=date_to, currency=currency, book=book)
+
+
+@router.get("/subscription-proofs-missing", response_model=Dict[str, Any])
+def get_subscription_proofs_missing(
+    book: Optional[str] = Query(None, description="Book of the paying account. Omitted = all."),
+    service: ReportsService = Depends(get_reports_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+):
+    """Charges whose expected proof of payment is still pending (X6)."""
+    return service.get_subscription_proofs_missing(book=book)
+
+
 @router.get("/cash-forecast", response_model=CashForecastResponse)
 def get_cash_forecast(
     currency: str = Query("all", description="Currency filter: all, USD, EGP"),
     horizon_days: int = Query(90, ge=30, le=180, description="Forecast horizon in days (e.g. 30, 60, 90)"),
     include_expected: bool = Query(True, description="Whether to include expected recurring subscriptions"),
+    book: Optional[str] = Query(None, description="Book view: local | overseas | consolidated. Omitted = every account (legacy)."),
     service: CashForecastService = Depends(get_forecast_service),
     current_user: dict = Depends(require_permission("finance.report.read")),
 ):
@@ -137,6 +178,7 @@ def get_cash_forecast(
     and breaks down confirmed contractual obligations from estimated expected items.
     """
     return service.get_cash_forecast(
+        book=book,
         currency=currency,
         horizon_days=horizon_days,
         include_expected=include_expected,
@@ -155,6 +197,7 @@ def get_transactions_report(
     payee_type: Optional[str] = Query(None, description="Filter by payee type ('none', 'vendor', 'employee')"),
     include_internal: bool = Query(True, description="Whether to include internal employee disbursements"),
     format: str = Query("json", pattern="^(json|xlsx)$"),
+    book: Optional[str] = Query(None, description="Book view: local | overseas | consolidated. Omitted = every account (legacy)."),
     service: ReportsService = Depends(get_reports_service),
     current_user: dict = Depends(require_permission("finance.report.read")),
 ):
@@ -162,6 +205,7 @@ def get_transactions_report(
     Arbitrary-range transaction ledger report with running totals and multi-criteria filters.
     """
     data = service.get_transactions_report(
+        book=book,
         date_from=date_from,
         date_to=date_to,
         account_id=account_id,
@@ -192,6 +236,7 @@ def get_category_summary_report(
     currency: Optional[str] = Query(None, description="Filter by currency"),
     include_internal: bool = Query(True, description="Whether to include internal employee disbursements"),
     format: str = Query("json", pattern="^(json|xlsx)$"),
+    book: Optional[str] = Query(None, description="Book view: local | overseas | consolidated. Omitted = every account (legacy)."),
     service: ReportsService = Depends(get_reports_service),
     current_user: dict = Depends(require_permission("finance.report.read")),
 ):
@@ -199,6 +244,7 @@ def get_category_summary_report(
     Category spend rollup mirroring the monthly SPENT block.
     """
     data = service.get_category_summary_report(
+        book=book,
         date_from=date_from,
         date_to=date_to,
         currency=currency,
@@ -224,6 +270,7 @@ def get_category_by_period_matrix(
     currency: Optional[str] = Query(None, description="Filter by currency"),
     include_internal: bool = Query(True, description="Whether to include internal employee disbursements"),
     format: str = Query("json", pattern="^(json|xlsx)$"),
+    book: Optional[str] = Query(None, description="Book view: local | overseas | consolidated. Omitted = every account (legacy)."),
     service: ReportsService = Depends(get_reports_service),
     current_user: dict = Depends(require_permission("finance.report.read")),
 ):
@@ -231,6 +278,7 @@ def get_category_by_period_matrix(
     Annual Category × Period matrix (Jan-Dec or Q1-Q4) with row totals and % of total spend.
     """
     data = service.get_category_by_period_matrix(
+        book=book,
         year=year,
         period_group=period_group,
         currency=currency,
@@ -253,6 +301,7 @@ def get_category_by_period_matrix(
 def get_point_in_time_balances(
     as_of_date: Optional[str] = Query(None, description="As of date (YYYY-MM-DD, defaults to today)"),
     format: str = Query("json", pattern="^(json|xlsx)$"),
+    book: Optional[str] = Query(None, description="Book view: local | overseas | consolidated. Omitted = every account (legacy)."),
     service: ReportsService = Depends(get_reports_service),
     current_user: dict = Depends(require_permission("finance.report.read")),
 ):
@@ -262,7 +311,7 @@ def get_point_in_time_balances(
     if not as_of_date:
         as_of_date = datetime.utcnow().strftime("%Y-%m-%d")
 
-    data = service.get_point_in_time_balances(as_of_date=as_of_date)
+    data = service.get_point_in_time_balances(as_of_date=as_of_date, book=book)
 
     if format == "xlsx":
         xlsx_bytes = export_balances_xlsx(data)
@@ -282,6 +331,7 @@ def get_cheques_report(
     account_id: Optional[int] = Query(None, description="Filter by bank account"),
     status: Optional[str] = Query(None, description="Filter by status (issued/cleared/bounced/voided)"),
     format: str = Query("json", pattern="^(json|xlsx)$"),
+    book: Optional[str] = Query(None, description="Book view: local | overseas | consolidated. Omitted = every account (legacy)."),
     service: ReportsService = Depends(get_reports_service),
     current_user: dict = Depends(require_permission("finance.report.read")),
 ):
@@ -292,6 +342,7 @@ def get_cheques_report(
         fiscal_year = datetime.utcnow().year
 
     data = service.get_cheques_report(
+        book=book,
         fiscal_year=fiscal_year,
         account_id=account_id,
         status=status,
@@ -385,6 +436,7 @@ def get_report_drilldown(
     date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     currency: Optional[str] = Query(None, description="Currency filter"),
     entity: Optional[str] = Query(None, description="Entity filter"),
+    book: Optional[str] = Query(None, description="Book view: local | overseas | consolidated. Omitted = every account (legacy)."),
     service: ReportsService = Depends(get_reports_service),
     current_user: dict = Depends(require_permission("finance.report.read")),
 ):
@@ -393,6 +445,7 @@ def get_report_drilldown(
     for a clicked total, cell, or category in any report without losing context.
     """
     return service.get_report_drilldown(
+        book=book,
         report_key=report_key,
         drilldown_type=drilldown_type,
         drilldown_id=drilldown_id,
@@ -414,11 +467,13 @@ def get_profit_and_loss(
     basis: str = Query("cash", pattern="^(cash|accrual)$", description="Accounting basis: cash or accrual"),
     currency: str = Query("USD", description="Currency filter"),
     comparison: str = Query("none", pattern="^(none|prior_period|prior_year)$", description="Comparison type"),
+    book: Optional[str] = Query(None, description="Book view: local | overseas | consolidated. Omitted = every account (legacy)."),
     service: ReportsService = Depends(get_reports_service),
     current_user: dict = Depends(require_permission("finance.report.read")),
 ):
     """Profit & Loss Statement supporting cash/accrual basis and period comparisons."""
     return service.get_profit_and_loss(
+        book=book,
         entity=entity,
         date_from=date_from,
         date_to=date_to,
@@ -435,11 +490,13 @@ def get_balance_sheet(
     basis: str = Query("accrual", pattern="^(cash|accrual)$", description="Accounting basis"),
     currency: str = Query("USD", description="Currency filter"),
     comparison: str = Query("none", description="Comparison mode"),
+    book: Optional[str] = Query(None, description="Book view: local | overseas | consolidated. Omitted = every account (legacy)."),
     service: ReportsService = Depends(get_reports_service),
     current_user: dict = Depends(require_permission("finance.report.read")),
 ):
     """Balance Sheet displaying Assets, Liabilities, and Balancing Equity as of cutoff date."""
     return service.get_balance_sheet(
+        book=book,
         entity=entity,
         as_of_date=as_of_date,
         basis=basis,
@@ -453,11 +510,13 @@ def get_trial_balance(
     entity: Optional[str] = Query("all", description="Entity filter"),
     as_of_date: Optional[str] = Query(None, description="As of date (YYYY-MM-DD)"),
     currency: str = Query("USD", description="Currency filter"),
+    book: Optional[str] = Query(None, description="Book view: local | overseas | consolidated. Omitted = every account (legacy)."),
     service: ReportsService = Depends(get_reports_service),
     current_user: dict = Depends(require_permission("finance.report.read")),
 ):
     """Trial Balance report ensuring Debits == Credits with zero net variance."""
     return service.get_trial_balance(
+        book=book,
         entity=entity,
         as_of_date=as_of_date,
         currency=currency,
@@ -470,11 +529,13 @@ def get_cash_flow_statement(
     date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     currency: str = Query("USD", description="Currency filter"),
+    book: Optional[str] = Query(None, description="Book view: local | overseas | consolidated. Omitted = every account (legacy)."),
     service: ReportsService = Depends(get_reports_service),
     current_user: dict = Depends(require_permission("finance.report.read")),
 ):
     """Statement of Cash Flows reconciling Operating and Financing activities with liquidity."""
     return service.get_cash_flow_statement(
+        book=book,
         entity=entity,
         date_from=date_from,
         date_to=date_to,
@@ -487,11 +548,13 @@ def get_ar_aging_report(
     entity: Optional[str] = Query("all", description="Entity filter"),
     as_of_date: Optional[str] = Query(None, description="As of date (YYYY-MM-DD)"),
     currency: str = Query("USD", description="Currency filter"),
+    book: Optional[str] = Query(None, description="Book view: local | overseas | consolidated. Omitted = every account (legacy)."),
     service: ReportsService = Depends(get_reports_service),
     current_user: dict = Depends(require_permission("finance.report.read")),
 ):
     """Accounts Receivable Aging schedule partitioned into 30-day buckets per customer."""
     return service.get_ar_aging_report(
+        book=book,
         entity=entity,
         as_of_date=as_of_date,
         currency=currency,
@@ -503,11 +566,13 @@ def get_ap_aging_report(
     entity: Optional[str] = Query("all", description="Entity filter"),
     as_of_date: Optional[str] = Query(None, description="As of date (YYYY-MM-DD)"),
     currency: str = Query("USD", description="Currency filter"),
+    book: Optional[str] = Query(None, description="Book view: local | overseas | consolidated. Omitted = every account (legacy)."),
     service: ReportsService = Depends(get_reports_service),
     current_user: dict = Depends(require_permission("finance.report.read")),
 ):
     """Accounts Payable Aging schedule partitioned into 30-day buckets per vendor."""
     return service.get_ap_aging_report(
+        book=book,
         entity=entity,
         as_of_date=as_of_date,
         currency=currency,

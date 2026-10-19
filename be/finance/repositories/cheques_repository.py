@@ -6,7 +6,7 @@ vendor bill linking, and status changes with ledger reversal.
 """
 from typing import List, Optional
 from datetime import datetime
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy import or_, and_, desc, func
 
 from finance.models import (
@@ -17,6 +17,7 @@ from finance.models import (
     TransactionCategoryDB,
     BillDB,
     PaymentDB,
+    FinanceAttachmentDB,
 )
 from finance import bill_status as bs
 from finance.repositories.ledger_repository import LedgerRepository
@@ -75,6 +76,7 @@ class ChequesRepository:
         search: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
+        has_scan: Optional[bool] = None,
     ) -> List[FinanceChequeDB]:
         query = (
             self.db.query(FinanceChequeDB)
@@ -84,8 +86,13 @@ class ChequesRepository:
                 joinedload(FinanceChequeDB.linked_bill),
                 joinedload(FinanceChequeDB.replacement_cheque),
                 joinedload(FinanceChequeDB.replaced_cheque),
+                selectinload(FinanceChequeDB.attachments),
             )
         )
+        if has_scan is True:
+            query = query.filter(FinanceChequeDB.attachments.any())
+        elif has_scan is False:
+            query = query.filter(~FinanceChequeDB.attachments.any())
         if fiscal_year:
             query = query.filter(FinanceChequeDB.fiscal_year == fiscal_year)
         if status:
@@ -335,7 +342,7 @@ class ChequesRepository:
             posting_policy=posting_policy,
             signer_name=data.get("signer_name"),
             authorized_by=data.get("authorized_by"),
-            attachment_url=data.get("attachment_url"),
+            attachment_url=None,  # deprecated (D-032): scans are stored as finance_attachments rows
             replaced_cheque_id=data.get("replaced_cheque_id"),
             clear_date=None,
             fiscal_year=fiscal_year,
@@ -535,3 +542,57 @@ class ChequesRepository:
             self.ledger_repo.recalculate_account_running_balances(old_cheque.destination_cash_account_id)
 
         return self.get_by_id(new_cheque.id)
+
+    # ------------------------------------------------------------------
+    # Scans (D-032)
+    # ------------------------------------------------------------------
+    def add_attachment(
+        self,
+        cheque_id: int,
+        file_name: str,
+        file_size: int,
+        mime_type: str,
+        storage_ref: str,
+        uploaded_by: Optional[str] = None,
+    ) -> FinanceAttachmentDB:
+        att = FinanceAttachmentDB(
+            cheque_id=cheque_id,
+            file_name=file_name,
+            file_size=file_size,
+            mime_type=mime_type,
+            storage_ref=storage_ref,
+            uploaded_at=datetime.utcnow(),
+            uploaded_by=uploaded_by,
+        )
+        self.db.add(att)
+        self.db.commit()
+        self.db.refresh(att)
+        return att
+
+    def list_attachments(self, cheque_id: int) -> List[FinanceAttachmentDB]:
+        return (
+            self.db.query(FinanceAttachmentDB)
+            .filter(FinanceAttachmentDB.cheque_id == cheque_id)
+            .order_by(FinanceAttachmentDB.id)
+            .all()
+        )
+
+    def get_attachment(self, cheque_id: int, attachment_id: int) -> Optional[FinanceAttachmentDB]:
+        return (
+            self.db.query(FinanceAttachmentDB)
+            .filter(FinanceAttachmentDB.id == attachment_id, FinanceAttachmentDB.cheque_id == cheque_id)
+            .first()
+        )
+
+    def delete_attachment(self, att: FinanceAttachmentDB) -> None:
+        self.db.delete(att)
+        self.db.commit()
+
+    def last_cheque_number(self, account_id: int) -> Optional[str]:
+        """Highest numeric cheque number issued for the account (ignores non-numeric serials)."""
+        best_val, best = -1, None
+        for (num,) in self.db.query(FinanceChequeDB.cheque_number).filter(FinanceChequeDB.account_id == account_id).all():
+            n = (num or "").strip()
+            if n.isdigit() and int(n) > best_val:
+                best_val, best = int(n), n
+        return best

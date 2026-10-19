@@ -3,6 +3,11 @@
 // ==========================================
 let _currentChequeStatusFilter = "";
 let _chequeMoreOpen = false;
+let _chequeQueuedScans = [];
+let _chequeNumberAutofilled = false;
+let _chequePayableBills = [];
+const _CHEQUE_PAYABLE_BILL_STATUSES = ["approved", "scheduled", "partially_paid"];
+const _chequeBillOpenBalance = (b) => Math.max(0, Number(b.total || 0) - Number(b.amount_paid || 0));
 const _CHEQUE_STATUSES = [
   ["draft", "Draft"], ["issued", "Issued"], ["outstanding", "Outstanding"], ["cleared", "Cleared"],
   ["bounced", "Bounced"], ["stopped", "Stopped"], ["voided", "Voided"], ["replaced", "Replaced"],
@@ -17,11 +22,14 @@ async function loadFinanceCheques() {
     const fy = fyFilter ? fyFilter.value : "";
     const searchInput = document.getElementById("financeChequeSearch");
     const search = searchInput ? searchInput.value.trim() : "";
+    const scanFilter = document.getElementById("financeChequeScanFilter");
+    const hasScan = scanFilter ? scanFilter.value : "";
 
     // Status is filtered on the client so the pills can show a count for every status.
     const params = {};
     if (fy) params.fiscal_year = fy;
     if (search) params.search = search;
+    if (hasScan) params.has_scan = hasScan;
 
     const items = await FinanceApi.getCheques(params);
     FinanceState.cheques = items;
@@ -126,6 +134,9 @@ function renderFinanceCheques(all) {
 
       const statusLabel = (_CHEQUE_STATUSES.find(([s]) => s === c.status) || [c.status, c.status])[1];
       const clear = c.clear_date ? `<span class="fv-sub">${esc(FinanceUI.formatDate(c.clear_date))}</span>` : "";
+      const scanChip = c.has_scan
+        ? `<button type="button" class="fv-note fv-note--btn btn-cheque-scans" onclick="openChequeScansModal(${c.id})" title="View cheque scans"><i class="fa-solid fa-paperclip" aria-hidden="true"></i> ${c.attachment_count} ${c.attachment_count === 1 ? "scan" : "scans"}</button>`
+        : `<button type="button" class="fv-note fv-note--warn fv-note--btn btn-cheque-scans" onclick="openChequeScansModal(${c.id})" title="Upload a scan of this cheque">Scan missing</button>`;
       const stale = c.is_stale ? `<span class="fv-note fv-note--warn" title="${esc(c.stale_warning || "Stale-dated (>180 days)")}">Stale-dated</span>` : "";
 
       // One text button and up to three icons per row (Mark outstanding stays reachable through the status filters of the API)
@@ -152,7 +163,7 @@ function renderFinanceCheques(all) {
           <td data-label="Issued">${esc(FinanceUI.formatDate(c.issue_date))}</td>
           <td data-label="From account">${esc(c.account_name || "—")}</td>
           <td data-label="Purpose"><div class="fv-date"><span>${purpose}</span>${purposeSub ? `<span class="fv-sub">${purposeSub}</span>` : ""}</div></td>
-          <td data-label="Status"><div class="fv-date">${FinanceUI.statusPill(FinanceUI.statusGroup(c.status), statusLabel)}${clear}${stale}</div></td>
+          <td data-label="Status"><div class="fv-date">${FinanceUI.statusPill(FinanceUI.statusGroup(c.status), statusLabel)}${clear}${stale}${scanChip}</div></td>
           <td data-label="Amount" class="cell-money fv-num"><span class="fv-amount__value">${FinanceUI.moneyHtml(Math.abs(c.amount || 0), c.currency || "USD")}</span></td>
           <td data-label="Actions" class="col-actions">${FinanceUI.rowActions({ primary, icons })}</td>
         </tr>
@@ -389,11 +400,13 @@ async function openIssueChequeModal() {
   }
 
   const billSel = document.getElementById("chequeLinkedBillId");
+  _chequePayableBills = [];
   if (billSel) {
     try {
-      const bills = await FinanceApi.getBills({ status: "posted" });
+      const bills = await FinanceApi.getBills({});
+      _chequePayableBills = (bills || []).filter((b) => _CHEQUE_PAYABLE_BILL_STATUSES.includes(b.status) && _chequeBillOpenBalance(b) > 0);
       billSel.innerHTML = '<option value="">— Select unpaid bill (optional) —</option>' +
-        (bills || []).map((b) => `<option value="${b.id}">${b.bill_number} - ${b.vendor_name || 'Vendor'} ($${Number(b.total || 0).toFixed(2)})</option>`).join("");
+        _chequePayableBills.map((b) => `<option value="${b.id}">${FinanceUI.esc(b.bill_number)} - ${FinanceUI.esc(b.vendor_name || "Vendor")} (${FinanceUI.esc(b.currency || "USD")} ${_chequeBillOpenBalance(b).toFixed(2)} open)</option>`).join("");
     } catch (_) {
       billSel.innerHTML = '<option value="">— Select unpaid bill (optional) —</option>';
     }
@@ -408,6 +421,11 @@ async function openIssueChequeModal() {
   document.getElementById("chequePayee").value = "";
   document.getElementById("chequePurposeType").value = "other";
   document.getElementById("chequeNotes").value = "";
+  _chequeQueuedScans = [];
+  _renderChequeScanQueue();
+  const scanInput = document.getElementById("chequeScanInput");
+  if (scanInput) scanInput.value = "";
+  _chequeNumberAutofilled = false;
 
   const staleBanner = document.getElementById("chequeStaleWarningBanner");
   if (staleBanner) staleBanner.style.display = "none";
@@ -426,13 +444,135 @@ function closeIssueChequeModal() {
   closeModal("financeChequeModal");
 }
 
-function onChequeAccountSelected() {
+async function onChequeAccountSelected() {
   const sel = document.getElementById("chequeAccountId");
   const opt = sel ? sel.selectedOptions[0] : null;
   if (opt && opt.getAttribute("data-currency")) {
     document.getElementById("chequeCurrency").value = opt.getAttribute("data-currency");
   }
+  // Suggest the next cheque number, but never overwrite a number the user typed
+  const numEl = document.getElementById("chequeNumber");
+  if (sel && sel.value && numEl && (!numEl.value.trim() || _chequeNumberAutofilled)) {
+    try {
+      const res = await FinanceApi.getNextChequeNumber(sel.value);
+      if (sel.value === document.getElementById("chequeAccountId").value && (!numEl.value.trim() || _chequeNumberAutofilled)) {
+        numEl.value = (res && res.next_cheque_number) || "";
+        _chequeNumberAutofilled = !!numEl.value;
+      }
+    } catch (_) { /* suggestion only */ }
+  }
   checkChequeDuplicate();
+}
+
+function onChequeNumberInput() {
+  _chequeNumberAutofilled = false;
+  checkChequeDuplicate();
+}
+
+// Selecting a linked bill prefills payee, amount (open balance) and currency
+function onChequeLinkedBillChanged() {
+  const id = parseInt(document.getElementById("chequeLinkedBillId").value, 10);
+  const bill = _chequePayableBills.find((b) => b.id === id);
+  if (!bill) return;
+  document.getElementById("chequePayee").value = bill.vendor_name || "";
+  document.getElementById("chequeAmount").value = _chequeBillOpenBalance(bill).toFixed(2);
+  if (bill.currency) document.getElementById("chequeCurrency").value = bill.currency;
+}
+
+function _formatScanSize(n) {
+  const v = Number(n || 0);
+  if (v >= 1048576) return (v / 1048576).toFixed(1) + " MB";
+  if (v >= 1024) return Math.round(v / 1024) + " KB";
+  return v + " B";
+}
+
+function onChequeScansSelected(input) {
+  Array.from(input.files || []).forEach((f) => _chequeQueuedScans.push(f));
+  input.value = "";
+  _renderChequeScanQueue();
+}
+
+function removeQueuedChequeScan(idx) {
+  _chequeQueuedScans.splice(idx, 1);
+  _renderChequeScanQueue();
+}
+
+function _renderChequeScanQueue() {
+  const host = document.getElementById("chequeScanQueue");
+  if (!host) return;
+  host.innerHTML = _chequeQueuedScans.map((f, i) => `<li class="fv-scan-item"><i class="fa-solid fa-file" aria-hidden="true"></i><span class="fv-scan-item__name">${FinanceUI.esc(f.name)}</span><span class="fv-scan-item__size">${_formatScanSize(f.size)}</span><button type="button" class="fv-icon-btn" title="Remove ${FinanceUI.esc(f.name)}" aria-label="Remove ${FinanceUI.esc(f.name)}" onclick="removeQueuedChequeScan(${i})"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></li>`).join("");
+}
+
+// ---- Scans dialog (register row): list, download, delete, add ----
+let _chequeScansId = null;
+
+async function openChequeScansModal(chequeId) {
+  _chequeScansId = parseInt(chequeId, 10);
+  const chq = (FinanceState.cheques || []).find((c) => c.id === _chequeScansId);
+  const subtitle = document.getElementById("chequeScansModalSubtitle");
+  if (subtitle) subtitle.textContent = chq ? `Cheque ${chq.cheque_number} · ${chq.payee}` : "Scans of the paper cheque.";
+  const addInput = document.getElementById("chequeScansAddInput");
+  if (addInput) addInput.value = "";
+  openModal("financeChequeScansModal");
+  await _renderChequeScansList();
+}
+
+function closeChequeScansModal() {
+  closeModal("financeChequeScansModal");
+  _chequeScansId = null;
+}
+
+async function _renderChequeScansList() {
+  const list = document.getElementById("chequeScansList");
+  const empty = document.getElementById("chequeScansEmpty");
+  if (!list || _chequeScansId == null) return;
+  try {
+    const atts = await FinanceApi.getChequeAttachments(_chequeScansId);
+    list.innerHTML = atts.map((a) => `<li class="fv-scan-item" data-attachment-id="${a.id}"><i class="fa-solid fa-file" aria-hidden="true"></i><span class="fv-scan-item__name">${FinanceUI.esc(a.file_name)}</span><span class="fv-scan-item__size">${_formatScanSize(a.file_size)}</span><button type="button" class="fv-icon-btn btn-scan-download" title="Download ${FinanceUI.esc(a.file_name)}" aria-label="Download ${FinanceUI.esc(a.file_name)}" onclick="downloadChequeScan(${_chequeScansId}, ${a.id}, '${encodeURIComponent(a.file_name)}')"><i class="fa-solid fa-download" aria-hidden="true"></i></button><button type="button" class="fv-icon-btn fv-icon-btn--danger btn-scan-delete" title="Delete ${FinanceUI.esc(a.file_name)}" aria-label="Delete ${FinanceUI.esc(a.file_name)}" onclick="deleteChequeScan(${_chequeScansId}, ${a.id})"><i class="fa-solid fa-trash" aria-hidden="true"></i></button></li>`).join("");
+    if (empty) empty.style.display = atts.length ? "none" : "block";
+  } catch (err) {
+    toast("Failed to load scans: " + (err.message || err), "fa-solid fa-triangle-exclamation");
+  }
+}
+
+async function downloadChequeScan(chequeId, attId, encodedName) {
+  try {
+    const url = await FinanceApi.getChequeAttachmentBlobUrl(chequeId, attId);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = decodeURIComponent(encodedName);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  } catch (err) {
+    toast("Download failed: " + (err.message || err), "fa-solid fa-triangle-exclamation");
+  }
+}
+
+async function deleteChequeScan(chequeId, attId) {
+  try {
+    await FinanceApi.deleteChequeAttachment(chequeId, attId);
+    toast("Scan deleted.", "fa-solid fa-circle-check");
+    await _renderChequeScansList();
+    await loadFinanceCheques();
+  } catch (err) {
+    toast("Failed to delete scan: " + (err.message || err), "fa-solid fa-triangle-exclamation");
+  }
+}
+
+async function uploadChequeScansFromModal(input) {
+  const files = Array.from(input.files || []);
+  input.value = "";
+  if (!files.length || _chequeScansId == null) return;
+  try {
+    await FinanceApi.uploadChequeAttachments(_chequeScansId, files);
+    toast(files.length === 1 ? "Scan uploaded." : `${files.length} scans uploaded.`, "fa-solid fa-circle-check");
+    await _renderChequeScansList();
+    await loadFinanceCheques();
+  } catch (err) {
+    toast("Failed to upload scan: " + (err.message || err), "fa-solid fa-triangle-exclamation");
+  }
 }
 
 function onChequePurposeChanged() {
@@ -494,8 +634,22 @@ async function saveIssueCheque(isDraft = false) {
   };
 
   try {
-    await FinanceApi.createCheque(payload);
-    toast(isDraft ? "Cheque draft saved successfully." : "Cheque issued successfully!", "fa-solid fa-circle-check");
+    const created = await FinanceApi.createCheque(payload);
+    let scanFailed = false;
+    if (_chequeQueuedScans.length && created && created.id) {
+      try {
+        await FinanceApi.uploadChequeAttachments(created.id, _chequeQueuedScans);
+      } catch (upErr) {
+        scanFailed = true;
+        console.error("Cheque saved but scan upload failed:", upErr);
+      }
+    }
+    if (scanFailed) {
+      toast("Cheque saved, but the scan upload failed. Use Scan missing on the cheque to retry.", "fa-solid fa-triangle-exclamation");
+    } else {
+      toast(isDraft ? "Cheque draft saved successfully." : "Cheque issued successfully!", "fa-solid fa-circle-check");
+    }
+    _chequeQueuedScans = [];
     closeIssueChequeModal();
 
     FinanceState.accounts = await FinanceApi.getAccounts();
@@ -632,6 +786,15 @@ window.openIssueChequeModal = openIssueChequeModal;
 window.closeIssueChequeModal = closeIssueChequeModal;
 window.onChequeAccountSelected = onChequeAccountSelected;
 window.onChequePurposeChanged = onChequePurposeChanged;
+window.onChequeNumberInput = onChequeNumberInput;
+window.onChequeLinkedBillChanged = onChequeLinkedBillChanged;
+window.onChequeScansSelected = onChequeScansSelected;
+window.removeQueuedChequeScan = removeQueuedChequeScan;
+window.openChequeScansModal = openChequeScansModal;
+window.closeChequeScansModal = closeChequeScansModal;
+window.downloadChequeScan = downloadChequeScan;
+window.deleteChequeScan = deleteChequeScan;
+window.uploadChequeScansFromModal = uploadChequeScansFromModal;
 window.saveIssueCheque = saveIssueCheque;
 window.openWithdrawCashModal = openWithdrawCashModal;
 window.closeWithdrawCashModal = closeWithdrawCashModal;

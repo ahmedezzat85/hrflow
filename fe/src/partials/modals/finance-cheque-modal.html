@@ -39,7 +39,7 @@
 
           <div class="form-field">
             <label for="chequeNumber">Cheque # <span class="req">*</span></label>
-            <input type="text" id="chequeNumber" placeholder="e.g. 001042" oninput="checkChequeDuplicate()" required>
+            <input type="text" id="chequeNumber" placeholder="e.g. 001042" oninput="onChequeNumberInput()" required>
           </div>
 
           <div class="form-field">
@@ -103,7 +103,7 @@
 
           <div class="form-field full" id="chequeLinkedBillGroup" style="display: none;">
             <label for="chequeLinkedBillId">Linked Vendor Bill</label>
-            <select id="chequeLinkedBillId">
+            <select id="chequeLinkedBillId" onchange="onChequeLinkedBillChanged()">
               <option value="">— Select unpaid bill (optional) —</option>
             </select>
             <small style="color:var(--text3); font-size: 11.5px; margin-top: 4px; display: block;">
@@ -114,6 +114,15 @@
           <div class="form-field full">
             <label for="chequeNotes">Notes / Memo</label>
             <textarea id="chequeNotes" rows="2" placeholder="Internal memo, purpose details, or authorization note..."></textarea>
+          </div>
+
+          <div class="form-field full" id="chequeScanGroup">
+            <label for="chequeScanInput">Cheque scans</label>
+            <input type="file" id="chequeScanInput" class="fv-scan-input" multiple accept="application/pdf,image/*" aria-describedby="chequeScanHint" onchange="onChequeScansSelected(this)">
+            <small id="chequeScanHint" style="color:var(--text3); font-size: 11.5px; margin-top: 4px; display: block;">
+              <i class="fa-solid fa-paperclip"></i> Optional. PDF or image, up to 15 MB each. Files are uploaded when the cheque is saved.
+            </small>
+            <ul id="chequeScanQueue" class="fv-scan-list" aria-label="Scans queued for upload"></ul>
           </div>
         </div>
       </div>
@@ -220,6 +229,31 @@
       <button class="btn btn-fill" id="replaceConfirmBtn" onclick="executeChequeReplace()">
         <i class="fa-solid fa-arrows-rotate"></i> Issue Replacement
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- 1.3 Cheque Scans Modal (list / download / delete / add) -->
+<div id="financeChequeScansModal" class="modal-overlay fv fv-dialog fv-area-sky">
+  <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="chequeScansModalTitle" style="max-width: 520px;">
+    <div class="modal-head">
+      <div class="modal-head-icon"><i class="fa-solid fa-paperclip"></i></div>
+      <div class="modal-head-text">
+        <h3 id="chequeScansModalTitle">Cheque scans</h3>
+        <p id="chequeScansModalSubtitle">Scans of the paper cheque.</p>
+      </div>
+      <button class="modal-close" onclick="closeChequeScansModal()" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <ul id="chequeScansList" class="fv-scan-list" aria-live="polite"></ul>
+      <div id="chequeScansEmpty" class="fv-sub" style="display:none;">No scans uploaded for this cheque yet.</div>
+      <div class="form-field full" id="chequeScansAddGroup" style="margin-top: 14px;">
+        <label for="chequeScansAddInput">Add scans</label>
+        <input type="file" id="chequeScansAddInput" class="fv-scan-input" multiple accept="application/pdf,image/*" onchange="uploadChequeScansFromModal(this)">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeChequeScansModal()">Close</button>
     </div>
   </div>
 </div>

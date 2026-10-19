@@ -2,7 +2,7 @@
 
 **Status:** Draft — needs owner decisions  
 **Last verified against:** `feature/rbac` at `c236b00cb6fea09cb3474cb8d5fbda66eb23135e` (equal to `main`)  
-**Last updated:** October 1, 2026  
+**Last updated:** October 18, 2026  
 **Branch note:** Q-006 to Q-013 were added on `feature/rbac` and are not part of `main` until the branch is merged. On October 1, 2026 the owner approved the interim treatments for Q-006 to Q-009, Q-011 and Q-012 and resolved Q-010 as recommended; Q-013 was raised afterwards and approved on October 2, 2026.  
 **Authority:** Repository baseline and unreconciled owner-level questions  
 
@@ -228,6 +228,24 @@ This register tracks unresolved product, accounting, and technical architecture 
 - **Related References:**  
   - [04-decision-log.md](04-decision-log.md) (`D-021`)  
   - [../finance-module/19-finance-ui-restyle-direction-a.md](../finance-module/19-finance-ui-restyle-direction-a.md)  
+
+### Q-015 — Cheque Extraction Engine
+- **Status:** Resolved — D-032 (October 18, 2026): no external OCR/AI and no extraction; scans plus manual entry with shortcuts.  
+
+### Q-016 — Scheduler and Email Reminders
+- **Status:** Resolved — D-031 (October 18, 2026): in-app reminders and on-demand generation only; email and scheduler are a future standalone feature.  
+
+### Q-017 — Overseas Entity Treatment
+- **Status:** Resolved — D-028 (October 18, 2026): separate Overseas book; inter-book transfers are Local income, Overseas outflow, eliminated in Consolidated. Legal treatment out of scope.  
+
+### Q-018 — Overseas Salary Transfers
+- **Status:** Resolved — D-028 (October 18, 2026): through HRFlow payroll runs using the existing external funding account.  
+
+### Q-019 — Stripe Granularity
+- **Status:** Resolved — D-029 (October 18, 2026): no Stripe account now; revenue receipts tagged by source; future service integration matches payouts.  
+
+### Q-020 — Default Report View
+- **Status:** Resolved — D-028 (October 18, 2026): default per page (Local for dashboard/P&L; Consolidated for revenue and spend analytics), remembered per user.  
 
 ---
 

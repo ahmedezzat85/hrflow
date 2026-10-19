@@ -52,6 +52,7 @@ class CustomersRepository:
             default_currency=data.get("default_currency", "USD").strip() if data.get("default_currency") else "USD",
             payment_terms_days=int(data.get("payment_terms_days", 30)) if data.get("payment_terms_days") is not None else 30,
             withholding_tax_rate=float(data.get("withholding_tax_rate") or 0.0),
+            is_intercompany=bool(data.get("is_intercompany", False)),
             owner=data.get("owner", "").strip() if data.get("owner") else None,
             notes=data.get("notes", "").strip() if data.get("notes") else None,
             is_active=bool(data.get("is_active", True)),
@@ -86,6 +87,8 @@ class CustomersRepository:
             customer.payment_terms_days = int(data["payment_terms_days"])
         if "withholding_tax_rate" in data and data["withholding_tax_rate"] is not None:
             customer.withholding_tax_rate = float(data["withholding_tax_rate"])
+        if "is_intercompany" in data and data["is_intercompany"] is not None:
+            customer.is_intercompany = bool(data["is_intercompany"])
         if "owner" in data:
             customer.owner = data["owner"].strip() if data["owner"] else None
         if "notes" in data:

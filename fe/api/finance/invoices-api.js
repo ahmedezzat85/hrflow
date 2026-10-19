@@ -13,6 +13,7 @@
   };
 
   const FinanceMockState = root.FinanceMockState || (root.FinanceMockState = {});
+  const _mockProductName = (id) => { const p = id ? (FinanceMockState.products || []).find((x) => x.id === Number(id)) : null; return p ? p.name : null; };
 
   // D-024: withholding is on the net subtotal; received plus withheld settles the invoice
   const _refreshWithholding = (inv) => {
@@ -143,6 +144,7 @@
       const lines = (payload.lines || []).map((ln, i) => ({
         id: Date.now() + i, invoice_id: FinanceMockState.invoices.length + 1,
         ...ln, line_total: ln.line_total || (ln.quantity * ln.unit_price),
+        product_id: ln.product_id || null, product_name: _mockProductName(ln.product_id),
       }));
       const subtotal = lines.reduce((s, l) => s + l.line_total, 0);
       const vatRate = payload.vat_rate !== undefined && payload.vat_rate !== null ? Number(payload.vat_rate) : (String(payload.currency || "USD").toUpperCase() === "EGP" ? 14 : 0);
@@ -186,7 +188,7 @@
         if (payload.vat_rate !== undefined && Number(payload.vat_rate) !== Number(inv.vat_rate || 0)) changed.push("vat_rate");
         if (payload.withholding_tax_rate !== undefined && Number(payload.withholding_tax_rate) !== Number(inv.withholding_tax_rate || 0)) changed.push("withholding_tax_rate");
         if (payload.lines) {
-          const norm = (rows) => JSON.stringify((rows || []).map((l) => [String(l.description).trim(), Number(l.quantity), Number(l.unit_price)]).sort());
+          const norm = (rows) => JSON.stringify((rows || []).map((l) => [String(l.description).trim(), Number(l.quantity), Number(l.unit_price), l.product_id || 0]).sort());
           if (norm(payload.lines) !== norm(inv.lines)) changed.push("lines");
         }
         if (changed.length) throw new Error(`invoice_locked: ${changed.join(", ")} cannot be changed once an invoice is issued. Void and reissue to correct.`);
@@ -194,6 +196,7 @@
         ["customer_id", "currency", "invoice_number", "issue_date", "vat_rate", "withholding_tax_rate", "lines"].forEach((k) => delete payload[k]);
       }
       Object.assign(inv, payload);
+      if (payload.lines) inv.lines = payload.lines.map((ln, i) => ({ id: Date.now() + i, invoice_id: inv.id, ...ln, product_id: ln.product_id || null, product_name: _mockProductName(ln.product_id) }));
       if (payload.expected_bank_account_id !== undefined) {
         const bank = payload.expected_bank_account_id ? (FinanceMockState.accounts || []).find((b) => b.id === parseInt(payload.expected_bank_account_id, 10)) : null;
         inv.expected_bank_account_name = bank ? bank.account_name : null;
