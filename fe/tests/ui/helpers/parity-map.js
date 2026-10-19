@@ -216,10 +216,11 @@ export const PARITY_MAP = {
       mockContainerSelector: 'main',
       appContainerSelector: '#a-dashboard',
       setup: async (page) => showAdminSection(page, 'a-dashboard', '#a-dashboard .hero-stats'),
-      keptLabels: ['Benefits & records'],
+      // The mock makes each hero card one link; the app keeps a card with an inner link, so the card texts are not collected as labels
+      keptLabels: ['Benefits & records', 'Active headcount 4 1 more on leave Employees ›', 'Pending approvals 3 2 leave · 1 claim Review ›', 'Open claims 1 EGP 180 waiting Insurance ›'],
       pairs: [
-        { name: 'dashboard hero headcount', mockSelector: 'main a[href="HR-Employees.html"]', appSelector: '#a-dashboard .hero-stats .hero-card:first-child' },
-        { name: 'requests chart card', mockSelector: 'main > div:nth-of-type(2) > div:first-child', appSelector: '#a-dashboard .grid.g-2-1 > .card:first-child' },
+        { name: 'dashboard hero headcount', mockSelector: 'main a[href="HR-Employees.html"][style*="linear-gradient"]', appSelector: '#a-dashboard .hero-stats .hero-card:first-child' },
+        { name: 'requests chart card', mockSelector: 'main > div[style*="2fr 1fr"] > section:first-child', appSelector: '#a-dashboard .grid.g-2-1 > .card:first-child' },
         { name: 'waiting requests table', mockSelector: 'table', appSelector: '#a-dashboard .card:has(#dashPendingBody) table', props: ['fontSize', 'backgroundColor', 'borderRadius', 'borderColor'] }
       ]
     }

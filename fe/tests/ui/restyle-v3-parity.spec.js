@@ -161,11 +161,17 @@ for (const [sliceId, screenConfigs] of Object.entries(PARITY_MAP)) {
 
             const mockStyles = await mockPage.locator(pair.mockSelector).first().evaluate((element, props) => {
               const style = getComputedStyle(element);
-              return Object.fromEntries(props.map((prop) => [prop, style[prop] || style.getPropertyValue(prop)]));
+              // width/height use the rendered border box: the mocks are content-box, the app is border-box, so the
+              // computed (content) size differs even when both render the same box
+              const rect = element.getBoundingClientRect();
+              return Object.fromEntries(props.map((prop) => [prop, prop === 'width' ? `${Math.round(rect.width * 10) / 10}px` : prop === 'height' ? `${Math.round(rect.height * 10) / 10}px` : (style[prop] || style.getPropertyValue(prop))]));
             }, propsToCompare);
             const appStyles = await appPage.locator(pair.appSelector).first().evaluate((element, props) => {
               const style = getComputedStyle(element);
-              return Object.fromEntries(props.map((prop) => [prop, style[prop] || style.getPropertyValue(prop)]));
+              // width/height use the rendered border box: the mocks are content-box, the app is border-box, so the
+              // computed (content) size differs even when both render the same box
+              const rect = element.getBoundingClientRect();
+              return Object.fromEntries(props.map((prop) => [prop, prop === 'width' ? `${Math.round(rect.width * 10) / 10}px` : prop === 'height' ? `${Math.round(rect.height * 10) / 10}px` : (style[prop] || style.getPropertyValue(prop))]));
             }, propsToCompare);
 
             for (const prop of propsToCompare) {
