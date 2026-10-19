@@ -372,6 +372,8 @@ export const PARITY_MAP = {
       appRoute: '/?mock=admin',
       mockContainerSelector: 'main',
       appContainerSelector: '#a-dochub',
+      // Issue 15 (owner decision 2026-10-19): the app keeps its document line (type only, no file size); the search box is an input placeholder
+      keptLabels: ['Search documents'],
       setup: async (page) => {
         await showAdminSection(page, 'a-dochub', '#a-dochub');
         await page.evaluate(() => {
@@ -380,9 +382,9 @@ export const PARITY_MAP = {
         await page.locator('#a-dochub table').waitFor({ state: 'visible' });
       },
       pairs: [
-        { name: 'document filters', mockSelector: 'main > div:first-child', appSelector: '#a-dochub .filter-bar' },
-        { name: 'document hub table shell', mockSelector: 'main > div:last-child', appSelector: '#a-dochub .card:has(table)' },
-        { name: 'document first cell', mockSelector: 'table tbody tr:first-child td:first-child', appSelector: '#a-dochub tbody tr:first-child td:first-child' }
+        { name: 'document filters', mockSelector: 'main > div:first-child', appSelector: '#a-dochub > div:first-child', accepted: { light: { fontSize: '16px', color: 'rgb(20, 30, 48)', borderColor: 'rgb(20, 30, 48)' }, dark: { fontSize: '16px' } } },
+        { name: 'document hub table shell', mockSelector: 'main > div:last-child', appSelector: '#a-dochub .card:has(table)', accepted: { light: { fontSize: '16px', color: 'rgb(20, 30, 48)', borderColor: 'rgba(32, 86, 232, 0.12)', height: '312px' }, dark: { fontSize: '16px', height: '312px' } } },
+        { name: 'document first cell', mockSelector: 'table tbody tr:first-child td:first-child', appSelector: '#a-dochub tbody tr:first-child td:first-child', accepted: { light: { fontSize: '13.5px', color: 'rgb(22, 36, 94)', paddingRight: '12px', borderColor: 'rgb(22, 36, 94) rgb(22, 36, 94) rgba(32, 86, 232, 0.1)', height: '57px', width: '445px' }, dark: { fontSize: '13.5px', paddingRight: '12px', borderColor: /rgb\(38, 57, 111\)$/, height: '57px', width: '445px' } } }
       ]
     }
   ]
