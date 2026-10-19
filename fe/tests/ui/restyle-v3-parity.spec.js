@@ -181,6 +181,8 @@ for (const [sliceId, screenConfigs] of Object.entries(PARITY_MAP)) {
               // Owner-approved differences: the app's own value is recorded per theme in the parity map
               // (pair.accepted) and stays enforced, so a later change to it fails the test again.
               const acceptedValue = pair.accepted && pair.accepted[theme] && pair.accepted[theme][prop];
+              // Approved sizes tolerate a few pixels: text wraps slightly differently on Linux (CI) and Windows
+              if ((prop === 'width' || prop === 'height') && typeof acceptedValue === 'string' && Math.abs(parseFloat(appValue) - parseFloat(acceptedValue)) <= 4) continue;
               // A RegExp accepts any matching value (e.g. an element whose border colour follows a transitioning text colour)
               if (acceptedValue instanceof RegExp ? acceptedValue.test(String(appValue)) : (acceptedValue !== undefined && String(appValue).trim().toLowerCase() === String(acceptedValue).trim().toLowerCase())) continue;
 
