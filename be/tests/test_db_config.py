@@ -8,6 +8,19 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 
+@pytest.fixture(autouse=True)
+def _restore_config_after_reload():
+    """_fresh_config reloads the config module, which swaps in a new Config class. Without this,
+    the last reloaded Config (e.g. a postgres URL) leaks into every later test module that reads
+    config.Config, and those tests try to reach PostgreSQL."""
+    import config as config_module
+    original = config_module.Config
+    yield
+    config_module.Config = original
+    import db
+    db.reset_engine_for_testing(None)
+
+
 def _fresh_config(monkeypatch, **env_overrides):
     monkeypatch.setenv("SECRET_KEY", "test-secret-key-12345")
     monkeypatch.setenv("ENVIRONMENT", "development")
