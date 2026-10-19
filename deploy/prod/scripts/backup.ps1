@@ -25,7 +25,7 @@ try {
     $env:BACKUP_PASSPHRASE = $c['BACKUP_PASSPHRASE']
     & docker run --rm -e BACKUP_PASSPHRASE `
         -v "${stage}:/stage" -v "$($c['HRFLOW_DATA_DIR'])/documents:/documents:ro" -v "$($c['BACKUP_LOCAL_DIR']):/out" `
-        --entrypoint sh "hrflow-app:$(if ($c['HRFLOW_VERSION']) { $c['HRFLOW_VERSION'] } else { 'latest' })" -c `
+        --entrypoint sh "hrflow-app:$(if ($env:HRFLOW_VERSION) { $env:HRFLOW_VERSION } elseif ($c['HRFLOW_VERSION']) { $c['HRFLOW_VERSION'] } else { 'latest' })" -c `
         "set -e; tar -czf - -C /stage db.dump -C / documents | openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt -pass env:BACKUP_PASSPHRASE -out /out/$name"
     if ($LASTEXITCODE) { throw 'encryption/archive step failed' }
     $env:BACKUP_PASSPHRASE = $null

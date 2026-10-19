@@ -36,3 +36,16 @@ Rollback: set `HRFLOW_VERSION` to the previous tag and `$C up -d`; if a migratio
 
 ## Adding the Cloudflare Tunnel later
 Run `cloudflared` pointing at `http://web:80` on the `internal` network, add the public https hostname to the OAuth client origins and to `ALLOWED_ORIGINS`. Cloudflare terminates HTTPS; nginx honours `X-Forwarded-Proto`.
+
+
+## Releases and automatic deploy
+Production updates itself from release tags. A pull request into `main` (checks must pass) is the only way code reaches `main`; a release is a tag on a `main` commit.
+
+1. Merge your PR into `main` and wait for the checks on `main` to turn green.
+2. Create the release: `git tag v1.2.0 <commit-on-main>` and `git push origin v1.2.0` (or create a release on GitHub).
+3. The workflow **Deploy production** runs: it refuses a tag that is not on `main` or whose required checks are not green, then the self-hosted runner on this PC runs `deploy/prod/scripts/deploy.ps1`: encrypted backup, build the new images (the old version keeps running), start the new version (database migrations run on start), wait for `http://localhost/api/health`. If it never becomes healthy, it switches back to the previous version and the workflow fails.
+4. On success `HRFLOW_VERSION` in `D:/services/hrflow-prod/.env` is set to the deployed tag.
+
+Roll back to an older release: GitHub > Actions > Deploy production > Run workflow > enter the old tag (e.g. `v1.1.0`). If a bad migration already ran, restore the backup taken at the start of that deploy with `scripts/restore.ps1`.
+
+The runner (`D:/services/actions-runner`) starts at Windows sign-in through a per-user startup entry (HKCU Run, "HRFlowGitHubRunner"), so this PC must be signed in with Docker Desktop running. Only the deploy workflow targets it (label `hrflow-prod`); test workflows run on GitHub's own machines.
