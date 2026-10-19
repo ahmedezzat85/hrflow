@@ -296,7 +296,7 @@ function _saveInvoiceDraftToStorage() {
     const price = parseFloat(r.querySelector(".inv-price")?.value) || 0;
     const total = parseFloat(r.querySelector(".inv-total")?.value) || (qty * price);
     if (desc || price > 0) {
-      lines.push({ description: desc, quantity: qty, unit_price: price, line_total: total });
+      lines.push({ description: desc, quantity: qty, unit_price: price, line_total: total, product_id: parseInt(r.querySelector(".inv-product")?.value, 10) || null });
     }
   });
 
@@ -350,6 +350,7 @@ function discardInvoiceDraft() {
 }
 
 async function openAddInvoiceModal() {
+  await _loadInvoiceProducts();
   FinanceForm.clearErrors("invoiceModal");
   _populateInvoiceCustomerDropdown();
   _populateInvoiceBankDropdown();
@@ -395,6 +396,7 @@ async function openAddInvoiceModal() {
 }
 
 async function openEditInvoiceModal(invoiceId) {
+  await _loadInvoiceProducts();
   FinanceForm.clearErrors("invoiceModal");
   _populateInvoiceCustomerDropdown();
   await _populateInvoiceBankDropdown();
@@ -452,7 +454,7 @@ function _setInvoiceLocked(locked) {
   });
   const body = document.getElementById("invoiceLinesBody");
   if (body) {
-    body.querySelectorAll("input, button").forEach((el) => { el.disabled = !!locked; });
+    body.querySelectorAll("input, button, select").forEach((el) => { el.disabled = !!locked; });
     body.dataset.locked = locked ? "1" : "";
   }
   const addLine = document.querySelector("#invoiceModal button[onclick='addInvoiceLine()']");
@@ -469,10 +471,50 @@ function closeInvoiceModal() {
   closeModal("invoiceModal");
 }
 
+// Products for the line picker: active ones, plus the product already on a line (it may have been deactivated since)
+let _invoiceProducts = [];
+async function _loadInvoiceProducts() {
+  try {
+    _invoiceProducts = await FinanceApi.getProducts();
+  } catch (_) {
+    _invoiceProducts = []; // the picker is optional; a missing permission or a failed load must not block invoicing
+  }
+}
+
+function _productOptionsHtml(selectedId) {
+  const sel = selectedId ? Number(selectedId) : null;
+  const opts = (_invoiceProducts || []).filter((p) => p.is_active || p.id === sel);
+  return '<option value="">No product</option>' + opts.map((p) => `<option value="${p.id}"${p.id === sel ? " selected" : ""}>${escapeHtml(p.name)}${p.is_active ? "" : " (inactive)"}</option>`).join("");
+}
+
+// Picking a product prefills description, price and (when the invoice is still empty of currency choice) the currency while Draft
+function onInvoiceLineProductChanged(select) {
+  const row = select.closest("tr");
+  const p = (_invoiceProducts || []).find((x) => x.id === Number(select.value));
+  if (!p) return;
+  const desc = row.querySelector("input[type='text']");
+  if (desc && !desc.value.trim()) desc.value = p.name;
+  if (p.default_price != null) {
+    row.querySelector(".inv-price").value = p.default_price;
+    _autoComputeLineTotal(row.querySelector(".inv-price"));
+  }
+  const cur = document.getElementById("invoiceCurrency");
+  if (cur && p.default_currency && cur.value !== p.default_currency && !cur.disabled && document.querySelectorAll("#invoiceLinesBody tr").length === 1) {
+    cur.value = p.default_currency;
+    if (typeof cur.onchange === "function") cur.onchange();
+  }
+  if (p.default_receiving_account_id) {
+    const bank = document.getElementById("invoiceExpectedBankAccount");
+    if (bank && !bank.value && [...bank.options].some((o) => o.value === String(p.default_receiving_account_id))) bank.value = String(p.default_receiving_account_id);
+  }
+  _updateInvoiceTotals();
+}
+
 function addInvoiceLine(data) {
   const tbody = document.getElementById("invoiceLinesBody");
   const tr = document.createElement("tr");
   tr.innerHTML = `
+    <td><select class="form-control inv-product" style="font-size:0.85rem;" aria-label="Product" onchange="onInvoiceLineProductChanged(this)">${_productOptionsHtml(data && data.product_id)}</select></td>
     <td><input type="text" class="form-control" style="font-size:0.85rem;" aria-label="Description" placeholder="Description" value="${escapeHtml((data && data.description) || "")}" oninput="_updateInvoiceTotals()"></td>
     <td><input type="number" class="form-control inv-qty" style="font-size:0.85rem;" aria-label="Quantity" placeholder="Qty" value="${(data && data.quantity) || 1}" min="0.001" step="0.001" oninput="_autoComputeLineTotal(this); _updateInvoiceTotals();"></td>
     <td><input type="number" class="form-control inv-price" style="font-size:0.85rem;" aria-label="Unit price" placeholder="Unit price" value="${(data && data.unit_price) || 0}" min="0" step="0.01" oninput="_autoComputeLineTotal(this); _updateInvoiceTotals();"></td>
@@ -578,7 +620,7 @@ async function saveInvoiceModal(targetStatus) {
     const qty = parseFloat(r.querySelector(".inv-qty")?.value) || 1;
     const price = parseFloat(r.querySelector(".inv-price")?.value) || 0;
     const total = parseFloat(r.querySelector(".inv-total")?.value) || (qty * price);
-    if (desc) lines.push({ description: desc, quantity: qty, unit_price: price, line_total: total });
+    if (desc) lines.push({ description: desc, quantity: qty, unit_price: price, line_total: total, product_id: parseInt(r.querySelector(".inv-product")?.value, 10) || null });
   });
 
   const expBankEl = document.getElementById("invoiceExpectedBankAccount");
@@ -1292,6 +1334,7 @@ window.openAddInvoiceModal = openAddInvoiceModal;
 window.openEditInvoiceModal = openEditInvoiceModal;
 window.closeInvoiceModal = closeInvoiceModal;
 window.addInvoiceLine = addInvoiceLine;
+window.onInvoiceLineProductChanged = onInvoiceLineProductChanged;
 window.saveInvoiceModal = saveInvoiceModal;
 window.confirmVoidInvoice = confirmVoidInvoice;
 window.openPaymentModal = openPaymentModal;

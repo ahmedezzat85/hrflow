@@ -7,7 +7,8 @@ Full CRUD wired to AccountsService and gated with RBAC permissions:
 """
 from datetime import datetime
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
+from fastapi.responses import FileResponse
 
 from core.permissions import AccessContext, get_access_context, require_permission, get_current_user_permissions
 from models_db import AuditLogDB
@@ -15,6 +16,9 @@ from finance.schemas import (
     BankAccountCreate,
     BankAccountUpdate,
     BankAccountResponse,
+    BalanceCheckpointCreate,
+    BalanceCheckpointResponse,
+    BookResponse,
     LedgerTransactionCreate,
     LedgerTransactionResponse,
     PettySummaryResponse,
@@ -33,11 +37,22 @@ def list_company_bank_accounts(
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    book: Optional[str] = Query(None, description="local | overseas | consolidated; omitted lists every account"),
     current_user: dict = Depends(require_permission("finance.account.read")),
     service: AccountsService = Depends(get_accounts_service),
 ):
     """Lists company bank accounts with masked account numbers and balance metrics."""
-    return service.list_accounts(is_active=is_active, limit=limit, offset=offset)
+    from finance import books as _books
+    return service.list_accounts(is_active=is_active, limit=limit, offset=offset, book=_books.validate_view(book))
+
+
+@router.get("/books", response_model=List[BookResponse])
+def list_books(
+    current_user: dict = Depends(require_permission("finance.account.read")),
+    service: AccountsService = Depends(get_accounts_service),
+):
+    """Lists the company books (Local, Overseas)."""
+    return [BookResponse(id=b.id, code=b.code, name=b.name, is_default=bool(b.is_default)) for b in service.list_books()]
 
 
 @router.get("/{account_id}", response_model=BankAccountResponse)
@@ -190,3 +205,48 @@ def get_account_petty_summary(
     """Rollup view for categories flagged is_petty, giving compact recurring totals."""
     return service.get_petty_summary(account_id, date_from=date_from, date_to=date_to)
 
+
+# --- Balance checkpoints (D-028): owner-entered balances for partial-visibility accounts ---
+
+@router.get("/{account_id}/checkpoints", response_model=List[BalanceCheckpointResponse])
+def list_account_checkpoints(
+    account_id: int,
+    current_user: dict = Depends(require_permission("finance.account.read")),
+    service: AccountsService = Depends(get_accounts_service),
+):
+    return service.list_checkpoints(account_id)
+
+
+@router.post("/{account_id}/checkpoints", response_model=BalanceCheckpointResponse, status_code=status.HTTP_201_CREATED)
+def create_account_checkpoint(
+    account_id: int,
+    payload: BalanceCheckpointCreate,
+    current_user: dict = Depends(require_permission("finance.account.write")),
+    service: AccountsService = Depends(get_accounts_service),
+):
+    """Records an observed balance. The difference from the ledger is shown, never posted."""
+    user_email = (current_user.get("email") or current_user.get("sub")) if isinstance(current_user, dict) else "user"
+    return service.create_checkpoint(account_id, payload, created_by=user_email)
+
+
+@router.post("/{account_id}/checkpoints/{checkpoint_id}/attachment", response_model=BalanceCheckpointResponse)
+async def upload_checkpoint_attachment(
+    account_id: int,
+    checkpoint_id: int,
+    file: UploadFile = File(...),
+    current_user: dict = Depends(require_permission("finance.account.write")),
+    service: AccountsService = Depends(get_accounts_service),
+):
+    user_email = (current_user.get("email") or current_user.get("sub")) if isinstance(current_user, dict) else "user"
+    return await service.upload_checkpoint_attachment(account_id, checkpoint_id, file, uploaded_by=user_email)
+
+
+@router.get("/{account_id}/checkpoints/{checkpoint_id}/attachment")
+def download_checkpoint_attachment(
+    account_id: int,
+    checkpoint_id: int,
+    current_user: dict = Depends(require_permission("finance.account.read")),
+    service: AccountsService = Depends(get_accounts_service),
+):
+    path, filename, media_type = service.get_checkpoint_attachment_file(account_id, checkpoint_id)
+    return FileResponse(path=path, filename=filename, media_type=media_type)

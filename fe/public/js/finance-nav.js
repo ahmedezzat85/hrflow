@@ -119,6 +119,8 @@ function switchFinanceSettingsSubTab(subTab, btn) {
 
   const paneCategories = document.getElementById("financeSettingsPaneCategories");
   const panePaymentTypes = document.getElementById("financeSettingsPanePaymentTypes");
+  const paneProducts = document.getElementById("financeSettingsPaneProducts");
+  const paneRevenueSources = document.getElementById("financeSettingsPaneRevenueSources");
   const paneDisplay = document.getElementById("financeSettingsPaneDisplay");
 
   document.querySelectorAll("#a-finance-settings [data-head-for]").forEach((el) => {
@@ -127,10 +129,16 @@ function switchFinanceSettingsSubTab(subTab, btn) {
 
   if (paneCategories) paneCategories.style.display = subTab === "categories" ? "block" : "none";
   if (panePaymentTypes) panePaymentTypes.style.display = subTab === "payment_types" ? "block" : "none";
+  if (paneProducts) paneProducts.style.display = subTab === "products" ? "block" : "none";
+  if (paneRevenueSources) paneRevenueSources.style.display = subTab === "revenue_sources" ? "block" : "none";
   if (paneDisplay) paneDisplay.style.display = subTab === "display" ? "block" : "none";
 
   if (subTab === "payment_types") {
     loadFinancePaymentTypes();
+  } else if (subTab === "products") {
+    loadFinanceProducts();
+  } else if (subTab === "revenue_sources") {
+    loadRevenueSources();
   } else if (subTab === "display") {
     loadFinanceDisplaySettings();
   } else {
@@ -324,3 +332,15 @@ const SpendTabs = {
 window.SpendTabs = SpendTabs;
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => SpendTabs.render());
 else SpendTabs.render();
+
+// Book view switchers (X2, D-028): dashboard and reports re-load when the view changes
+(function mountFinanceBookSwitchers() {
+  const go = () => {
+    FinanceBookView.mount("dashboard", "financeBookSwitcherDashboard", () => { if (typeof refreshFinanceDashboard === "function") refreshFinanceDashboard(); });
+    FinanceBookView.mount("reports", "financeBookSwitcherReports", () => { if (typeof refreshActiveReport === "function") refreshActiveReport(); });
+    FinanceBookView.mount("subscriptions", "financeBookSwitcherSubscriptions", () => { if (typeof loadFinanceSubscriptions === "function") loadFinanceSubscriptions(); });
+  };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", go);
+  else go();
+})();
+

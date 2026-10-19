@@ -93,3 +93,12 @@ async getFeatureFlags() {
     module.exports = CoreApi;
   }
 })(typeof window !== "undefined" ? window : globalThis);
+
+// Adds the page's book view (X2, D-028) to report params; an explicit params.book wins.
+function _withBook(params, page) {
+  const p = Object.assign({}, params || {});
+  if (!p.book && typeof FinanceBookView !== "undefined") p.book = FinanceBookView.get(page);
+  return p;
+}
+if (typeof window !== "undefined") window._withBook = _withBook;
+

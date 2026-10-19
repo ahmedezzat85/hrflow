@@ -4,6 +4,8 @@
  * Aggregated Finance API client bundled from domain modules in fe/api/finance/:
  *   - fe/api/finance/core.js
  *   - fe/api/finance/invoices-api.js
+ *   - fe/api/finance/products-api.js
+ *   - fe/api/finance/revenue-api.js
  *   - fe/api/finance/bills-api.js
  *   - fe/api/finance/accounts-api.js
  *   - fe/api/finance/cheques-api.js
@@ -114,6 +116,15 @@ async getFeatureFlags() {
   }
 })(typeof window !== "undefined" ? window : globalThis);
 
+// Adds the page's book view (X2, D-028) to report params; an explicit params.book wins.
+function _withBook(params, page) {
+  const p = Object.assign({}, params || {});
+  if (!p.book && typeof FinanceBookView !== "undefined") p.book = FinanceBookView.get(page);
+  return p;
+}
+if (typeof window !== "undefined") window._withBook = _withBook;
+
+
 
 /**
  * fe/api/finance/invoices-api.js
@@ -130,6 +141,7 @@ async getFeatureFlags() {
   };
 
   const FinanceMockState = root.FinanceMockState || (root.FinanceMockState = {});
+  const _mockProductName = (id) => { const p = id ? (FinanceMockState.products || []).find((x) => x.id === Number(id)) : null; return p ? p.name : null; };
 
   // D-024: withholding is on the net subtotal; received plus withheld settles the invoice
   const _refreshWithholding = (inv) => {
@@ -260,6 +272,7 @@ async getFeatureFlags() {
       const lines = (payload.lines || []).map((ln, i) => ({
         id: Date.now() + i, invoice_id: FinanceMockState.invoices.length + 1,
         ...ln, line_total: ln.line_total || (ln.quantity * ln.unit_price),
+        product_id: ln.product_id || null, product_name: _mockProductName(ln.product_id),
       }));
       const subtotal = lines.reduce((s, l) => s + l.line_total, 0);
       const vatRate = payload.vat_rate !== undefined && payload.vat_rate !== null ? Number(payload.vat_rate) : (String(payload.currency || "USD").toUpperCase() === "EGP" ? 14 : 0);
@@ -303,7 +316,7 @@ async getFeatureFlags() {
         if (payload.vat_rate !== undefined && Number(payload.vat_rate) !== Number(inv.vat_rate || 0)) changed.push("vat_rate");
         if (payload.withholding_tax_rate !== undefined && Number(payload.withholding_tax_rate) !== Number(inv.withholding_tax_rate || 0)) changed.push("withholding_tax_rate");
         if (payload.lines) {
-          const norm = (rows) => JSON.stringify((rows || []).map((l) => [String(l.description).trim(), Number(l.quantity), Number(l.unit_price)]).sort());
+          const norm = (rows) => JSON.stringify((rows || []).map((l) => [String(l.description).trim(), Number(l.quantity), Number(l.unit_price), l.product_id || 0]).sort());
           if (norm(payload.lines) !== norm(inv.lines)) changed.push("lines");
         }
         if (changed.length) throw new Error(`invoice_locked: ${changed.join(", ")} cannot be changed once an invoice is issued. Void and reissue to correct.`);
@@ -311,6 +324,7 @@ async getFeatureFlags() {
         ["customer_id", "currency", "invoice_number", "issue_date", "vat_rate", "withholding_tax_rate", "lines"].forEach((k) => delete payload[k]);
       }
       Object.assign(inv, payload);
+      if (payload.lines) inv.lines = payload.lines.map((ln, i) => ({ id: Date.now() + i, invoice_id: inv.id, ...ln, product_id: ln.product_id || null, product_name: _mockProductName(ln.product_id) }));
       if (payload.expected_bank_account_id !== undefined) {
         const bank = payload.expected_bank_account_id ? (FinanceMockState.accounts || []).find((b) => b.id === parseInt(payload.expected_bank_account_id, 10)) : null;
         inv.expected_bank_account_name = bank ? bank.account_name : null;
@@ -672,6 +686,270 @@ async getFeatureFlags() {
 
   if (typeof module !== "undefined" && module.exports) {
     module.exports = FinanceInvoicesApi;
+  }
+})(typeof window !== "undefined" ? window : globalThis);
+
+
+/**
+ * fe/api/finance/products-api.js
+ * Finance API - Product catalog domain client and mock handlers (X3, D-030).
+ */
+(function (root) {
+  const _isMock = () => (typeof root._isMock === "function" ? root._isMock() : typeof window !== "undefined" && window.location && window.location.search.includes("mock="));
+
+  const FinanceMockState = root.FinanceMockState || (root.FinanceMockState = {});
+
+  if (!FinanceMockState.products) {
+    FinanceMockState.products = [
+      { id: 1, name: "HRFlow Cloud (SaaS)", code: "SAAS-CLOUD", product_type: "saas_subscription", default_currency: "USD", default_price: 1200.0, default_receiving_account_id: 1, default_receiving_account_name: "Voyance Operating USD", is_active: true },
+      { id: 2, name: "Implementation Services", code: "IMPL-SVC", product_type: "implementation_service", default_currency: "EGP", default_price: null, default_receiving_account_id: null, default_receiving_account_name: null, is_active: true },
+      { id: 3, name: "Legacy On-prem Licence", code: "LIC-LEGACY", product_type: "license", default_currency: "USD", default_price: 5000.0, default_receiving_account_id: null, default_receiving_account_name: null, is_active: false },
+    ];
+  }
+
+  const PRODUCT_TYPES = ["saas_subscription", "license", "implementation_service", "support", "other"];
+  root.FINANCE_PRODUCT_TYPES = PRODUCT_TYPES;
+
+  const _validateProduct = (payload, currentId) => {
+    const list = FinanceMockState.products;
+    if (payload.product_type && !PRODUCT_TYPES.includes(payload.product_type)) throw new Error("Invalid product_type.");
+    if (payload.code) {
+      const code = String(payload.code).trim().toUpperCase();
+      if (list.some((p) => p.code === code && p.id !== currentId)) throw new Error(`Product code '${code}' already exists`);
+    }
+    if (payload.default_receiving_account_id) {
+      const acc = (FinanceMockState.accounts || []).find((a) => a.id === parseInt(payload.default_receiving_account_id, 10));
+      if (!acc) throw new Error("Receiving account not found");
+      const cur = String(payload.default_currency || "").toUpperCase();
+      if (cur && acc.currency !== cur) throw new Error(`The default receiving account is in ${acc.currency}, but the product currency is ${cur}.`);
+    }
+  };
+
+  const _accName = (id) => {
+    const acc = (FinanceMockState.accounts || []).find((a) => a.id === parseInt(id, 10));
+    return acc ? acc.account_name : null;
+  };
+
+  const FinanceProductsApi = {
+    async getProducts(params) {
+      if (_isMock()) {
+        let list = [...FinanceMockState.products];
+        if (params && params.is_active !== undefined && params.is_active !== "") {
+          const want = params.is_active === true || params.is_active === "true";
+          list = list.filter((p) => p.is_active === want);
+        }
+        return list.sort((a, b) => a.name.localeCompare(b.name));
+      }
+      let url = "/api/finance/products";
+      if (params) {
+        const qs = new URLSearchParams(params).toString();
+        if (qs) url += `?${qs}`;
+      }
+      return apiRequest("GET", url);
+    },
+    async createProduct(payload) {
+      if (_isMock()) {
+        _validateProduct(payload, null);
+        const p = {
+          id: Math.max(0, ...FinanceMockState.products.map((x) => x.id)) + 1,
+          name: String(payload.name).trim(),
+          code: String(payload.code).trim().toUpperCase(),
+          product_type: payload.product_type || "other",
+          default_currency: (payload.default_currency || "USD").toUpperCase(),
+          default_price: payload.default_price == null ? null : Number(payload.default_price),
+          default_receiving_account_id: payload.default_receiving_account_id || null,
+          default_receiving_account_name: _accName(payload.default_receiving_account_id),
+          is_active: payload.is_active !== false,
+        };
+        FinanceMockState.products.push(p);
+        return p;
+      }
+      return apiRequest("POST", "/api/finance/products", payload);
+    },
+    async updateProduct(id, payload) {
+      if (_isMock()) {
+        const p = FinanceMockState.products.find((x) => x.id === parseInt(id, 10));
+        if (!p) throw new Error("Product not found");
+        _validateProduct({ ...payload, default_currency: payload.default_currency || p.default_currency, default_receiving_account_id: "default_receiving_account_id" in payload ? payload.default_receiving_account_id : p.default_receiving_account_id }, p.id);
+        Object.assign(p, payload);
+        if (payload.code) p.code = String(payload.code).trim().toUpperCase();
+        p.default_receiving_account_name = _accName(p.default_receiving_account_id);
+        return p;
+      }
+      return apiRequest("PATCH", `/api/finance/products/${id}`, payload);
+    },
+  };
+
+  root.FinanceProductsApi = FinanceProductsApi;
+  if (!root.FinanceApi) root.FinanceApi = {};
+  Object.assign(root.FinanceApi, FinanceProductsApi);
+
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = FinanceProductsApi;
+  }
+})(typeof window !== "undefined" ? window : globalThis);
+
+
+/**
+ * fe/api/finance/revenue-api.js
+ * Finance API - Revenue sources, revenue receipts and the revenue breakdown (X4, D-029/D-030).
+ */
+(function (root) {
+  const _isMock = () => (typeof root._isMock === "function" ? root._isMock() : typeof window !== "undefined" && window.location && window.location.search.includes("mock="));
+  const FinanceMockState = root.FinanceMockState || (root.FinanceMockState = {});
+
+  if (!FinanceMockState.revenueSources) {
+    FinanceMockState.revenueSources = [
+      { id: 1, code: "invoice", name: "Invoice", sort_order: 1, is_active: true, is_system: true },
+      { id: 2, code: "stripe_payout", name: "Stripe payout", sort_order: 2, is_active: true, is_system: false },
+      { id: 3, code: "direct_transfer", name: "Direct transfer", sort_order: 3, is_active: true, is_system: false },
+      { id: 4, code: "cash", name: "Cash", sort_order: 4, is_active: true, is_system: false },
+      { id: 5, code: "other", name: "Other", sort_order: 5, is_active: true, is_system: false },
+    ];
+  }
+  if (!FinanceMockState.revenueReceipts) {
+    FinanceMockState.revenueReceipts = [
+      { id: 9001, account_id: 5, account_name: "Voyance Overseas USD", book_code: "overseas", date: "2026-09-12", amount: 4000.0, currency: "USD", direction: "in", revenue_source_id: 2, revenue_source_name: "Stripe payout", product_id: 1, product_name: "HRFlow Cloud (SaaS)", customer_id: null, customer_name: null, period_start: "2026-09-01", period_end: "2026-09-30", memo_gross_amount: 4150.0, memo_fee_amount: 150.0, reference: "po_9001", description: "Revenue receipt: Stripe payout", is_reversal: false, has_attachment: false, attachment_name: null },
+      { id: 9002, account_id: 5, account_name: "Voyance Overseas USD", book_code: "overseas", date: "2026-09-20", amount: 10000.0, currency: "USD", direction: "in", revenue_source_id: 3, revenue_source_name: "Direct transfer", product_id: 2, product_name: "Implementation Services", customer_id: null, customer_name: null, period_start: null, period_end: null, memo_gross_amount: null, memo_fee_amount: null, reference: "WIRE-77", description: "Revenue receipt: Direct transfer", is_reversal: false, has_attachment: false, attachment_name: null },
+    ];
+  }
+  const _mockSource = (id) => FinanceMockState.revenueSources.find((s) => s.id === Number(id));
+
+  const FinanceRevenueApi = {
+    async getRevenueSources(params) {
+      if (_isMock()) {
+        let list = [...FinanceMockState.revenueSources];
+        if (params && params.is_active !== undefined && params.is_active !== "") list = list.filter((s) => s.is_active === (params.is_active === true || params.is_active === "true"));
+        return list.sort((a, b) => a.sort_order - b.sort_order);
+      }
+      let url = "/api/finance/revenue-sources";
+      if (params) { const qs = new URLSearchParams(params).toString(); if (qs) url += `?${qs}`; }
+      return apiRequest("GET", url);
+    },
+    async createRevenueSource(payload) {
+      if (_isMock()) {
+        const code = String(payload.code).trim().toLowerCase().replace(/ /g, "_");
+        if (FinanceMockState.revenueSources.some((s) => s.code === code)) throw new Error(`Revenue source code '${code}' already exists`);
+        const s = { id: Math.max(0, ...FinanceMockState.revenueSources.map((x) => x.id)) + 1, code, name: String(payload.name).trim(), sort_order: payload.sort_order || 0, is_active: payload.is_active !== false, is_system: false };
+        FinanceMockState.revenueSources.push(s);
+        return s;
+      }
+      return apiRequest("POST", "/api/finance/revenue-sources", payload);
+    },
+    async updateRevenueSource(id, payload) {
+      if (_isMock()) {
+        const s = _mockSource(id);
+        if (!s) throw new Error("Revenue source not found");
+        if (s.is_system && payload.is_active === false) throw new Error("The Invoice source is used by invoice receipts and cannot be deactivated");
+        Object.assign(s, payload);
+        return s;
+      }
+      return apiRequest("PATCH", `/api/finance/revenue-sources/${id}`, payload);
+    },
+    async getRevenueReceipts(params) {
+      if (_isMock()) {
+        let list = [...FinanceMockState.revenueReceipts];
+        if (params && params.book && params.book !== "consolidated") list = list.filter((r) => r.book_code === params.book);
+        return list.sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
+      }
+      let url = "/api/finance/revenue-receipts";
+      if (params) { const qs = new URLSearchParams(params).toString(); if (qs) url += `?${qs}`; }
+      return apiRequest("GET", url);
+    },
+    async createRevenueReceipt(payload) {
+      if (_isMock()) {
+        const acc = (FinanceMockState.accounts || []).find((a) => a.id === Number(payload.account_id));
+        if (!acc) throw new Error("Account not found");
+        if (String(payload.currency || "").toUpperCase() !== acc.currency) throw new Error(`The receipt currency (${String(payload.currency).toUpperCase()}) must match the account currency (${acc.currency}). Use an FX transfer to exchange currencies.`);
+        const src = _mockSource(payload.revenue_source_id);
+        if (!src) throw new Error("Revenue source not found");
+        if (src.code === "invoice") throw new Error("Invoice receipts are recorded against the invoice, not as a revenue receipt");
+        if (payload.period_start && payload.period_end && payload.period_end < payload.period_start) throw new Error("period_end cannot precede period_start");
+        const prod = payload.product_id ? (FinanceMockState.products || []).find((p) => p.id === Number(payload.product_id)) : null;
+        acc.current_balance = Math.round((Number(acc.current_balance || 0) + Number(payload.amount)) * 100) / 100;
+        const r = {
+          id: Math.max(9000, ...FinanceMockState.revenueReceipts.map((x) => x.id)) + 1, account_id: acc.id, account_name: acc.account_name, book_code: acc.book_code,
+          date: payload.date, amount: Number(payload.amount), currency: acc.currency, direction: "in", revenue_source_id: src.id, revenue_source_name: src.name,
+          product_id: prod ? prod.id : null, product_name: prod ? prod.name : null, customer_id: payload.customer_id || null, customer_name: null,
+          period_start: payload.period_start || null, period_end: payload.period_end || null, memo_gross_amount: payload.memo_gross_amount ?? null,
+          memo_fee_amount: payload.memo_fee_amount ?? null, reference: payload.reference || "", description: payload.description || `Revenue receipt: ${src.name}`,
+          is_reversal: false, has_attachment: false, attachment_name: null,
+        };
+        FinanceMockState.revenueReceipts.push(r);
+        return r;
+      }
+      return apiRequest("POST", "/api/finance/revenue-receipts", payload);
+    },
+    async reverseRevenueReceipt(id, payload) {
+      if (_isMock()) {
+        const orig = FinanceMockState.revenueReceipts.find((r) => r.id === Number(id));
+        if (!orig) throw new Error("Revenue receipt not found");
+        if (orig.is_reversal) throw new Error("A reversal cannot be reversed");
+        if (FinanceMockState.revenueReceipts.some((r) => r.reference === `REV-${orig.id}`)) throw new Error("This receipt has already been reversed");
+        const acc = (FinanceMockState.accounts || []).find((a) => a.id === orig.account_id);
+        if (acc) acc.current_balance = Math.round((Number(acc.current_balance || 0) - orig.amount) * 100) / 100;
+        const rev = { ...orig, id: Math.max(9000, ...FinanceMockState.revenueReceipts.map((x) => x.id)) + 1, direction: "out", is_reversal: true, reference: `REV-${orig.id}`, description: `Reversal of revenue receipt #${orig.id}: ${payload.reason}` };
+        FinanceMockState.revenueReceipts.push(rev);
+        return rev;
+      }
+      return apiRequest("POST", `/api/finance/revenue-receipts/${id}/reverse`, payload);
+    },
+    async uploadRevenueReceiptAttachment(id, file) {
+      if (_isMock()) {
+        const r = FinanceMockState.revenueReceipts.find((x) => x.id === Number(id));
+        if (!r) throw new Error("Revenue receipt not found");
+        r.has_attachment = true;
+        r.attachment_name = (file && file.name) || "receipt.pdf";
+        return r;
+      }
+      const formData = new FormData();
+      formData.append("file", file);
+      return apiRequest("POST", `/api/finance/revenue-receipts/${id}/attachment`, formData);
+    },
+    async getRevenueBreakdown(params = {}) {
+      params = _withBook(params, "revenue");
+      if (_isMock()) {
+        // Mirrors the backend: revenue receipts grouped by month, book, source, product and customer, per currency
+        const rows = {};
+        const add = (r, signed) => {
+          if (params.book && params.book !== "consolidated" && r.book_code !== params.book) return;
+          if (params.currency && String(params.currency).toUpperCase() !== "ALL" && r.currency !== String(params.currency).toUpperCase()) return;
+          const product = r.product_name || "Untagged revenue";
+          const key = [r.date.slice(0, 7), r.book_code, r.revenue_source_name, product, r.currency].join("|");
+          rows[key] = rows[key] || { month: r.date.slice(0, 7), book_code: r.book_code, source: r.revenue_source_name, product_id: r.product_id, product_name: product, customer_name: r.customer_name || "No customer", currency: r.currency, amount: 0 };
+          rows[key].amount = Math.round((rows[key].amount + signed) * 100) / 100;
+        };
+        FinanceMockState.revenueReceipts.forEach((r) => add(r, r.direction === "out" ? -r.amount : r.amount));
+        // Invoice receipts from the sales invoices that are paid or partly paid (Local book, source Invoice)
+        (FinanceMockState.invoices || []).filter((i) => Number(i.amount_paid || 0) > 0).forEach((i) => {
+          const acc = (FinanceMockState.accounts || []).find((a) => a.id === i.expected_bank_account_id);
+          const book = acc ? acc.book_code : "local";
+          const lines = i.lines || [];
+          const total = lines.reduce((s, l) => s + Number(l.line_total || 0), 0) || 1;
+          if (lines.length) {
+            lines.forEach((l) => add({ date: i.issue_date, book_code: book, revenue_source_name: "Invoice", product_id: l.product_id || null, product_name: l.product_name || null, customer_name: i.customer_name, currency: i.currency }, Number(i.amount_paid) * (Number(l.line_total || 0) / total)));
+          }
+        });
+        const out = Object.values(rows).sort((a, b) => a.month.localeCompare(b.month) || a.book_code.localeCompare(b.book_code) || a.source.localeCompare(b.source) || a.product_name.localeCompare(b.product_name));
+        const totals = {};
+        const untagged = {};
+        out.forEach((r) => {
+          totals[r.currency] = Math.round(((totals[r.currency] || 0) + r.amount) * 100) / 100;
+          if (r.product_name === "Untagged revenue") untagged[r.currency] = Math.round(((untagged[r.currency] || 0) + r.amount) * 100) / 100;
+        });
+        return { book: params.book || null, date_from: params.date_from || null, date_to: params.date_to || null, currency: (params.currency || "ALL").toUpperCase(), rows: out, totals_by_currency: totals, untagged_by_currency: untagged, conversion_policy: "One figure per currency. Currencies are never added together and no converted total is shown." };
+      }
+      const qs = new URLSearchParams(params).toString();
+      return apiRequest("GET", `/api/finance/reports/revenue-breakdown${qs ? "?" + qs : ""}`);
+    },
+  };
+
+  root.FinanceRevenueApi = FinanceRevenueApi;
+  if (!root.FinanceApi) root.FinanceApi = {};
+  Object.assign(root.FinanceApi, FinanceRevenueApi);
+
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = FinanceRevenueApi;
   }
 })(typeof window !== "undefined" ? window : globalThis);
 
@@ -1666,8 +1944,30 @@ async getFeatureFlags() {
     { id: 2, account_name: "Voyance Treasury Reserve", account_type: "bank", bank_name: "Silicon Valley Bank", account_number: "******9102", raw_account_number: "98765432109102", country: "United States", currency: "USD", opening_balance: 500000.0, opening_balance_date: "2025-01-01", current_balance: 500000.0, is_active: true },
     { id: 3, account_name: "CIB EGP Operating", account_type: "bank", bank_name: "Commercial International Bank", account_number: "******3319", raw_account_number: "55443322113319", country: "Egypt", currency: "EGP", opening_balance: 450000.0, opening_balance_date: "2025-01-01", current_balance: 450000.0, is_active: true },
     { id: 4, account_name: "Cairo Office Petty Cash Drawer", account_type: "cash", bank_name: null, account_number: "CASH-CAIRO-01", raw_account_number: "CASH-CAIRO-01", country: "Egypt", currency: "EGP", opening_balance: 20000.0, opening_balance_date: "2025-01-01", current_balance: 20000.0, is_active: true },
+    // Overseas book (X2, D-028): a USD account whose movements are only partly recorded
+    { id: 5, account_name: "Voyance Overseas USD", account_type: "bank", bank_name: "Mercury", account_number: "******7744", raw_account_number: "40001122337744", country: "United States", currency: "USD", opening_balance: 30000.0, opening_balance_date: "2026-01-01", current_balance: 30000.0, is_active: true, book_id: 2, book_code: "overseas", book_name: "Overseas", visibility: "partial" },
   ];
+    FinanceMockState.accounts.forEach((a) => {
+      if (!a.book_id) Object.assign(a, { book_id: 1, book_code: "local", book_name: "Local", visibility: "full" });
+    });
   }
+
+  if (!FinanceMockState.books) {
+    FinanceMockState.books = [
+      { id: 1, code: "local", name: "Local", is_default: true },
+      { id: 2, code: "overseas", name: "Overseas", is_default: false },
+    ];
+  }
+  if (!FinanceMockState.accountCheckpoints) {
+    FinanceMockState.accountCheckpoints = [
+      { id: 1, account_id: 5, date: "2026-09-30", balance: 31250.0, note: "From the overseas bank portal", has_attachment: false, attachment_name: null, created_by: "admin@voyance.health" },
+    ];
+  }
+  const _checkpointView = (cp) => {
+    const acc = FinanceMockState.accounts.find((a) => a.id === cp.account_id);
+    const computed = acc ? Number(acc.current_balance || 0) : 0;
+    return { ...cp, computed_balance: computed, unrecorded_difference: Math.round((Number(cp.balance) - computed) * 100) / 100 };
+  };
 
   if (!FinanceMockState.categories) {
     FinanceMockState.categories = [
@@ -1751,15 +2051,19 @@ async getFeatureFlags() {
 // Bank Accounts
   async getAccounts(params) {
     if (_isMock()) {
-      let list = [...FinanceMockState.accounts].map((a) => {
+      let list = [...FinanceMockState.accounts]
+        .filter((a) => !(params && params.book) || params.book === "consolidated" || a.book_code === params.book)
+        .map((a) => {
         const book = Number(a.current_balance || a.opening_balance || 0);
         const hasPostings = (FinanceMockState.transactions || []).some((t) => t.account_id === a.id) || (FinanceMockState.cheques || []).some((c) => c.account_id === a.id);
         const uncleared = (FinanceMockState.cheques || [])
           .filter((c) => c.account_id === a.id && (c.status === "issued" || c.status === "outstanding"))
           .reduce((sum, c) => sum + Number(c.amount || 0), 0);
         const available = book;
+        const cps = (FinanceMockState.accountCheckpoints || []).filter((c) => c.account_id === a.id).sort((x, y) => (y.date.localeCompare(x.date)) || (y.id - x.id));
         return {
           ...a,
+          latest_checkpoint: a.visibility === "partial" && cps.length ? _checkpointView(cps[0]) : null,
           book_balance: book,
           bank_balance: Math.round((book + uncleared) * 100) / 100,
           available_balance: available,
@@ -1834,9 +2138,11 @@ async getFeatureFlags() {
   async createAccount(payload) {
     if (_isMock()) {
       const rawNum = payload.account_number || "";
+      const bk = FinanceMockState.books.find((b) => b.id === Number(payload.book_id)) || FinanceMockState.books.find((b) => b.is_default);
       const newAcc = {
-        id: FinanceMockState.accounts.length + 1,
+        id: Math.max(0, ...FinanceMockState.accounts.map((a) => a.id)) + 1,
         ...payload,
+        book_id: bk.id, book_code: bk.code, book_name: bk.name, visibility: payload.visibility || "full",
         current_balance: payload.opening_balance || 0,
         raw_account_number: rawNum,
         account_number: `******${rawNum.slice(-4)}`,
@@ -1859,10 +2165,41 @@ async getFeatureFlags() {
           throw new Error("Currency cannot be modified after transactions have been posted to this account.");
         }
       }
-      Object.assign(acc, payload);
+      if (payload.book_id && payload.book_id !== acc.book_id) {
+        const hasPostings = (FinanceMockState.transactions || []).some((t) => t.account_id === acc.id) || (FinanceMockState.cheques || []).some((c) => c.account_id === acc.id);
+        if (hasPostings) throw new Error("The book cannot be changed after transactions have been posted to this account.");
+        const bk = FinanceMockState.books.find((b) => b.id === Number(payload.book_id));
+        if (bk) Object.assign(acc, { book_id: bk.id, book_code: bk.code, book_name: bk.name });
+      }
+      const { book_id: _b, ...rest } = payload;
+      Object.assign(acc, rest);
       return acc;
     }
     return apiRequest("PUT", `/api/finance/accounts/${id}`, payload);
+  },
+  async getBooks() {
+    if (_isMock()) return [...FinanceMockState.books];
+    return apiRequest("GET", "/api/finance/accounts/books");
+  },
+  async getAccountCheckpoints(accountId) {
+    if (_isMock()) {
+      return (FinanceMockState.accountCheckpoints || [])
+        .filter((c) => c.account_id === parseInt(accountId, 10))
+        .sort((x, y) => (y.date.localeCompare(x.date)) || (y.id - x.id))
+        .map(_checkpointView);
+    }
+    return apiRequest("GET", `/api/finance/accounts/${accountId}/checkpoints`);
+  },
+  async createAccountCheckpoint(accountId, payload) {
+    if (_isMock()) {
+      const acc = FinanceMockState.accounts.find((a) => a.id === parseInt(accountId, 10));
+      if (!acc) throw new Error("Account not found");
+      if (acc.visibility !== "partial") throw new Error("Balance checkpoints are for partial-visibility accounts. Set the account visibility to partial first.");
+      const cp = { id: Math.max(0, ...FinanceMockState.accountCheckpoints.map((c) => c.id)) + 1, account_id: acc.id, date: payload.date, balance: Number(payload.balance), note: payload.note || null, has_attachment: false, attachment_name: null, created_by: "admin@voyance.health" };
+      FinanceMockState.accountCheckpoints.push(cp);
+      return _checkpointView(cp);
+    }
+    return apiRequest("POST", `/api/finance/accounts/${accountId}/checkpoints`, payload);
   },
   async deleteAccount(id) {
     if (_isMock()) {
@@ -2710,6 +3047,7 @@ async getFeatureFlags() {
       fiscal_year: 2026,
       notes: "AWS cloud hosting payment",
       created_at: "2026-09-02T10:00:00",
+      attachments: [{ id: 1, cheque_id: 1, file_name: "cheque-001011-front.pdf", file_size: 48213, mime_type: "application/pdf", uploaded_by: "admin@voyance.health" }],
     },
     {
       id: 2,
@@ -2732,12 +3070,23 @@ async getFeatureFlags() {
   ];
   }
 
+  // Mock mirror of the backend response: attachment_count / has_scan derived from the scan list (D-032).
+  const _chequeView = (c) => {
+    const n = (c.attachments || []).length;
+    const { attachments, ...rest } = c;
+    return { ...rest, attachment_count: n, has_scan: n > 0 };
+  };
+
   const FinanceChequesApi = {
 // Cheques (Phase 5)
   async getCheques(params) {
     if (_isMock()) {
       let list = [...(FinanceMockState.cheques || [])];
       if (params) {
+        if (params.has_scan !== undefined && params.has_scan !== null && params.has_scan !== "") {
+          const want = String(params.has_scan) === "true";
+          list = list.filter((c) => ((c.attachments || []).length > 0) === want);
+        }
         if (params.fiscal_year) list = list.filter((c) => c.fiscal_year === parseInt(params.fiscal_year, 10));
         if (params.status) list = list.filter((c) => c.status === params.status);
         if (params.account_id) list = list.filter((c) => c.account_id === parseInt(params.account_id, 10));
@@ -2747,7 +3096,7 @@ async getFeatureFlags() {
           list = list.filter((c) => (c.cheque_number || "").toLowerCase().includes(s) || (c.payee || "").toLowerCase().includes(s) || (c.notes || "").toLowerCase().includes(s));
         }
       }
-      return list;
+      return list.map(_chequeView);
     }
     let url = "/api/finance/cheques";
     if (params) {
@@ -2760,9 +3109,68 @@ async getFeatureFlags() {
     if (_isMock()) {
       const c = (FinanceMockState.cheques || []).find((item) => item.id === parseInt(id, 10));
       if (!c) throw new Error("Cheque not found");
-      return c;
+      return _chequeView(c);
     }
     return apiRequest("GET", `/api/finance/cheques/${id}`);
+  },
+  // Next cheque number for an account: last numeric serial + 1, zero padding kept (D-032)
+  async getNextChequeNumber(accountId) {
+    if (_isMock()) {
+      const nums = (FinanceMockState.cheques || [])
+        .filter((c) => c.account_id === parseInt(accountId, 10) && /^\d+$/.test(String(c.cheque_number || "").trim()))
+        .map((c) => String(c.cheque_number).trim());
+      if (!nums.length) return { account_id: parseInt(accountId, 10), next_cheque_number: null, last_cheque_number: null };
+      const last = nums.reduce((a, b) => (parseInt(b, 10) > parseInt(a, 10) ? b : a));
+      return { account_id: parseInt(accountId, 10), next_cheque_number: String(parseInt(last, 10) + 1).padStart(last.length, "0"), last_cheque_number: last };
+    }
+    return apiRequest("GET", `/api/finance/cheques/next-number?account_id=${encodeURIComponent(accountId)}`);
+  },
+  async getChequeAttachments(id) {
+    if (_isMock()) {
+      const c = (FinanceMockState.cheques || []).find((item) => item.id === parseInt(id, 10));
+      if (!c) throw new Error("Cheque not found");
+      return [...(c.attachments || [])];
+    }
+    return apiRequest("GET", `/api/finance/cheques/${id}/attachments`);
+  },
+  async uploadChequeAttachments(id, files) {
+    if (_isMock()) {
+      const c = (FinanceMockState.cheques || []).find((item) => item.id === parseInt(id, 10));
+      if (!c) throw new Error("Cheque not found");
+      c.attachments = c.attachments || [];
+      const created = Array.from(files || []).map((f) => {
+        const att = { id: Date.now() + Math.floor(Math.random() * 1000), cheque_id: c.id, file_name: f.name || "scan.pdf", file_size: f.size || 0, mime_type: f.type || "application/pdf", uploaded_by: "admin@voyance.health" };
+        c.attachments.push(att);
+        return att;
+      });
+      return created;
+    }
+    const formData = new FormData();
+    Array.from(files || []).forEach((f) => formData.append("files", f));
+    return apiRequest("POST", `/api/finance/cheques/${id}/attachments`, formData);
+  },
+  async deleteChequeAttachment(id, attachmentId) {
+    if (_isMock()) {
+      const c = (FinanceMockState.cheques || []).find((item) => item.id === parseInt(id, 10));
+      if (!c) throw new Error("Cheque not found");
+      c.attachments = (c.attachments || []).filter((a) => a.id !== parseInt(attachmentId, 10));
+      return null;
+    }
+    return apiRequest("DELETE", `/api/finance/cheques/${id}/attachments/${attachmentId}`);
+  },
+  async getChequeAttachmentBlobUrl(id, attachmentId) {
+    if (_isMock()) {
+      const blob = new Blob([`%PDF-1.4
+% Mock cheque scan ${attachmentId} for cheque ${id}
+%%EOF`], { type: "application/pdf" });
+      return URL.createObjectURL(blob);
+    }
+    const token = typeof TokenStore !== "undefined" ? TokenStore.get() : null;
+    const headers = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const res = await fetch(`/api/finance/cheques/${id}/attachments/${attachmentId}/download`, { headers, credentials: "include" });
+    if (!res.ok) throw new Error(`Failed to load scan: ${res.statusText}`);
+    return URL.createObjectURL(await res.blob());
   },
   async createCheque(payload) {
     if (_isMock()) {
@@ -2774,8 +3182,10 @@ async getFeatureFlags() {
       const diffDays = Math.floor((new Date() - new Date(payload.issue_date)) / (1000 * 60 * 60 * 24));
       const isStale = diffDays > 180;
       const newCheque = {
-        id: (FinanceMockState.cheques || []).length + 1,
+        id: Math.max(0, ...(FinanceMockState.cheques || []).map((c) => c.id)) + 1,
         ...payload,
+        attachment_url: null,
+        attachments: [],
         account_id: parseInt(payload.account_id, 10),
         account_name: bank ? bank.account_name : null,
         destination_cash_account_name: destCash ? destCash.account_name : null,
@@ -2802,7 +3212,7 @@ async getFeatureFlags() {
           if (bill) bill.status = "paid";
         }
       }
-      return newCheque;
+      return _chequeView(newCheque);
     }
     return apiRequest("POST", "/api/finance/cheques", payload);
   },
@@ -2950,12 +3360,46 @@ async getFeatureFlags() {
   ];
   }
 
+  // Subscriptions v2 (X5, D-031): proof tracking and a paying account on the seeded subscriptions
+  (FinanceMockState.subscriptions || []).forEach((s) => {
+    if (s.proof_source === undefined) Object.assign(s, { billing_email: "billing@" + String(s.vendor_name || "vendor").toLowerCase().replace(/[^a-z]/g, "") + ".com", proof_source: "email_inbox", proof_expected: true });
+    if (s.payment_account_id === undefined || s.payment_account_id === null) s.payment_account_id = 1;
+  });
+
   if (!FinanceMockState.subscriptionCharges) {
     FinanceMockState.subscriptionCharges = [
     { id: 1, subscription_id: 1, subscription_name: "AWS Cloud Infrastructure", vendor_name: "Amazon Web Services", billing_date: "2026-09-01", amount: 4200.0, currency: "USD", linked_transaction_id: null, linked_bill_id: 1, variance_amount: 0.0, variance_reason: null, note: "Monthly cloud compute charges", created_at: "2026-09-01T08:00:00", attachments: [] },
     { id: 2, subscription_id: 2, subscription_name: "Slack Business+", vendor_name: "Slack Technologies", billing_date: "2026-09-03", amount: 320.0, currency: "USD", linked_transaction_id: null, linked_bill_id: 2, variance_amount: 0.0, variance_reason: null, note: "40 user licenses renewal", created_at: "2026-09-03T09:00:00", attachments: [] },
+    { id: 3, subscription_id: 2, billing_date: "2026-10-03", amount: 320.0, expected_amount: 320.0, currency: "USD", linked_transaction_id: null, linked_bill_id: null, variance_amount: 0.0, variance_reason: null, note: "", created_at: "2026-10-03T00:00:00", attachments: [], status: "expected" },
   ];
+  FinanceMockState.subscriptionCharges.forEach((c) => {
+    if (!c.status) Object.assign(c, { status: "settled", proof_status: c.attachments && c.attachments.length ? "attached" : "pending" });
+    if (!c.proof_status) c.proof_status = "pending";
+  });
   }
+
+  const _addMonths = (iso, months) => {
+    const d = new Date(iso + "T00:00:00Z");
+    const day = d.getUTCDate();
+    d.setUTCDate(1);
+    d.setUTCMonth(d.getUTCMonth() + months);
+    const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+    d.setUTCDate(Math.min(day, last));
+    return d.toISOString().split("T")[0];
+  };
+  const _cycleMonths = { monthly: 1, quarterly: 3, yearly: 12 };
+  const _accountOf = (sub) => (FinanceMockState.accounts || []).find((a) => a.id === sub.payment_account_id);
+  const _chargeView = (c) => {
+    const sub = (FinanceMockState.subscriptions || []).find((s) => s.id === c.subscription_id) || {};
+    const acc = _accountOf(sub);
+    return { ...c, subscription_name: sub.name, vendor_name: sub.vendor_name, proof_expected: !!sub.proof_expected, proof_source: sub.proof_source, payment_account_id: sub.payment_account_id || null, payment_account_name: acc ? acc.account_name : null, book_code: acc ? acc.book_code : "local" };
+  };
+  const _advanceRenewal = (c) => {
+    const sub = (FinanceMockState.subscriptions || []).find((s) => s.id === c.subscription_id);
+    if (!sub) return;
+    const nxt = _addMonths(c.billing_date, _cycleMonths[sub.billing_cycle || "monthly"] || 1);
+    if (nxt > sub.next_renewal_date) sub.next_renewal_date = nxt;
+  };
 
   const FinanceSubscriptionsApi = {
 // Subscriptions & Charges (Phase 6)
@@ -2973,10 +3417,16 @@ async getFeatureFlags() {
           noticeDeadline = renDate.toISOString().split("T")[0];
           isRenewalImminent = now >= renDate;
         }
+        const acc = _accountOf(s);
+        const charges = (FinanceMockState.subscriptionCharges || []).filter((c) => c.subscription_id === s.id);
         return {
           ...s,
           notice_deadline_date: noticeDeadline,
           is_renewal_imminent: isRenewalImminent,
+          payment_account_name: acc ? acc.account_name : null,
+          book_code: acc ? acc.book_code : "local",
+          expected_charges_count: charges.filter((c) => c.status === "expected").length,
+          proofs_missing_count: charges.filter((c) => s.proof_expected && c.proof_status === "pending" && c.status !== "skipped").length,
         };
       });
       if (params && params.is_active !== undefined) {
@@ -2990,6 +3440,94 @@ async getFeatureFlags() {
     }
     const q = new URLSearchParams(params || {}).toString();
     return apiRequest("GET", `/api/finance/subscriptions${q ? `?${q}` : ""}`);
+  },
+  // ---- Subscriptions v2 (X5, D-031)
+  async getSubscriptionChargesV2(params = {}) {
+    if (_isMock()) {
+      let list = [...(FinanceMockState.subscriptionCharges || [])];
+      if (params.status) list = list.filter((c) => c.status === params.status);
+      if (params.subscription_id) list = list.filter((c) => c.subscription_id === parseInt(params.subscription_id, 10));
+      if (params.proofs_missing === true || params.proofs_missing === "true") {
+        list = list.filter((c) => c.proof_status === "pending" && c.status !== "skipped" && (FinanceMockState.subscriptions || []).some((s) => s.id === c.subscription_id && s.proof_expected));
+      }
+      let out = list.map(_chargeView);
+      if (params.book && params.book !== "consolidated") out = out.filter((c) => c.book_code === params.book);
+      return out.sort((a, b) => b.billing_date.localeCompare(a.billing_date) || b.id - a.id);
+    }
+    const qs = new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ""))).toString();
+    return apiRequest("GET", `/api/finance/subscriptions/charges${qs ? "?" + qs : ""}`);
+  },
+  async generateSubscriptionCharges() {
+    if (_isMock()) return { created: 0, subscriptions_checked: (FinanceMockState.subscriptions || []).length };
+    return apiRequest("POST", "/api/finance/subscriptions/generate-charges");
+  },
+  async settleSubscriptionCharge(id, payload) {
+    if (_isMock()) {
+      const c = (FinanceMockState.subscriptionCharges || []).find((x) => x.id === parseInt(id, 10));
+      if (!c) throw new Error("Subscription charge not found");
+      if (c.status !== "expected") throw new Error(`Only an expected charge can be settled or skipped; this one is ${c.status}.`);
+      let actual;
+      if (payload.mode === "link_ledger") {
+        const tx = (FinanceMockState.transactions || []).find((t) => t.id === Number(payload.ledger_transaction_id));
+        if (!tx) throw new Error("Ledger transaction not found");
+        if (tx.direction !== "out") throw new Error("Only a payment (money out) can settle a subscription charge");
+        if ((FinanceMockState.subscriptionCharges || []).some((x) => x.linked_transaction_id === tx.id)) throw new Error("This payment is already linked to another subscription charge");
+        actual = Number(tx.amount);
+        c.linked_transaction_id = tx.id;
+      } else if (payload.mode === "already_paid_bill") {
+        const sub = (FinanceMockState.subscriptions || []).find((s) => s.id === c.subscription_id);
+        const accId = payload.bank_account_id || (sub && sub.payment_account_id);
+        const acc = (FinanceMockState.accounts || []).find((a) => a.id === Number(accId));
+        if (!acc) throw new Error("bank_account_id is required: the subscription has no paying account");
+        actual = Number(payload.amount != null ? payload.amount : (c.expected_amount != null ? c.expected_amount : c.amount));
+        if (Number(acc.current_balance || 0) < actual) throw new Error(`Account '${acc.account_name}' balance is below the payment.`);
+        acc.current_balance = round(Number(acc.current_balance) - actual, 2);
+        c.linked_bill_id = Math.max(0, ...(FinanceMockState.bills || []).map((b) => b.id)) + 1;
+      } else {
+        throw new Error("mode must be link_ledger or already_paid_bill");
+      }
+      const expected = c.expected_amount != null ? c.expected_amount : c.amount;
+      Object.assign(c, { amount: actual, variance_amount: round(actual - expected, 2), variance_reason: payload.variance_reason || null, status: "settled", settled_at: new Date().toISOString() });
+      _advanceRenewal(c);
+      return _chargeView(c);
+    }
+    return apiRequest("POST", `/api/finance/subscriptions/charges/${id}/settle`, payload);
+  },
+  async skipSubscriptionCharge(id, payload) {
+    if (_isMock()) {
+      const c = (FinanceMockState.subscriptionCharges || []).find((x) => x.id === parseInt(id, 10));
+      if (!c) throw new Error("Subscription charge not found");
+      if (c.status !== "expected") throw new Error(`Only an expected charge can be settled or skipped; this one is ${c.status}.`);
+      if (!String(payload.reason || "").trim()) throw new Error("A reason is required to skip a charge");
+      Object.assign(c, { status: "skipped", skipped_reason: payload.reason.trim() });
+      _advanceRenewal(c);
+      return _chargeView(c);
+    }
+    return apiRequest("POST", `/api/finance/subscriptions/charges/${id}/skip`, payload);
+  },
+  async setSubscriptionChargeProof(id, payload) {
+    if (_isMock()) {
+      const c = (FinanceMockState.subscriptionCharges || []).find((x) => x.id === parseInt(id, 10));
+      if (!c) throw new Error("Subscription charge not found");
+      if (payload.proof_status === "unavailable" && !String(payload.proof_note || "").trim()) throw new Error("A reason is required when the proof is unavailable");
+      if (payload.proof_status === "attached" && !(c.attachments || []).length) throw new Error("Upload the proof file to mark it attached");
+      Object.assign(c, { proof_status: payload.proof_status, proof_note: payload.proof_note || null });
+      return _chargeView(c);
+    }
+    return apiRequest("PATCH", `/api/finance/subscriptions/charges/${id}/proof`, payload);
+  },
+  async uploadSubscriptionChargeProof(id, file) {
+    if (_isMock()) {
+      const c = (FinanceMockState.subscriptionCharges || []).find((x) => x.id === parseInt(id, 10));
+      if (!c) throw new Error("Subscription charge not found");
+      c.attachments = c.attachments || [];
+      c.attachments.push({ id: Date.now(), file_name: (file && file.name) || "proof.pdf", file_size: (file && file.size) || 0, mime_type: (file && file.type) || "application/pdf" });
+      Object.assign(c, { proof_status: "attached", proof_note: null });
+      return _chargeView(c);
+    }
+    const formData = new FormData();
+    formData.append("file", file);
+    return apiRequest("POST", `/api/finance/subscriptions/charges/${id}/proof-file`, formData);
   },
   async getSubscription(id) {
     if (_isMock()) {
@@ -3021,6 +3559,9 @@ async getFeatureFlags() {
         department: payload.department || null,
         payment_method: payload.payment_method || "card",
         payment_account_id: payload.payment_account_id || null,
+        billing_email: payload.billing_email || null,
+        proof_source: payload.proof_source || "none",
+        proof_expected: payload.proof_expected !== false,
         seats_count: payload.seats_count || null,
         monthly_equivalent_amount: monthlyEquiv,
         auto_generate_bill: Boolean(payload.auto_generate_bill),
@@ -4133,6 +4674,7 @@ async getFeatureFlags() {
 // 10. Financial Reports & Excel Export (Phase 8)
   // ==========================================
   async getCategorySummaryReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       return {
         date_from: params.date_from || "2026-09-01",
@@ -4153,6 +4695,7 @@ async getFeatureFlags() {
   },
 
   async getCategoryMatrixReport(params = {}) {
+    params = _withBook(params, "reports");
     const yr = params.year || 2026;
     const grp = params.period_group || "month";
     if (_isMock()) {
@@ -4202,6 +4745,7 @@ async getFeatureFlags() {
   },
 
   async getBalancesReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       return {
         as_of_date: params.as_of_date || new Date().toISOString().slice(0, 10),
@@ -4231,6 +4775,7 @@ async getFeatureFlags() {
   },
 
   async getTransactionsReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       return {
         date_from: params.date_from || "2026-09-01",
@@ -4304,6 +4849,7 @@ async getFeatureFlags() {
   },
 
   async getChequesReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       const fy = params.fiscal_year || 2026;
       const list = FinanceMockState.cheques || [];
@@ -4487,6 +5033,39 @@ async getFeatureFlags() {
             badge: "Payables",
           },
           {
+            key: "revenue-breakdown",
+            title: "Revenue by Product, Book and Source",
+            category: "Performance",
+            business_question: "Which products, sources and books does our revenue come from, per currency?",
+            description: "Cash-basis revenue by month, book, source, product and customer, with an Untagged revenue row. One figure per currency.",
+            icon: "fa-solid fa-sack-dollar",
+            supported_basis: ["cash"],
+            supported_formats: ["json", "xlsx", "csv"],
+            badge: "Revenue",
+          },
+          {
+            key: "subscription-spend",
+            title: "Subscription Spend",
+            category: "Spend & Payables",
+            business_question: "What do our subscriptions cost by vendor, department and book?",
+            description: "Settled subscription charges by month, vendor, department and the book of the paying account.",
+            icon: "fa-solid fa-repeat",
+            supported_basis: ["cash"],
+            supported_formats: ["json", "xlsx", "csv"],
+            badge: "Subscriptions",
+          },
+          {
+            key: "subscription-proofs-missing",
+            title: "Subscription Proofs Missing",
+            category: "Audit & Compliance",
+            business_question: "Which subscription charges still have no proof of payment?",
+            description: "Charges that expect a proof and have neither a file nor a reason it is unavailable.",
+            icon: "fa-solid fa-paperclip",
+            supported_basis: ["cash"],
+            supported_formats: ["json", "xlsx", "csv"],
+            badge: "Controls",
+          },
+          {
             key: "transactions",
             title: "Continuous Transaction Ledger",
             category: "Audit & Compliance",
@@ -4634,6 +5213,7 @@ async getFeatureFlags() {
   },
 
   async getReportDrilldown(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       const isCat = params.drilldown_type === "category";
       return {
@@ -4671,7 +5251,67 @@ async getFeatureFlags() {
     return apiRequest("GET", `/api/finance/reports/drilldown${qs ? "?" + qs : ""}`);
   },
 
+  async getSubscriptionSpendReport(params = {}) {
+    params = _withBook(params, "reports");
+    if (_isMock()) {
+      const settled = (FinanceMockState.subscriptionCharges || []).filter((c) => c.status === "settled");
+      const rows = {};
+      const totals = {};
+      const roll = { vendor: {}, department: {}, book_code: {} };
+      settled.forEach((c) => {
+        const sub = (FinanceMockState.subscriptions || []).find((s) => s.id === c.subscription_id) || {};
+        const acc = (FinanceMockState.accounts || []).find((a) => a.id === sub.payment_account_id);
+        const book = acc ? acc.book_code : "local";
+        if (params.book && params.book !== "consolidated" && params.book !== book) return;
+        if (params.currency && String(params.currency).toUpperCase() !== "ALL" && c.currency !== String(params.currency).toUpperCase()) return;
+        const dept = sub.department || "No department";
+        const vendor = sub.vendor_name || "Unknown vendor";
+        const key = [c.billing_date.slice(0, 7), vendor, dept, sub.name, book, c.currency].join("|");
+        rows[key] = rows[key] || { month: c.billing_date.slice(0, 7), vendor, department: dept, subscription: sub.name, book_code: book, paid_from: acc ? acc.account_name : "Not set", currency: c.currency, amount: 0, variance: 0 };
+        rows[key].amount = round(rows[key].amount + c.amount, 2);
+        rows[key].variance = round(rows[key].variance + (c.variance_amount || 0), 2);
+        totals[c.currency] = round((totals[c.currency] || 0) + c.amount, 2);
+        [["vendor", vendor], ["department", dept], ["book_code", book]].forEach(([k, v]) => { const kk = v + "|" + c.currency; roll[k][kk] = round((roll[k][kk] || 0) + c.amount, 2); });
+      });
+      const rollList = (k) => Object.entries(roll[k]).map(([kk, amount]) => { const [name, currency] = kk.split("|"); return { [k]: name, currency, amount }; }).sort((a, b) => b.amount - a.amount);
+      return { report_title: "Subscription Spend", book: params.book || null, currency: (params.currency || "ALL").toUpperCase(), rows: Object.values(rows), by_vendor: rollList("vendor"), by_department: rollList("department"), by_book: rollList("book_code"), totals_by_currency: totals, conversion_policy: "One figure per currency. Currencies are never added together and no converted total is shown." };
+    }
+    const qs = new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ""))).toString();
+    return apiRequest("GET", `/api/finance/reports/subscription-spend${qs ? "?" + qs : ""}`);
+  },
+
+  async getSubscriptionProofsMissingReport(params = {}) {
+    params = _withBook(params, "reports");
+    if (_isMock()) {
+      const charges = await FinanceApi.getSubscriptionChargesV2({ proofs_missing: true, book: params.book });
+      const totals = {};
+      const rows = charges.map((c) => {
+        totals[c.currency] = round((totals[c.currency] || 0) + c.amount, 2);
+        const sub = (FinanceMockState.subscriptions || []).find((s) => s.id === c.subscription_id) || {};
+        return { charge_id: c.id, billing_date: c.billing_date, subscription: c.subscription_name, vendor: c.vendor_name, status: c.status, currency: c.currency, amount: c.amount, proof_source: c.proof_source || "none", billing_email: sub.billing_email || "", book_code: c.book_code, paid_from: c.payment_account_name || "Not set" };
+      });
+      return { report_title: "Subscription Proofs Missing", book: params.book || null, rows, totals_by_currency: totals };
+    }
+    const qs = new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ""))).toString();
+    return apiRequest("GET", `/api/finance/reports/subscription-proofs-missing${qs ? "?" + qs : ""}`);
+  },
+
   async getProfitAndLossReport(params = {}) {
+    params = _withBook(params, "reports");
+    if (_isMock() && params.book === "overseas" && String(params.currency || "USD").toUpperCase() !== "ALL") {
+      // Overseas book (X2, D-028): the worked example from plan 23; the inter-book transfer is not an operating expense
+      const usd = String(params.currency || "USD").toUpperCase() === "USD";
+      return {
+        report_title: "Profit & Loss Statement", entity: params.entity || "Voyance Health (Consolidated)", basis: params.basis || "cash",
+        currency: params.currency || "USD", period_start: params.date_from || "2026-09-01", period_end: params.date_to || "2026-09-30",
+        comparison_type: "none", book: "overseas",
+        revenue_items: usd ? [{ category_name: "Overseas client invoices", amount: 10000.0, percentage: 71.4 }, { category_name: "Stripe payout", amount: 4000.0, percentage: 28.6 }] : [],
+        total_revenue: usd ? 14000.0 : 0.0,
+        expense_items: usd ? [{ category_name: "External salaries", amount: 3000.0, percentage: 89.7 }, { category_name: "Tools", amount: 345.0, percentage: 10.3 }] : [],
+        total_expenses: usd ? 3345.0 : 0.0, net_income: usd ? 10655.0 : 0.0, net_margin_pct: usd ? 76.1 : 0.0,
+        inter_book_items: usd ? [{ label: "Transferred to local entity", amount: 5000.0 }] : [],
+      };
+    }
     if (_isMock()) {
       const basis = params.basis || "cash";
       const note = basis === "accrual" ? "Partial: excludes payroll, statutory and bank fees" : null;
@@ -4722,6 +5362,7 @@ async getFeatureFlags() {
   },
 
   async getBalanceSheetReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       return {
         report_title: "Balance Sheet",
@@ -4763,6 +5404,7 @@ async getFeatureFlags() {
   },
 
   async getTrialBalanceReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       return {
         report_title: "Trial Balance",
@@ -4787,6 +5429,20 @@ async getFeatureFlags() {
   },
 
   async getCashFlowReport(params = {}) {
+    params = _withBook(params, "reports");
+    if (_isMock() && params.book === "overseas") {
+      return {
+        report_title: "Statement of Cash Flows", entity: params.entity || "Voyance Health (Consolidated)", currency: params.currency || "USD",
+        date_from: params.date_from || "2026-09-01", date_to: params.date_to || "2026-09-30",
+        operating_activities: [
+          { name: "Cash Receipts from Customers & Operational Inflows", amount: 14000.0, activity_type: "operating" },
+          { name: "Cash Payments for Suppliers & Operational Outflows", amount: -3345.0, activity_type: "operating" },
+        ],
+        net_cash_operating: 10655.0, investing_activities: [], net_cash_investing: 0.0,
+        financing_activities: [{ name: "Transferred to local entity", amount: -5000.0, activity_type: "financing" }],
+        net_cash_financing: -5000.0, net_change_in_cash: 5655.0, beginning_cash_balance: 24345.0, ending_cash_balance: 30000.0, is_reconciled: true,
+      };
+    }
     if (_isMock()) {
       return {
         report_title: "Statement of Cash Flows",
@@ -4814,6 +5470,7 @@ async getFeatureFlags() {
   },
 
   async getArAgingReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       return {
         report_title: "Accounts Receivable (AR) Aging",
@@ -4844,6 +5501,7 @@ async getFeatureFlags() {
   },
 
   async getApAgingReport(params = {}) {
+    params = _withBook(params, "reports");
     if (_isMock()) {
       return {
         report_title: "Accounts Payable (AP) Aging",
@@ -5188,8 +5846,35 @@ async getFeatureFlags() {
     FinanceMockState.attentionReviewed = new Set();
   }
 
+  // Mock mirror of the Overseas book view (X2, D-028): the worked example from plan 23, USD only.
+  const _overseasSummary = (base, params) => {
+    const cur = String(params.currency || "USD").toUpperCase();
+    const usd = cur === "USD";
+    const revenue = usd ? 14000.0 : 0.0;
+    const spend = usd ? 3345.0 : 0.0;
+    const net = Math.round((revenue - spend) * 100) / 100;
+    const balance = usd ? 30000.0 : 0.0;
+    const margin = revenue > 0 ? Math.round((net / revenue) * 1000) / 10 : null;
+    const out = JSON.parse(JSON.stringify(base));
+    Object.assign(out, { balance, revenue_mtd: revenue, cost_mtd: spend, net_mtd: net, margin_pct: margin, margin_valid: revenue > 0, book: "overseas",
+      by_currency: [], inter_book_lines: usd ? [{ currency: "USD", side: "transfer_out", label: "Transferred to local entity", amount: 5000.0 }] : [] });
+    if (out.kpis) {
+      if (out.kpis.total_cash) out.kpis.total_cash.value = balance;
+      if (out.kpis.revenue) out.kpis.revenue.value = revenue;
+      if (out.kpis.operating_spend) out.kpis.operating_spend.value = spend;
+      if (out.kpis.net_result) out.kpis.net_result.value = net;
+      if (out.kpis.operating_margin) { out.kpis.operating_margin.value = margin; out.kpis.operating_margin.is_valid = revenue > 0; }
+    }
+    return out;
+  };
+
   const FinanceDashboardApi = {
 async getFinanceSummary(params = {}) {
+    params = _withBook(params, "dashboard");
+    if (_isMock() && params.book === "overseas") {
+      const base = await FinanceDashboardApi.getFinanceSummary({ ...params, book: "local" });
+      return _overseasSummary(base, params);
+    }
     if (_isMock()) {
       const period = (params.period || "MTD").toUpperCase();
       const basis = (params.basis || "cash").toLowerCase();
@@ -5340,6 +6025,7 @@ async getFinanceSummary(params = {}) {
   },
 
   async getAttentionQueue(params = {}) {
+    params = _withBook(params, "dashboard");
     if (_isMock()) {
       const severity = (params.severity || "all").toLowerCase();
       const itemType = (params.item_type || params.type || "all").toLowerCase();
@@ -5536,12 +6222,13 @@ async getFinanceSummary(params = {}) {
   },
 
   async getCashForecast(params = {}) {
+    params = _withBook(params, "dashboard");
     if (_isMock()) {
       const currency = (params.currency || "all").toUpperCase();
       const horizonDays = parseInt(params.horizon_days || "90", 10);
       const includeExpected = params.include_expected !== false && params.include_expected !== "false";
 
-      let rawAccounts = FinanceMockState.accounts || [];
+      let rawAccounts = (FinanceMockState.accounts || []).filter((a) => !params.book || params.book === "consolidated" || a.book_code === params.book);
       if (currency !== "ALL") {
         rawAccounts = rawAccounts.filter((a) => (a.currency || "").toUpperCase() === currency);
       }

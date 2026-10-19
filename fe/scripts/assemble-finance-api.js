@@ -9,6 +9,8 @@ const financeDir = resolve(feDir, 'api/finance');
 export const FINANCE_API_ORDER = [
   'core.js',
   'invoices-api.js',
+  'products-api.js',
+  'revenue-api.js',
   'bills-api.js',
   'accounts-api.js',
   'cheques-api.js',

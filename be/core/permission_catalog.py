@@ -261,6 +261,18 @@ CATALOG: Tuple[PermissionDef, ...] = (
         implies=("finance.invoice.read",),
     ),
 
+    PermissionDef(
+        key="finance.product.read",
+        group="Finance / Sales",
+        description="View the product catalog",
+    ),
+    PermissionDef(
+        key="finance.product.write",
+        group="Finance / Sales",
+        description="Create, update, and deactivate catalog products",
+        implies=("finance.product.read",),
+    ),
+
     # Finance / Spend
     PermissionDef(
         key="finance.vendor.read",

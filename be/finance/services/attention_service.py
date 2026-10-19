@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from finance.bill_status import OPEN_STATUSES
 from finance import invoice_status as inv_status
+from finance import books
 from finance.models import (
     FinanceBankAccountDB,
     SalesInvoiceDB,
@@ -38,12 +39,14 @@ class AttentionQueueService:
         search: Optional[str] = None,
         include_reviewed: bool = False,
         limit: int = 50,
+        book: Optional[str] = None,
     ) -> AttentionQueueResponse:
         """
         Gathers attention exceptions across authorized finance domains,
         applying deterministic priority scoring and permission redaction.
         """
         is_admin = bool(current_user.get("is_super_admin"))
+        scope = books.resolve(self.db, book)
 
         can_invoices = is_admin or "finance.invoice.read" in user_permissions
         can_bills = is_admin or "finance.bill.read" in user_permissions
@@ -72,8 +75,10 @@ class AttentionQueueService:
         # ----------------------------------------------------
         if can_accounts:
             accounts = (
-                self.db.query(FinanceBankAccountDB)
-                .filter(FinanceBankAccountDB.is_active == True)
+                scope.filter(
+                    self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.is_active == True),
+                    FinanceBankAccountDB.id,
+                )
                 .all()
             )
             for acc in accounts:
@@ -116,8 +121,10 @@ class AttentionQueueService:
         # ----------------------------------------------------
         if can_cheques:
             bounced_cheques = (
-                self.db.query(FinanceChequeDB)
-                .filter(FinanceChequeDB.status == "bounced")
+                scope.filter(
+                    self.db.query(FinanceChequeDB).filter(FinanceChequeDB.status == "bounced"),
+                    FinanceChequeDB.account_id,
+                )
                 .all()
             )
             for chq in bounced_cheques:
@@ -162,6 +169,7 @@ class AttentionQueueService:
                 .filter(~SalesInvoiceDB.status.in_(["void", "paid", "draft"]))
                 .all()
             )
+            invoices = [i for i in invoices if books.invoice_in_scope(scope, i)]
             for inv in invoices:
                 # Sum payments
                 paid_total = inv_status.settled_amount(inv.payments)
@@ -225,6 +233,7 @@ class AttentionQueueService:
                 .filter(BillDB.status.in_(OPEN_STATUSES))
                 .all()
             )
+            bills = books.filter_bills(self.db, scope, bills)
             for bill in bills:
                 paid_total = sum((p.amount or 0.0) for p in (bill.payments or []))
                 balance = round((bill.total or 0.0) - paid_total, 2)
@@ -318,6 +327,8 @@ class AttentionQueueService:
                 .filter(AccountTransferDB.confirmed_leg != "both")
                 .all()
             )
+            if scope.restricts:
+                transfers = [t for t in transfers if scope.owns_account(t.from_account_id) or scope.owns_account(t.to_account_id)]
             for tr in transfers:
                 key = f"transfer:{tr.id}:incomplete"
                 is_rev = key in reviewed_dict
@@ -362,6 +373,11 @@ class AttentionQueueService:
                 .filter(PayrollRunDB.status == "draft")
                 .all()
             )
+            if scope.restricts:
+                payroll_drafts = [
+                    x for x in payroll_drafts
+                    if (scope.owns_account(x.external_funding_account_id or x.bank_account_id) if (x.external_funding_account_id or x.bank_account_id) else scope.owns_unattributed())
+                ]
             for run in payroll_drafts:
                 key = f"payroll:{run.id}:draft"
                 is_rev = key in reviewed_dict
@@ -404,6 +420,7 @@ class AttentionQueueService:
                 .filter(BankStatementImportDB.status.in_(["parsing", "needs_review"]))
                 .all()
             )
+            imports = [i for i in imports if scope.owns_account(i.account_id)]
             for imp in imports:
                 unmatched_lines = [l for l in (imp.lines or []) if l.status == "unmatched"]
                 unmatched_count = len(unmatched_lines) if imp.lines else max(imp.total_lines_count - imp.matched_lines_count, 1)
@@ -459,13 +476,19 @@ class AttentionQueueService:
                 .filter(SubscriptionDB.is_active == True)
                 .all()
             )
+            if scope.restricts:
+                active_subs = [
+                    x for x in active_subs
+                    if (scope.owns_account(x.payment_account_id) if getattr(x, "payment_account_id", None) else scope.owns_unattributed())
+                ]
             for sub in active_subs:
                 # 1. Renewal deadline approaching
                 if sub.next_renewal_date:
                     try:
                         ren_dt = datetime.strptime(sub.next_renewal_date, "%Y-%m-%d").date()
                         notice_days = sub.notice_period_days if sub.notice_period_days is not None else 30
-                        notice_dt = ren_dt - timedelta(days=notice_days)
+                        # also surface a renewal that is a week away, whatever the contract notice period is (X5)
+                        notice_dt = ren_dt - timedelta(days=max(notice_days, 7))
                         if today >= notice_dt:
                             key = f"subscription:{sub.id}:renewal_due"
                             is_rev = key in reviewed_dict
@@ -501,6 +524,73 @@ class AttentionQueueService:
                                 )
                     except Exception:
                         pass
+
+                # 1b. Expected charges not settled past their date, and proofs still missing (X5, D-031). In-app only.
+                for chg in (sub.charges or []):
+                    chg_status = chg.status or "settled"
+                    if chg_status == "expected" and chg.billing_date and chg.billing_date < today_str:
+                        key = f"subscription_charge:{chg.id}:unsettled"
+                        is_rev = key in reviewed_dict
+                        if include_reviewed or not is_rev:
+                            days_late = (today - datetime.strptime(chg.billing_date, "%Y-%m-%d").date()).days
+                            raw_items.append(
+                                AttentionItem(
+                                    id=f"sub-chg-{chg.id}",
+                                    deduplication_key=key,
+                                    type="subscription_unsettled",
+                                    severity="warning",
+                                    severity_label="Warning",
+                                    title=f"Charge not settled: {sub.name}",
+                                    description=f"The {chg.billing_date} charge for '{sub.name}' ({chg.amount:,.2f} {chg.currency}) is expected but not settled. Link the payment or skip it.",
+                                    counterparty=sub.vendor.name if sub.vendor else "Vendor",
+                                    amount=chg.amount,
+                                    currency=chg.currency,
+                                    due_date=chg.billing_date,
+                                    due_state="overdue",
+                                    due_state_label=f"{days_late}d late",
+                                    owner=sub.owner,
+                                    target_route="a-finance-subscriptions",
+                                    target_id=sub.id,
+                                    target_filter={"subscription_id": sub.id, "status": "expected"},
+                                    permission="finance.subscription.read",
+                                    priority_score=65,
+                                    can_resolve=True,
+                                    can_mark_reviewed=True,
+                                    is_reviewed=is_rev,
+                                    created_at=chg.created_at.isoformat() if chg.created_at else None,
+                                )
+                            )
+                    if sub.proof_expected and chg.proof_status == "pending" and chg_status in ("expected", "settled") and chg.billing_date and chg.billing_date <= today_str:
+                        key = f"subscription_charge:{chg.id}:proof_missing"
+                        is_rev = key in reviewed_dict
+                        if include_reviewed or not is_rev:
+                            raw_items.append(
+                                AttentionItem(
+                                    id=f"sub-proof-{chg.id}",
+                                    deduplication_key=key,
+                                    type="subscription_proof_missing",
+                                    severity="info",
+                                    severity_label="Info",
+                                    title=f"Proof missing: {sub.name}",
+                                    description=f"No proof of payment yet for the {chg.billing_date} charge of '{sub.name}'. Attach it, or mark it unavailable with a reason.",
+                                    counterparty=sub.vendor.name if sub.vendor else "Vendor",
+                                    amount=chg.amount,
+                                    currency=chg.currency,
+                                    due_date=chg.billing_date,
+                                    due_state="immediate",
+                                    due_state_label="Proof pending",
+                                    owner=sub.owner,
+                                    target_route="a-finance-subscriptions",
+                                    target_id=sub.id,
+                                    target_filter={"subscription_id": sub.id, "proofs_missing": True},
+                                    permission="finance.subscription.read",
+                                    priority_score=35,
+                                    can_resolve=True,
+                                    can_mark_reviewed=True,
+                                    is_reviewed=is_rev,
+                                    created_at=chg.created_at.isoformat() if chg.created_at else None,
+                                )
+                            )
 
                 # 2. Missing owner alert
                 if not sub.owner:
@@ -544,6 +634,8 @@ class AttentionQueueService:
                 .filter(StatutoryObligationDB.status.in_(["estimated", "accrued", "partially_remitted"]))
                 .all()
             )
+            if scope.restricts and not scope.owns_unattributed():
+                open_obligations = []  # statutory obligations belong to the default (Local) book
             for obl in open_obligations:
                 key = f"statutory:{obl.id}:{obl.status}"
                 is_rev = key in reviewed_dict

@@ -36,6 +36,7 @@ class CustomersService:
             default_currency=customer.default_currency or "USD",
             payment_terms_days=customer.payment_terms_days if customer.payment_terms_days is not None else 30,
             withholding_tax_rate=customer.withholding_tax_rate or 0.0,
+            is_intercompany=bool(customer.is_intercompany),
             owner=customer.owner,
             notes=customer.notes,
             is_active=customer.is_active,

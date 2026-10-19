@@ -67,12 +67,61 @@
               <label for="fCompanyOpeningBalanceDate">Opening Balance Date</label>
               <input type="date" id="fCompanyOpeningBalanceDate">
             </div>
+            <div class="form-field">
+              <label for="fCompanyBook">Book <span class="req">*</span></label>
+              <select id="fCompanyBook"></select>
+              <div id="fCompanyBookWarning" class="alert alert-warning" style="display:none;font-size:11.5px;padding:6px 10px;margin-top:4px;">
+                <i class="fa-solid fa-lock"></i> The book cannot be changed after transactions have been posted.
+              </div>
+            </div>
+            <div class="form-field">
+              <label for="fCompanyVisibility">Visibility</label>
+              <select id="fCompanyVisibility">
+                <option value="full">Full: every movement is recorded</option>
+                <option value="partial">Partial: use balance checkpoints</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
       <div class="modal-foot">
         <button class="btn" onclick="closeModal('companyBankAccountModal')">Cancel</button>
         <button class="btn btn-fill" id="companyBankAccountSaveBtn" onclick="saveCompanyBankAccount()">Save Account</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay fv fv-dialog fv-area-sky" id="accountCheckpointModal">
+    <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="accountCheckpointModalTitle" style="max-width: 560px;">
+      <div class="modal-head">
+        <span class="modal-head-icon"><i class="fa-solid fa-flag-checkered" aria-hidden="true"></i></span>
+        <div class="modal-head-text">
+          <h3 id="accountCheckpointModalTitle">Balance checkpoints</h3>
+          <p id="accountCheckpointModalSubtitle">Record the balance you can see at the bank. The difference from the ledger is shown, never posted.</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('accountCheckpointModal')" aria-label="Close dialog"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="fCheckpointAccountId">
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="fCheckpointDate">Date <span class="req">*</span></label>
+            <input type="date" id="fCheckpointDate">
+          </div>
+          <div class="form-field">
+            <label for="fCheckpointBalance">Observed balance <span class="req">*</span></label>
+            <input type="number" id="fCheckpointBalance" step="0.01">
+          </div>
+          <div class="form-field full">
+            <label for="fCheckpointNote">Note</label>
+            <input id="fCheckpointNote" placeholder="e.g. From the overseas bank portal">
+          </div>
+        </div>
+        <ul id="accountCheckpointList" class="fv-scan-list" aria-live="polite"></ul>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="closeModal('accountCheckpointModal')">Close</button>
+        <button class="btn btn-fill" id="accountCheckpointSaveBtn" onclick="saveAccountCheckpoint()">Record checkpoint</button>
       </div>
     </div>
   </div>

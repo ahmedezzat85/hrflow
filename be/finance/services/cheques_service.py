@@ -1,6 +1,8 @@
-from typing import List, Optional
+import os
+import uuid
+from typing import List, Optional, Tuple
 from datetime import datetime
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, UploadFile
 
 from finance.repositories.cheques_repository import ChequesRepository, VALID_STATUS_TRANSITIONS, EXCEPTION_STATUSES
 from finance.schemas import (
@@ -8,9 +10,14 @@ from finance.schemas import (
     ChequeStatusUpdate,
     ChequeReplaceRequest,
     ChequeResponse,
+    ChequeAttachmentResponse,
+    NextChequeNumberResponse,
 )
 from finance.bill_payment_rules import BillPaymentError
-from finance.models import FinanceChequeDB, FinanceBankAccountDB, BillDB
+from finance.models import FinanceChequeDB, FinanceBankAccountDB, BillDB, FinanceAttachmentDB
+from finance.services.subscriptions_service import FINANCE_UPLOADS_DIR
+
+MAX_SCAN_BYTES = 15 * 1024 * 1024
 
 
 VALID_PURPOSE_TYPES = {"vendor_payment", "cash_withdrawal", "other"}
@@ -69,6 +76,8 @@ class ChequesService:
             signer_name=cheque.signer_name,
             authorized_by=cheque.authorized_by,
             attachment_url=cheque.attachment_url,
+            attachment_count=len(cheque.attachments or []),
+            has_scan=bool(cheque.attachments),
             exception_reason=cheque.exception_reason,
             exception_evidence=cheque.exception_evidence,
             replacement_cheque_id=cheque.replacement_cheque_id,
@@ -93,6 +102,7 @@ class ChequesService:
         search: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
+        has_scan: Optional[bool] = None,
     ) -> List[ChequeResponse]:
         if status and status not in VALID_CHEQUE_STATUSES:
             raise HTTPException(
@@ -107,6 +117,7 @@ class ChequesService:
             search=search,
             limit=limit,
             offset=offset,
+            has_scan=has_scan,
         )
         return [self._cheque_to_response(c) for c in cheques]
 
@@ -240,3 +251,93 @@ class ChequesService:
             raise HTTPException(status_code=400, detail=str(e))
 
         return self._cheque_to_response(new_cheque)
+
+    # ------------------------------------------------------------------
+    # Scans (D-032)
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _att_to_response(att: FinanceAttachmentDB) -> ChequeAttachmentResponse:
+        return ChequeAttachmentResponse(
+            id=att.id,
+            cheque_id=att.cheque_id,
+            file_name=att.file_name,
+            file_size=att.file_size or 0,
+            mime_type=att.mime_type or "application/octet-stream",
+            uploaded_at=att.uploaded_at,
+            uploaded_by=att.uploaded_by,
+        )
+
+    def _require_cheque(self, cheque_id: int) -> FinanceChequeDB:
+        cheque = self.repo.get_by_id(cheque_id)
+        if not cheque:
+            raise HTTPException(status_code=404, detail=f"Cheque {cheque_id} not found")
+        return cheque
+
+    async def upload_attachments(
+        self, cheque_id: int, files: List[UploadFile], uploaded_by: Optional[str] = None
+    ) -> List[ChequeAttachmentResponse]:
+        self._require_cheque(cheque_id)
+        if not files:
+            raise HTTPException(status_code=400, detail="At least one file is required")
+        # Validate every file before writing anything so a bad file does not leave a partial upload
+        payloads = []
+        for f in files:
+            if not f or not f.filename:
+                raise HTTPException(status_code=400, detail="A valid file is required for scan upload.")
+            content = await f.read()
+            if len(content) == 0:
+                raise HTTPException(status_code=400, detail=f"Uploaded file '{f.filename}' cannot be empty.")
+            if len(content) > MAX_SCAN_BYTES:
+                raise HTTPException(status_code=413, detail=f"File '{f.filename}' exceeds the 15 MB limit.")
+            payloads.append((os.path.basename(f.filename), content, f.content_type or "application/octet-stream"))
+
+        os.makedirs(FINANCE_UPLOADS_DIR, exist_ok=True)
+        created = []
+        for name, content, mime in payloads:
+            path = os.path.join(FINANCE_UPLOADS_DIR, f"{uuid.uuid4().hex}_{name}")
+            with open(path, "wb") as fh:
+                fh.write(content)
+            att = self.repo.add_attachment(
+                cheque_id=cheque_id,
+                file_name=name,
+                file_size=len(content),
+                mime_type=mime,
+                storage_ref=path,
+                uploaded_by=uploaded_by,
+            )
+            created.append(self._att_to_response(att))
+        return created
+
+    def list_attachments(self, cheque_id: int) -> List[ChequeAttachmentResponse]:
+        self._require_cheque(cheque_id)
+        return [self._att_to_response(a) for a in self.repo.list_attachments(cheque_id)]
+
+    def get_attachment_file(self, cheque_id: int, attachment_id: int) -> Tuple[str, str, str]:
+        self._require_cheque(cheque_id)
+        att = self.repo.get_attachment(cheque_id, attachment_id)
+        if not att:
+            raise HTTPException(status_code=404, detail=f"Attachment {attachment_id} not found for cheque {cheque_id}")
+        if not att.storage_ref or not os.path.isfile(att.storage_ref):
+            raise HTTPException(status_code=404, detail="Attachment file not found on disk")
+        return att.storage_ref, att.file_name, att.mime_type or "application/octet-stream"
+
+    def delete_attachment(self, cheque_id: int, attachment_id: int) -> None:
+        self._require_cheque(cheque_id)
+        att = self.repo.get_attachment(cheque_id, attachment_id)
+        if not att:
+            raise HTTPException(status_code=404, detail=f"Attachment {attachment_id} not found for cheque {cheque_id}")
+        path = att.storage_ref
+        self.repo.delete_attachment(att)
+        try:
+            if path and os.path.isfile(path):
+                os.remove(path)
+        except OSError:
+            pass
+
+    def suggest_next_number(self, account_id: int) -> NextChequeNumberResponse:
+        acc = self.repo.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == account_id).first()
+        if not acc:
+            raise HTTPException(status_code=404, detail=f"Bank account {account_id} not found")
+        last = self.repo.last_cheque_number(account_id)
+        nxt = str(int(last) + 1).zfill(len(last)) if last else None
+        return NextChequeNumberResponse(account_id=account_id, next_cheque_number=nxt, last_cheque_number=last)

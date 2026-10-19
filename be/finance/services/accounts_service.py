@@ -6,8 +6,22 @@ from typing import List, Optional
 from fastapi import HTTPException, status
 
 from finance.repositories.accounts_repository import AccountsRepository
-from finance.schemas import BankAccountCreate, BankAccountUpdate, BankAccountResponse
-from finance.models import FinanceBankAccountDB
+import os
+import uuid
+from fastapi import UploadFile
+from finance import books
+from finance.schemas import (
+    BankAccountCreate,
+    BankAccountUpdate,
+    BankAccountResponse,
+    BalanceCheckpointCreate,
+    BalanceCheckpointResponse,
+)
+from finance.models import FinanceBankAccountDB, FinanceBookDB, AccountBalanceCheckpointDB
+from finance.services.subscriptions_service import FINANCE_UPLOADS_DIR
+
+VALID_VISIBILITY = ("full", "partial")
+MAX_CHECKPOINT_FILE_BYTES = 15 * 1024 * 1024
 
 
 class AccountsService:
@@ -25,9 +39,20 @@ class AccountsService:
     def to_response(self, account: FinanceBankAccountDB, reveal: bool = False) -> BankAccountResponse:
         metrics = self.repo.get_balance_metrics(account)
         account_num = account.account_number if reveal else self.mask_account_number(account.account_number)
+        book = account.book
+        latest = None
+        if (account.visibility or "full") == "partial":
+            cps = self.repo.list_checkpoints(account.id)
+            if cps:
+                latest = self._checkpoint_to_response(cps[0])
 
         return BankAccountResponse(
             id=account.id,
+            book_id=account.book_id,
+            book_code=book.code if book else None,
+            book_name=book.name if book else None,
+            visibility=account.visibility or "full",
+            latest_checkpoint=latest,
             account_name=account.account_name,
             bank_name=account.bank_name,
             account_number=account_num,
@@ -56,8 +81,9 @@ class AccountsService:
         is_active: Optional[bool] = None,
         limit: int = 50,
         offset: int = 0,
+        book: Optional[str] = None,
     ) -> List[BankAccountResponse]:
-        accounts = self.repo.list_all(is_active=is_active, limit=limit, offset=offset)
+        accounts = self.repo.list_all(is_active=is_active, limit=limit, offset=offset, book=book)
         return [self.to_response(acc) for acc in accounts]
 
     def get_account(self, account_id: int, reveal: bool = False) -> BankAccountResponse:
@@ -78,6 +104,7 @@ class AccountsService:
             )
 
         data = payload.model_dump() if hasattr(payload, "model_dump") else payload.dict()
+        self._validate_book_fields(data.get("book_id"), data.get("visibility"))
         account = self.repo.create(data)
         return self.to_response(account)
 
@@ -111,6 +138,13 @@ class AccountsService:
             if hasattr(payload, "model_dump")
             else payload.dict(exclude_unset=True)
         )
+        self._validate_book_fields(data.get("book_id"), data.get("visibility"))
+        # Moving an account to another book would silently rewrite the history of both books' reports
+        if data.get("book_id") and data["book_id"] != existing.book_id and self.repo.has_transactions(account_id):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="The book cannot be changed after transactions have been posted to this account.",
+            )
         updated = self.repo.update(account_id, data)
         return self.to_response(updated)
 
@@ -141,3 +175,82 @@ class AccountsService:
                 detail=f"Bank account with ID {account_id} not found",
             )
         return self.repo.recalculate_and_sync_current_balance(account_id)
+
+    # ------------------------------------------------------------------
+    # Books and balance checkpoints (D-028)
+    # ------------------------------------------------------------------
+    def _validate_book_fields(self, book_id: Optional[int], visibility: Optional[str]) -> None:
+        if visibility is not None and visibility not in VALID_VISIBILITY:
+            raise HTTPException(status_code=400, detail=f"Invalid visibility. Must be one of: {', '.join(VALID_VISIBILITY)}")
+        if book_id is not None and not self.repo.db.query(FinanceBookDB).filter(FinanceBookDB.id == book_id).first():
+            raise HTTPException(status_code=404, detail=f"Book {book_id} not found")
+
+    def list_books(self) -> List[FinanceBookDB]:
+        return list(books.ensure_books(self.repo.db).values())
+
+    def _require_account(self, account_id: int) -> FinanceBankAccountDB:
+        account = self.repo.get_by_id(account_id)
+        if not account:
+            raise HTTPException(status_code=404, detail=f"Bank account with ID {account_id} not found")
+        return account
+
+    def _checkpoint_to_response(self, cp: AccountBalanceCheckpointDB) -> BalanceCheckpointResponse:
+        computed = self.repo.compute_balance(cp.account_id, as_of_date=cp.date)
+        att = self.repo.checkpoint_attachment(cp.id)
+        return BalanceCheckpointResponse(
+            id=cp.id,
+            account_id=cp.account_id,
+            date=cp.date,
+            balance=cp.balance,
+            note=cp.note,
+            computed_balance=round(computed, 2),
+            unrecorded_difference=round(float(cp.balance) - computed, 2),
+            has_attachment=att is not None,
+            attachment_name=att.file_name if att else None,
+            created_at=cp.created_at,
+            created_by=cp.created_by,
+        )
+
+    def list_checkpoints(self, account_id: int) -> List[BalanceCheckpointResponse]:
+        self._require_account(account_id)
+        return [self._checkpoint_to_response(cp) for cp in self.repo.list_checkpoints(account_id)]
+
+    def create_checkpoint(self, account_id: int, payload: BalanceCheckpointCreate, created_by: Optional[str] = None) -> BalanceCheckpointResponse:
+        account = self._require_account(account_id)
+        if (account.visibility or "full") != "partial":
+            raise HTTPException(status_code=400, detail="Balance checkpoints are for partial-visibility accounts. Set the account visibility to partial first.")
+        try:
+            from datetime import datetime as _dt
+            _dt.strptime(payload.date, "%Y-%m-%d")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="date must be YYYY-MM-DD")
+        cp = self.repo.create_checkpoint(account_id, payload.model_dump(), created_by=created_by)
+        return self._checkpoint_to_response(cp)
+
+    async def upload_checkpoint_attachment(self, account_id: int, checkpoint_id: int, file: UploadFile, uploaded_by: Optional[str] = None) -> BalanceCheckpointResponse:
+        self._require_account(account_id)
+        cp = self.repo.get_checkpoint(account_id, checkpoint_id)
+        if not cp:
+            raise HTTPException(status_code=404, detail=f"Checkpoint {checkpoint_id} not found")
+        if not file or not file.filename:
+            raise HTTPException(status_code=400, detail="A valid file is required.")
+        content = await file.read()
+        if not content:
+            raise HTTPException(status_code=400, detail="Uploaded file cannot be empty.")
+        if len(content) > MAX_CHECKPOINT_FILE_BYTES:
+            raise HTTPException(status_code=413, detail="File exceeds the 15 MB limit.")
+        name = os.path.basename(file.filename)
+        os.makedirs(FINANCE_UPLOADS_DIR, exist_ok=True)
+        path = os.path.join(FINANCE_UPLOADS_DIR, f"{uuid.uuid4().hex}_{name}")
+        with open(path, "wb") as fh:
+            fh.write(content)
+        self.repo.add_checkpoint_attachment(cp.id, name, len(content), file.content_type or "application/octet-stream", path, uploaded_by)
+        return self._checkpoint_to_response(cp)
+
+    def get_checkpoint_attachment_file(self, account_id: int, checkpoint_id: int):
+        self._require_account(account_id)
+        cp = self.repo.get_checkpoint(account_id, checkpoint_id)
+        att = self.repo.checkpoint_attachment(checkpoint_id) if cp else None
+        if not att or not os.path.isfile(att.storage_ref or ""):
+            raise HTTPException(status_code=404, detail="Checkpoint attachment not found")
+        return att.storage_ref, att.file_name, att.mime_type or "application/octet-stream"

@@ -329,7 +329,7 @@ test.describe('Finance restyle v2: Banking I (S5)', () => {
       await expect(page.locator('#financeAccountsSubNav .fa-solid')).toHaveCount(0);
       // header: Transfer and Withdraw cash outline, Add account primary; Upload statement moved out
       const head = page.locator('#financeHeadActionsAccounts');
-      await expect(head.locator('button')).toHaveText(['Transfer', 'Withdraw cash', 'Add account']);
+      await expect(head.locator('button')).toHaveText(['Transfer', 'Withdraw cash', 'Record revenue', 'Add account']);
       expect(await css(page, '#financeHeadActionsAccounts .btn-fill', 'height')).toBe('32px');
       // cards: one per currency (never mixed), uncleared cheques, statement lines
       await expect(page.locator('#financeAccountsCards .fv-card')).toHaveCount(4);
@@ -505,9 +505,9 @@ test.describe('Finance restyle v2: Reports and Settings (S8)', () => {
     expect(await css(page, '.fv-table--reports thead th', 'backgroundColor')).toBe(await rgb(page, 'var(--fv-surface)'));
     expect(await css(page, '#reportLibraryGrid .report-catalog-card button', 'height')).toBe('28px');
     await expect(page.locator('#reportLibraryCategoryPills .fv-pill')).toHaveCount(7);
-    await expect(page.locator('#reportLibraryCategoryPills [data-domain="all"] .fv-pill__count')).toHaveText('21');
+    await expect(page.locator('#reportLibraryCategoryPills [data-domain="all"] .fv-pill__count')).toHaveText('24');
     // one row per report, a dot and the domain name, the real basis from the library data
-    await expect(page.locator('#reportLibraryGrid .report-catalog-card')).toHaveCount(21);
+    await expect(page.locator('#reportLibraryGrid .report-catalog-card')).toHaveCount(24);
     await expect(page.locator('#reportLibraryGrid .report-catalog-card').first().locator('.fv-dot')).toHaveCount(1);
     await expect(page.locator('#reportLibraryGrid')).toContainText('Cash and accrual');
     await page.click('#reportLibraryCategoryPills [data-domain="Payroll"]');
@@ -521,7 +521,7 @@ test.describe('Finance restyle v2: Reports and Settings (S8)', () => {
       await openAdmin(page, theme);
       await openAdminPage(page, 'a-finance-settings');
       await expect(page.locator('#financeCategoriesTableBody tr').first()).toBeVisible();
-      await expect(page.locator('#financeSettingsSubNav .filter-tab')).toHaveText(['Transaction categories', 'Payment types', 'Display']);
+      await expect(page.locator('#financeSettingsSubNav .filter-tab')).toHaveText(['Transaction categories', 'Payment types', 'Products', 'Revenue sources', 'Display']);
       expect(await css(page, '#financeCategoriesTable thead th', 'backgroundColor')).toBe(await rgb(page, 'var(--fv-surface)'));
       expect(await css(page, '#financeAddCategoryBtn', 'height')).toBe('32px');
       await expect(page.locator('#financeCategoryStatusPills .fv-pill')).toHaveCount(4);

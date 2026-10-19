@@ -1814,3 +1814,48 @@ window.sumColumn = sumColumn;
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
   else run();
 })();
+
+// ==========================================
+// Book view switcher (X2, D-028): Local | Overseas | Consolidated, remembered per page
+// ==========================================
+const FinanceBookView = {
+  VIEWS: [["local", "Local"], ["overseas", "Overseas"], ["consolidated", "Consolidated"]],
+  // First defaults per D-028: dashboard, reports (P&L, cash flow) = Local; subscriptions = Consolidated
+  DEFAULTS: { dashboard: "local", reports: "local", subscriptions: "consolidated", revenue: "consolidated" },
+  _mem: {},
+  _key(page) { return `hrflow_finance_book_${page}`; },
+  get(page) {
+    if (this._mem[page]) return this._mem[page];
+    let v = null;
+    try { v = window.localStorage.getItem(this._key(page)); } catch (_) { /* storage unavailable */ }
+    if (!this.VIEWS.some(([k]) => k === v)) v = this.DEFAULTS[page] || "consolidated";
+    this._mem[page] = v;
+    return v;
+  },
+  set(page, view) {
+    if (!this.VIEWS.some(([k]) => k === view)) return;
+    this._mem[page] = view;
+    try { window.localStorage.setItem(this._key(page), view); } catch (_) { /* storage unavailable */ }
+  },
+  // Renders the segmented control into the host element; onChange runs after the view is stored.
+  mount(page, hostId, onChange) {
+    const host = document.getElementById(hostId);
+    if (!host) return;
+    const current = this.get(page);
+    host.className = "fv-book-switch";
+    host.setAttribute("role", "group");
+    host.setAttribute("aria-label", "Book view");
+    host.innerHTML = this.VIEWS.map(([k, label]) =>
+      `<button type="button" class="fv-book-switch__btn${k === current ? " is-active" : ""}" data-book="${k}" aria-pressed="${k === current}">${label}</button>`
+    ).join("");
+    host.onclick = (ev) => {
+      const btn = ev.target.closest("[data-book]");
+      if (!btn) return;
+      this.set(page, btn.dataset.book);
+      this.mount(page, hostId, onChange);
+      if (typeof onChange === "function") onChange(btn.dataset.book);
+    };
+  },
+};
+window.FinanceBookView = FinanceBookView;
+

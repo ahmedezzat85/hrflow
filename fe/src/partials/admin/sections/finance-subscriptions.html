@@ -4,6 +4,7 @@
               <!-- rendered by SpendTabs (finance-nav.js) -->
             </div>
             <div class="fv-head-actions">
+              <div id="financeBookSwitcherSubscriptions"></div>
               <div class="fv-search">
                 <i class="fa-solid fa-magnifying-glass"></i>
                 <input id="financeSubSearch" placeholder="Search subscriptions..." aria-label="Search subscriptions" oninput="filterFinanceSubscriptions(this.value)">
@@ -23,6 +24,32 @@
             </label>
           </div>
 
+          <!-- Charges to settle and proofs missing (X5, D-031). In-app only: nothing is emailed. -->
+          <div class="fv-table-card" id="financeSubChargesCard">
+            <div class="fv-pills-row">
+              <div class="fv-pills" id="financeSubChargePills" role="group" aria-label="Charges">
+                <button type="button" class="filter-tab fv-pill active" data-filter="expected" aria-pressed="true" onclick="filterSubscriptionCharges('expected')">To settle <span class="fv-pill__count" id="subChgCountExpected">0</span></button>
+                <button type="button" class="filter-tab fv-pill" data-filter="proofs_missing" aria-pressed="false" onclick="filterSubscriptionCharges('proofs_missing')">Proofs missing <span class="fv-pill__count" id="subChgCountProofs">0</span></button>
+              </div>
+            </div>
+            <div class="fv-table-scroll">
+              <table class="fv-table fv-table--sub-charges responsive-card-table" id="financeSubChargesTable">
+                <thead>
+                  <tr>
+                    <th>Subscription</th>
+                    <th>Billing date</th>
+                    <th>Paid from</th>
+                    <th>Proof</th>
+                    <th class="cell-money fv-num">Amount</th>
+                    <th class="col-actions"><span class="fv-sr-only">Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody id="financeSubChargesBody"></tbody>
+              </table>
+            </div>
+            <div class="empty-state fv-empty" id="financeSubChargesEmpty" style="display:none;"><p>Nothing to settle right now.</p></div>
+          </div>
+
           <div class="fv-table-card">
             <div class="section-loading-bar" id="financeSubscriptionsLoadingBar"><span></span></div>
             <div class="fv-table-scroll">
@@ -33,6 +60,7 @@
                     <th>Owner</th>
                     <th>Next renewal</th>
                     <th>Billing</th>
+                    <th>Paid from</th>
                     <th>Status</th>
                     <th class="cell-money fv-num">Rate</th>
                     <th class="col-actions"><span class="fv-sr-only">Actions</span></th>
@@ -126,6 +154,28 @@
                     <div class="form-field">
                       <label for="subContractEnd">Contract End Date</label>
                       <input type="date" id="subContractEnd">
+                    </div>
+                    <div class="form-field">
+                      <label for="subPaymentAccount">Paid from</label>
+                      <select id="subPaymentAccount" class="filter-select"><option value="">No account set</option></select>
+                    </div>
+                    <div class="form-field">
+                      <label for="subBillingEmail">Billing email</label>
+                      <input type="email" id="subBillingEmail" placeholder="billing@vendor.com">
+                    </div>
+                    <div class="form-field">
+                      <label for="subProofSource">Proof comes from</label>
+                      <select id="subProofSource" class="filter-select">
+                        <option value="none">No proof source</option>
+                        <option value="email_inbox">Email inbox</option>
+                        <option value="vendor_portal">Vendor portal</option>
+                        <option value="bank_only">Bank statement only</option>
+                      </select>
+                    </div>
+                    <div class="form-field">
+                      <label for="subProofExpected" style="display:flex;align-items:center;gap:8px;text-transform:none;font-weight:500;">
+                        <input type="checkbox" id="subProofExpected" checked> Expect a proof for each charge
+                      </label>
                     </div>
                     <div class="form-field full">
                       <div class="toggle-row">
@@ -259,6 +309,84 @@
               </div>
               <div class="modal-foot">
                 <button type="button" class="btn" onclick="closeModal(\'subscriptionHistoryModal\')">Close</button>
+              </div>
+            </div>
+          </div>
+        
+          <!-- Settle an expected charge -->
+          <div id="subSettleModal" class="modal-overlay fv fv-dialog fv-area-orange">
+            <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="subSettleTitle" style="max-width: 560px;">
+              <div class="modal-head">
+                <div class="modal-head-icon"><i class="fa-solid fa-check-double"></i></div>
+                <div class="modal-head-text">
+                  <h3 id="subSettleTitle">Settle charge</h3>
+                  <p id="subSettleSub">Link a payment you already recorded, or record it as an Already paid bill.</p>
+                </div>
+                <button class="modal-close" onclick="closeModal('subSettleModal')" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
+              </div>
+              <div class="modal-body">
+                <input type="hidden" id="subSettleChargeId">
+                <div class="form-grid">
+                  <div class="form-field full">
+                    <label for="subSettleMode">How was it paid? <span class="req">*</span></label>
+                    <select id="subSettleMode" onchange="onSubSettleModeChanged()">
+                      <option value="link_ledger">Link a payment already in the ledger</option>
+                      <option value="already_paid_bill">Create an Already paid bill</option>
+                    </select>
+                  </div>
+                  <div class="form-field full" id="subSettleLedgerGroup">
+                    <label for="subSettleLedger">Payment <span class="req">*</span></label>
+                    <select id="subSettleLedger"></select>
+                  </div>
+                  <div class="form-field" id="subSettleAccountGroup" style="display:none;">
+                    <label for="subSettleAccount">Paid from <span class="req">*</span></label>
+                    <select id="subSettleAccount"></select>
+                  </div>
+                  <div class="form-field" id="subSettleAmountGroup" style="display:none;">
+                    <label for="subSettleAmount">Amount charged</label>
+                    <input type="number" id="subSettleAmount" min="0.01" step="0.01">
+                  </div>
+                  <div class="form-field full">
+                    <label for="subSettleVarianceReason">Reason for a different amount</label>
+                    <input id="subSettleVarianceReason" placeholder="Optional">
+                  </div>
+                </div>
+              </div>
+              <div class="modal-foot">
+                <button class="btn" onclick="closeModal('subSettleModal')">Cancel</button>
+                <button class="btn btn-fill" id="subSettleSaveBtn" onclick="saveSubscriptionSettle()">Settle charge</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Proof of payment -->
+          <div id="subProofModal" class="modal-overlay fv fv-dialog fv-area-orange">
+            <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="subProofTitle" style="max-width: 520px;">
+              <div class="modal-head">
+                <div class="modal-head-icon"><i class="fa-solid fa-paperclip"></i></div>
+                <div class="modal-head-text">
+                  <h3 id="subProofTitle">Proof of payment</h3>
+                  <p>Attach the receipt, or say why there is none. A missing proof never blocks the charge.</p>
+                </div>
+                <button class="modal-close" onclick="closeModal('subProofModal')" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
+              </div>
+              <div class="modal-body">
+                <input type="hidden" id="subProofChargeId">
+                <div class="form-grid">
+                  <div class="form-field full">
+                    <label for="subProofFile">Upload proof</label>
+                    <input type="file" id="subProofFile" accept="application/pdf,image/*">
+                  </div>
+                  <div class="form-field full">
+                    <label for="subProofReason">Or mark it unavailable, with a reason</label>
+                    <input id="subProofReason" placeholder="e.g. The vendor portal is down">
+                  </div>
+                </div>
+              </div>
+              <div class="modal-foot">
+                <button class="btn" onclick="closeModal('subProofModal')">Cancel</button>
+                <button class="btn btn-outline" id="subProofUnavailableBtn" onclick="saveSubscriptionProof('unavailable')">Mark unavailable</button>
+                <button class="btn btn-fill" id="subProofUploadBtn" onclick="saveSubscriptionProof('attached')">Attach file</button>
               </div>
             </div>
           </div>

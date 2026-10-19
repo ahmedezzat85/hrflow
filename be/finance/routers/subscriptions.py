@@ -19,8 +19,12 @@ from fastapi import (
 )
 from fastapi.responses import FileResponse
 
-from core.permissions import require_permission
+from core.permissions import AccessContext, get_access_context, require_permission
 from finance.schemas import (
+    SubscriptionChargeSettle,
+    SubscriptionChargeSkip,
+    SubscriptionChargeProof,
+    GenerateChargesResult,
     SubscriptionCreate,
     SubscriptionUpdate,
     SubscriptionResponse,
@@ -43,6 +47,79 @@ def list_subscriptions(
 ):
     """List recurring vendor subscriptions."""
     return service.list_subscriptions(is_active=is_active, vendor_id=vendor_id)
+
+
+# --- Subscriptions v2 (X5, D-031). These fixed paths come before /subscriptions/{subscription_id}. ---
+
+@router.get("/subscriptions/charges", response_model=List[SubscriptionChargeResponse])
+def list_all_subscription_charges(
+    status_filter: Optional[str] = Query(None, alias="status", description="expected | settled | skipped"),
+    proof_status: Optional[str] = Query(None, description="attached | pending | unavailable"),
+    proofs_missing: bool = Query(False, description="Only charges whose expected proof is still pending"),
+    subscription_id: Optional[int] = Query(None),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
+    book: Optional[str] = Query(None, description="local | overseas | consolidated; by the paying account's book. Omitted = all"),
+    current_user: dict = Depends(require_permission("finance.subscription.read")),
+    service: SubscriptionsService = Depends(get_subscriptions_service),
+):
+    """Charges across all subscriptions with status and proof filters."""
+    return service.list_charges_v2(subscription_id, status_filter, proof_status, proofs_missing, date_from, date_to, book)
+
+
+@router.post("/subscriptions/generate-charges", response_model=GenerateChargesResult)
+def generate_due_subscription_charges(
+    current_user: dict = Depends(require_permission("finance.subscription.write")),
+    service: SubscriptionsService = Depends(get_subscriptions_service),
+):
+    """Creates an expected charge for every due cycle that has none yet. Safe to call repeatedly."""
+    return service.generate_due_charges()
+
+
+@router.post("/subscriptions/charges/{charge_id}/settle", response_model=SubscriptionChargeResponse)
+def settle_subscription_charge(
+    charge_id: int,
+    payload: SubscriptionChargeSettle,
+    current_user: dict = Depends(require_permission("finance.subscription.write")),
+    access: AccessContext = Depends(get_access_context),
+    service: SubscriptionsService = Depends(get_subscriptions_service),
+):
+    """Settles an expected charge by linking an existing payment, or by creating an Already paid bill."""
+    from finance.services.bills_service import BillActor
+    actor = BillActor(email=access.email, is_super_admin=access.is_super_admin, permissions=frozenset(access.permissions))
+    return service.settle_charge(charge_id, payload, actor=actor)
+
+
+@router.post("/subscriptions/charges/{charge_id}/skip", response_model=SubscriptionChargeResponse)
+def skip_subscription_charge(
+    charge_id: int,
+    payload: SubscriptionChargeSkip,
+    current_user: dict = Depends(require_permission("finance.subscription.write")),
+    service: SubscriptionsService = Depends(get_subscriptions_service),
+):
+    return service.skip_charge(charge_id, payload)
+
+
+@router.patch("/subscriptions/charges/{charge_id}/proof", response_model=SubscriptionChargeResponse)
+def set_subscription_charge_proof(
+    charge_id: int,
+    payload: SubscriptionChargeProof,
+    current_user: dict = Depends(require_permission("finance.subscription.write")),
+    service: SubscriptionsService = Depends(get_subscriptions_service),
+):
+    """Marks the proof pending or unavailable (with a reason). Proof never blocks a charge."""
+    return service.set_proof(charge_id, payload)
+
+
+@router.post("/subscriptions/charges/{charge_id}/proof-file", response_model=SubscriptionChargeResponse)
+async def upload_subscription_charge_proof(
+    charge_id: int,
+    file: UploadFile = File(...),
+    current_user: dict = Depends(require_permission("finance.subscription.write")),
+    service: SubscriptionsService = Depends(get_subscriptions_service),
+):
+    user_email = current_user.get("email") or current_user.get("name") or "system"
+    return await service.add_proof_file(charge_id, file, uploaded_by=user_email)
 
 
 @router.post("/subscriptions", response_model=SubscriptionResponse, status_code=status.HTTP_201_CREATED)

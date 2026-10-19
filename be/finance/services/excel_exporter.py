@@ -77,6 +77,8 @@ def write_standard_metadata_header(
         meta_parts.append(f"Basis: {str(metadata['basis']).upper()}")
     if metadata.get("currency"):
         meta_parts.append(f"Currency: {metadata['currency']}")
+    if metadata.get("book"):
+        meta_parts.append(f"Book: {metadata['book']}")
     if metadata.get("period"):
         meta_parts.append(f"Period: {metadata['period']}")
     if metadata.get("generated_at"):
@@ -782,6 +784,68 @@ def export_aging_xlsx(report: Dict[str, Any], metadata: Dict[str, Any], can_view
 
 
 # ----------------------------------------------------------------------
+# 10b. Analytics reports (X6): one record per row, so the file can be pivoted or filtered freely
+# ----------------------------------------------------------------------
+FLAT_REPORTS = ("revenue-breakdown", "subscription-spend", "subscription-proofs-missing")
+
+
+def flat_table(report_key: str, data: Dict[str, Any]):
+    """Returns (title, headers, rows, money_column_indexes) for an analytics report."""
+    if report_key == "revenue-breakdown":
+        headers = ["Month", "Book", "Source", "Product", "Customer", "Currency", "Amount"]
+        rows = [[r["month"], r["book_code"], r["source"], r["product_name"], r["customer_name"], r["currency"], r["amount"]] for r in data.get("rows", [])]
+        return "Revenue by Product, Book and Source", headers, rows, {6}
+    if report_key == "subscription-spend":
+        headers = ["Month", "Vendor", "Department", "Subscription", "Book", "Paid from", "Currency", "Amount", "Variance"]
+        rows = [[r["month"], r["vendor"], r["department"], r["subscription"], r["book_code"], r["paid_from"], r["currency"], r["amount"], r["variance"]] for r in data.get("rows", [])]
+        return "Subscription Spend", headers, rows, {7, 8}
+    if report_key == "subscription-proofs-missing":
+        headers = ["Billing date", "Subscription", "Vendor", "Status", "Currency", "Amount", "Proof source", "Billing email", "Book", "Paid from"]
+        rows = [[r["billing_date"], r["subscription"], r["vendor"], r["status"], r["currency"], r["amount"], r["proof_source"], r["billing_email"], r["book_code"], r["paid_from"]] for r in data.get("rows", [])]
+        return "Subscription Proofs Missing", headers, rows, {5}
+    raise ValueError(f"Not an analytics report: {report_key}")
+
+
+def export_flat_xlsx(report_key: str, data: Dict[str, Any], metadata: Dict[str, Any]) -> bytes:
+    title, headers, rows, money = flat_table(report_key, data)
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = title[:31]
+    ws.views.sheetView[0].showGridLines = True
+    cur_row = write_standard_metadata_header(ws, title, metadata)
+    for col_idx, h in enumerate(headers, start=1):
+        cell = ws.cell(row=cur_row, column=col_idx, value=h)
+        cell.fill = HEADER_FILL
+        cell.font = HEADER_FONT
+        cell.alignment = HEADER_ALIGN
+        cell.border = THIN_BORDER
+    ws.freeze_panes = ws.cell(row=cur_row + 1, column=1)
+    cur_row += 1
+    for row in rows:
+        for col_idx, val in enumerate(row, start=1):
+            cell = ws.cell(row=cur_row, column=col_idx, value=sanitize_cell_value(val) if (col_idx - 1) not in money else float(val or 0.0))
+            cell.font = CELL_FONT
+            if (col_idx - 1) in money:
+                cell.number_format = NUM_FORMAT_CURRENCY
+        cur_row += 1
+    # Totals are per currency, never mixed (D-026)
+    totals = data.get("totals_by_currency") or {}
+    if totals:
+        cur_row += 1
+        ws.cell(row=cur_row, column=1, value="TOTALS BY CURRENCY (never added together)").font = TOTAL_FONT
+        cur_row += 1
+        for cur, amt in sorted(totals.items()):
+            ws.cell(row=cur_row, column=1, value=cur).font = TOTAL_FONT
+            c = ws.cell(row=cur_row, column=2, value=float(amt))
+            c.font = TOTAL_FONT
+            c.number_format = NUM_FORMAT_CURRENCY
+            c.border = TOTAL_BORDER
+            cur_row += 1
+    _auto_fit_columns(ws)
+    return _save_workbook_to_bytes(wb)
+
+
+# ----------------------------------------------------------------------
 # 11. Generic Clean CSV Exporter with Metadata Header & Formula Defense
 # ----------------------------------------------------------------------
 def export_report_csv(report_data: Dict[str, Any], report_key: str, metadata: Dict[str, Any], can_view_sensitive: bool = True) -> bytes:
@@ -793,6 +857,8 @@ def export_report_csv(report_data: Dict[str, Any], report_key: str, metadata: Di
     writer.writerow(["# Entity:", sanitize_cell_value(metadata.get("entity", "All"))])
     writer.writerow(["# Basis:", sanitize_cell_value(str(metadata.get("basis", "cash")).upper())])
     writer.writerow(["# Currency:", sanitize_cell_value(metadata.get("currency", "USD"))])
+    if metadata.get("book"):
+        writer.writerow(["# Book:", sanitize_cell_value(metadata.get("book"))])
     writer.writerow(["# Period:", sanitize_cell_value(metadata.get("period", "All"))])
     writer.writerow(["# Generated At:", sanitize_cell_value(metadata.get("generated_at", ""))])
     writer.writerow(["# Requesting User:", sanitize_cell_value(metadata.get("requesting_user", ""))])
@@ -852,6 +918,12 @@ def export_report_csv(report_data: Dict[str, Any], report_key: str, metadata: Di
             t.get("days_over_90", 0.0),
             t.get("total", 0.0),
         ])
+
+    elif report_key in FLAT_REPORTS:
+        _title, headers, rows, _money = flat_table(report_key, report_data)
+        writer.writerow(headers)
+        for row in rows:
+            writer.writerow([sanitize_cell_value(v) if isinstance(v, str) else v for v in row])
 
     elif report_key == "transactions":
         writer.writerow(["Date", "Account", "Direction", "Category", "Payment Type", "Amount", "Currency", "Reference", "Description", "Cheque #", "Running Balance"])

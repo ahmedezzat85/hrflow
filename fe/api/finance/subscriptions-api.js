@@ -21,12 +21,46 @@
   ];
   }
 
+  // Subscriptions v2 (X5, D-031): proof tracking and a paying account on the seeded subscriptions
+  (FinanceMockState.subscriptions || []).forEach((s) => {
+    if (s.proof_source === undefined) Object.assign(s, { billing_email: "billing@" + String(s.vendor_name || "vendor").toLowerCase().replace(/[^a-z]/g, "") + ".com", proof_source: "email_inbox", proof_expected: true });
+    if (s.payment_account_id === undefined || s.payment_account_id === null) s.payment_account_id = 1;
+  });
+
   if (!FinanceMockState.subscriptionCharges) {
     FinanceMockState.subscriptionCharges = [
     { id: 1, subscription_id: 1, subscription_name: "AWS Cloud Infrastructure", vendor_name: "Amazon Web Services", billing_date: "2026-09-01", amount: 4200.0, currency: "USD", linked_transaction_id: null, linked_bill_id: 1, variance_amount: 0.0, variance_reason: null, note: "Monthly cloud compute charges", created_at: "2026-09-01T08:00:00", attachments: [] },
     { id: 2, subscription_id: 2, subscription_name: "Slack Business+", vendor_name: "Slack Technologies", billing_date: "2026-09-03", amount: 320.0, currency: "USD", linked_transaction_id: null, linked_bill_id: 2, variance_amount: 0.0, variance_reason: null, note: "40 user licenses renewal", created_at: "2026-09-03T09:00:00", attachments: [] },
+    { id: 3, subscription_id: 2, billing_date: "2026-10-03", amount: 320.0, expected_amount: 320.0, currency: "USD", linked_transaction_id: null, linked_bill_id: null, variance_amount: 0.0, variance_reason: null, note: "", created_at: "2026-10-03T00:00:00", attachments: [], status: "expected" },
   ];
+  FinanceMockState.subscriptionCharges.forEach((c) => {
+    if (!c.status) Object.assign(c, { status: "settled", proof_status: c.attachments && c.attachments.length ? "attached" : "pending" });
+    if (!c.proof_status) c.proof_status = "pending";
+  });
   }
+
+  const _addMonths = (iso, months) => {
+    const d = new Date(iso + "T00:00:00Z");
+    const day = d.getUTCDate();
+    d.setUTCDate(1);
+    d.setUTCMonth(d.getUTCMonth() + months);
+    const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+    d.setUTCDate(Math.min(day, last));
+    return d.toISOString().split("T")[0];
+  };
+  const _cycleMonths = { monthly: 1, quarterly: 3, yearly: 12 };
+  const _accountOf = (sub) => (FinanceMockState.accounts || []).find((a) => a.id === sub.payment_account_id);
+  const _chargeView = (c) => {
+    const sub = (FinanceMockState.subscriptions || []).find((s) => s.id === c.subscription_id) || {};
+    const acc = _accountOf(sub);
+    return { ...c, subscription_name: sub.name, vendor_name: sub.vendor_name, proof_expected: !!sub.proof_expected, proof_source: sub.proof_source, payment_account_id: sub.payment_account_id || null, payment_account_name: acc ? acc.account_name : null, book_code: acc ? acc.book_code : "local" };
+  };
+  const _advanceRenewal = (c) => {
+    const sub = (FinanceMockState.subscriptions || []).find((s) => s.id === c.subscription_id);
+    if (!sub) return;
+    const nxt = _addMonths(c.billing_date, _cycleMonths[sub.billing_cycle || "monthly"] || 1);
+    if (nxt > sub.next_renewal_date) sub.next_renewal_date = nxt;
+  };
 
   const FinanceSubscriptionsApi = {
 // Subscriptions & Charges (Phase 6)
@@ -44,10 +78,16 @@
           noticeDeadline = renDate.toISOString().split("T")[0];
           isRenewalImminent = now >= renDate;
         }
+        const acc = _accountOf(s);
+        const charges = (FinanceMockState.subscriptionCharges || []).filter((c) => c.subscription_id === s.id);
         return {
           ...s,
           notice_deadline_date: noticeDeadline,
           is_renewal_imminent: isRenewalImminent,
+          payment_account_name: acc ? acc.account_name : null,
+          book_code: acc ? acc.book_code : "local",
+          expected_charges_count: charges.filter((c) => c.status === "expected").length,
+          proofs_missing_count: charges.filter((c) => s.proof_expected && c.proof_status === "pending" && c.status !== "skipped").length,
         };
       });
       if (params && params.is_active !== undefined) {
@@ -61,6 +101,94 @@
     }
     const q = new URLSearchParams(params || {}).toString();
     return apiRequest("GET", `/api/finance/subscriptions${q ? `?${q}` : ""}`);
+  },
+  // ---- Subscriptions v2 (X5, D-031)
+  async getSubscriptionChargesV2(params = {}) {
+    if (_isMock()) {
+      let list = [...(FinanceMockState.subscriptionCharges || [])];
+      if (params.status) list = list.filter((c) => c.status === params.status);
+      if (params.subscription_id) list = list.filter((c) => c.subscription_id === parseInt(params.subscription_id, 10));
+      if (params.proofs_missing === true || params.proofs_missing === "true") {
+        list = list.filter((c) => c.proof_status === "pending" && c.status !== "skipped" && (FinanceMockState.subscriptions || []).some((s) => s.id === c.subscription_id && s.proof_expected));
+      }
+      let out = list.map(_chargeView);
+      if (params.book && params.book !== "consolidated") out = out.filter((c) => c.book_code === params.book);
+      return out.sort((a, b) => b.billing_date.localeCompare(a.billing_date) || b.id - a.id);
+    }
+    const qs = new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ""))).toString();
+    return apiRequest("GET", `/api/finance/subscriptions/charges${qs ? "?" + qs : ""}`);
+  },
+  async generateSubscriptionCharges() {
+    if (_isMock()) return { created: 0, subscriptions_checked: (FinanceMockState.subscriptions || []).length };
+    return apiRequest("POST", "/api/finance/subscriptions/generate-charges");
+  },
+  async settleSubscriptionCharge(id, payload) {
+    if (_isMock()) {
+      const c = (FinanceMockState.subscriptionCharges || []).find((x) => x.id === parseInt(id, 10));
+      if (!c) throw new Error("Subscription charge not found");
+      if (c.status !== "expected") throw new Error(`Only an expected charge can be settled or skipped; this one is ${c.status}.`);
+      let actual;
+      if (payload.mode === "link_ledger") {
+        const tx = (FinanceMockState.transactions || []).find((t) => t.id === Number(payload.ledger_transaction_id));
+        if (!tx) throw new Error("Ledger transaction not found");
+        if (tx.direction !== "out") throw new Error("Only a payment (money out) can settle a subscription charge");
+        if ((FinanceMockState.subscriptionCharges || []).some((x) => x.linked_transaction_id === tx.id)) throw new Error("This payment is already linked to another subscription charge");
+        actual = Number(tx.amount);
+        c.linked_transaction_id = tx.id;
+      } else if (payload.mode === "already_paid_bill") {
+        const sub = (FinanceMockState.subscriptions || []).find((s) => s.id === c.subscription_id);
+        const accId = payload.bank_account_id || (sub && sub.payment_account_id);
+        const acc = (FinanceMockState.accounts || []).find((a) => a.id === Number(accId));
+        if (!acc) throw new Error("bank_account_id is required: the subscription has no paying account");
+        actual = Number(payload.amount != null ? payload.amount : (c.expected_amount != null ? c.expected_amount : c.amount));
+        if (Number(acc.current_balance || 0) < actual) throw new Error(`Account '${acc.account_name}' balance is below the payment.`);
+        acc.current_balance = round(Number(acc.current_balance) - actual, 2);
+        c.linked_bill_id = Math.max(0, ...(FinanceMockState.bills || []).map((b) => b.id)) + 1;
+      } else {
+        throw new Error("mode must be link_ledger or already_paid_bill");
+      }
+      const expected = c.expected_amount != null ? c.expected_amount : c.amount;
+      Object.assign(c, { amount: actual, variance_amount: round(actual - expected, 2), variance_reason: payload.variance_reason || null, status: "settled", settled_at: new Date().toISOString() });
+      _advanceRenewal(c);
+      return _chargeView(c);
+    }
+    return apiRequest("POST", `/api/finance/subscriptions/charges/${id}/settle`, payload);
+  },
+  async skipSubscriptionCharge(id, payload) {
+    if (_isMock()) {
+      const c = (FinanceMockState.subscriptionCharges || []).find((x) => x.id === parseInt(id, 10));
+      if (!c) throw new Error("Subscription charge not found");
+      if (c.status !== "expected") throw new Error(`Only an expected charge can be settled or skipped; this one is ${c.status}.`);
+      if (!String(payload.reason || "").trim()) throw new Error("A reason is required to skip a charge");
+      Object.assign(c, { status: "skipped", skipped_reason: payload.reason.trim() });
+      _advanceRenewal(c);
+      return _chargeView(c);
+    }
+    return apiRequest("POST", `/api/finance/subscriptions/charges/${id}/skip`, payload);
+  },
+  async setSubscriptionChargeProof(id, payload) {
+    if (_isMock()) {
+      const c = (FinanceMockState.subscriptionCharges || []).find((x) => x.id === parseInt(id, 10));
+      if (!c) throw new Error("Subscription charge not found");
+      if (payload.proof_status === "unavailable" && !String(payload.proof_note || "").trim()) throw new Error("A reason is required when the proof is unavailable");
+      if (payload.proof_status === "attached" && !(c.attachments || []).length) throw new Error("Upload the proof file to mark it attached");
+      Object.assign(c, { proof_status: payload.proof_status, proof_note: payload.proof_note || null });
+      return _chargeView(c);
+    }
+    return apiRequest("PATCH", `/api/finance/subscriptions/charges/${id}/proof`, payload);
+  },
+  async uploadSubscriptionChargeProof(id, file) {
+    if (_isMock()) {
+      const c = (FinanceMockState.subscriptionCharges || []).find((x) => x.id === parseInt(id, 10));
+      if (!c) throw new Error("Subscription charge not found");
+      c.attachments = c.attachments || [];
+      c.attachments.push({ id: Date.now(), file_name: (file && file.name) || "proof.pdf", file_size: (file && file.size) || 0, mime_type: (file && file.type) || "application/pdf" });
+      Object.assign(c, { proof_status: "attached", proof_note: null });
+      return _chargeView(c);
+    }
+    const formData = new FormData();
+    formData.append("file", file);
+    return apiRequest("POST", `/api/finance/subscriptions/charges/${id}/proof-file`, formData);
   },
   async getSubscription(id) {
     if (_isMock()) {
@@ -92,6 +220,9 @@
         department: payload.department || null,
         payment_method: payload.payment_method || "card",
         payment_account_id: payload.payment_account_id || null,
+        billing_email: payload.billing_email || null,
+        proof_source: payload.proof_source || "none",
+        proof_expected: payload.proof_expected !== false,
         seats_count: payload.seats_count || null,
         monthly_equivalent_amount: monthlyEquiv,
         auto_generate_bill: Boolean(payload.auto_generate_bill),

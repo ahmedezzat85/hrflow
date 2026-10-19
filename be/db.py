@@ -92,6 +92,28 @@ def init_db():
                         conn.execute(text(f"ALTER TABLE {t_name} ADD COLUMN {col.name} {type_str}"))
         conn.commit()
 
+    # Books (D-028): seed Local/Overseas and put every account without a book in the default one
+    try:
+        from finance import books as _books
+        with get_db_context() as db:
+            default_id = _books.default_book_id(db)
+            db.execute(text("UPDATE finance_bank_accounts SET book_id = :b WHERE book_id IS NULL"), {"b": default_id})
+            db.execute(text("UPDATE finance_bank_accounts SET visibility = 'full' WHERE visibility IS NULL"))
+            db.execute(text("UPDATE finance_customers SET is_intercompany = 0 WHERE is_intercompany IS NULL"))
+            db.commit()
+    except Exception:
+        import logging
+        logging.getLogger(__name__).error("Book seeding failed", exc_info=True)
+
+    # Revenue sources (D-029)
+    try:
+        from finance import revenue as _revenue
+        with get_db_context() as db:
+            _revenue.ensure_sources(db)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).error("Revenue source seeding failed", exc_info=True)
+
     # Idempotently synchronize RBAC catalog permissions and Super-Admin grants
     try:
         from core.role_seed import sync_catalog

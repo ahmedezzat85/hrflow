@@ -13,7 +13,7 @@ Each ledger row counts toward revenue, toward spend, or toward neither:
 """
 from typing import Optional, Tuple
 
-REVERSAL_SOURCES = frozenset({"bill_payment_reversal", "cheque_reversal", "payment_reversal"})
+REVERSAL_SOURCES = frozenset({"bill_payment_reversal", "cheque_reversal", "payment_reversal", "revenue_receipt_reversal"})
 FORCED_SPEND_SOURCES = frozenset({"payroll", "statutory_remittance"})
 
 # Payment types that only move money between the company's own accounts
@@ -74,3 +74,47 @@ def classify(tx, category_kind: Optional[str] = None, has_category: Optional[boo
         or category_kind != "revenue"
     )
     return (SPEND, amount) if counts else None
+
+# --- Book views (D-028) ---------------------------------------------------------------------------------------
+# Inter-book transfers are only visible inside a single-book view. They never count as operating spend, and only
+# the Local view reads an inflow from Overseas as revenue.
+TRANSFER_IN = "transfer_in"
+TRANSFER_OUT = "transfer_out"
+
+
+def _is_intercompany_receipt(tx) -> bool:
+    if tx.source not in ("invoice_payment", "payment_reversal"):
+        return False
+    invoice = getattr(tx, "linked_invoice", None)
+    customer = getattr(invoice, "customer", None) if invoice is not None else None
+    return bool(getattr(customer, "is_intercompany", False))
+
+
+def classify_view(tx, category_kind: Optional[str] = None, has_category: Optional[bool] = None, scope=None):
+    """Return (side, signed_amount, label) for a ledger row in a book view, or None when it counts nowhere.
+
+    With no scope (or a scope that neither restricts nor eliminates) this is exactly classify(); label is None.
+    Sides are REVENUE, SPEND and, inside a single-book view only, TRANSFER_IN / TRANSFER_OUT.
+    """
+    from finance import books
+
+    if scope is not None and scope.restricts and scope.inter_book(tx):
+        amount = float(tx.amount or 0.0)
+        local = scope.view == books.LOCAL
+        if tx.direction == "in":
+            if local:
+                return (REVENUE, amount, books.INCOME_FROM_OVERSEAS)
+            return (TRANSFER_IN, amount, books.RECEIVED_FROM_LOCAL)
+        return (TRANSFER_OUT, amount, books.TRANSFERRED_TO_OVERSEAS if local else books.TRANSFERRED_TO_LOCAL)
+
+    if scope is not None and _is_intercompany_receipt(tx):
+        if scope.eliminates:
+            return None
+        if scope.view == books.LOCAL:
+            base = classify(tx, category_kind, has_category)
+            if base:
+                return (base[0], base[1], books.INTERCOMPANY_INCOME)
+            return None
+
+    base = classify(tx, category_kind, has_category)
+    return (base[0], base[1], None) if base else None

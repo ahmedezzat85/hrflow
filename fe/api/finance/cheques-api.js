@@ -32,6 +32,7 @@
       fiscal_year: 2026,
       notes: "AWS cloud hosting payment",
       created_at: "2026-09-02T10:00:00",
+      attachments: [{ id: 1, cheque_id: 1, file_name: "cheque-001011-front.pdf", file_size: 48213, mime_type: "application/pdf", uploaded_by: "admin@voyance.health" }],
     },
     {
       id: 2,
@@ -54,12 +55,23 @@
   ];
   }
 
+  // Mock mirror of the backend response: attachment_count / has_scan derived from the scan list (D-032).
+  const _chequeView = (c) => {
+    const n = (c.attachments || []).length;
+    const { attachments, ...rest } = c;
+    return { ...rest, attachment_count: n, has_scan: n > 0 };
+  };
+
   const FinanceChequesApi = {
 // Cheques (Phase 5)
   async getCheques(params) {
     if (_isMock()) {
       let list = [...(FinanceMockState.cheques || [])];
       if (params) {
+        if (params.has_scan !== undefined && params.has_scan !== null && params.has_scan !== "") {
+          const want = String(params.has_scan) === "true";
+          list = list.filter((c) => ((c.attachments || []).length > 0) === want);
+        }
         if (params.fiscal_year) list = list.filter((c) => c.fiscal_year === parseInt(params.fiscal_year, 10));
         if (params.status) list = list.filter((c) => c.status === params.status);
         if (params.account_id) list = list.filter((c) => c.account_id === parseInt(params.account_id, 10));
@@ -69,7 +81,7 @@
           list = list.filter((c) => (c.cheque_number || "").toLowerCase().includes(s) || (c.payee || "").toLowerCase().includes(s) || (c.notes || "").toLowerCase().includes(s));
         }
       }
-      return list;
+      return list.map(_chequeView);
     }
     let url = "/api/finance/cheques";
     if (params) {
@@ -82,9 +94,68 @@
     if (_isMock()) {
       const c = (FinanceMockState.cheques || []).find((item) => item.id === parseInt(id, 10));
       if (!c) throw new Error("Cheque not found");
-      return c;
+      return _chequeView(c);
     }
     return apiRequest("GET", `/api/finance/cheques/${id}`);
+  },
+  // Next cheque number for an account: last numeric serial + 1, zero padding kept (D-032)
+  async getNextChequeNumber(accountId) {
+    if (_isMock()) {
+      const nums = (FinanceMockState.cheques || [])
+        .filter((c) => c.account_id === parseInt(accountId, 10) && /^\d+$/.test(String(c.cheque_number || "").trim()))
+        .map((c) => String(c.cheque_number).trim());
+      if (!nums.length) return { account_id: parseInt(accountId, 10), next_cheque_number: null, last_cheque_number: null };
+      const last = nums.reduce((a, b) => (parseInt(b, 10) > parseInt(a, 10) ? b : a));
+      return { account_id: parseInt(accountId, 10), next_cheque_number: String(parseInt(last, 10) + 1).padStart(last.length, "0"), last_cheque_number: last };
+    }
+    return apiRequest("GET", `/api/finance/cheques/next-number?account_id=${encodeURIComponent(accountId)}`);
+  },
+  async getChequeAttachments(id) {
+    if (_isMock()) {
+      const c = (FinanceMockState.cheques || []).find((item) => item.id === parseInt(id, 10));
+      if (!c) throw new Error("Cheque not found");
+      return [...(c.attachments || [])];
+    }
+    return apiRequest("GET", `/api/finance/cheques/${id}/attachments`);
+  },
+  async uploadChequeAttachments(id, files) {
+    if (_isMock()) {
+      const c = (FinanceMockState.cheques || []).find((item) => item.id === parseInt(id, 10));
+      if (!c) throw new Error("Cheque not found");
+      c.attachments = c.attachments || [];
+      const created = Array.from(files || []).map((f) => {
+        const att = { id: Date.now() + Math.floor(Math.random() * 1000), cheque_id: c.id, file_name: f.name || "scan.pdf", file_size: f.size || 0, mime_type: f.type || "application/pdf", uploaded_by: "admin@voyance.health" };
+        c.attachments.push(att);
+        return att;
+      });
+      return created;
+    }
+    const formData = new FormData();
+    Array.from(files || []).forEach((f) => formData.append("files", f));
+    return apiRequest("POST", `/api/finance/cheques/${id}/attachments`, formData);
+  },
+  async deleteChequeAttachment(id, attachmentId) {
+    if (_isMock()) {
+      const c = (FinanceMockState.cheques || []).find((item) => item.id === parseInt(id, 10));
+      if (!c) throw new Error("Cheque not found");
+      c.attachments = (c.attachments || []).filter((a) => a.id !== parseInt(attachmentId, 10));
+      return null;
+    }
+    return apiRequest("DELETE", `/api/finance/cheques/${id}/attachments/${attachmentId}`);
+  },
+  async getChequeAttachmentBlobUrl(id, attachmentId) {
+    if (_isMock()) {
+      const blob = new Blob([`%PDF-1.4
+% Mock cheque scan ${attachmentId} for cheque ${id}
+%%EOF`], { type: "application/pdf" });
+      return URL.createObjectURL(blob);
+    }
+    const token = typeof TokenStore !== "undefined" ? TokenStore.get() : null;
+    const headers = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const res = await fetch(`/api/finance/cheques/${id}/attachments/${attachmentId}/download`, { headers, credentials: "include" });
+    if (!res.ok) throw new Error(`Failed to load scan: ${res.statusText}`);
+    return URL.createObjectURL(await res.blob());
   },
   async createCheque(payload) {
     if (_isMock()) {
@@ -96,8 +167,10 @@
       const diffDays = Math.floor((new Date() - new Date(payload.issue_date)) / (1000 * 60 * 60 * 24));
       const isStale = diffDays > 180;
       const newCheque = {
-        id: (FinanceMockState.cheques || []).length + 1,
+        id: Math.max(0, ...(FinanceMockState.cheques || []).map((c) => c.id)) + 1,
         ...payload,
+        attachment_url: null,
+        attachments: [],
         account_id: parseInt(payload.account_id, 10),
         account_name: bank ? bank.account_name : null,
         destination_cash_account_name: destCash ? destCash.account_name : null,
@@ -124,7 +197,7 @@
           if (bill) bill.status = "paid";
         }
       }
-      return newCheque;
+      return _chequeView(newCheque);
     }
     return apiRequest("POST", "/api/finance/cheques", payload);
   },

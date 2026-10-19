@@ -25,10 +25,14 @@ class AccountsRepository:
         is_active: Optional[bool] = None,
         limit: int = 50,
         offset: int = 0,
+        book: Optional[str] = None,
     ) -> List[FinanceBankAccountDB]:
         query = self.db.query(FinanceBankAccountDB)
         if is_active is not None:
             query = query.filter(FinanceBankAccountDB.is_active == is_active)
+        if book:
+            from finance import books
+            query = books.resolve(self.db, book).filter(query, FinanceBankAccountDB.id)
         return query.order_by(FinanceBankAccountDB.id.asc()).offset(offset).limit(limit).all()
 
     def get_by_id(self, account_id: int) -> Optional[FinanceBankAccountDB]:
@@ -44,7 +48,10 @@ class AccountsRepository:
         return self.db.query(LedgerTransactionDB).filter(LedgerTransactionDB.account_id == account_id).count() > 0
 
     def create(self, data: dict) -> FinanceBankAccountDB:
+        from finance import books
         account = FinanceBankAccountDB(
+            book_id=data.get("book_id") or books.default_book_id(self.db),
+            visibility=data.get("visibility") or "full",
             account_name=data["account_name"].strip(),
             bank_name=data["bank_name"].strip() if data.get("bank_name") else None,
             account_number=data["account_number"].strip(),
@@ -86,6 +93,10 @@ class AccountsRepository:
                 account.current_balance = float(data["opening_balance"])
         if "is_active" in data and data["is_active"] is not None:
             account.is_active = bool(data["is_active"])
+        if data.get("book_id"):
+            account.book_id = data["book_id"]
+        if data.get("visibility"):
+            account.visibility = data["visibility"]
 
         self.db.commit()
         self.db.refresh(account)
@@ -223,3 +234,62 @@ class AccountsRepository:
             },
             "balance_as_of": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
         }
+
+    # ------------------------------------------------------------------
+    # Balance checkpoints (D-028)
+    # ------------------------------------------------------------------
+    def list_checkpoints(self, account_id: int) -> List["AccountBalanceCheckpointDB"]:
+        from finance.models import AccountBalanceCheckpointDB
+        return (
+            self.db.query(AccountBalanceCheckpointDB)
+            .filter(AccountBalanceCheckpointDB.account_id == account_id)
+            .order_by(AccountBalanceCheckpointDB.date.desc(), AccountBalanceCheckpointDB.id.desc())
+            .all()
+        )
+
+    def get_checkpoint(self, account_id: int, checkpoint_id: int):
+        from finance.models import AccountBalanceCheckpointDB
+        return (
+            self.db.query(AccountBalanceCheckpointDB)
+            .filter(AccountBalanceCheckpointDB.id == checkpoint_id, AccountBalanceCheckpointDB.account_id == account_id)
+            .first()
+        )
+
+    def create_checkpoint(self, account_id: int, data: dict, created_by: Optional[str] = None):
+        from finance.models import AccountBalanceCheckpointDB
+        cp = AccountBalanceCheckpointDB(
+            account_id=account_id,
+            date=data["date"],
+            balance=float(data["balance"]),
+            note=(data.get("note") or "").strip() or None,
+            created_by=created_by,
+        )
+        self.db.add(cp)
+        self.db.commit()
+        self.db.refresh(cp)
+        return cp
+
+    def checkpoint_attachment(self, checkpoint_id: int):
+        from finance.models import FinanceAttachmentDB
+        return (
+            self.db.query(FinanceAttachmentDB)
+            .filter(FinanceAttachmentDB.checkpoint_id == checkpoint_id)
+            .order_by(FinanceAttachmentDB.id.desc())
+            .first()
+        )
+
+    def add_checkpoint_attachment(self, checkpoint_id: int, file_name: str, file_size: int, mime_type: str, storage_ref: str, uploaded_by: Optional[str] = None):
+        from finance.models import FinanceAttachmentDB
+        att = FinanceAttachmentDB(
+            checkpoint_id=checkpoint_id,
+            file_name=file_name,
+            file_size=file_size,
+            mime_type=mime_type,
+            storage_ref=storage_ref,
+            uploaded_at=datetime.utcnow(),
+            uploaded_by=uploaded_by,
+        )
+        self.db.add(att)
+        self.db.commit()
+        self.db.refresh(att)
+        return att

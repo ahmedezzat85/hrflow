@@ -189,6 +189,12 @@ function renderFinanceAccounts(allItems) {
   if (_currentBankAccountFilter === "active") items = items.filter((a) => a.is_active);
   else if (_currentBankAccountFilter === "inactive") items = items.filter((a) => !a.is_active);
   if (_accountCurrencyFilter) items = items.filter((a) => (a.currency || "USD").toUpperCase() === _accountCurrencyFilter);
+  // All accounts, grouped by book (Local first); the order inside a book is unchanged
+  items = items.map((a, i) => ({ a, i })).sort((x, y) => {
+    const bx = x.a.book_code === "overseas" ? 1 : 0;
+    const by = y.a.book_code === "overseas" ? 1 : 0;
+    return bx - by || x.i - y.i;
+  }).map((x) => x.a);
 
   if (items.length === 0) {
     tbody.innerHTML = "";
@@ -210,6 +216,14 @@ function renderFinanceAccounts(allItems) {
       const bookBal = acc.book_balance !== undefined ? acc.book_balance : acc.current_balance;
       const availBal = acc.available_balance !== undefined ? acc.available_balance : acc.current_balance;
       const sub = (acc.bank_name && !isCash ? acc.bank_name : "") + (acc.country ? (acc.bank_name && !isCash ? " · " : "") + acc.country : "");
+      const isPartial = acc.visibility === "partial";
+      const bookChip = `<span class="fv-book-chip fv-book-chip--${esc(acc.book_code || "local")}" data-book-chip>${esc(acc.book_name || "Local")}${isPartial ? " · Partial" : ""}</span>`;
+      const cp = acc.latest_checkpoint;
+      const cpNote = isPartial
+        ? (cp
+          ? `<span class="fv-note fv-note--warn" data-unrecorded>${Number(cp.unrecorded_difference) === 0 ? "Matches checkpoint" : `Unrecorded difference ${esc(FinanceUI.plainNumber(cp.unrecorded_difference, cur))}`} (${esc(FinanceUI.formatDate(cp.date))})</span>`
+          : `<span class="fv-note fv-note--warn" data-unrecorded>No checkpoint yet</span>`)
+        : "";
       const masked = FinanceFormat.formatMaskedAccountNumber(acc.account_number, isCash);
       const typeText = `${isCash ? "Cash" : "Bank"} · ${masked}`;
       const lines = Number(acc.unreconciled_count || 0);
@@ -220,13 +234,14 @@ function renderFinanceAccounts(allItems) {
 
       return `
     <tr class="${acc.is_active ? "" : "account-inactive"}">
-      <td data-label="Account"><div class="fv-cell-main">${FinanceUI.avatar(acc.account_name, FinanceUI.hueForId(acc.id))}<div class="fv-cell-main__text"><a href="javascript:void(0)" class="fv-name-btn" onclick="openAccountWorkspace(${acc.id})">${esc(acc.account_name)}</a>${sub ? `<span class="fv-sub">${esc(sub)}</span>` : ""}</div></div></td>
+      <td data-label="Account"><div class="fv-cell-main">${FinanceUI.avatar(acc.account_name, FinanceUI.hueForId(acc.id))}<div class="fv-cell-main__text"><a href="javascript:void(0)" class="fv-name-btn" onclick="openAccountWorkspace(${acc.id})">${esc(acc.account_name)}</a>${sub ? `<span class="fv-sub">${esc(sub)}</span>` : ""}${bookChip}</div></div></td>
       <td data-label="Type">${esc(typeText)}</td>
       <td data-label="Last statement">${lastStatement}</td>
-      <td data-label="Balance" class="cell-money fv-num"><div class="fv-amount"><span class="fv-amount__value"><span class="fv-cur">${esc(cur)}</span> ${esc(FinanceUI.plainNumber(bookBal, cur))}</span>${availSub ? `<span class="fv-sub">${esc(availSub)}</span>` : ""}</div></td>
+      <td data-label="Balance" class="cell-money fv-num"><div class="fv-amount"><span class="fv-amount__value"><span class="fv-cur">${esc(cur)}</span> ${esc(FinanceUI.plainNumber(bookBal, cur))}</span>${availSub ? `<span class="fv-sub">${esc(availSub)}</span>` : ""}${cpNote}</div></td>
       <td data-label="Actions" class="col-actions">${FinanceUI.rowActions({
         icons: [
           { icon: "fa-pen", label: "Edit Account", onclick: `openEditCompanyBankAccountModal(${acc.id})` },
+          ...(isPartial ? [{ icon: "fa-flag-checkered", label: "Balance checkpoints", className: "btn-account-checkpoints", onclick: `openAccountCheckpointModal(${acc.id})` }] : []),
           { icon: acc.is_active ? "fa-power-off" : "fa-check", label: acc.is_active ? "Deactivate Account" : "Reactivate Account", className: acc.is_active ? "fv-icon-btn--danger" : "", onclick: `toggleCompanyBankAccountActive(${acc.id}, ${acc.is_active})` },
         ],
       })}</td>
@@ -254,7 +269,23 @@ function onCompanyAccountTypeChange() {
   }
 }
 
-function openAddCompanyBankAccountModal() {
+// Books (X2, D-028): options for the account dialog, cached in FinanceState
+async function _fillBookSelect(selectedId) {
+  if (!FinanceState.books || !FinanceState.books.length) {
+    try { FinanceState.books = await FinanceApi.getBooks(); } catch (_) { FinanceState.books = []; }
+  }
+  const sel = document.getElementById("fCompanyBook");
+  if (!sel) return;
+  sel.innerHTML = (FinanceState.books || []).map((b) => `<option value="${b.id}">${FinanceUI.esc(b.name)}${b.is_default ? " (default)" : ""}</option>`).join("");
+  const fallback = (FinanceState.books || []).find((b) => b.is_default);
+  sel.value = String(selectedId || (fallback && fallback.id) || "");
+}
+
+async function openAddCompanyBankAccountModal() {
+  await _fillBookSelect(null);
+  document.getElementById("fCompanyVisibility").value = "full";
+  document.getElementById("fCompanyBook").disabled = false;
+  document.getElementById("fCompanyBookWarning").style.display = "none";
   FinanceForm.clearErrors("companyBankAccountModal");
   document.getElementById("companyBankAccountModalTitle").textContent = "Add Company Bank / Cash Account";
   document.getElementById("fCompanyAccountId").value = "";
@@ -279,10 +310,14 @@ function openAddCompanyBankAccountModal() {
   openModal("companyBankAccountModal");
 }
 
-function openEditCompanyBankAccountModal(id) {
+async function openEditCompanyBankAccountModal(id) {
   FinanceForm.clearErrors("companyBankAccountModal");
   const acc = (FinanceState.accounts || []).find((a) => a.id === id);
   if (!acc) return;
+  await _fillBookSelect(acc.book_id);
+  document.getElementById("fCompanyVisibility").value = acc.visibility || "full";
+  document.getElementById("fCompanyBook").disabled = !!acc.has_postings;
+  document.getElementById("fCompanyBookWarning").style.display = acc.has_postings ? "block" : "none";
 
   document.getElementById("companyBankAccountModalTitle").textContent = "Edit Company Account";
   document.getElementById("fCompanyAccountId").value = acc.id;
@@ -342,7 +377,9 @@ async function saveCompanyBankAccount() {
 
   try {
     if (idVal) {
-      const payload = { account_name, account_type, country, currency, opening_balance_date };
+      const payload = { account_name, account_type, country, currency, opening_balance_date, visibility: document.getElementById("fCompanyVisibility").value };
+      const bookSel = document.getElementById("fCompanyBook");
+      if (bookSel && !bookSel.disabled && bookSel.value) payload.book_id = parseInt(bookSel.value, 10);
       if (bank_name || account_type === "cash") payload.bank_name = bank_name || null;
       if (account_number) payload.account_number = account_number;
       await FinanceApi.updateAccount(Number(idVal), payload);
@@ -364,7 +401,10 @@ async function saveCompanyBankAccount() {
         currency,
         opening_balance,
         opening_balance_date,
+        visibility: document.getElementById("fCompanyVisibility").value,
       };
+      const newBookSel = document.getElementById("fCompanyBook");
+      if (newBookSel && newBookSel.value) payload.book_id = parseInt(newBookSel.value, 10);
       await FinanceApi.createAccount(payload);
       toast("Account created successfully", "fa-solid fa-circle-check");
     }
@@ -3220,4 +3260,62 @@ window.linkDuplicateCandidate = linkDuplicateCandidate;
 window.dismissDuplicateWarning = dismissDuplicateWarning;
 window.openGlobalFinanceTransactionModal = openGlobalFinanceTransactionModal;
 window.onGlobalTxAccountSelected = onGlobalTxAccountSelected;
+
+// ==========================================
+// Balance checkpoints for partial-visibility accounts (X2, D-028)
+// ==========================================
+async function openAccountCheckpointModal(accountId) {
+  document.getElementById("fCheckpointAccountId").value = accountId;
+  const acc = (FinanceState.accounts || []).find((a) => a.id === Number(accountId));
+  document.getElementById("accountCheckpointModalSubtitle").textContent = acc
+    ? `${acc.account_name}: record the balance you can see at the bank. The difference from the ledger is shown, never posted.`
+    : "Record the balance you can see at the bank.";
+  document.getElementById("fCheckpointDate").value = new Date().toISOString().split("T")[0];
+  document.getElementById("fCheckpointBalance").value = "";
+  document.getElementById("fCheckpointNote").value = "";
+  openModal("accountCheckpointModal");
+  await _renderAccountCheckpoints(accountId);
+}
+
+async function _renderAccountCheckpoints(accountId) {
+  const list = document.getElementById("accountCheckpointList");
+  if (!list) return;
+  try {
+    const items = await FinanceApi.getAccountCheckpoints(accountId);
+    const acc = (FinanceState.accounts || []).find((a) => a.id === Number(accountId));
+    const cur = acc ? (acc.currency || "USD") : "USD";
+    list.innerHTML = items.map((c) => `<li class="fv-scan-item" data-checkpoint-id="${c.id}"><span class="fv-scan-item__name">${FinanceUI.esc(FinanceUI.formatDate(c.date))} &middot; ${FinanceUI.esc(FinanceUI.plainNumber(c.balance, cur))}${c.note ? ` &middot; ${FinanceUI.esc(c.note)}` : ""}</span><span class="fv-scan-item__size">${Number(c.unrecorded_difference) === 0 ? "No difference" : `Unrecorded ${FinanceUI.esc(FinanceUI.plainNumber(c.unrecorded_difference, cur))}`}</span></li>`).join("");
+  } catch (err) {
+    toast("Failed to load checkpoints: " + (err.message || err), "fa-solid fa-triangle-exclamation");
+  }
+}
+
+async function saveAccountCheckpoint() {
+  const accountId = document.getElementById("fCheckpointAccountId").value;
+  const ok = FinanceForm.validateRequiredFields("accountCheckpointModal", [
+    { id: "fCheckpointDate", label: "Date" },
+    { id: "fCheckpointBalance", label: "Observed balance" },
+  ]);
+  if (!ok) return;
+  const btn = document.getElementById("accountCheckpointSaveBtn");
+  if (btn) btn.disabled = true;
+  try {
+    await FinanceApi.createAccountCheckpoint(accountId, {
+      date: document.getElementById("fCheckpointDate").value,
+      balance: parseFloat(document.getElementById("fCheckpointBalance").value),
+      note: document.getElementById("fCheckpointNote").value.trim() || null,
+    });
+    toast("Checkpoint recorded. No ledger entry was posted.", "fa-solid fa-circle-check");
+    await _renderAccountCheckpoints(accountId);
+    FinanceState.accounts = await FinanceApi.getAccounts();
+    renderFinanceAccounts(FinanceState.accounts);
+  } catch (err) {
+    toast(err.message || "Failed to record checkpoint", "fa-solid fa-triangle-exclamation");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+window.openAccountCheckpointModal = openAccountCheckpointModal;
+window.saveAccountCheckpoint = saveAccountCheckpoint;
 

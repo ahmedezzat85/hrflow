@@ -12,6 +12,7 @@
             <div class="fv-head-actions" id="financeHeadActionsAccounts" data-head-for="accounts">
               <button class="btn btn-outline" onclick="openRecordFinanceTransferModal()">Transfer</button>
               <button class="btn btn-outline" onclick="openWithdrawCashModal()">Withdraw cash</button>
+              <button class="btn btn-outline" id="btnRecordRevenueReceipt" onclick="openRevenueReceiptModal()">Record revenue</button>
               <button class="btn btn-fill" onclick="openAddCompanyBankAccountModal()">Add account</button>
             </div>
             <div class="fv-head-actions fv-head-actions--tight" id="financeHeadActionsStatements" data-head-for="statements" style="display:none;">
@@ -449,6 +450,11 @@
             <div class="fv-pills-row">
               <div class="fv-pills" id="financeChequeStatusTabs" role="group" aria-label="Cheque status"></div>
               <div class="fv-pills-selects">
+                <select id="financeChequeScanFilter" class="fv-select" aria-label="Scan status" onchange="loadFinanceCheques()">
+                  <option value="">All scans</option>
+                  <option value="false">Scan missing</option>
+                  <option value="true">Has scan</option>
+                </select>
                 <select id="financeChequeFiscalYearFilter" class="fv-select" aria-label="Fiscal year" onchange="loadFinanceCheques()">
                   <option value="">All Fiscal Years</option>
                   <option value="2026" selected>FY 2026</option>
