@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS  Installs the GitHub Actions self-hosted runner that deploys HRFlow on this PC (one time).
 .DESCRIPTION
-  Registers the runner with the label hrflow-prod and starts it at every Windows sign-in (scheduled task, runs as
+  Registers the runner with the label hrflow-prod and starts it at every Windows sign-in (per-user startup entry, runs as
   your own user, so it can reach Docker Desktop). Docker Desktop must also start at sign-in.
   The registration token is short lived; create it with:
       gh api -X POST repos/<owner>/<repo>/actions/runners/registration-token --jq .token
@@ -26,6 +26,7 @@ try {
     if ($LASTEXITCODE) { throw 'runner configuration failed' }
 } finally { Pop-Location }
 $run = Join-Path $Dir 'run.cmd'
-schtasks /Create /TN 'HRFlow GitHub Runner' /SC ONLOGON /TR "`"$run`"" /RL LIMITED /F | Out-Null
+# Per-user startup entry (no administrator rights needed): runs as you, so it can reach Docker Desktop
+New-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'HRFlowGitHubRunner' -Value "`"$run`"" -PropertyType String -Force | Out-Null
 Start-Process -FilePath $run -WorkingDirectory $Dir -WindowStyle Hidden
 Write-Host "Runner '$Name' installed in $Dir and started. It restarts at every sign-in."

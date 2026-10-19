@@ -48,4 +48,4 @@ Production updates itself from release tags. A pull request into `main` (checks 
 
 Roll back to an older release: GitHub > Actions > Deploy production > Run workflow > enter the old tag (e.g. `v1.1.0`). If a bad migration already ran, restore the backup taken at the start of that deploy with `scripts/restore.ps1`.
 
-The runner (`D:/services/actions-runner`) starts at Windows sign-in through the scheduled task "HRFlow GitHub Runner", so this PC must be signed in with Docker Desktop running. Only the deploy workflow targets it (label `hrflow-prod`); test workflows run on GitHub's own machines.
+The runner (`D:/services/actions-runner`) starts at Windows sign-in through a per-user startup entry (HKCU Run, "HRFlowGitHubRunner"), so this PC must be signed in with Docker Desktop running. Only the deploy workflow targets it (label `hrflow-prod`); test workflows run on GitHub's own machines.
