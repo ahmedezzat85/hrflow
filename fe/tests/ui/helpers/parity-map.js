@@ -168,6 +168,8 @@ export const PARITY_MAP = {
       appRoute: '/?mock=admin',
       mockContainerSelector: 'nav[aria-label="HR pages"]',
       appContainerSelector: '#adminNavPanel',
+      // Issue 4 (owner decision 2026-10-19): no visible sidebar search box (Ctrl K opens the palette); the panel also holds the module title
+      keptLabels: ['Search Ctrl K', 'HR'],
       pairs: [
         { name: 'collapse button', mockSelector: 'button:has-text("Collapse")', appSelector: '#adminSidebarCollapseBtn', props: ['fontSize', 'fontWeight', 'borderRadius', 'height'] }
       ]
@@ -195,7 +197,7 @@ export const PARITY_MAP = {
       appRoute: '/?mock=admin',
       mockContainerSelector: 'nav[aria-label="HR pages"]',
       appContainerSelector: '#adminNavPanel',
-      keptLabels: ['Benefits & records'],
+      keptLabels: ['Benefits & records', 'Search Ctrl K', 'HR'],
       pairs: [
         { name: 'sidebar panel', mockSelector: 'nav[aria-label="HR pages"]', appSelector: '#adminNavPanel', props: ['width', 'paddingTop', 'paddingLeft', 'paddingRight', 'backgroundColor', 'borderColor'] },
         { name: 'active dashboard item', mockSelector: 'nav[aria-label="HR pages"] a[aria-current="page"]', appSelector: '#nav-admin-dashboard', props: ['height', 'borderRadius', 'fontSize', 'fontWeight', 'color', 'backgroundColor'] }
