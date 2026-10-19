@@ -183,8 +183,10 @@ export const PARITY_MAP = {
       appRoute: '/?mock=admin',
       mockContainerSelector: 'header',
       appContainerSelector: '.topbar',
+      // Issue 5 (owner decision 2026-10-19): the dashboard top bar stays as is ('General Dashboard', no icon tile or breadcrumb)
+      keptLabels: ['General Dashboard'],
       pairs: [
-        { name: 'top bar container', mockSelector: 'header', appSelector: '.topbar', props: ['height', 'paddingLeft', 'paddingRight', 'backgroundColor', 'borderColor'] },
+        { name: 'top bar container', mockSelector: 'header', appSelector: '.topbar', props: ['height', 'paddingLeft', 'paddingRight', 'backgroundColor', 'borderColor'], accepted: { light: { borderColor: 'rgb(20, 30, 48) rgb(20, 30, 48) rgba(32, 86, 232, 0.12)' }, dark: { borderColor: /rgb\(38, 57, 111\)$/ } } },
         { name: 'top bar title', mockSelector: 'header span:first-child span:nth-child(2)', appSelector: '#adminPageTitle', props: ['fontSize', 'fontWeight', 'color'] }
       ]
     }
