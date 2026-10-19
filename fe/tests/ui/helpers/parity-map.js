@@ -138,10 +138,12 @@ export const PARITY_MAP = {
       appRoute: '/?mock=admin',
       mockContainerSelector: 'main',
       appContainerSelector: '#a-salary',
+      // 'Actions' is the screen-reader-only title of the last column; the search box is an input placeholder.
+      keptLabels: ['Search employees', 'Actions'],
       setup: async (page) => showAdminSection(page, 'a-salary', '#a-salary .hv-stat-tile'),
       pairs: [
         { name: 'stat tile', mockSelector: 'main > div:first-child > div:first-child', appSelector: '#a-salary .hv-stat-tile:first-child', props: ['borderRadius', 'paddingTop', 'paddingBottom', 'paddingLeft', 'paddingRight'] },
-        { name: 'stat value', mockSelector: 'main > div:first-child > div:first-child div:nth-child(2)', appSelector: '#a-salary .hv-stat-tile:first-child .hv-stat-value', props: ['fontSize', 'fontWeight', 'color'] }
+        { name: 'stat value', mockSelector: 'main > div:first-child > div:first-child span:nth-child(2)', appSelector: '#a-salary .hv-stat-tile:first-child .hv-stat-value', props: ['fontSize', 'fontWeight', 'color'] }
       ]
     }
   ],
