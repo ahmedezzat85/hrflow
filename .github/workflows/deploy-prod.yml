@@ -42,12 +42,18 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "sha=$(git rev-parse "refs/tags/$VERSION^{commit}")" >> "$GITHUB_OUTPUT"
 
-      - name: The tagged commit must be on main
+      - name: The tagged commit must come from main
         env:
           VERSION: ${{ steps.v.outputs.version }}
+          EVENT: ${{ github.event_name }}
         run: |
           SHA=$(git rev-parse "refs/tags/$VERSION^{commit}")
           git merge-base --is-ancestor "$SHA" origin/main || { echo "$VERSION is not on main; refusing to deploy"; exit 1; }
+          # A new release (tag push) must be the latest main, i.e. the result of the last accepted pull request.
+          # Re-deploying or rolling back to an older release tag is only possible by starting the workflow by hand.
+          if [ "$EVENT" = "push" ]; then
+            [ "$SHA" = "$(git rev-parse origin/main)" ] || { echo "$VERSION is not the latest main ($(git rev-parse --short origin/main)); tag the latest main"; exit 1; }
+          fi
 
       - name: The tagged commit must have passed the required checks
         env:

@@ -42,7 +42,7 @@ Run `cloudflared` pointing at `http://web:80` on the `internal` network, add the
 Production updates itself from release tags. A pull request into `main` (checks must pass) is the only way code reaches `main`; a release is a tag on a `main` commit.
 
 1. Merge your PR into `main` and wait for the checks on `main` to turn green.
-2. Create the release: `git tag v1.2.0 <commit-on-main>` and `git push origin v1.2.0` (or create a release on GitHub).
+2. Create the release on the latest `main`: `git fetch && git tag v1.2.0 origin/main` and `git push origin v1.2.0` (or create a release on GitHub targeting `main`). A new release tag must point at the current tip of `main`; the images are always built from that commit.
 3. The workflow **Deploy production** runs: it refuses a tag that is not on `main` or whose required checks are not green, then the self-hosted runner on this PC runs `deploy/prod/scripts/deploy.ps1`: encrypted backup, build the new images (the old version keeps running), start the new version (database migrations run on start), wait for `http://localhost/api/health`. If it never becomes healthy, it switches back to the previous version and the workflow fails.
 4. On success `HRFLOW_VERSION` in `D:/services/hrflow-prod/.env` is set to the deployed tag.
 
