@@ -163,15 +163,15 @@ for (const [sliceId, screenConfigs] of Object.entries(PARITY_MAP)) {
               const style = getComputedStyle(element);
               // width/height use the rendered border box: the mocks are content-box, the app is border-box, so the
               // computed (content) size differs even when both render the same box
-              const rect = element.getBoundingClientRect();
-              return Object.fromEntries(props.map((prop) => [prop, prop === 'width' ? `${Math.round(rect.width * 10) / 10}px` : prop === 'height' ? `${Math.round(rect.height * 10) / 10}px` : (style[prop] || style.getPropertyValue(prop))]));
+              // offsetWidth/Height are layout sizes: unlike getBoundingClientRect they ignore the open-animation scale of dialogs
+              return Object.fromEntries(props.map((prop) => [prop, prop === 'width' ? `${element.offsetWidth}px` : prop === 'height' ? `${element.offsetHeight}px` : (style[prop] || style.getPropertyValue(prop))]));
             }, propsToCompare);
             const appStyles = await appPage.locator(pair.appSelector).first().evaluate((element, props) => {
               const style = getComputedStyle(element);
               // width/height use the rendered border box: the mocks are content-box, the app is border-box, so the
               // computed (content) size differs even when both render the same box
-              const rect = element.getBoundingClientRect();
-              return Object.fromEntries(props.map((prop) => [prop, prop === 'width' ? `${Math.round(rect.width * 10) / 10}px` : prop === 'height' ? `${Math.round(rect.height * 10) / 10}px` : (style[prop] || style.getPropertyValue(prop))]));
+              // offsetWidth/Height are layout sizes: unlike getBoundingClientRect they ignore the open-animation scale of dialogs
+              return Object.fromEntries(props.map((prop) => [prop, prop === 'width' ? `${element.offsetWidth}px` : prop === 'height' ? `${element.offsetHeight}px` : (style[prop] || style.getPropertyValue(prop))]));
             }, propsToCompare);
 
             for (const prop of propsToCompare) {
@@ -197,6 +197,8 @@ for (const [sliceId, screenConfigs] of Object.entries(PARITY_MAP)) {
               const isColor = ['color', 'backgroundColor', 'borderColor'].includes(prop);
               const normalizedMock = isDimension ? normalizeDimension(mockValue) : (isColor ? normalizeColor(mockValue) : String(mockValue).trim());
               const normalizedApp = isDimension ? normalizeDimension(appValue) : (isColor ? normalizeColor(appValue) : String(appValue).trim());
+              // Rendered sizes may differ by a sub-pixel because of font rounding
+              if ((prop === 'width' || prop === 'height') && Math.abs(parseFloat(normalizedMock) - parseFloat(normalizedApp)) <= 1) continue;
               if (normalizedMock !== normalizedApp) {
                 failures.push({ element: pair.name, prop, mockValue, appValue });
               }

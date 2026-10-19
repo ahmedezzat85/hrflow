@@ -1246,3 +1246,7 @@
   #a-invoices .hv-select, #a-invoices .hv-link-btn { min-height: 44px; }
   #a-system-roles .btn-delete-role, #a-system-users .btn-archive-user { width: 44px !important; height: 44px !important; }
 }
+
+/* Dashboard chart cards follow the mock: 14px body text, ink-body colour, softer hairline, 7px shorter (S3.1) */
+#a-dashboard .grid.g-2-1 > .card { font-size: 14px; color: var(--ink-body); border-color: var(--hv-card-line); }
+#a-dashboard .grid.g-2-1 .chart-wrap { height: 223px; }
