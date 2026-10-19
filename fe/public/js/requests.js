@@ -83,6 +83,9 @@ function renderRequestsTable(filter) {
     });
   }
 
+  // Requests waiting for a decision come first, then the newest submissions
+  list = list.slice().sort((a, b) => ((a.status === 'Pending' ? 0 : 1) - (b.status === 'Pending' ? 0 : 1)) || String(b.date || '').localeCompare(String(a.date || '')));
+
   if (!list.length) {
     body.innerHTML = renderEmptyTableRow(6, currentRequestsSearch ? `No requests match "${escapeHtml(currentRequestsSearch)}".` : (currentRequestsFilter === 'all' ? 'No pending requests found.' : `No requests found in category "${currentRequestsFilter}".`), 'fa-solid fa-inbox');
     return;

@@ -276,11 +276,13 @@ export const PARITY_MAP = {
       appRoute: '/?mock=admin',
       mockContainerSelector: 'main',
       appContainerSelector: '#a-requests',
+      // Issue 10 (owner decision 2026-10-19): the tab counts follow the data; the search box is an input placeholder; Reject is the icon button's text
+      keptLabels: ['Work from home 3', 'Work from home 1', 'Search requests', 'Reject'],
       setup: async (page) => showAdminSection(page, 'a-requests', '#a-requests table'),
       pairs: [
-        { name: 'requests table shell', mockSelector: 'main > div:last-child', appSelector: '#a-requests .card:has(table)' },
-        { name: 'requests tabs', mockSelector: 'main > div:first-child', appSelector: '#a-requests .tabs' },
-        { name: 'request status pill', mockSelector: 'table tbody tr:first-child td:nth-last-child(2) span', appSelector: '#a-requests tbody tr:first-child td:nth-last-child(2) .status' }
+        { name: 'requests table shell', mockSelector: 'main > div:last-child', appSelector: '#a-requests .card:has(table)', accepted: { light: { fontSize: '16px', color: 'rgb(20, 30, 48)', borderColor: 'rgba(32, 86, 232, 0.12)', height: '551px' }, dark: { fontSize: '16px', height: '551px' } } },
+        { name: 'requests tabs', mockSelector: 'main > div:first-child', appSelector: '#a-requests .hv-tabbar', accepted: { light: { fontSize: '16px', color: 'rgb(20, 30, 48)', borderColor: 'rgb(20, 30, 48) rgb(20, 30, 48) rgba(30, 60, 140, 0.08)' }, dark: { fontSize: '16px', borderColor: /rgb\(38, 57, 111\)$/ } } },
+        { name: 'request status pill', mockSelector: 'table tbody tr:first-child td:nth-last-child(2) span', appSelector: '#a-requests tbody tr:first-child td:nth-last-child(2) span', accepted: { light: { color: 'rgb(143, 74, 0)', backgroundColor: 'rgba(224, 125, 16, 0.12)', borderTopWidth: '1px', borderColor: 'rgba(0, 0, 0, 0)', height: '25px', width: '85px' }, dark: { borderTopWidth: '1px', borderColor: 'rgba(0, 0, 0, 0)', height: '25px', width: '85px' } } }
       ]
     }
   ],
