@@ -3,15 +3,8 @@ name: Finance UX CI
 on:
   push:
     branches: [main]
-    paths:
-      - 'be/**'
-      - 'fe/**'
-      - '.github/workflows/finance-ux-ci.yml'
+  # No path filters: these jobs are required checks for pull requests, so they must run for every PR
   pull_request:
-    paths:
-      - 'be/**'
-      - 'fe/**'
-      - '.github/workflows/finance-ux-ci.yml'
   workflow_dispatch:
 
 permissions:

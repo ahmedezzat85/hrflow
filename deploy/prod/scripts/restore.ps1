@@ -15,7 +15,7 @@ try {
     $src = Split-Path $File -Parent; $leaf = Split-Path $File -Leaf
     $env:BACKUP_PASSPHRASE = $c['BACKUP_PASSPHRASE']
     & docker run --rm -e BACKUP_PASSPHRASE -v "${src}:/in:ro" -v "${stage}:/stage" `
-        --entrypoint sh "hrflow-app:$(if ($c['HRFLOW_VERSION']) { $c['HRFLOW_VERSION'] } else { 'latest' })" -c `
+        --entrypoint sh "hrflow-app:$(if ($env:HRFLOW_VERSION) { $env:HRFLOW_VERSION } elseif ($c['HRFLOW_VERSION']) { $c['HRFLOW_VERSION'] } else { 'latest' })" -c `
         "set -e; openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass env:BACKUP_PASSPHRASE -in /in/$leaf | tar -xzf - -C /stage"
     if ($LASTEXITCODE) { throw 'decryption failed (wrong passphrase or corrupted file)' }
     $env:BACKUP_PASSPHRASE = $null
