@@ -2,7 +2,7 @@ name: Frontend build & smoke test
 
 on:
   push:
-    branches: [refactor/frontend-modular]
+    branches: [main]
     paths: ['fe/**', '.github/workflows/frontend-build-check.yml']
   pull_request:
     paths: ['fe/**', '.github/workflows/frontend-build-check.yml']

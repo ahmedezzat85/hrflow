@@ -2,7 +2,7 @@ name: Finance UX CI
 
 on:
   push:
-    branches: [refactor/finance-ux]
+    branches: [main]
     paths:
       - 'be/**'
       - 'fe/**'
