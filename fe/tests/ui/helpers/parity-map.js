@@ -154,7 +154,7 @@ export const PARITY_MAP = {
       mockFile: 'Nav-Variants.html',
       appRoute: '/?mock=admin',
       mockContainerSelector: 'nav[aria-label="Modules"]',
-      appContainerSelector: '#admin-module-rail',
+      appContainerSelector: '#adminSidebar nav.rail',
       pairs: [
         { name: 'rail badge dot', mockSelector: 'nav[aria-label="Modules"] span[style*="border-radius: 999px"]', appSelector: '#hrRailDot', props: ['height', 'borderRadius'] }
       ]
