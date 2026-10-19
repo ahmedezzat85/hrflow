@@ -32,13 +32,14 @@ Wording differences (`TEXT-CHANGES.md` policy: the app keeps its own words) must
 ## 2. Done on this branch (no decision needed)
 - Old design constants updated to restyle v3 (phase A/B/C, employee table, bills table, compensation plan wording, settings callouts, payroll settings intro, semantics: overdue is a server flag D-016/D-022).
 - Reports spec updated for the library flow.
+- Deleted `finance-guided-payroll.spec.js` (2 tests) and `finance-payroll-split.spec.js` (1 test): they drove the removed wizard modal, and the six-screen journey specs cover the same behaviour (lifecycle submit/approve/finalize/disburse/journal: `finance-payroll-table-cycle` TC-3/5/16 and `payroll-journey`; FX override/reset: TC-2; External + Internal = Total per employee and FX chip: `payroll-step5`).
 - **Real bugs found by the tests and fixed:** Annual Matrix report called a missing `FinanceApi.getMatrixReport` (report never loaded); the statement reconcile "create entry" dialog called missing `listCategories` / `listPaymentTypes` (dropdowns stayed empty, errors swallowed); dashboard "Review" button used the removed `btn-primary`.
 
-## 3. Still open - needs your decision (38 tests)
+## 3. Still open - needs your decision (35 tests)
 | Group | Tests | What it is | Recommended action |
 |---|---|---|---|
 | Restyle v3 parity | 30 | See section 1 | Finish the slices (F); then confirm kept labels (U) |
-| Old payroll wizard specs | 5 | `finance-guided-payroll` (2), `finance-payroll-split`, `finance-payroll-runner-adjustments`, `finance-payroll-commission-bonus` drive a UI that no longer exists (`#btnRunPayrollWizard`, `#runPayrollWizardModal`, `#kpiLastRunNet`, `#wizardStep1..4`, `#payrollRunDetailModal` are gone from the app). The 6-step journey replaced it. | Delete or rewrite against the new journey; `payroll-journey`, `payroll-step5`, `payroll-table-cycle` specs already cover the new flow. Check they cover Split/FX and Commission/Bonus first. |
+| Old payroll wizard specs (bonus/commission) | 2 | `finance-payroll-runner-adjustments` and `finance-payroll-commission-bonus` drive the removed wizard modal. **Coverage gap:** the new journey specs only test *adding one inline bonus* (`finance-payroll-table-cycle` TC-2). Not covered anywhere: Sales/Support *commission* types, the INT/EXT source toggle, removing a bonus (`.pv-bonus-x`), the net total updating by the bonus amount, and add/remove being blocked after approval/finalize. | Write one new spec for the inline bonus UI (add commission + bonus, toggle source, remove, net total, locked after approve), then delete these two |
 | component-language | 2 | Paid badge differs between vocabularies (payroll pill 12px / radius vs HR 11px / 9999px); table cell padding differs (payroll runs 10px 16px, 13.5px vs HR 9px 16px). The principle "one component language" still holds, but the payroll mock uses different values. | Decide which wins: align payroll CSS to HR, or relax the test for payroll |
 | shell-foundations R3-3 | 1 | Payroll runs page shows 2 solid primary buttons (row buttons "Continue" and "Reconcile"), the rule says one. The Pay-Runs mock has per-row actions. | Decide: make row buttons secondary, or allow one solid button per row |
 
