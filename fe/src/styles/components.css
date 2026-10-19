@@ -234,9 +234,9 @@ thead th.col-actions {
   gap: 5px;
   padding: 3px 10px;
   border: 1px solid transparent;
-  border-radius: var(--radius-full);
-  font-size: var(--fs-xs);
-  font-weight: 700;
+  border-radius: 999px;
+  font-size: 12px;   /* one status badge size for every screen (issue 16, owner decision 2026-10-19) */
+  font-weight: 600;
   line-height: 1.4;
   white-space: nowrap;
   background: var(--surface2);

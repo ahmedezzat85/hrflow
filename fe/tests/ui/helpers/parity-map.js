@@ -340,8 +340,8 @@ export const PARITY_MAP = {
       keptLabels: ['Search employees'],
       setup: async (page) => showAdminSection(page, 'a-vacations', '#a-vacations table'),
       pairs: [
-        { name: 'vacation stat tile', mockSelector: 'main > div:first-child > div:first-child', appSelector: '#a-vacations .hv-stat-tile:first-child', accepted: { light: { fontSize: '16px', color: 'rgb(20, 30, 48)', borderColor: 'rgba(30, 60, 140, 0.08)', height: '100px' }, dark: { fontSize: '16px', height: '100px' } } },
-        { name: 'vacations balance shell', mockSelector: 'main > section', appSelector: '#a-vacations .card:has(table)', accepted: { light: { fontSize: '16px', color: 'rgb(20, 30, 48)', borderColor: 'rgba(32, 86, 232, 0.12)' }, dark: { fontSize: '16px' } } },
+        { name: 'vacation stat tile', mockSelector: 'main > div:first-child > div:first-child', appSelector: '#a-vacations .hv-stat-tile:first-child', accepted: { light: { fontSize: '16px', color: 'rgb(20, 30, 48)', borderColor: 'rgba(30, 60, 140, 0.08)', height: '102px' }, dark: { fontSize: '16px', height: '102px' } } },
+        { name: 'vacations balance shell', mockSelector: 'main > section', appSelector: '#a-vacations .card:has(table)', accepted: { light: { fontSize: '16px', color: 'rgb(20, 30, 48)', borderColor: 'rgba(32, 86, 232, 0.12)', height: '397px' }, dark: { fontSize: '16px', height: '397px' } } },
         { name: 'usage progress', mockSelector: 'table tbody tr:first-child td:nth-child(5) > span > span > span', appSelector: '#a-vacations tbody tr:first-child td:nth-child(5) > div > div > div', props: ['height', 'borderRadius', 'backgroundColor'], accepted: { light: { backgroundColor: 'rgb(15, 157, 140)' } } }
       ]
     }
