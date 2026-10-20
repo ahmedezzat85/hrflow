@@ -2545,4 +2545,4 @@
 .fv .fv-import-msg--error { color: var(--danger); }
 .fv .fv-import-msg--warning { color: var(--warning); }
 .fv .fv-import-msg--duplicate { color: var(--ink-label); }
-.fv .fv-import-msg__code { font-family: var(--font-mono, monospace); font-size: 11px; color: var(--ink-faint); margin-right: 4px; }
+.fv .fv-import-msg__code { font-family: monospace; font-size: 11px; color: var(--ink-faint); margin-right: 4px; }

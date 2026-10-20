@@ -521,7 +521,7 @@ test.describe('Finance restyle v2: Reports and Settings (S8)', () => {
       await openAdmin(page, theme);
       await openAdminPage(page, 'a-finance-settings');
       await expect(page.locator('#financeCategoriesTableBody tr').first()).toBeVisible();
-      await expect(page.locator('#financeSettingsSubNav .filter-tab')).toHaveText(['Transaction categories', 'Payment types', 'Products', 'Revenue sources', 'Display']);
+      await expect(page.locator('#financeSettingsSubNav .filter-tab')).toHaveText(['Transaction categories', 'Payment types', 'Products', 'Revenue sources', 'Import', 'Display']);
       expect(await css(page, '#financeCategoriesTable thead th', 'backgroundColor')).toBe(await rgb(page, 'var(--fv-surface)'));
       expect(await css(page, '#financeAddCategoryBtn', 'height')).toBe('32px');
       await expect(page.locator('#financeCategoryStatusPills .fv-pill')).toHaveCount(4);
