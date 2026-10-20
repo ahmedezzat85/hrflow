@@ -122,6 +122,7 @@ class SalesInvoiceDB(Base):
     voided_by = Column(String(255), nullable=True)
     voided_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    import_batch_id = Column(Integer, ForeignKey("finance_import_batches.id", ondelete="SET NULL"), nullable=True, index=True)  # D-033
 
     customer = relationship("CustomerDB", back_populates="invoices")
     expected_bank_account = relationship("FinanceBankAccountDB", foreign_keys=[expected_bank_account_id])
@@ -191,7 +192,8 @@ class BillDB(Base):
     tax_amount = Column(Float, default=0.0)
     total = Column(Float, default=0.0)
     notes = Column(Text, nullable=True)
-    capture_source = Column(String(20), default="manual", nullable=False)  # manual | upload | ocr
+    capture_source = Column(String(20), default="manual", nullable=False)  # manual | upload | ocr | import (D-033)
+    import_batch_id = Column(Integer, ForeignKey("finance_import_batches.id", ondelete="SET NULL"), nullable=True, index=True)
     extraction_confidence = Column(Float, nullable=True)
     missing_fields = Column(Text, nullable=True)
     department = Column(String(100), nullable=True)
@@ -414,6 +416,7 @@ class FinanceChequeDB(Base):
     notes = Column(Text, default="", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(String(255), nullable=True)
+    import_batch_id = Column(Integer, ForeignKey("finance_import_batches.id", ondelete="SET NULL"), nullable=True, index=True)  # D-033
 
     __table_args__ = (
         UniqueConstraint("account_id", "cheque_number", name="uq_cheque_account_number"),
@@ -671,6 +674,21 @@ class AccountBalanceCheckpointDB(Base):
     created_by = Column(String(255), nullable=True)
 
     account = relationship("FinanceBankAccountDB", backref="checkpoints")
+
+
+class ImportBatchDB(Base):
+    """One committed bulk / historical import run (D-033). Dry runs write nothing and have no batch."""
+    __tablename__ = "finance_import_batches"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    kind = Column(String(20), nullable=False, index=True)  # bills | cheques | invoices
+    created_by = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    manifest_name = Column(String(255), nullable=True)
+    archive_name = Column(String(255), nullable=True)
+    rows_total = Column(Integer, default=0, nullable=False)
+    rows_created = Column(Integer, default=0, nullable=False)
+    rows_failed = Column(Integer, default=0, nullable=False)
 
 
 class FinanceAttachmentDB(Base):
