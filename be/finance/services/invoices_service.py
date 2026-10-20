@@ -12,6 +12,7 @@ from finance.schemas import (
     SalesInvoiceUpdate,
     SalesInvoiceResponse,
     SalesInvoiceLineResponse,
+    InvoiceAttachmentResponse,
     PaymentCreate,
     PaymentResponse,
 )
@@ -160,6 +161,8 @@ class InvoicesService:
             next_action=next_action,
             notes=invoice.notes,
             created_at=invoice.created_at,
+            attachment_count=len(invoice.attachments or []),
+            has_scan=bool(invoice.attachments),
             lines=lines,
         )
 
@@ -251,7 +254,7 @@ class InvoicesService:
             raise HTTPException(status_code=404, detail=f"Invoice {invoice_id} not found")
         return self._invoice_to_response(invoice)
 
-    def create_invoice(self, payload: SalesInvoiceCreate) -> SalesInvoiceResponse:
+    def create_invoice(self, payload: SalesInvoiceCreate, import_batch_id: Optional[int] = None) -> SalesInvoiceResponse:
         if payload.issue_date and payload.due_date and payload.due_date < payload.issue_date:
             raise HTTPException(
                 status_code=400,
@@ -272,8 +275,36 @@ class InvoicesService:
             (ln.model_dump() if hasattr(ln, "model_dump") else ln.dict())
             for ln in payload.lines
         ]
+        if import_batch_id is not None:
+            data["import_batch_id"] = import_batch_id  # set by the bulk importer only (D-033)
         invoice = self.repo.create(data, lines_data)
         return self._invoice_to_response(invoice)
+
+    # ------------------------------------------------------------------
+    # Scans (D-033, I4): read-only here; the bulk importer stores them
+    # ------------------------------------------------------------------
+    def list_attachments(self, invoice_id: int) -> List[InvoiceAttachmentResponse]:
+        if not self.repo.get_by_id(invoice_id):
+            raise HTTPException(status_code=404, detail=f"Invoice {invoice_id} not found")
+        return [
+            InvoiceAttachmentResponse(
+                id=a.id, invoice_id=a.sales_invoice_id, file_name=a.file_name, file_size=a.file_size or 0,
+                mime_type=a.mime_type or "application/octet-stream", uploaded_at=a.uploaded_at, uploaded_by=a.uploaded_by,
+            )
+            for a in self.repo.list_attachments(invoice_id)
+        ]
+
+    def get_attachment_file(self, invoice_id: int, attachment_id: int):
+        import os
+
+        if not self.repo.get_by_id(invoice_id):
+            raise HTTPException(status_code=404, detail=f"Invoice {invoice_id} not found")
+        att = self.repo.get_attachment(invoice_id, attachment_id)
+        if not att:
+            raise HTTPException(status_code=404, detail=f"Attachment {attachment_id} not found for invoice {invoice_id}")
+        if not att.storage_ref or not os.path.isfile(att.storage_ref):
+            raise HTTPException(status_code=404, detail="Attachment file not found on disk")
+        return att.storage_ref, att.file_name, att.mime_type or "application/octet-stream"
 
     @staticmethod
     def _lines_changed(invoice: SalesInvoiceDB, new_lines: List[dict]) -> bool:

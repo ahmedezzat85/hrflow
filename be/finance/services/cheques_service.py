@@ -127,7 +127,9 @@ class ChequesService:
             raise HTTPException(status_code=404, detail=f"Cheque {cheque_id} not found")
         return self._cheque_to_response(cheque)
 
-    def issue_cheque(self, payload: ChequeCreate, created_by: Optional[str] = None) -> ChequeResponse:
+    def issue_cheque(
+        self, payload: ChequeCreate, created_by: Optional[str] = None, import_batch_id: Optional[int] = None
+    ) -> ChequeResponse:
         # Validate purpose type
         if payload.purpose_type not in VALID_PURPOSE_TYPES:
             raise HTTPException(
@@ -196,6 +198,8 @@ class ChequesService:
             )
 
         data = payload.model_dump() if hasattr(payload, "model_dump") else payload.dict()
+        if import_batch_id is not None:
+            data["import_batch_id"] = import_batch_id  # set by the bulk importer only (D-033)
         try:
             cheque = self.repo.create_cheque(data, created_by=created_by)
         except BillPaymentError as e:

@@ -161,7 +161,7 @@ Plan: [../finance-module/18-bill-workflow-v2.md](../finance-module/18-bill-workf
 | B6 | Banking rules: same-currency entries and withdrawals, cheque reversals, spend as bills (D-020) (**done**: `feature/bills-b1-status-model`) | M | B3 |
 | Later | Balance check for other outflows | S | B3 |
 | Later | Bill screens visual restyle, direction A (D-021; implemented on branch feature/finance-ui-restyle-a, pending merge: [19](../finance-module/19-finance-ui-restyle-direction-a.md)) | — | B5 |
-| Later | Bulk and historical bill import; then in-app AI assistant | — | B4 |
+| Later | Bulk and historical import: see section 3F (D-033). Then in-app AI assistant | — | B4 |
 
 Prerequisite before B3 reaches production: run the cashbook 2026 import so account balances are accurate.
 
@@ -215,6 +215,21 @@ Plan: [../finance-module/23-finance-expansion-plan.md](../finance-module/23-fina
 | X4 | **Done** (migration 0039): revenue receipts by source, invoice book, revenue reports by book/product/source | M | X2, X3 |
 | X5 | **Done** (migration 0040): subscriptions v2: expected charges, settle, proof tracking, in-app reminders | M | X2 |
 | X6 | **Done** (no migration): analytics pass and Excel exports | M | X2–X5 |
+
+---
+
+## 3F. Bulk and Historical Import (accepted October 20, 2026)
+
+Plan: [../finance-module/25-bulk-historical-import-plan.md](../finance-module/25-bulk-historical-import-plan.md). Handoff: [../finance-module/26-bulk-import-claude-code-handoff.md](../finance-module/26-bulk-import-claude-code-handoff.md). Decision D-033, Q-021 resolved. Branch `feature/bulk-import`. Imports create Drafts only (no ledger rows). Option B (link to existing ledger transactions) is a possible future slice; there is no I5.
+
+| Slice | Scope | Size | Depends on |
+| :--- | :--- | :--- | :--- |
+| I0 | **Done** (migration 0041): import engine: manifest parser, file and ZIP safety, batch table + migration, router skeleton, per-kind permissions | M | — |
+| I1 | **Done**: bills importer (dry run + commit), `capture_source = import`, extractor cross-check warning | M | I0 |
+| I2 | **Done**: Import screen, template downloads, mock handlers, Playwright | M | I1 |
+| I3 | **Done**: cheques importer (draft cheques with scan) | S | I0 |
+| I4 | **Done** (migration 0042): sales invoices importer (+ invoice scan storage if missing) | S | I0 |
+| I2b | Optional offline pre-check CLI reusing the I0 module | S | I0 |
 
 ---
 

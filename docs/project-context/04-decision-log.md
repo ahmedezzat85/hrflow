@@ -444,6 +444,12 @@ This document records durable product and architectural decisions approved by th
 - **Decision:** No external OCR or AI service and no extraction. Cheques get one or more stored scans (front, back, bank stamp) through `finance_attachments` (`cheque_id`), with a "scan missing" flag and filter; existing `attachment_url` values are migrated and the column deprecated. Entry shortcuts: next cheque number suggested per account; payee, amount and currency prefilled from a linked bill.
 - **Rationale:** The owner will not subscribe to an external service; free local OCR cannot read handwritten cheques reliably.
 
+### D-033 — Bulk Import via Manifest + ZIP Upload; Drafts Only
+
+- **Status:** Accepted by owner, October 20, 2026. Resolves Q-021. Plan: [../finance-module/25-bulk-historical-import-plan.md](../finance-module/25-bulk-historical-import-plan.md). Implemented on `feature/bulk-import` (slices I0–I4).
+- **Decision:** Import is an authenticated upload of a manifest (CSV/XLSX) and a ZIP of PDFs/images through the HRFlow UI; HRFlow never reads caller-supplied filesystem paths. It creates only Draft bills, draft cheques and Draft sales invoices: it never approves, sends, issues, pays, posts ledger rows, or creates vendors/customers/categories/accounts. Provenance is recorded on every record (`capture_source = import`, batch id, source file, confidence, review flags); imported bills start `is_reviewed = false`. Permissions mirror the target entity (`finance.bill.write`, `finance.account.write`, `finance.invoice.write`); no new permission. HRFlow calls no external OCR/AI service: documents are read outside the app and the owner reviews the manifest (consistent with D-032). The 25 MB nginx limit stays; the ZIP carries compressed copies.
+- **Rationale:** One-time backlog of old documents; an MCP/public endpoint was disproportionate. Dry run then commit keeps the owner in control, and Drafts keep the ledger untouched.
+
 ---
 
 ## Related but Not Decisions

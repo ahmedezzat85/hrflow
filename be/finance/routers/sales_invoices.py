@@ -7,6 +7,7 @@ Full CRUD + payment recording, gated with RBAC permissions:
 """
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, status
+from fastapi.responses import FileResponse
 
 from core.permissions import require_permission
 from finance.schemas import (
@@ -15,6 +16,7 @@ from finance.schemas import (
     SalesInvoiceResponse,
     PaymentCreate,
     PaymentResponse,
+    InvoiceAttachmentResponse,
 )
 from finance.services.invoices_service import InvoicesService
 from finance.deps import get_invoices_service, get_idempotency_key, get_idempotency_service
@@ -181,3 +183,24 @@ def send_invoice_reminder(
     """Send payment reminder to customer for an overdue/awaiting payment invoice."""
     return service.send_reminder(invoice_id)
 
+
+# --- Invoice scans (D-033, I4). Read = finance.invoice.read; stored by the bulk importer. ---
+
+@router.get("/{invoice_id}/attachments", response_model=List[InvoiceAttachmentResponse])
+def list_invoice_attachments(
+    invoice_id: int,
+    current_user: dict = Depends(require_permission("finance.invoice.read")),
+    service: InvoicesService = Depends(get_invoices_service),
+):
+    return service.list_attachments(invoice_id)
+
+
+@router.get("/{invoice_id}/attachments/{attachment_id}/download")
+def download_invoice_attachment(
+    invoice_id: int,
+    attachment_id: int,
+    current_user: dict = Depends(require_permission("finance.invoice.read")),
+    service: InvoicesService = Depends(get_invoices_service),
+):
+    path, filename, media_type = service.get_attachment_file(invoice_id, attachment_id)
+    return FileResponse(path=path, filename=filename, media_type=media_type)

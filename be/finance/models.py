@@ -122,11 +122,13 @@ class SalesInvoiceDB(Base):
     voided_by = Column(String(255), nullable=True)
     voided_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    import_batch_id = Column(Integer, ForeignKey("finance_import_batches.id", ondelete="SET NULL"), nullable=True, index=True)  # D-033
 
     customer = relationship("CustomerDB", back_populates="invoices")
     expected_bank_account = relationship("FinanceBankAccountDB", foreign_keys=[expected_bank_account_id])
     lines = relationship("SalesInvoiceLineDB", back_populates="invoice", cascade="all, delete-orphan")
     payments = relationship("PaymentDB", back_populates="sales_invoice", foreign_keys="PaymentDB.related_invoice_id")
+    attachments = relationship("FinanceAttachmentDB", back_populates="sales_invoice", cascade="all, delete-orphan", passive_deletes=True)
 
 
 class ProductDB(Base):
@@ -191,7 +193,8 @@ class BillDB(Base):
     tax_amount = Column(Float, default=0.0)
     total = Column(Float, default=0.0)
     notes = Column(Text, nullable=True)
-    capture_source = Column(String(20), default="manual", nullable=False)  # manual | upload | ocr
+    capture_source = Column(String(20), default="manual", nullable=False)  # manual | upload | ocr | import (D-033)
+    import_batch_id = Column(Integer, ForeignKey("finance_import_batches.id", ondelete="SET NULL"), nullable=True, index=True)
     extraction_confidence = Column(Float, nullable=True)
     missing_fields = Column(Text, nullable=True)
     department = Column(String(100), nullable=True)
@@ -414,6 +417,7 @@ class FinanceChequeDB(Base):
     notes = Column(Text, default="", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(String(255), nullable=True)
+    import_batch_id = Column(Integer, ForeignKey("finance_import_batches.id", ondelete="SET NULL"), nullable=True, index=True)  # D-033
 
     __table_args__ = (
         UniqueConstraint("account_id", "cheque_number", name="uq_cheque_account_number"),
@@ -673,6 +677,21 @@ class AccountBalanceCheckpointDB(Base):
     account = relationship("FinanceBankAccountDB", backref="checkpoints")
 
 
+class ImportBatchDB(Base):
+    """One committed bulk / historical import run (D-033). Dry runs write nothing and have no batch."""
+    __tablename__ = "finance_import_batches"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    kind = Column(String(20), nullable=False, index=True)  # bills | cheques | invoices
+    created_by = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    manifest_name = Column(String(255), nullable=True)
+    archive_name = Column(String(255), nullable=True)
+    rows_total = Column(Integer, default=0, nullable=False)
+    rows_created = Column(Integer, default=0, nullable=False)
+    rows_failed = Column(Integer, default=0, nullable=False)
+
+
 class FinanceAttachmentDB(Base):
     __tablename__ = "finance_attachments"
 
@@ -682,6 +701,7 @@ class FinanceAttachmentDB(Base):
     ledger_transaction_id = Column(Integer, ForeignKey("finance_ledger_transactions.id", ondelete="CASCADE"), nullable=True, index=True)
     cheque_id = Column(Integer, ForeignKey("finance_cheques.id", ondelete="CASCADE"), nullable=True, index=True)
     checkpoint_id = Column(Integer, ForeignKey("finance_account_balance_checkpoints.id", ondelete="CASCADE"), nullable=True, index=True)
+    sales_invoice_id = Column(Integer, ForeignKey("finance_sales_invoices.id", ondelete="CASCADE"), nullable=True, index=True)  # I4 (D-033): invoice scans
     file_name = Column(String(255), nullable=False)
     file_size = Column(Integer, default=0, nullable=False)
     mime_type = Column(String(100), default="application/octet-stream", nullable=False)
@@ -693,6 +713,7 @@ class FinanceAttachmentDB(Base):
     statement_import = relationship("BankStatementImportDB", back_populates="attachments")
     ledger_transaction = relationship("LedgerTransactionDB")
     cheque = relationship("FinanceChequeDB", back_populates="attachments")
+    sales_invoice = relationship("SalesInvoiceDB", back_populates="attachments")
 
 
 

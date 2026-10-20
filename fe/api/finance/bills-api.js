@@ -323,7 +323,7 @@
 
       // An approver's bill is Approved on save (auto-approved) unless saved as a draft.
       const st = autoApproved ? "approved" : "draft";
-      const isRev = !(payload.capture_source === "upload" || payload.capture_source === "ocr");
+      const isRev = !["upload", "ocr", "import"].includes(payload.capture_source);
 
       if (payload.is_paid_now) {
         const subtotalNow = (payload.lines || []).reduce((sum, ln) => sum + (ln.line_total || ln.quantity * ln.unit_price), 0);

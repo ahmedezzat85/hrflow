@@ -247,6 +247,9 @@ This register tracks unresolved product, accounting, and technical architecture 
 ### Q-020 — Default Report View
 - **Status:** Resolved — D-028 (October 18, 2026): default per page (Local for dashboard/P&L; Consolidated for revenue and spend analytics), remembered per user.  
 
+### Q-021 — Historical Documents Already Paid
+- **Status:** Resolved — D-033 (October 20, 2026): option A, imported historical documents are unpaid Drafts; the owner records payments through the normal workflow and approves/pays/issues an imported document only when the ledger does not already hold that movement. Option B (link to an existing ledger transaction) stays a possible future slice.  
+
 ---
 
 ## Resolved-Question Procedure

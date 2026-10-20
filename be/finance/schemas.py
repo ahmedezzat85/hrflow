@@ -703,6 +703,8 @@ class SalesInvoiceResponse(SalesInvoiceBase):
     customer_email: Optional[str] = None
     expected_bank_account_name: Optional[str] = None
     has_bank_discrepancy: bool = False
+    attachment_count: int = 0
+    has_scan: bool = False
     lines: List[SalesInvoiceLineResponse] = []
 
     class Config:
@@ -1159,6 +1161,8 @@ class ChequeReplaceRequest(BaseModel):
 
 
 class ChequeResponse(ChequeBase):
+    # Entry requires a payee; an imported cheque may have it blank (D-033), and must still be readable
+    payee: str = Field("", max_length=255, description="Payee / Beneficiary (may be blank on an imported draft)")
     id: int
     account_id: int
     account_name: Optional[str] = None
@@ -1190,6 +1194,17 @@ class ChequeResponse(ChequeBase):
 # ==========================================
 # Subscription & Attachment Schemas (Phase 6)
 # ==========================================
+class InvoiceAttachmentResponse(BaseModel):
+    """Sales invoice scan metadata (D-033, I4). Never exposes the storage path."""
+    id: int
+    invoice_id: int
+    file_name: str
+    file_size: int = 0
+    mime_type: str = "application/octet-stream"
+    uploaded_at: Optional[datetime] = None
+    uploaded_by: Optional[str] = None
+
+
 class ChequeAttachmentResponse(BaseModel):
     """Cheque scan metadata. Never exposes the storage path (AGENTS.md non-negotiables)."""
     id: int

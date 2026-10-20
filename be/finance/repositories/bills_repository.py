@@ -288,6 +288,7 @@ class BillsRepository:
             amount_paid=data.get("amount_paid", 0.0),
             vendor_to_confirm=bool(data.get("vendor_to_confirm", False)),
             suggested_vendor_name=data.get("suggested_vendor_name"),
+            import_batch_id=data.get("import_batch_id"),
         )
         self.db.add(bill)
         self.db.flush()  # obtain bill.id before inserting lines
