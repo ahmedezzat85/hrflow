@@ -7,7 +7,7 @@
  */
 
 // Kinds the screen offers. Each slice enables its kind here once its importer exists on the backend.
-const FINANCE_IMPORT_ENABLED_KINDS = ["bills"];
+const FINANCE_IMPORT_ENABLED_KINDS = ["bills", "cheques", "invoices"];
 const FINANCE_IMPORT_LABELS = { bills: "Vendor bills", cheques: "Cheques", invoices: "Sales invoices" };
 const FINANCE_IMPORT_DRAWER_TYPES = { bills: "bill", cheques: "cheque", invoices: "invoice" };
 const FINANCE_IMPORT_STATUS = {

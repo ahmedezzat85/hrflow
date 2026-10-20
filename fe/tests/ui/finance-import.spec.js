@@ -150,3 +150,75 @@ test.describe('Finance Import screen (I2)', () => {
     await expect(page.locator('#subtabSettingsImport')).toBeHidden();
   });
 });
+
+// I3: cheques. Handwritten scans are the weakest input, so required fields and confidence are checked per row.
+const CHQ_HEADER = 'row_ref,source_file,confidence,review_flags,notes,account,cheque_number,payee,amount,currency,issue_date';
+const chqCsv = (...rows) => Buffer.from([CHQ_HEADER, ...rows].join('\n'));
+const CHQ_GOOD = 'C-0001,chq-0001.pdf,0.95,,,Voyance Operating USD,900001,Acme Supplies,1500.00,USD,2026-03-05';
+const CHQ_LOW = 'C-0002,chq-0002.pdf,0.5,amount faint,,Voyance Operating USD,900002,Acme Supplies,200.00,USD,2026-03-06';
+const CHQ_BLANK_FLAGGED = 'C-0003,chq-0003.pdf,0.4,amount unreadable,,Voyance Operating USD,900003,Acme Supplies,,USD,2026-03-07';
+const CHQ_BLANK = 'C-0004,chq-0004.pdf,,,,Voyance Operating USD,900004,Acme Supplies,,USD,2026-03-08';
+const CHQ_BAD_ACCOUNT = 'C-0005,chq-0005.pdf,0.9,,,No Such Bank,900005,Acme Supplies,10.00,USD,2026-03-09';
+const CHQ_DUP = 'C-0006,chq-0006.pdf,0.9,,,Voyance Operating USD,001011,Acme Supplies,10.00,USD,2026-03-10';
+
+test.describe('Finance Import screen (I3) - cheques', () => {
+  test('cheque dry run applies the stricter rules and the commit creates draft cheques only', async ({ page }) => {
+    await openImport(page);
+    await page.selectOption('#financeImportKind', 'cheques');
+    const [tpl] = await Promise.all([page.waitForEvent('download'), page.click('#financeImportTemplateBtn')]);
+    expect(tpl.suggestedFilename()).toBe('import-template-cheques.csv');
+    expect((await (await import('fs')).promises.readFile(await tpl.path(), 'utf-8')).replace('﻿', '').trim()).toBe(CHQ_HEADER);
+
+    await chooseFiles(page, chqCsv(CHQ_GOOD, CHQ_LOW, CHQ_BLANK_FLAGGED, CHQ_BLANK, CHQ_BAD_ACCOUNT, CHQ_DUP));
+    await page.click('#financeImportDryRunBtn');
+    const rows = page.locator('#financeImportReportBody tr');
+    await expect(rows).toHaveCount(6);
+    await expect(rows.filter({ hasText: 'C-0001' })).toContainText('Ready');
+    await expect(rows.filter({ hasText: 'C-0002' })).toContainText('Warning');
+    await expect(rows.filter({ hasText: 'C-0002' })).toContainText('below 0.8');
+    await expect(rows.filter({ hasText: 'C-0003' })).toContainText('enter this one by hand');
+    await expect(rows.filter({ hasText: 'C-0004' })).toContainText('amount is required');
+    await expect(rows.filter({ hasText: 'C-0005' })).toContainText('does not exist');
+    await expect(rows.filter({ hasText: 'C-0006' })).toContainText('Duplicate');
+    expect(await page.evaluate(() => FinanceMockState.cheques.filter((c) => c.import_batch_id).length)).toBe(0);
+
+    await page.click('#financeImportCommitBtn');
+    await confirmDialog(page);
+    await expect(page.locator('#financeImportResult')).toContainText('2 drafts created, 4 rows not created');
+    const created = await page.evaluate(() => FinanceMockState.cheques.filter((c) => c.import_batch_id).map((c) => ({ n: c.cheque_number, s: c.status, scan: c.attachments.length })));
+    expect(created.sort((a, b) => a.n.localeCompare(b.n))).toEqual([{ n: '900001', s: 'draft', scan: 1 }, { n: '900002', s: 'draft', scan: 1 }]);
+  });
+});
+
+// I4: sales invoices. Customers are never created, so an unknown customer is a row error.
+const INV_HEADER = 'row_ref,source_file,confidence,review_flags,notes,customer_name,invoice_number,issue_date,due_date,currency,description,amount,vat_rate';
+const invCsv = (...rows) => Buffer.from([INV_HEADER, ...rows].join('\n'));
+const INV_GOOD = 'I-0001,inv-0001.pdf,,,,Apex Health Partners,HIST-0001,2025-11-02,2025-12-02,USD,Annual licence,1200.00,';
+const INV_NO_CUSTOMER = 'I-0002,inv-0002.pdf,,,,Nobody Inc,HIST-0002,2025-11-02,2025-12-02,USD,Annual licence,100.00,';
+const INV_DUP = 'I-0003,inv-0003.pdf,,,,Apex Health Partners,INV-2026-001,2025-11-02,2025-12-02,USD,x,10.00,';
+const INV_NO_AMOUNT = 'I-0004,,,,,BioCare Diagnostics,HIST-0004,2025-11-02,2025-12-02,USD,,,';
+
+test.describe('Finance Import screen (I4) - sales invoices', () => {
+  test('invoice dry run and commit create Draft invoices only', async ({ page }) => {
+    await openImport(page);
+    await page.selectOption('#financeImportKind', 'invoices');
+    const [tpl] = await Promise.all([page.waitForEvent('download'), page.click('#financeImportTemplateBtn')]);
+    expect(tpl.suggestedFilename()).toBe('import-template-invoices.csv');
+
+    await chooseFiles(page, invCsv(INV_GOOD, INV_NO_CUSTOMER, INV_DUP, INV_NO_AMOUNT));
+    await page.click('#financeImportDryRunBtn');
+    const rows = page.locator('#financeImportReportBody tr');
+    await expect(rows).toHaveCount(4);
+    await expect(rows.filter({ hasText: 'I-0001' })).toContainText('Ready');
+    await expect(rows.filter({ hasText: 'I-0002' })).toContainText('never created by an import');
+    await expect(rows.filter({ hasText: 'I-0003' })).toContainText('Duplicate');
+    await expect(rows.filter({ hasText: 'I-0004' })).toContainText('Warning');
+    expect(await page.evaluate(() => FinanceMockState.invoices.filter((i) => i.import_batch_id).length)).toBe(0);
+
+    await page.click('#financeImportCommitBtn');
+    await confirmDialog(page);
+    await expect(page.locator('#financeImportResult')).toContainText('2 drafts created, 2 rows not created');
+    const created = await page.evaluate(() => FinanceMockState.invoices.filter((i) => i.import_batch_id).map((i) => ({ n: i.invoice_number, s: i.status, paid: i.amount_paid, scan: i.has_scan })));
+    expect(created).toEqual([{ n: 'HIST-0001', s: 'draft', paid: 0, scan: true }, { n: 'HIST-0004', s: 'draft', paid: 0, scan: false }]);
+  });
+});

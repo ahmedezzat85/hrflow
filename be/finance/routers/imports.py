@@ -22,6 +22,7 @@ from finance.import_report import ImportLimitsResponse, ImportReport
 from finance.services.import_service import ImportActor, ImportService
 from finance.services import bills_importer  # noqa: F401  (registers the bills importer)
 from finance.services import cheques_importer  # noqa: F401  (registers the cheques importer)
+from finance.services import invoices_importer  # noqa: F401  (registers the invoices importer)
 
 router = APIRouter(prefix="/api/finance/imports", tags=["Finance - Bulk Import"])
 

@@ -80,6 +80,7 @@
 
     const vendors = (FinanceMockState.vendors || []).map((v) => String(v.name || "").toLowerCase());
     const seenRefs = new Set();
+    const seenCheques = new Set();
     table.slice(1).forEach((cells, i) => {
       const v = {};
       headers.forEach((h, idx) => { v[h] = String(cells[idx] || "").trim(); });
@@ -88,6 +89,41 @@
       else if (seenRefs.has(v.row_ref)) findings.push(_finding("duplicate", "duplicate_row_ref", `row_ref '${v.row_ref}' is already used`));
       seenRefs.add(v.row_ref);
       if (v.review_flags) findings.push(_finding("warning", "review_flagged", `Flagged for review: ${v.review_flags}`));
+      if (kind === "cheques") {
+        const acct = (FinanceMockState.accounts || []).find((a) => String(a.account_name || "").toLowerCase() === v.account.toLowerCase() || String(a.id) === v.account);
+        if (!v.account) findings.push(_finding("error", "account_missing", "account is required"));
+        else if (!acct) findings.push(_finding("error", "account_unknown", `Account '${v.account}' does not exist (use its exact name or id)`));
+        else if (acct.account_type !== "bank") findings.push(_finding("error", "account_not_bank", `Cheques must be drawn from a bank account; '${acct.account_name}' is a ${acct.account_type} account`));
+        const blank = ["amount", "cheque_number", "issue_date"].filter((f) => !v[f]);
+        if (blank.length && v.review_flags) findings.push(_finding("error", "required_blank_flagged", `${blank.join(", ")} blank (flagged: ${v.review_flags}). A cheque cannot be saved without them: enter this one by hand from the scan`));
+        else if (blank.length) findings.push(_finding("error", "required_missing", `${blank.join(", ")} is required for a cheque; leave the row out or flag it in review_flags`));
+        if (v.issue_date && !_isoDate(v.issue_date)) findings.push(_finding("error", "issue_date_invalid", `issue_date: '${v.issue_date}' is not an ISO date (YYYY-MM-DD)`));
+        if (v.amount && !(Number(v.amount) > 0)) findings.push(_finding("error", "amount_not_positive", "amount must be greater than 0"));
+        if (!v.payee) findings.push(_finding("error", "payee_required", "payee is required"));
+        if (v.confidence !== "" && Number(v.confidence) < LIMITS.low_confidence_threshold) findings.push(_finding("warning", "low_confidence", `Confidence ${Number(v.confidence)} is below ${LIMITS.low_confidence_threshold}: compare this row with the scan`));
+        if (!v.source_file) findings.push(_finding("warning", "no_scan", "No source file: the cheque will be flagged as scan missing"));
+        if (acct && v.cheque_number) {
+          const key = `${acct.id}:${v.cheque_number}`;
+          const existing = (FinanceMockState.cheques || []).find((c) => c.account_id === acct.id && c.cheque_number === v.cheque_number);
+          if (existing) findings.push(_finding("duplicate", "duplicate_existing", `Cheque ${v.cheque_number} already exists on ${acct.account_name} as cheque #${existing.id}`));
+          else if (seenCheques.has(key)) findings.push(_finding("duplicate", "duplicate_in_manifest", "Same account and cheque number as an earlier line"));
+          seenCheques.add(key);
+        }
+      }
+      if (kind === "invoices") {
+        const cust = (FinanceMockState.customers || []).find((c) => String(c.name || "").toLowerCase() === v.customer_name.toLowerCase());
+        const blank = ["customer_name", "invoice_number", "issue_date", "due_date"].filter((f) => !v[f]);
+        if (blank.length) findings.push(_finding("error", "required_missing", `${blank.join(", ")} is required for a sales invoice`));
+        else if (!cust) findings.push(_finding("error", "customer_unknown", `Customer '${v.customer_name}' does not exist; customers are never created by an import`));
+        ["issue_date", "due_date"].forEach((f) => { if (v[f] && !_isoDate(v[f])) findings.push(_finding("error", `${f}_invalid`, `${f}: '${v[f]}' is not an ISO date (YYYY-MM-DD)`)); });
+        if (v.issue_date && v.due_date && v.due_date < v.issue_date) findings.push(_finding("error", "due_before_issue", "due_date cannot precede issue_date"));
+        if (v.amount && !(Number(v.amount) > 0)) findings.push(_finding("error", "amount_not_positive", "amount must be greater than 0"));
+        if (!v.amount) findings.push(_finding("warning", "amount_missing", "amount is blank: the Draft has no lines. Add them in the Draft"));
+        if (!v.source_file) findings.push(_finding("warning", "no_scan", "No source file: the Draft has no scan attached"));
+        const existing = (FinanceMockState.invoices || []).find((i) => i.invoice_number === v.invoice_number);
+        if (existing && cust && existing.customer_id === cust.id) findings.push(_finding("duplicate", "duplicate_existing", `Invoice ${v.invoice_number} already exists for this customer as invoice #${existing.id}`));
+        else if (existing) findings.push(_finding("error", "invoice_number_in_use", `Invoice number '${v.invoice_number}' is already used by invoice #${existing.id} (another customer)`));
+      }
       if (kind === "bills") {
         ["issue_date", "due_date"].forEach((f) => { if (v[f] && !_isoDate(v[f])) findings.push(_finding("error", `${f}_invalid`, `${f}: '${v[f]}' is not an ISO date (YYYY-MM-DD)`)); });
         if (v.total_amount && !(Number(v.total_amount) > 0)) findings.push(_finding("error", "total_not_positive", "total_amount must be greater than 0"));
@@ -101,7 +137,7 @@
       report.rows.push({
         row_number: i + 1, line: i + 2, row_ref: v.row_ref, source_file: v.source_file || null,
         status: _statusOf(findings), findings, created_id: null,
-        duplicate_of: findings.some((f) => f.code === "duplicate_existing") ? 3 : null,
+        duplicate_of: (() => { const m = ((findings.find((f) => f.code === "duplicate_existing") || {}).message || "").match(/#(\d+)/); return m ? Number(m[1]) : null; })(),
       });
     });
 
@@ -128,6 +164,37 @@
               capture_source: "import", is_reviewed: false, import_batch_id: batchId,
               attachment_name: v.source_file || null, notes: `Imported (batch ${batchId}, row ${v.row_ref}).`,
               created_by: "admin@voyance.health", created_at: new Date().toISOString(), lines: [],
+            });
+            r.created_id = id;
+          } else if (kind === "cheques") {
+            const src = table.slice(1)[r.row_number - 1];
+            const v = {};
+            headers.forEach((h, k) => { v[h] = String(src[k] || "").trim(); });
+            const acct = (FinanceMockState.accounts || []).find((a) => String(a.account_name || "").toLowerCase() === v.account.toLowerCase() || String(a.id) === v.account);
+            const id = Math.max(0, ...(FinanceMockState.cheques || []).map((c) => c.id)) + 1;
+            if (!FinanceMockState.cheques) FinanceMockState.cheques = [];
+            FinanceMockState.cheques.unshift({
+              id, cheque_number: v.cheque_number, account_id: acct.id, account_name: acct.account_name, issue_date: v.issue_date,
+              amount: Number(v.amount), currency: v.currency || acct.currency, payee: v.payee, purpose_type: "other", status: "draft",
+              posting_policy: "at_issue", fiscal_year: Number(v.issue_date.slice(0, 4)), import_batch_id: batchId,
+              notes: `Imported (batch ${batchId}, row ${v.row_ref}).`, created_at: new Date().toISOString(), created_by: "admin@voyance.health",
+              attachments: v.source_file ? [{ id: id * 10, cheque_id: id, file_name: v.source_file, file_size: 0, mime_type: "application/pdf", uploaded_by: "admin@voyance.health" }] : [],
+            });
+            r.created_id = id;
+          } else if (kind === "invoices") {
+            const src = table.slice(1)[r.row_number - 1];
+            const v = {};
+            headers.forEach((h, k) => { v[h] = String(src[k] || "").trim(); });
+            const cust = (FinanceMockState.customers || []).find((c) => String(c.name || "").toLowerCase() === v.customer_name.toLowerCase());
+            const id = Math.max(0, ...(FinanceMockState.invoices || []).map((i) => i.id)) + 1;
+            const amount = Number(v.amount) || 0;
+            if (!FinanceMockState.invoices) FinanceMockState.invoices = [];
+            FinanceMockState.invoices.push({
+              id, customer_id: cust.id, customer_name: cust.name, invoice_number: v.invoice_number, issue_date: v.issue_date, due_date: v.due_date,
+              status: "draft", currency: v.currency || cust.default_currency || "USD", subtotal: amount, vat_rate: 0, tax_amount: 0, total: amount,
+              amount_paid: 0, balance: amount, import_batch_id: batchId, has_scan: !!v.source_file, attachment_count: v.source_file ? 1 : 0,
+              notes: `Imported (batch ${batchId}, row ${v.row_ref}).`, created_at: new Date().toISOString(),
+              lines: amount ? [{ id: id * 10, invoice_id: id, description: v.description || "Invoice total", quantity: 1, unit_price: amount, line_total: amount }] : [],
             });
             r.created_id = id;
           } else {

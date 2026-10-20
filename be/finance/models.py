@@ -128,6 +128,7 @@ class SalesInvoiceDB(Base):
     expected_bank_account = relationship("FinanceBankAccountDB", foreign_keys=[expected_bank_account_id])
     lines = relationship("SalesInvoiceLineDB", back_populates="invoice", cascade="all, delete-orphan")
     payments = relationship("PaymentDB", back_populates="sales_invoice", foreign_keys="PaymentDB.related_invoice_id")
+    attachments = relationship("FinanceAttachmentDB", back_populates="sales_invoice", cascade="all, delete-orphan", passive_deletes=True)
 
 
 class ProductDB(Base):
@@ -700,6 +701,7 @@ class FinanceAttachmentDB(Base):
     ledger_transaction_id = Column(Integer, ForeignKey("finance_ledger_transactions.id", ondelete="CASCADE"), nullable=True, index=True)
     cheque_id = Column(Integer, ForeignKey("finance_cheques.id", ondelete="CASCADE"), nullable=True, index=True)
     checkpoint_id = Column(Integer, ForeignKey("finance_account_balance_checkpoints.id", ondelete="CASCADE"), nullable=True, index=True)
+    sales_invoice_id = Column(Integer, ForeignKey("finance_sales_invoices.id", ondelete="CASCADE"), nullable=True, index=True)  # I4 (D-033): invoice scans
     file_name = Column(String(255), nullable=False)
     file_size = Column(Integer, default=0, nullable=False)
     mime_type = Column(String(100), default="application/octet-stream", nullable=False)
@@ -711,6 +713,7 @@ class FinanceAttachmentDB(Base):
     statement_import = relationship("BankStatementImportDB", back_populates="attachments")
     ledger_transaction = relationship("LedgerTransactionDB")
     cheque = relationship("FinanceChequeDB", back_populates="attachments")
+    sales_invoice = relationship("SalesInvoiceDB", back_populates="attachments")
 
 
 

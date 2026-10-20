@@ -24,6 +24,7 @@ from finance.models import (
     LedgerTransactionDB,
     TransactionCategoryDB,
     PaymentTypeDB,
+    FinanceAttachmentDB,
 )
 
 
@@ -135,6 +136,44 @@ class InvoicesRepository:
     def get_by_id(self, invoice_id: int) -> Optional[SalesInvoiceDB]:
         return self._load_invoice_full(invoice_id)
 
+    def add_attachment(
+        self,
+        invoice_id: int,
+        file_name: str,
+        file_size: int,
+        mime_type: str,
+        storage_ref: str,
+        uploaded_by: Optional[str] = None,
+    ) -> FinanceAttachmentDB:
+        att = FinanceAttachmentDB(
+            sales_invoice_id=invoice_id,
+            file_name=file_name,
+            file_size=file_size,
+            mime_type=mime_type,
+            storage_ref=storage_ref,
+            uploaded_at=datetime.utcnow(),
+            uploaded_by=uploaded_by,
+        )
+        self.db.add(att)
+        self.db.commit()
+        self.db.refresh(att)
+        return att
+
+    def list_attachments(self, invoice_id: int) -> List[FinanceAttachmentDB]:
+        return (
+            self.db.query(FinanceAttachmentDB)
+            .filter(FinanceAttachmentDB.sales_invoice_id == invoice_id)
+            .order_by(FinanceAttachmentDB.id)
+            .all()
+        )
+
+    def get_attachment(self, invoice_id: int, attachment_id: int) -> Optional[FinanceAttachmentDB]:
+        return (
+            self.db.query(FinanceAttachmentDB)
+            .filter(FinanceAttachmentDB.id == attachment_id, FinanceAttachmentDB.sales_invoice_id == invoice_id)
+            .first()
+        )
+
     def get_by_number(self, invoice_number: str) -> Optional[SalesInvoiceDB]:
         return (
             self.db.query(SalesInvoiceDB)
@@ -170,6 +209,7 @@ class InvoicesRepository:
             expected_bank_account_id=data.get("expected_bank_account_id"),
             revenue_channel=data.get("revenue_channel"),
             notes=data.get("notes", ""),
+            import_batch_id=data.get("import_batch_id"),
         )
         self.db.add(invoice)
         self.db.flush()  # obtain invoice.id before inserting lines
