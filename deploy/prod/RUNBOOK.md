@@ -46,6 +46,24 @@ Production updates itself from release tags. A pull request into `main` (checks 
 3. The workflow **Deploy production** runs: it refuses a tag that is not on `main` or whose required checks are not green, then the self-hosted runner on this PC runs `deploy/prod/scripts/deploy.ps1`: encrypted backup, build the new images (the old version keeps running), start the new version (database migrations run on start), wait for `http://localhost/api/health`. If it never becomes healthy, it switches back to the previous version and the workflow fails.
 4. On success `HRFLOW_VERSION` in `D:/services/hrflow-prod/.env` is set to the deployed tag.
 
+### One-click release
+After the PR is merged and you want it in production, run the **Release** workflow instead of tagging by hand:
+
+```bash
+gh workflow run release.yml -f bump=patch      # patch: fixes, minor: new features, major: breaking changes
+gh workflow run release.yml -f bump=patch -f dry_run=true   # only show the version it would create
+gh run watch                                    # follow it; then Actions > Deploy production for the deploy itself
+```
+Or GitHub > Actions > Release > Run workflow (pick the bump, tick `dry_run` to preview). It waits for the three required checks on the latest `main`, creates the next `vX.Y.Z` tag on exactly that commit, and starts **Deploy production** for the tag. Everything after that is the deploy described above. It refuses to run if `main` is already tagged, a required check failed, or `main` moved while it waited. It must be started from the `main` branch (a dry run may start anywhere). Rolling back is unchanged (run **Deploy production** with an older tag).
+
+### Database migrations in a release
+Migrations ship inside the release: the Alembic files in `be/migrations/versions/` are part of the tagged commit, and the app container runs `alembic upgrade head` every time it starts (`deploy/prod/scripts/entrypoint.sh`). So a release that contains a new migration applies it automatically during the deploy, after the pre-deploy backup and before the health check; a release without one changes nothing in the database. You do not run anything by hand.
+
+Rules for a change that needs a migration:
+- Add the Alembic file in the same PR as the code that needs it, with a `down_revision` that is the current head (`alembic heads` must show exactly one head), a working `downgrade`, and a test that upgrades and downgrades it.
+- Make it backward compatible with the previous release where possible (add nullable columns or tables first; drop or rename in a later release). If the new version fails its health check, the deploy switches back to the previous version, but the migration has already run, so the old code must still work against the new schema.
+- If a migration itself is the problem, restore the backup taken at the start of that deploy with `scripts/restore.ps1`.
+
 Roll back to an older release: GitHub > Actions > Deploy production > Run workflow > enter the old tag (e.g. `v1.1.0`). If a bad migration already ran, restore the backup taken at the start of that deploy with `scripts/restore.ps1`.
 
 The runner (`D:/services/actions-runner`) starts at Windows sign-in through a per-user startup entry (HKCU Run, "HRFlowGitHubRunner"), so this PC must be signed in with Docker Desktop running. Only the deploy workflow targets it (label `hrflow-prod`); test workflows run on GitHub's own machines.
