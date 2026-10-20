@@ -1161,6 +1161,8 @@ class ChequeReplaceRequest(BaseModel):
 
 
 class ChequeResponse(ChequeBase):
+    # Entry requires a payee; an imported cheque may have it blank (D-033), and must still be readable
+    payee: str = Field("", max_length=255, description="Payee / Beneficiary (may be blank on an imported draft)")
     id: int
     account_id: int
     account_name: Optional[str] = None

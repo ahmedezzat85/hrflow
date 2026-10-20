@@ -143,17 +143,15 @@ def test_required_fields_amount_number_and_date(app_client, admin_cookies):
         _row(2, name, cheque_number=""),
         _row(3, name, issue_date=""),
         _row(4, name, amount="", issue_date="", review_flags="amount smudged; date unreadable"),
-        _row(5, name, payee=""),
     ]
     report = _run(app_client, admin_cookies, rows, _files(1, 2, 3, 4, 5), commit=True)
-    assert [r["status"] for r in report["rows"]] == ["error"] * 5
+    assert [r["status"] for r in report["rows"]] == ["error"] * 4
     assert "required_missing" in _codes(report["rows"][0]) and "amount" in report["rows"][0]["findings"][0]["message"]
     assert "required_missing" in _codes(report["rows"][1]) and "required_missing" in _codes(report["rows"][2])
     # a flagged row is still not stored with blanks: nothing is invented; it is to be entered by hand
     flagged = next(f for f in report["rows"][3]["findings"] if f["code"] == "required_blank_flagged")
     assert "enter this one by hand" in flagged["message"]
     assert "review_flagged" in _codes(report["rows"][3])
-    assert "payee_required" in _codes(report["rows"][4])
     assert report["rows_created"] == 0 and report["committed"] is False
 
 
@@ -232,3 +230,13 @@ def test_only_the_account_write_permission_is_needed(app_client, admin_cookies):
     bills_only = make_user("chq-denied@hrflow.test", ["finance.bill.write"])
     resp = post_import(app_client, bills_only, "cheques", manifest_csv("cheques", [_row(1, name)]), build_zip(_files(1)))
     assert resp.status_code == 403
+
+
+def test_payee_is_optional_and_saved_blank_with_a_warning(app_client, admin_cookies):
+    _acct(app_client, admin_cookies)
+    name = f"Chq Acct {_seq['n']}"
+    report = _run(app_client, admin_cookies, [_row(1, name, payee="")], _files(1), commit=True)
+    row = report["rows"][0]
+    assert row["status"] == "warning" and "payee_blank" in _codes(row) and row["created_id"]
+    chq = app_client.get(f"{BASE}/{row['created_id']}", cookies=admin_cookies).json()
+    assert chq["payee"] == "" and chq["status"] == "draft" and chq["amount"] == 1500.0 and chq["cheque_number"] == "100001"

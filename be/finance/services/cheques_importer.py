@@ -6,6 +6,7 @@ Rows become DRAFT cheques only, with the scan attached through the finance-attac
 posts nothing to the ledger; issuing it later does (posting_policy at_issue), so this importer never sets a status
 beyond `draft`. Handwriting is the weakest input, so the rules are stricter than for bills: amount, cheque number
 and issue date must be present and valid for a row to import, and the owner checks every row against the scan.
+Payee is optional (saved blank with a warning); a cheque has no customer.
 """
 import os
 import uuid
@@ -112,7 +113,7 @@ class ChequesImporter:
             err("cheque_number_too_long", "cheque_number is longer than 50 characters")
         payee = row.get("payee")
         if not payee:
-            err("payee_required", "payee is required")
+            warn("payee_blank", "payee is blank: it is saved empty. Add it in the cheque if needed")
         elif len(payee) > 255:
             err("payee_too_long", "payee is longer than 255 characters")
 
@@ -181,13 +182,16 @@ class ChequesImporter:
             provenance += f" Review flags: {ctx.row.get('review_flags')}."
         notes = provenance + (f"\n{ctx.row.get('notes')}" if ctx.row.get("notes") else "")
 
-        payload = ChequeCreate(
+        # model_construct: the payee is optional for an import (plan 25), and a blank is saved blank rather than
+        # invented. Every other field was validated in _resolve; the schema's non-empty payee rule applies to
+        # normal entry, which is unchanged.
+        payload = ChequeCreate.model_construct(
             account_id=account.id,
             cheque_number=data["cheque_number"],
             issue_date=data["issue_date"],
             amount=data["amount"],
             currency=data["currency"],
-            payee=data["payee"],
+            payee=data["payee"] or "",
             purpose_type="other",
             status="draft",
             notes=notes,

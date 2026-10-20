@@ -8491,7 +8491,7 @@ async getEntityActivity(entityType, entityId) {
         else if (blank.length) findings.push(_finding("error", "required_missing", `${blank.join(", ")} is required for a cheque; leave the row out or flag it in review_flags`));
         if (v.issue_date && !_isoDate(v.issue_date)) findings.push(_finding("error", "issue_date_invalid", `issue_date: '${v.issue_date}' is not an ISO date (YYYY-MM-DD)`));
         if (v.amount && !(Number(v.amount) > 0)) findings.push(_finding("error", "amount_not_positive", "amount must be greater than 0"));
-        if (!v.payee) findings.push(_finding("error", "payee_required", "payee is required"));
+        if (!v.payee) findings.push(_finding("warning", "payee_blank", "payee is blank: it is saved empty. Add it in the cheque if needed"));
         if (v.confidence !== "" && Number(v.confidence) < LIMITS.low_confidence_threshold) findings.push(_finding("warning", "low_confidence", `Confidence ${Number(v.confidence)} is below ${LIMITS.low_confidence_threshold}: compare this row with the scan`));
         if (!v.source_file) findings.push(_finding("warning", "no_scan", "No source file: the cheque will be flagged as scan missing"));
         if (acct && v.cheque_number) {
