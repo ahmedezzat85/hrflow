@@ -5,6 +5,7 @@
               <button class="filter-tab" id="subtabSettingsPaymentTypes" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="payment_types" onclick="switchFinanceSettingsSubTab('payment_types', this)">Payment types</button>
               <button class="filter-tab" id="subtabSettingsProducts" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="products" onclick="switchFinanceSettingsSubTab('products', this)">Products</button>
               <button class="filter-tab" id="subtabSettingsRevenueSources" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="revenue_sources" onclick="switchFinanceSettingsSubTab('revenue_sources', this)">Revenue sources</button>
+              <button class="filter-tab" id="subtabSettingsImport" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="import" hidden onclick="switchFinanceSettingsSubTab('import', this)">Import</button>
               <button class="filter-tab" id="subtabSettingsDisplay" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="display" onclick="switchFinanceSettingsSubTab('display', this)">Display</button>
             </div>
             <div class="fv-head-actions" id="financeSettingsActionsCategories" data-head-for="categories">
@@ -169,6 +170,66 @@
           </div>
 
           <!-- PANE 3: Display Settings (FUX-415) -->
+          <div id="financeSettingsPaneImport" style="display:none;">
+            <div class="fv-callout fv-callout--warn fv-import-notice" id="financeImportNotice" role="note">
+              <div class="fv-callout__title fv-callout__title--ink">Imported historical documents stay Drafts</div>
+              Importing never approves, pays or issues anything and never posts to the ledger. Approving or paying an imported bill, or issuing an imported cheque, posts a ledger entry and changes the account balance. Do that only when the ledger does not already hold that movement, or it will be counted twice.
+            </div>
+
+            <div class="fv-table-card fv-settings-card fv-import-card">
+              <div class="fv-import-grid">
+                <div class="fv-import-field">
+                  <label class="fv-settings-row__label" for="financeImportKind">What are you importing?</label>
+                  <select id="financeImportKind" class="fv-select" onchange="onFinanceImportKindChange()"></select>
+                </div>
+                <div class="fv-import-field">
+                  <label class="fv-settings-row__label" for="financeImportManifest">Manifest (CSV or XLSX)</label>
+                  <input type="file" id="financeImportManifest" class="fv-input" accept=".csv,.xlsx" onchange="onFinanceImportFilesChanged()">
+                  <button type="button" class="btn btn-outline" id="financeImportTemplateBtn" onclick="downloadFinanceImportTemplate()">Download template</button>
+                </div>
+                <div class="fv-import-field">
+                  <label class="fv-settings-row__label" for="financeImportArchive">Documents (ZIP of PDFs or photos)</label>
+                  <input type="file" id="financeImportArchive" class="fv-input" accept=".zip" onchange="onFinanceImportFilesChanged()">
+                </div>
+              </div>
+              <p class="fv-sub" id="financeImportLimits"></p>
+              <div class="fv-import-actions">
+                <button type="button" class="btn btn-fill" id="financeImportDryRunBtn" onclick="runFinanceImportDryRun()" disabled>Run dry run</button>
+                <span class="fv-sub">A dry run checks the files and saves nothing.</span>
+              </div>
+            </div>
+
+            <div id="financeImportReport" class="fv-import-report" style="display:none;">
+              <div class="fv-callout fv-callout--danger" id="financeImportFileErrors" style="display:none;"></div>
+              <div class="fv-callout fv-callout--warn" id="financeImportFileWarnings" style="display:none;"></div>
+              <div class="fv-pills-row">
+                <div class="fv-pills" id="financeImportStatusPills" role="group" aria-label="Row status"></div>
+                <div class="fv-import-actions">
+                  <button type="button" class="btn btn-outline" id="financeImportDownloadReportBtn" onclick="downloadFinanceImportReport()">Download report (CSV)</button>
+                  <button type="button" class="btn btn-fill" id="financeImportCommitBtn" onclick="commitFinanceImport()" disabled>Create drafts</button>
+                </div>
+              </div>
+              <div class="fv-table-card">
+                <div class="fv-table-scroll">
+                  <table class="fv-table fv-table--import responsive-card-table" id="financeImportReportTable">
+                    <thead>
+                      <tr>
+                        <th>Line</th>
+                        <th>Row</th>
+                        <th>File</th>
+                        <th>Result</th>
+                        <th>Messages</th>
+                        <th class="col-actions"><span class="fv-sr-only">Created</span></th>
+                      </tr>
+                    </thead>
+                    <tbody id="financeImportReportBody"></tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="fv-foot" id="financeImportResult" style="display:none;" role="status"></div>
+            </div>
+          </div>
+
           <div id="financeSettingsPaneDisplay" style="display:none;">
             <div class="fv-table-card fv-settings-card">
               <div class="fv-settings-row">

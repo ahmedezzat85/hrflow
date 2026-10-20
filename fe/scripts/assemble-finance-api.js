@@ -20,6 +20,7 @@ export const FINANCE_API_ORDER = [
   'dashboard-api.js',
   'payroll-api.js',
   'statutory-api.js',
+  'imports-api.js',
 ];
 
 export function assembleFinanceApi() {

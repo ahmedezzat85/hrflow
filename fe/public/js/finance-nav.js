@@ -122,6 +122,7 @@ function switchFinanceSettingsSubTab(subTab, btn) {
   const paneProducts = document.getElementById("financeSettingsPaneProducts");
   const paneRevenueSources = document.getElementById("financeSettingsPaneRevenueSources");
   const paneDisplay = document.getElementById("financeSettingsPaneDisplay");
+  const paneImport = document.getElementById("financeSettingsPaneImport");
 
   document.querySelectorAll("#a-finance-settings [data-head-for]").forEach((el) => {
     el.style.display = el.dataset.headFor === subTab ? "" : "none";
@@ -132,6 +133,7 @@ function switchFinanceSettingsSubTab(subTab, btn) {
   if (paneProducts) paneProducts.style.display = subTab === "products" ? "block" : "none";
   if (paneRevenueSources) paneRevenueSources.style.display = subTab === "revenue_sources" ? "block" : "none";
   if (paneDisplay) paneDisplay.style.display = subTab === "display" ? "block" : "none";
+  if (paneImport) paneImport.style.display = subTab === "import" ? "block" : "none";
 
   if (subTab === "payment_types") {
     loadFinancePaymentTypes();
@@ -141,6 +143,8 @@ function switchFinanceSettingsSubTab(subTab, btn) {
     loadRevenueSources();
   } else if (subTab === "display") {
     loadFinanceDisplaySettings();
+  } else if (subTab === "import") {
+    loadFinanceImport();
   } else {
     loadFinanceCategories();
   }
@@ -265,6 +269,9 @@ function runFinanceLoader(pageId) {
   } else if (pageId === "a-finance-reports") {
     loading = loadFinanceReports();
   } else if (pageId === "a-finance-settings") {
+    if (typeof applyFinanceImportVisibility === "function" && !applyFinanceImportVisibility() && _currentSettingsSubTab === "import") {
+      _currentSettingsSubTab = "categories";
+    }
     loading = switchFinanceSettingsSubTab(_currentSettingsSubTab);
   } else if (pageId === "e-payslips") {
     loading = Promise.resolve();
