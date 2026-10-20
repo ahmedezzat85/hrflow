@@ -348,6 +348,7 @@ class ChequesRepository:
             fiscal_year=fiscal_year,
             notes=data.get("notes", "") or "",
             created_by=created_by,
+            import_batch_id=data.get("import_batch_id"),
         )
         self.db.add(cheque)
         self.db.flush()

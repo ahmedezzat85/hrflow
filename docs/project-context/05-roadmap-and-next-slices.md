@@ -227,7 +227,7 @@ Plan: [../finance-module/25-bulk-historical-import-plan.md](../finance-module/25
 | I0 | **Done** (migration 0041): import engine: manifest parser, file and ZIP safety, batch table + migration, router skeleton, per-kind permissions | M | — |
 | I1 | **Done**: bills importer (dry run + commit), `capture_source = import`, extractor cross-check warning | M | I0 |
 | I2 | **Done**: Import screen, template downloads, mock handlers, Playwright | M | I1 |
-| I3 | Cheques importer (draft cheques with scan) | S | I0 |
+| I3 | **Done**: cheques importer (draft cheques with scan) | S | I0 |
 | I4 | Sales invoices importer (+ invoice scan storage if missing) | S | I0 |
 | I2b | Optional offline pre-check CLI reusing the I0 module | S | I0 |
 
