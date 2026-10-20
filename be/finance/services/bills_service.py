@@ -55,6 +55,9 @@ class BillActor:
 
 SYSTEM_ACTOR = BillActor(email="system", is_super_admin=True)
 
+# Documents captured from a file rather than typed by a person start unreviewed (D-019, D-033)
+UNREVIEWED_CAPTURE_SOURCES = ("upload", "ocr", "import")
+
 BILL_UPLOADS_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads", "finance_bills"
 )
@@ -359,7 +362,7 @@ class BillsService:
                 raise HTTPException(status_code=403, detail="Permission denied: 'finance.bill.approve' required to record an already-paid bill")
 
         initial_status = bs.APPROVED if auto_approved else bs.DRAFT
-        is_rev = payload.capture_source not in ("upload", "ocr")
+        is_rev = payload.capture_source not in UNREVIEWED_CAPTURE_SOURCES
 
         data = payload.model_dump(exclude={"lines", "is_paid_now", "payment", "save_as_draft"}) if hasattr(payload, "model_dump") else payload.dict(exclude={"lines", "is_paid_now", "payment", "save_as_draft"})
         data["status"] = initial_status
@@ -653,6 +656,14 @@ class BillsService:
 
     UPLOAD_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".webp", ".heic"}
 
+    @staticmethod
+    def write_file(stored_name: str, content: bytes) -> str:
+        """Writes a bill document under the bill uploads folder and returns its path."""
+        file_path = os.path.join(BILL_UPLOADS_DIR, stored_name)
+        with open(file_path, "wb") as fh:
+            fh.write(content)
+        return file_path
+
     async def upload_drafts(self, files: List[UploadFile], actor: BillActor) -> BillUploadResponse:
         """Multi-file upload: each PDF or photo becomes its own Draft with its own vendor match.
         A weak vendor match leaves the vendor empty and flags 'vendor to confirm'; a vendor read from the
@@ -689,10 +700,7 @@ class BillsService:
                 if extraction is not None and not extraction.is_readable:
                     extraction = None
 
-            unique_name = f"{uuid.uuid4().hex}_{filename}"
-            file_path = os.path.join(BILL_UPLOADS_DIR, unique_name)
-            with open(file_path, "wb") as fh:
-                fh.write(content)
+            file_path = self.write_file(f"{uuid.uuid4().hex}_{filename}", content)
 
             data = {
                 "status": bs.DRAFT,

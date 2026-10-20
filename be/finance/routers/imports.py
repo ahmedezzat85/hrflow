@@ -20,6 +20,7 @@ from db import get_db
 from finance import import_config as cfg
 from finance.import_report import ImportLimitsResponse, ImportReport
 from finance.services.import_service import ImportActor, ImportService
+from finance.services import bills_importer  # noqa: F401  (registers the bills importer)
 
 router = APIRouter(prefix="/api/finance/imports", tags=["Finance - Bulk Import"])
 

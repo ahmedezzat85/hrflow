@@ -266,6 +266,10 @@ class ImportService:
                 ctx.confidence = parse_confidence(row.get("confidence"))
             except ValueError as e:
                 result.findings.append(finding(LEVEL_ERROR, "confidence_invalid", str(e)))
+            if row.get("review_flags"):
+                result.findings.append(
+                    finding(LEVEL_WARNING, "review_flagged", f"Flagged for review: {row.get('review_flags')}")
+                )
 
             if source:
                 key = source.replace("\\", "/").rsplit("/", 1)[-1].strip().lower()
