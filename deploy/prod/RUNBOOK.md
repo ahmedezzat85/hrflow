@@ -2,6 +2,7 @@
 
 Host folder (never committed): `D:/services/hrflow-prod/` containing `.env`, `data/documents`, `data/logs`, `backups/`.
 Database lives in the Docker named volume `hrflow-prod_pgdata` (use backups, not file copies).
+The app container is read-only: uploaded Finance files (bill PDFs, cheque and invoice scans, statements, subscription proofs) are written under `data/documents/finance_bills` and `data/documents/finance_attachments` (set by `BILL_UPLOADS_DIR` / `FINANCE_UPLOADS_DIR` in `docker-compose.yml`). They are inside `data/documents`, so the encrypted backup already includes them.
 
 All commands run from the repo root of a checkout of `main`. (The automatic deploy builds from the runner's own checkout of the release tag, `D:/services/actions-runner/_work/hrflow/hrflow`; nothing in the stack depends on any other folder or branch.)
 

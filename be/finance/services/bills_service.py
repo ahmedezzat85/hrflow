@@ -12,6 +12,7 @@ from typing import FrozenSet, List, Optional, Tuple
 from fastapi import HTTPException, status, UploadFile
 
 from finance.repositories.bills_repository import BillsRepository
+from finance.storage_paths import ensure_dir, resolve_uploads_dir
 from finance.schemas import (
     BillCreate,
     BillUpdate,
@@ -58,16 +59,14 @@ SYSTEM_ACTOR = BillActor(email="system", is_super_admin=True)
 # Documents captured from a file rather than typed by a person start unreviewed (D-019, D-033)
 UNREVIEWED_CAPTURE_SOURCES = ("upload", "ocr", "import")
 
-BILL_UPLOADS_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads", "finance_bills"
-)
+BILL_UPLOADS_DIR = resolve_uploads_dir("BILL_UPLOADS_DIR", "finance_bills")
 
 
 class BillsService:
     def __init__(self, repo: BillsRepository, audit=None):
         self.repo = repo
         self.audit = audit
-        os.makedirs(BILL_UPLOADS_DIR, exist_ok=True)
+        ensure_dir(BILL_UPLOADS_DIR)
 
     # ------------------------------------------------------------------
     # Serialization helpers
@@ -659,6 +658,7 @@ class BillsService:
     @staticmethod
     def write_file(stored_name: str, content: bytes) -> str:
         """Writes a bill document under the bill uploads folder and returns its path."""
+        os.makedirs(BILL_UPLOADS_DIR, exist_ok=True)
         file_path = os.path.join(BILL_UPLOADS_DIR, stored_name)
         with open(file_path, "wb") as fh:
             fh.write(content)
@@ -830,6 +830,7 @@ class BillsService:
 
         fingerprint = hashlib.sha256(content).hexdigest()
         unique_name = f"{uuid.uuid4().hex}_{safe_filename}"
+        os.makedirs(BILL_UPLOADS_DIR, exist_ok=True)
         file_path = os.path.join(BILL_UPLOADS_DIR, unique_name)
 
         with open(file_path, "wb") as f:

@@ -9,6 +9,7 @@ from typing import List, Optional, Dict, Any
 from fastapi import UploadFile, HTTPException, status
 
 from finance.repositories.statements_repository import StatementsRepository
+from finance.storage_paths import ensure_dir, resolve_uploads_dir
 from finance.models import (
     BankStatementImportDB,
     StatementLineDB,
@@ -39,13 +40,13 @@ from finance.services.statement_parsers import (
 )
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-UPLOAD_DIR = os.path.join(BASE_DIR, "uploads", "finance_attachments")
+UPLOAD_DIR = resolve_uploads_dir("FINANCE_UPLOADS_DIR", "finance_attachments")
 
 
 class StatementsService:
     def __init__(self, repo: StatementsRepository):
         self.repo = repo
-        os.makedirs(UPLOAD_DIR, exist_ok=True)
+        ensure_dir(UPLOAD_DIR)
 
     def _import_to_response(self, imp: BankStatementImportDB) -> StatementImportResponse:
         attachments_resp: List[FinanceAttachmentResponse] = []
