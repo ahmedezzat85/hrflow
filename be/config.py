@@ -139,11 +139,15 @@ class Config:
     # Storage backend: "drive" (default, Google Drive) or "local" (local filesystem)
     FILE_STORAGE_BACKEND = os.getenv("FILE_STORAGE_BACKEND", "drive").lower()
 
-    # Local storage base directory when FILE_STORAGE_BACKEND="local"
-    LOCAL_STORAGE_PATH = os.getenv(
-        "LOCAL_STORAGE_PATH",
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "storage")
+    # Unified file storage root (governed by docs/file-storage/26-file-storage-layout-plan.md)
+    # Replaces LOCAL_STORAGE_PATH, BILL_UPLOADS_DIR, FINANCE_UPLOADS_DIR.
+    HRFLOW_FILES_ROOT = os.getenv(
+        "HRFLOW_FILES_ROOT",
+        os.getenv("LOCAL_STORAGE_PATH", os.path.join(os.path.dirname(os.path.abspath(__file__)), "storage"))
     )
+
+    # Deprecated fallback for backwards compatibility
+    LOCAL_STORAGE_PATH = HRFLOW_FILES_ROOT
 
 
     @classmethod
