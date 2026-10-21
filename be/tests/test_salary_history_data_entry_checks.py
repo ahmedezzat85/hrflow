@@ -4,8 +4,7 @@ be/tests/test_salary_history_data_entry_checks.py
 Regression tests for salary data entry (plan 27, findings F1-F9, decision D-034).
 
 Slice P1 fixed F6 (edit re-save), F7 (backdated raise) and F8 (raise -> plan) and added
-zero-closes-a-component. F3 (old Join date stamps the latest salary) stays until slice P3
-adds "Pay effective from" to the create modal.
+zero-closes-a-component. Slice P3 fixed F3 with "Pay effective from" on create.
 
 Run:  cd be && python -m pytest tests/test_salary_history_data_entry_checks.py -q
 Uses the standard test fixtures (isolated temp DB). Touches no production data.
@@ -25,12 +24,13 @@ YESTERDAY = (datetime.utcnow() - timedelta(days=1)).strftime("%Y-%m-%d")
 _counter = [0]
 
 
-def _create_via_api(app_client, admin_cookies, internal=0.0, external=0.0, join_date="2026-01-01"):
+def _create_via_api(app_client, admin_cookies, internal=0.0, external=0.0, join_date="2026-01-01", **extra):
     """Same payload shape the Add Employee modal sends."""
     _counter[0] += 1
     resp = app_client.post(
         "/api/employees",
         json={
+            **extra,
             "name": "Salary Entry Test",
             "email": f"salary_entry_{_counter[0]}_{int(datetime.utcnow().timestamp() * 1000)}@hrflow.test",
             "dept": "Engineering",
@@ -117,10 +117,30 @@ def test_plan_start_after_zero_salary_creation_can_be_any_date(app_client, admin
     ]
 
 
-def test_old_join_date_stamps_latest_salary_as_effective_since_join(app_client, admin_cookies):
-    """Known until P3: Join 2022 + salary typed in the modal => recorded as effective since the Join date."""
+def test_old_join_date_without_pay_effective_from_falls_back_to_join_date(app_client, admin_cookies):
+    """Without pay_effective_from the salary typed on create still takes effect on the Join date."""
     emp_id = _create_via_api(app_client, admin_cookies, external=2000.0, join_date="2022-05-01")
     assert ("external_usd", 2000.0, "2022-05-01", None) in _plan_rows(emp_id)
+
+
+def test_pay_effective_from_overrides_join_date_on_create(app_client, admin_cookies):
+    """P3 / F3 fixed: old Join date + Pay effective from 2026-01-01 => plan rows start 2026-01-01."""
+    emp_id = _create_via_api(app_client, admin_cookies, internal=1000.0, external=2000.0,
+                             join_date="2022-05-01", pay_effective_from="2026-01-01")
+    rows = _plan_rows(emp_id)
+    assert ("external_usd", 2000.0, "2026-01-01", None) in rows
+    assert ("internal_usd_cash", 1000.0, "2026-01-01", None) in rows
+    assert len(rows) == 2
+
+
+def test_pay_effective_from_must_be_a_valid_date(app_client, admin_cookies):
+    resp = app_client.post(
+        "/api/employees",
+        json={"name": "Bad Date", "email": "bad_date_pay@hrflow.test", "internal_salary_usd": 1.0,
+              "external_salary_usd": 0.0, "pay_effective_from": "01/01/2026"},
+        cookies=admin_cookies,
+    )
+    assert resp.status_code == 422
 
 
 # ---------------------------------------------------------------- plan history rules

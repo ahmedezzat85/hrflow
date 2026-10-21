@@ -58,6 +58,20 @@ function renderEmployeesTable(filter = '') {
 }
 document.getElementById('empSearch').addEventListener('input', e => renderEmployeesTable(e.target.value));
 
+let empPayFromTouched = false;
+
+function syncEmpPayFrom() {
+  if (empPayFromTouched || currentEditId) return;
+  document.getElementById('fEmpPayFrom').value = document.getElementById('fEmpJoin').value;
+}
+
+// Edit mode shows pay read-only; changes go through the Pay plan so they are dated and recorded.
+function editPayFromEmployeeModal() {
+  const id = currentEditId;
+  closeModal('employeeModal');
+  if (id) openCompPlanModal(id);
+}
+
 function openEmployeeModal(id = null) {
   const numId = id !== null ? Number(id) : null;
   currentEditId = (numId !== null && !isNaN(numId)) ? numId : id;
@@ -83,6 +97,12 @@ function openEmployeeModal(id = null) {
     fEmpJoin.value = ''; fEmpVac.value = 21; fEmpStatus.value = 'Active'; fEmpDept.value = 'Engineering';
     document.getElementById('fEmpEmploymentState').value = 'Full-Time';
   }
+  const editing = !!id;
+  empPayFromTouched = false;
+  ['fEmpInternalSalary', 'fEmpExternalSalary'].forEach(fid => { document.getElementById(fid).readOnly = editing; });
+  document.getElementById('fEmpPayFromField').style.display = editing ? 'none' : '';
+  document.getElementById('fEmpEditPayRow').style.display = editing ? '' : 'none';
+  document.getElementById('fEmpPayFrom').value = editing ? '' : fEmpJoin.value;
   document.getElementById('employeeModal').classList.add('active');
 }
 
@@ -107,11 +127,11 @@ async function saveEmployee(evt) {
   setButtonLoading(btn, true, 'Saving…');
   try {
     if (currentEditId) {
-      const updates = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, internal_salary_usd, external_salary_usd, join_date: fEmpJoin.value, status: fEmpStatus.value, vac_total: vacTotal, employment_state: document.getElementById('fEmpEmploymentState').value, invoice_id, address_line_1, address_line_2 };
+      const updates = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, join_date: fEmpJoin.value, status: fEmpStatus.value, vac_total: vacTotal, employment_state: document.getElementById('fEmpEmploymentState').value, invoice_id, address_line_1, address_line_2 };
       await Api.updateEmployee(currentEditId, updates);
       toast('Employee updated successfully.');
     } else {
-      const payload = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, internal_salary_usd, external_salary_usd, join_date: fEmpJoin.value, status: fEmpStatus.value, vac_total: vacTotal, next_raise: '2027-01-01', employment_state: document.getElementById('fEmpEmploymentState').value, invoice_id, address_line_1, address_line_2 };
+      const payload = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, internal_salary_usd, external_salary_usd, join_date: fEmpJoin.value, pay_effective_from: document.getElementById('fEmpPayFrom').value || fEmpJoin.value || null, status: fEmpStatus.value, vac_total: vacTotal, next_raise: '2027-01-01', employment_state: document.getElementById('fEmpEmploymentState').value, invoice_id, address_line_1, address_line_2 };
       await Api.createEmployee(payload);
       toast('New employee added.');
     }

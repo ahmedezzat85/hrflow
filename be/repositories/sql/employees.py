@@ -129,7 +129,12 @@ class SqlEmployeeRepository:
                 comp_service = CompensationPlanService(db)
                 today_str = datetime.utcnow().strftime("%Y-%m-%d")
                 join_date = data.get("join_date", "")
-                eff_date = join_date if (join_date and len(join_date) == 10 and join_date[4] == '-' and join_date[7] == '-') else today_str
+                pay_from = data.get("pay_effective_from") or ""
+
+                def _is_iso(v):
+                    return bool(v) and len(v) == 10 and v[4] == '-' and v[7] == '-'
+
+                eff_date = pay_from if _is_iso(pay_from) else (join_date if _is_iso(join_date) else today_str)
                 finalized_runs = (
                     db.query(PayrollRunDB)
                     .filter(PayrollRunDB.status.in_(["finalized", "paid", "partially_paid"]))

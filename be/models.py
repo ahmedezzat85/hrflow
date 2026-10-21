@@ -3,7 +3,7 @@ models.py
 Pydantic request/response models for the HRFlow API.
 """
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional, Literal, List, Union
 
 # Allowed values for an employee's employment state (single source of truth
@@ -60,6 +60,9 @@ class EmployeeCreate(BaseModel):
     internal_salary_usd: float
     external_salary_usd: float
     join_date: str = ""
+    # Date the salary typed on create takes effect in the compensation plan (D-034 / P3).
+    # Falls back to join_date, then today.
+    pay_effective_from: Optional[str] = None
     status: str = "Active"
     vac_total: int = 21
     next_raise: str = ""
@@ -67,6 +70,18 @@ class EmployeeCreate(BaseModel):
     invoice_id: Optional[str] = None
     address_line_1: Optional[str] = None
     address_line_2: Optional[str] = None
+
+
+    @field_validator("pay_effective_from")
+    @classmethod
+    def _pay_effective_from_format(cls, v):
+        if v in (None, ""):
+            return None
+        try:
+            datetime.strptime(v, "%Y-%m-%d")
+        except ValueError:
+            raise ValueError("pay_effective_from must be in YYYY-MM-DD format")
+        return v
 
 
 class EmployeeUpdate(BaseModel):

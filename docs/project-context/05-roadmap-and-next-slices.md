@@ -241,7 +241,7 @@ Plan: [../finance-module/27-pay-plan-sync-and-modal-plan.md](../finance-module/2
 | :--- | :--- | :--- | :--- |
 | P1 | **Done** (October 21, 2026): `apply_pay_change` service (zero closes, one transaction), raise syncs the plan, employee update skips unchanged pay, regression tests | M | — |
 | P2 | **Done** (October 21, 2026): atomic `PUT /compensation-plan`, single-form Pay plan modal, mock mode, Playwright | M | P1 |
-| P3 | Planned: "Pay effective from" on create modal, read-only pay + "Edit pay plan" on edit modal | S | P2 |
+| P3 | **Done** (October 21, 2026): "Pay effective from" on create modal, read-only pay + "Edit pay plan" on edit modal | S | P2 |
 
 ---
 
