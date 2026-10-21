@@ -233,6 +233,18 @@ Plan: [../finance-module/25-bulk-historical-import-plan.md](../finance-module/25
 
 ---
 
+## 3G. Pay Plan Sync and Pay Plan Modal (accepted October 21, 2026)
+
+Plan: [../finance-module/27-pay-plan-sync-and-modal-plan.md](../finance-module/27-pay-plan-sync-and-modal-plan.md). Handoff: [../finance-module/28-pay-plan-claude-code-handoff.md](../finance-module/28-pay-plan-claude-code-handoff.md). Decision D-034, related Q-008 (still Open). Branch `feature/pay-plan-sync`. No migration.
+
+| Slice | Scope | Size | Depends on |
+| :--- | :--- | :--- | :--- |
+| P1 | Planned: `apply_pay_change` service (zero closes, one transaction), raise syncs the plan, employee update skips unchanged pay, regression tests | M | — |
+| P2 | Planned: atomic `PUT /compensation-plan`, single-form Pay plan modal, mock mode, Playwright | M | P1 |
+| P3 | Planned: "Pay effective from" on create modal, read-only pay + "Edit pay plan" on edit modal | S | P2 |
+
+---
+
 ## 4. Deferred Until Decision
 
 The following initiatives remain on hold until formally decided in [04-decision-log.md](04-decision-log.md):
