@@ -185,9 +185,11 @@ def test_resolve_path_symlink_escape_rejection(tmp_path):
 
     symlink_target = root_dir / "symlink_escape.txt"
 
-    def mock_realpath(path):
+    secret_real = os.path.abspath(str(secret_file))
+
+    def mock_realpath(path, **kwargs):
         if "symlink_escape" in str(path):
-            return str(secret_file.resolve())
+            return secret_real
         return os.path.abspath(path)
 
     with patch("os.path.islink", return_value=True), \
