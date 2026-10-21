@@ -1025,6 +1025,28 @@
       return apiRequest("GET", `/api/finance/employees/${employeeId}/compensation-plan/history`);
     },
 
+    // One row per pay change (both components as columns), newest first (D-035).
+    async getEmployeePayHistory(employeeId) {
+      if (_isMock()) {
+        const emp = (typeof employees !== "undefined" && Array.isArray(employees))
+          ? employees.find((e) => String(e.id) === String(employeeId)) : null;
+        return ((emp && emp.salaryHistory) || [])
+          .slice()
+          .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
+          .map((h) => ({
+            date: h.date,
+            previous_internal_usd: Number(h.prevInternal || 0),
+            previous_external_usd: Number(h.prevExternal || 0),
+            new_internal_usd: Number(h.newInternal || 0),
+            new_external_usd: Number(h.newExternal || 0),
+            new_total_usd: round(Number(h.newInternal || 0) + Number(h.newExternal || 0)),
+            pct_change: h.pct || "",
+            reason: h.reason || "",
+          }));
+      }
+      return apiRequest("GET", `/api/finance/employees/${employeeId}/compensation-plan/pay-history`);
+    },
+
     async setEmployeeCompensationPlanComponent(employeeId, componentType, data) {
       if (_isMock()) {
         const amt = Number(data.amount);
@@ -1151,6 +1173,20 @@
         if (typeof employees !== "undefined" && Array.isArray(employees)) {
           const emp = employees.find((e) => String(e.id) === String(employeeId));
           if (emp) {
+            if (changes.some((c) => c.action !== "unchanged")) {
+              const prevInt = (changes.find((c) => c.component_type === "internal_usd_cash") || {}).previous_amount || 0;
+              const prevExt = (changes.find((c) => c.component_type === "external_usd") || {}).previous_amount || 0;
+              const prevTotal = round(prevInt + prevExt);
+              const newTotal = round(amounts.internal_usd_cash + amounts.external_usd);
+              const pct = prevTotal > 0 ? round(((newTotal - prevTotal) / prevTotal) * 100) : 0;
+              (emp.salaryHistory || (emp.salaryHistory = [])).push({
+                date, salary: newTotal, prev: prevTotal, next: newTotal,
+                pct: `${pct >= 0 ? "+" : ""}${pct}%`,
+                newInternal: amounts.internal_usd_cash, newExternal: amounts.external_usd,
+                prevInternal: prevInt, prevExternal: prevExt,
+                reason: data.notes || "",
+              });
+            }
             emp.externalSalaryUsd = amounts.external_usd;
             emp.internalSalaryUsd = amounts.internal_usd_cash;
             emp.salary = round(amounts.external_usd + amounts.internal_usd_cash);

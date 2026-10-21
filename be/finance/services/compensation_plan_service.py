@@ -11,7 +11,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from models_db import EmployeeDB, AuditLogDB
+from models_db import EmployeeDB, AuditLogDB, SalaryHistoryDB
 from finance.models import EmployeeCompensationPlanDB, PayrollRunDB
 from finance.repositories.compensation_plan_repository import CompensationPlanRepository
 
@@ -56,6 +56,32 @@ class CompensationPlanService:
         """Fetch all effective-dated compensation plan rows for an employee in reverse chronological order."""
         self._ensure_employee(employee_id)
         return self.repo.get_history(employee_id)
+
+    def get_pay_history(self, employee_id: int) -> List[Dict[str, Any]]:
+        """One row per pay change (both components as columns), newest first (D-035)."""
+        self._ensure_employee(employee_id)
+        rows = (
+            self.db.query(SalaryHistoryDB)
+            .filter(SalaryHistoryDB.employee_id == employee_id)
+            .order_by(SalaryHistoryDB.date.desc(), SalaryHistoryDB.id.desc())
+            .all()
+        )
+        return [
+            {
+                "id": h.id,
+                "employee_id": h.employee_id,
+                "date": h.date or "",
+                "previous_internal_usd": h.previous_internal_usd or 0.0,
+                "previous_external_usd": h.previous_external_usd or 0.0,
+                "new_internal_usd": h.new_internal_usd or 0.0,
+                "new_external_usd": h.new_external_usd or 0.0,
+                "new_total_usd": round((h.new_internal_usd or 0.0) + (h.new_external_usd or 0.0), 2),
+                "pct_change": h.pct_change or "",
+                "reason": h.reason or "",
+                "applied_by": h.applied_by or "",
+            }
+            for h in rows
+        ]
 
     # ------------------------------------------------------------------ guards
 
@@ -208,12 +234,17 @@ class CompensationPlanService:
         notes: str = "",
         actor_email: Optional[str] = None,
         commit: bool = True,
+        reason: Optional[str] = None,
+        force_history: bool = False,
     ) -> Dict[str, Any]:
         """
-        Apply a pay change to both components in ONE transaction with ONE audit entry.
-        Both amounts are required and >= 0; 0 closes the active row of that component
+        Apply a pay change to both components in ONE transaction with ONE audit entry
+        and, when anything changed, ONE salary_history row (D-035). Both amounts are
+        required and >= 0; 0 closes the active row of that component
         (end = effective date - 1 day). Both at 0 is rejected before any write.
         internal_basis None keeps the active row's basis (NET when there is none).
+        reason is the history reason (defaults to notes). force_history writes the history
+        row even when no component changed (a raise is an event of its own).
         Returns {"changes": [{component_type, action, previous_amount, new_amount}]}.
         """
         emp = self._ensure_employee(employee_id)
@@ -307,6 +338,27 @@ class CompensationPlanService:
                 "new_amount": amt,
             })
 
+        if changed or force_history:
+            prev_int = next(p[4] for p in plan if p[0] == "internal_usd_cash")
+            prev_ext = next(p[4] for p in plan if p[0] == "external_usd")
+            new_int = amounts["internal_usd_cash"]
+            new_ext = amounts["external_usd"]
+            prev_total = round(prev_int + prev_ext, 2)
+            new_total = round(new_int + new_ext, 2)
+            pct = round((new_total - prev_total) / prev_total * 100, 2) if prev_total > 0 else 0.0
+            self.db.add(SalaryHistoryDB(
+                employee_id=employee_id,
+                date=effective_start_date,
+                previous_salary=prev_total,
+                new_salary=new_total,
+                pct_change=f"{'+' if pct >= 0 else ''}{pct}%",
+                reason=(reason if reason is not None else notes) or "",
+                applied_by=actor_email or "",
+                previous_internal_usd=prev_int,
+                previous_external_usd=prev_ext,
+                new_internal_usd=new_int,
+                new_external_usd=new_ext,
+            ))
         if changed:
             try:
                 self.db.add(AuditLogDB(

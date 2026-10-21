@@ -51,6 +51,16 @@ def get_compensation_plan_history(
     return service.get_history(employee_id)
 
 
+@router.get("/pay-history")
+def get_pay_history(
+    employee_id: int = Path(..., description="Employee ID"),
+    service: CompensationPlanService = Depends(get_compensation_plan_service),
+    current_user: dict = Depends(require_permission("finance.payroll.read")),
+):
+    """Pay history as one row per change, with internal and external as columns (D-035)."""
+    return service.get_pay_history(employee_id)
+
+
 @router.put("", response_model=CompensationPlanSetResponse)
 def set_compensation_plan(
     payload: CompensationPlanSetRequest,
