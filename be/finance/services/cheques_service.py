@@ -16,6 +16,7 @@ from finance.schemas import (
 from finance.bill_payment_rules import BillPaymentError
 from finance.models import FinanceChequeDB, FinanceBankAccountDB, BillDB, FinanceAttachmentDB
 from finance.services.subscriptions_service import FINANCE_UPLOADS_DIR
+import file_layout
 
 MAX_SCAN_BYTES = 15 * 1024 * 1024
 
@@ -295,20 +296,36 @@ class ChequesService:
                 raise HTTPException(status_code=413, detail=f"File '{f.filename}' exceeds the 15 MB limit.")
             payloads.append((os.path.basename(f.filename), content, f.content_type or "application/octet-stream"))
 
-        os.makedirs(FINANCE_UPLOADS_DIR, exist_ok=True)
+        cheque = self._require_cheque(cheque_id)
+        acc = cheque.account
+        account_folder = file_layout.build_account_folder(
+            account_id=acc.id if acc else cheque.account_id,
+            bank_name=acc.bank_name if acc else None,
+            currency=acc.currency if acc else cheque.currency,
+            account_name=acc.account_name if acc else None,
+        )
         created = []
         for name, content, mime in payloads:
-            path = os.path.join(FINANCE_UPLOADS_DIR, f"{uuid.uuid4().hex}_{name}")
-            with open(path, "wb") as fh:
-                fh.write(content)
             att = self.repo.add_attachment(
                 cheque_id=cheque_id,
                 file_name=name,
                 file_size=len(content),
                 mime_type=mime,
-                storage_ref=path,
+                storage_ref="pending",
                 uploaded_by=uploaded_by,
             )
+            clean_ext = os.path.splitext(name)[1].lstrip(".")
+            ref = file_layout.build_ref(
+                "cheque",
+                date=cheque.issue_date,
+                account_folder=account_folder,
+                cheque_number=cheque.cheque_number,
+                att_id=att.id,
+                ext=clean_ext,
+            )
+            file_layout.save_file(content, ref)
+            att.storage_ref = ref
+            self.repo.db.commit()
             created.append(self._att_to_response(att))
         return created
 
@@ -321,22 +338,20 @@ class ChequesService:
         att = self.repo.get_attachment(cheque_id, attachment_id)
         if not att:
             raise HTTPException(status_code=404, detail=f"Attachment {attachment_id} not found for cheque {cheque_id}")
-        if not att.storage_ref or not os.path.isfile(att.storage_ref):
+        try:
+            file_path = file_layout.resolve_path(att.storage_ref, must_exist=True)
+        except (FileNotFoundError, ValueError):
             raise HTTPException(status_code=404, detail="Attachment file not found on disk")
-        return att.storage_ref, att.file_name, att.mime_type or "application/octet-stream"
+        return file_path, att.file_name, att.mime_type or "application/octet-stream"
 
     def delete_attachment(self, cheque_id: int, attachment_id: int) -> None:
         self._require_cheque(cheque_id)
         att = self.repo.get_attachment(cheque_id, attachment_id)
         if not att:
             raise HTTPException(status_code=404, detail=f"Attachment {attachment_id} not found for cheque {cheque_id}")
-        path = att.storage_ref
+        if att.storage_ref:
+            file_layout.delete_file(att.storage_ref)
         self.repo.delete_attachment(att)
-        try:
-            if path and os.path.isfile(path):
-                os.remove(path)
-        except OSError:
-            pass
 
     def suggest_next_number(self, account_id: int) -> NextChequeNumberResponse:
         acc = self.repo.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == account_id).first()

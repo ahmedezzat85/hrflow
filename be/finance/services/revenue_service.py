@@ -34,6 +34,7 @@ from finance.schemas import (
     RevenueSourceUpdate,
 )
 from finance.services.subscriptions_service import FINANCE_UPLOADS_DIR
+import file_layout
 
 RECEIPT_SOURCE = "revenue_receipt"
 REVERSAL_SOURCE = "revenue_receipt_reversal"
@@ -280,15 +281,23 @@ class RevenueService:
         if len(content) > MAX_FILE_BYTES:
             raise HTTPException(status_code=413, detail="File exceeds the 15 MB limit.")
         name = os.path.basename(file.filename)
-        os.makedirs(FINANCE_UPLOADS_DIR, exist_ok=True)
-        path = os.path.join(FINANCE_UPLOADS_DIR, f"{uuid.uuid4().hex}_{name}")
-        with open(path, "wb") as fh:
-            fh.write(content)
-        self.db.add(FinanceAttachmentDB(
+        clean_ext = os.path.splitext(name)[1].lstrip(".")
+        att = FinanceAttachmentDB(
             ledger_transaction_id=tx.id, file_name=name, file_size=len(content),
-            mime_type=file.content_type or "application/octet-stream", storage_ref=path,
+            mime_type=file.content_type or "application/octet-stream", storage_ref="pending",
             uploaded_at=datetime.utcnow(), uploaded_by=uploaded_by,
-        ))
+        )
+        self.db.add(att)
+        self.db.flush()
+        ref = file_layout.build_ref(
+            "ledger_attachment",
+            date=tx.date or tx.created_at,
+            transaction_id=tx.id,
+            att_id=att.id,
+            ext=clean_ext,
+        )
+        file_layout.save_file(content, ref)
+        att.storage_ref = ref
         self.db.commit()
         return self._to_response(tx)
 
@@ -300,6 +309,10 @@ class RevenueService:
             .order_by(FinanceAttachmentDB.id.desc())
             .first()
         )
-        if not att or not os.path.isfile(att.storage_ref or ""):
+        if not att:
             raise HTTPException(status_code=404, detail="Attachment not found")
-        return att.storage_ref, att.file_name, att.mime_type or "application/octet-stream"
+        try:
+            file_path = file_layout.resolve_path(att.storage_ref, must_exist=True)
+        except (FileNotFoundError, ValueError):
+            raise HTTPException(status_code=404, detail="Attachment not found")
+        return file_path, att.file_name, att.mime_type or "application/octet-stream"

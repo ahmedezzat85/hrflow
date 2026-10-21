@@ -247,7 +247,7 @@ def build_ref(kind: str, **ctx: Any) -> str:
     yyyy, yyyy_mm = _extract_year_month(
         year=ctx.get("year"),
         month=ctx.get("month"),
-        date=ctx.get("date"),
+        date=ctx.get("date") or ctx.get("period"),
     )
     ext = (ctx.get("ext") or "pdf").lstrip(".").lower()
     ext = re.sub(r"[^a-z0-9]", "", ext)

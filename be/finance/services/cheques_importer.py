@@ -24,6 +24,7 @@ from finance.schemas import ChequeCreate
 from finance.services.cheques_service import ChequesService
 from finance.services.import_service import ImportActor, RowContext, finding, register_importer
 from finance.services.subscriptions_service import FINANCE_UPLOADS_DIR
+import file_layout
 
 REQUIRED_FIELDS = ("amount", "cheque_number", "issue_date")
 _MIME = {"pdf": "application/pdf", "png": "image/png", "jpeg": "image/jpeg", "webp": "image/webp", "heic": "image/heic"}
@@ -197,32 +198,40 @@ class ChequesImporter:
             notes=notes,
         )
 
-        path = None
-        if ctx.entry is not None:
-            ext = os.path.splitext(ctx.entry.base_name)[1].lower()
-            os.makedirs(FINANCE_UPLOADS_DIR, exist_ok=True)
-            path = os.path.join(FINANCE_UPLOADS_DIR, f"{uuid.uuid4().hex}{ext}")
-            with open(path, "wb") as fh:
-                fh.write(ctx.entry.data)
         try:
             cheque = self.service.issue_cheque(payload, created_by=ctx.actor.email, import_batch_id=ctx.batch_id)
-            if path is not None:
+            if ctx.entry is not None:
+                ext = os.path.splitext(ctx.entry.base_name)[1].lower()
+                clean_ext = ext.lstrip(".")
                 mime = _MIME.get(detect_content_type(ctx.entry.data[:16]) or "", "application/octet-stream")
-                self.repo.add_attachment(
+                att = self.repo.add_attachment(
                     cheque_id=cheque.id,
                     file_name=_display_name(ctx.entry.base_name),
                     file_size=len(ctx.entry.data),
                     mime_type=mime,
-                    storage_ref=path,
+                    storage_ref="pending",
                     uploaded_by=ctx.actor.email,
                 )
+                acc = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == cheque.account_id).first()
+                account_folder = file_layout.build_account_folder(
+                    account_id=acc.id if acc else payload.account_id,
+                    bank_name=acc.bank_name if acc else None,
+                    currency=acc.currency if acc else payload.currency,
+                    account_name=acc.account_name if acc else None,
+                )
+                ref = file_layout.build_ref(
+                    "cheque",
+                    date=cheque.issue_date,
+                    account_folder=account_folder,
+                    cheque_number=cheque.cheque_number,
+                    att_id=att.id,
+                    ext=clean_ext,
+                )
+                file_layout.save_file(ctx.entry.data, ref)
+                att.storage_ref = ref
+                self.db.commit()
         except Exception:
             self.db.rollback()
-            if path:
-                try:
-                    os.remove(path)
-                except OSError:
-                    pass
             raise
 
         try:

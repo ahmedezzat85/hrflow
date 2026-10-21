@@ -11,6 +11,8 @@ import re
 import uuid
 from typing import Dict, List, Optional
 
+import datetime
+import file_layout
 from sqlalchemy.orm import Session
 
 from finance import bill_status as bs
@@ -291,7 +293,6 @@ class BillsImporter:
         if data is None:
             raise ValueError("Row is not importable")
 
-        path = None
         if ctx.entry is not None:
             import hashlib
 
@@ -299,8 +300,7 @@ class BillsImporter:
             ext = os.path.splitext(ctx.entry.base_name)[1].lower()
             data["file_fingerprint"] = hashlib.sha256(content).hexdigest()
             data["attachment_name"] = _clean_display_name(ctx.entry.base_name)
-            path = self.service.write_file(f"{uuid.uuid4().hex}{ext}", content)
-            data["attachment_url"] = path
+            data["attachment_url"] = ""
 
         provenance = f"Imported (batch {ctx.batch_id}, row {ctx.row.get('row_ref')}"
         if ctx.row.get("source_file"):
@@ -312,13 +312,21 @@ class BillsImporter:
 
         try:
             bill = self.service.repo.create(data, lines)
+            if ctx.entry is not None:
+                vendor_slug = (bill.vendor.name if bill.vendor else data.get("suggested_vendor_name")) or "vendor"
+                clean_ext = ext.lstrip(".")
+                ref = file_layout.build_ref(
+                    "bill",
+                    date=bill.issue_date or datetime.date.today(),
+                    bill_id=bill.id,
+                    vendor_slug=vendor_slug,
+                    ext=clean_ext,
+                )
+                file_layout.save_file(content, ref)
+                bill.attachment_url = ref
+                self.db.commit()
         except Exception:
             self.db.rollback()
-            if path:
-                try:
-                    os.remove(path)
-                except OSError:
-                    pass
             raise
         actor = BillActor(email=ctx.actor.email, is_super_admin=ctx.actor.is_super_admin, permissions=ctx.actor.permissions)
         self.service._audit(

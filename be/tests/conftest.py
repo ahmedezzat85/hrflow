@@ -32,15 +32,16 @@ os.environ["GOOGLE_OAUTH_CLIENT_ID"] = "test-client-id.apps.googleusercontent.co
 os.environ["ALLOWED_ORIGINS"] = "*"
 os.environ["ENVIRONMENT"] = "development"
 os.environ["STORAGE_ENGINE"] = "sql"
-os.environ["DB_TYPE"] = "sqlite"
-os.environ["DATABASE_URL"] = "sqlite:///./hrflow_test.db"
+worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
+test_db_name = f"hrflow_test_{worker_id}.db"
+os.environ["DATABASE_URL"] = f"sqlite:///./{test_db_name}"
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from config import Config
 Config.STORAGE_ENGINE = "sql"
 Config.DB_TYPE = "sqlite"
-Config.DATABASE_URL = "sqlite:///./hrflow_test.db"
+Config.DATABASE_URL = f"sqlite:///./{test_db_name}"
 
 
 

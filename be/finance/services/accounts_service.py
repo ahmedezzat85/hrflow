@@ -19,6 +19,7 @@ from finance.schemas import (
 )
 from finance.models import FinanceBankAccountDB, FinanceBookDB, AccountBalanceCheckpointDB
 from finance.services.subscriptions_service import FINANCE_UPLOADS_DIR
+import file_layout
 
 VALID_VISIBILITY = ("full", "partial")
 MAX_CHECKPOINT_FILE_BYTES = 15 * 1024 * 1024
@@ -228,7 +229,7 @@ class AccountsService:
         return self._checkpoint_to_response(cp)
 
     async def upload_checkpoint_attachment(self, account_id: int, checkpoint_id: int, file: UploadFile, uploaded_by: Optional[str] = None) -> BalanceCheckpointResponse:
-        self._require_account(account_id)
+        account = self._require_account(account_id)
         cp = self.repo.get_checkpoint(account_id, checkpoint_id)
         if not cp:
             raise HTTPException(status_code=404, detail=f"Checkpoint {checkpoint_id} not found")
@@ -240,17 +241,37 @@ class AccountsService:
         if len(content) > MAX_CHECKPOINT_FILE_BYTES:
             raise HTTPException(status_code=413, detail="File exceeds the 15 MB limit.")
         name = os.path.basename(file.filename)
-        os.makedirs(FINANCE_UPLOADS_DIR, exist_ok=True)
-        path = os.path.join(FINANCE_UPLOADS_DIR, f"{uuid.uuid4().hex}_{name}")
-        with open(path, "wb") as fh:
-            fh.write(content)
-        self.repo.add_checkpoint_attachment(cp.id, name, len(content), file.content_type or "application/octet-stream", path, uploaded_by)
+        clean_ext = os.path.splitext(name)[1].lstrip(".")
+        att = self.repo.add_checkpoint_attachment(
+            cp.id, name, len(content), file.content_type or "application/octet-stream", "pending", uploaded_by
+        )
+        account_folder = file_layout.build_account_folder(
+            account_id=account.id,
+            bank_name=account.bank_name,
+            currency=account.currency,
+            account_name=account.account_name,
+        )
+        ref = file_layout.build_ref(
+            "balance_checkpoint",
+            date=cp.date,
+            account_folder=account_folder,
+            checkpoint_id=cp.id,
+            att_id=att.id,
+            ext=clean_ext,
+        )
+        file_layout.save_file(content, ref)
+        att.storage_ref = ref
+        self.repo.db.commit()
         return self._checkpoint_to_response(cp)
 
     def get_checkpoint_attachment_file(self, account_id: int, checkpoint_id: int):
         self._require_account(account_id)
         cp = self.repo.get_checkpoint(account_id, checkpoint_id)
         att = self.repo.checkpoint_attachment(checkpoint_id) if cp else None
-        if not att or not os.path.isfile(att.storage_ref or ""):
+        if not att:
             raise HTTPException(status_code=404, detail="Checkpoint attachment not found")
-        return att.storage_ref, att.file_name, att.mime_type or "application/octet-stream"
+        try:
+            file_path = file_layout.resolve_path(att.storage_ref, must_exist=True)
+        except (FileNotFoundError, ValueError):
+            raise HTTPException(status_code=404, detail="Checkpoint attachment not found")
+        return file_path, att.file_name, att.mime_type or "application/octet-stream"
