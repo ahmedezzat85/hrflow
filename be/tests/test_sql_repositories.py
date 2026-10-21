@@ -63,7 +63,7 @@ def test_sql_employee_and_user_repository():
     assert user["employee_id"] == emp_id
     assert "role" not in user
 
-    # Test update: profile fields change; pay keys are ignored (pay is changed only through the Pay plan, D-035)
+    # Test update: profile fields change; pay keys are ignored (pay is changed only through the Pay plan, D-036)
     emp_repo.update(emp_id, {"dept": "Strategy", "internal_salary_usd": 4500.0})
     updated = emp_repo.get_by_id(emp_id)
     assert updated["dept"] == "Strategy"

@@ -1,7 +1,7 @@
 """
 be/tests/test_employee_personal.py
 
-Slice S2 of plan 29 (decision D-035): legal name, phone, address and optional ID behind the
+Slice S2 of plan 29 (decision D-036): legal name, phone, address and optional ID behind the
 hr.employee_personal.* permissions, never returned by the list/detail endpoints, and used by the
 salary payment documents.
 
@@ -294,7 +294,7 @@ def test_payment_doc_preview_reads_personal_details_and_flags_a_missing_legal_na
     legacy = _create(app_client, admin_cookies, name="Doc Legacy", invoice_id="08")
     for emp_id in (ready, legacy):
         set_pay(app_client, admin_cookies, emp_id, 0.0, 2000.0)
-    with get_db_context() as db:   # a pre-D-035 row has no legal name
+    with get_db_context() as db:   # a pre-D-036 row has no legal name
         db.query(EmployeeDB).filter(EmployeeDB.id == legacy).update({"legal_name": None})
         db.commit()
 

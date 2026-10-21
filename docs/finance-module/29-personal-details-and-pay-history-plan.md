@@ -1,6 +1,6 @@
 # 29 — Personal Details, Single-Row Pay History, and Pay Moved Out of the Employee Modal: Plan (S1–S3)
 
-**Status:** **Approved by owner, October 21, 2026** (recorded as D-035). **Implemented** on `feature/personal-details-pay-history` (slices S1, S2, S3).
+**Status:** **Approved by owner, October 21, 2026** (recorded as D-036). **Implemented** on `feature/personal-details-pay-history` (slices S1, S2, S3).
 **Baseline:** `main` at `f7bd75b` (after D-034 / P1–P3). **Re-verify the code facts in section 1 in the branch-intake step of each slice.**
 **Scope in one line:** show pay history as one row per change on every screen; add legal name, phone and optional ID to the employee record behind a dedicated permission; and make the Pay plan modal the only place pay is edited.
 
@@ -19,7 +19,7 @@
 | V7 | The payment-doc routers read employees through `employee_repo.list_all()` / `get_by_id()`. | `be/routers/salary_payment_docs.py` |
 | V8 | Salary inputs (Internal, External, Pay effective from) still live in the employee modal; on edit they are read-only with an "Edit pay plan" button. | `fe/src/partials/modals/employee-modal.html`, `fe/public/js/employees.js` |
 
-## 2. Decisions (D-035, accepted October 21, 2026)
+## 2. Decisions (D-036, accepted October 21, 2026)
 
 1. **One-row history everywhere.** The Pay plan modal shows the same `salary_history` table as the other screens. Every pay change, from a raise, a Pay plan save or an initial plan, writes exactly one `salary_history` record. The per-component start/end/status/basis view is dropped from the modal history (the current plan stays visible at the top of the modal).
 2. **Pay is edited only through the Pay plan modal.** The Add/Edit employee modal has no pay fields. After a new employee is saved, the Pay plan modal opens for them; it can be skipped, and an employee may have no pay plan ("Not set").
@@ -63,7 +63,7 @@
 - Starting pay is recorded by the first Pay plan save (one `salary_history` row, previous values 0).
 
 ## 4. Order and delivery
-S1 → S2 → S3, each as its own commit with its own targeted tests, then one final full backend run (`cd be && python -m pytest tests -q -n 12`), `npm run build` in `fe/`, and the affected Playwright specs. Update `docs/project-context/04-decision-log.md` (D-035), the roadmap and `docs/project-context/06-open-questions.md` as needed.
+S1 → S2 → S3, each as its own commit with its own targeted tests, then one final full backend run (`cd be && python -m pytest tests -q -n 12`), `npm run build` in `fe/`, and the affected Playwright specs. Update `docs/project-context/04-decision-log.md` (D-036), the roadmap and `docs/project-context/06-open-questions.md` as needed.
 
 ## 5. Out of scope / later
 Employee self-service for personal details or change requests; nationality or issuing country; encryption at rest of ID numbers; structured addresses; ID uniqueness checks.

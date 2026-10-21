@@ -58,7 +58,7 @@ CATALOG: Tuple[PermissionDef, ...] = (
         implies=("hr.employee.read",),
     ),
 
-    # HR / Employee personal details (D-035)
+    # HR / Employee personal details (D-036)
     PermissionDef(
         key="hr.employee_personal.read",
         group="HR / Employee personal details",

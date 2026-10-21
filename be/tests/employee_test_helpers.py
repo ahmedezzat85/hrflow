@@ -2,7 +2,7 @@
 be/tests/employee_test_helpers.py
 Shared pieces for tests that create employees through POST /api/employees.
 
-Creating an employee requires the personal details (D-035): legal name, phone and address line 1.
+Creating an employee requires the personal details (D-036): legal name, phone and address line 1.
 Spread PERSONAL into the payload: {**PERSONAL, "name": ..., "email": ...}.
 """
 
@@ -15,7 +15,7 @@ PERSONAL = {
 
 def set_pay(app_client, cookies, emp_id, internal=0.0, external=0.0, start="2026-01-01", notes="test pay"):
     """
-    Give an employee a pay plan through the Pay plan endpoint (the only way pay is set, D-035).
+    Give an employee a pay plan through the Pay plan endpoint (the only way pay is set, D-036).
     Does nothing when both amounts are 0 (an employee may have no plan).
     """
     if not internal and not external:

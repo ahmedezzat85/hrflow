@@ -52,7 +52,7 @@ function openInvoicePeriodModal(){
   _popoverSelectedMonth = (monthInput && Number(monthInput.value)) || (new Date().getMonth() + 1);
   renderInvoicePeriodModal();
   const modal = document.getElementById('invoicePeriodModal');
-  if(modal) modal.classList.add('active');
+  if (modal) openModal(modal.id);
 }
 
 function renderInvoicePeriodModal(){
@@ -311,7 +311,7 @@ function generateBulkInvoices(evt){
   updateBulkGenerateLabel();
 
   const modal = document.getElementById('bulkInvoiceModal');
-  if (modal) modal.classList.add('active');
+  if (modal) openModal(modal.id);
 }
 
 // Button text shows how many docs the batch will write: ready ones, plus existing ones when regenerating
@@ -380,7 +380,7 @@ function openRegenerateInvoiceModal(employeeId, employeeName, year, month, invoi
   if (invEl) invEl.textContent = invoiceNumber || '—';
 
   const modal = document.getElementById('regenerateInvoiceModal');
-  if (modal) modal.classList.add('active');
+  if (modal) openModal(modal.id);
 }
 
 async function executeRegenerateInvoice(evt){
@@ -453,7 +453,7 @@ function previewInvoicePdf(invoiceId, invoiceNumber){
     };
   }
   if (container) renderLoadingState(container, 'Loading PDF preview...');
-  if (modal) modal.classList.add('active');
+  if (modal) openModal(modal.id);
 
   Api.getInvoicePreviewBlobUrl(invoiceId).then(url => {
     if (container) {

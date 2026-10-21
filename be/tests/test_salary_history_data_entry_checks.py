@@ -5,7 +5,7 @@ Regression tests for salary data entry (plan 27, findings F1-F9, decision D-034)
 
 Slice P1 fixed F6 (edit re-save), F7 (backdated raise) and F8 (raise -> plan) and added
 zero-closes-a-component. Slice P3 fixed F3 with "Pay effective from" on create.
-D-035 / S3 then moved pay out of the employee create/update API: tests here give an employee pay
+D-036 / S3 then moved pay out of the employee create/update API: tests here give an employee pay
 through the Pay plan (set_pay), effective on the join date, and assert that create/update ignore pay.
 
 Run:  cd be && python -m pytest tests/test_salary_history_data_entry_checks.py -q
@@ -104,7 +104,7 @@ def _history_count(emp_id):
 # ---------------------------------------------------------------- creation modal
 
 def test_creation_ignores_salary_fields_and_creates_no_plan(app_client, admin_cookies):
-    """D-035: pay is not a create input. Old clients that still send it get an employee with no plan."""
+    """D-036: pay is not a create input. Old clients that still send it get an employee with no plan."""
     resp = app_client.post(
         "/api/employees",
         json={**PERSONAL, "name": "Old Client", "email": "old_client_pay@hrflow.test",
@@ -179,7 +179,7 @@ def test_per_component_put_still_rejects_zero(app_client, admin_cookies):
 # ---------------------------------------------------------------- employee edit modal
 
 def test_edit_modal_save_never_touches_the_plan(app_client, admin_cookies):
-    """F6, closed for good by D-035: the profile update has no pay inputs, so the plan cannot be split by it."""
+    """F6, closed for good by D-036: the profile update has no pay inputs, so the plan cannot be split by it."""
     emp_id = _create_via_api(app_client, admin_cookies, internal=1000.0, external=2000.0, join_date="2026-01-01")
     before = _plan_rows(emp_id)
     assert len(before) == 2

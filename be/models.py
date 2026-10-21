@@ -38,7 +38,7 @@ class LoginResponse(BaseModel):
 
 class EmployeeCreate(BaseModel):
     """
-    Pay is not part of creating an employee (D-035): set it afterwards through the Pay plan
+    Pay is not part of creating an employee (D-036): set it afterwards through the Pay plan
     (PUT /api/finance/employees/{id}/compensation-plan). An employee with no plan is valid ("Not set").
 
     invoice_id (docs/analysis/invoice-autopay-plan.md) is only required at payment-doc generation time, so it
@@ -55,7 +55,7 @@ class EmployeeCreate(BaseModel):
     next_raise: str = ""
     employment_state: EmploymentState = "Full-Time"
     invoice_id: Optional[str] = None
-    # Personal details (D-035). Legal name, phone and address line 1 are required for a new employee;
+    # Personal details (D-036). Legal name, phone and address line 1 are required for a new employee;
     # the ID is optional. They are stored through the personal-details path, not the profile one.
     legal_name: str
     phone: str
@@ -102,7 +102,7 @@ class EmployeeUpdate(BaseModel):
 
 class EmployeePersonalUpdate(BaseModel):
     """
-    Partial update of the personal details (D-035). Only the fields sent change. legal_name, phone and
+    Partial update of the personal details (D-036). Only the fields sent change. legal_name, phone and
     address_line_1 cannot be blanked. Sending id_type/id_number both empty clears the ID.
     """
     legal_name: Optional[str] = None

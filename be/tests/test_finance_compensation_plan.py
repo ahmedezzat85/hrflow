@@ -233,7 +233,7 @@ def test_finalized_payroll_run_boundary_guard(app_client, admin_cookies):
 
 
 def test_employee_profile_create_and_update_never_write_pay_but_the_pay_plan_does(app_client, admin_cookies):
-    """D-035: creating or updating an employee does not touch pay; the Pay plan sets it and keeps the fields in step."""
+    """D-036: creating or updating an employee does not touch pay; the Pay plan sets it and keeps the fields in step."""
     unique_email = f"sync_test_{int(datetime.utcnow().timestamp() * 1000)}@hrflow.test"
     create_resp = app_client.post(
         "/api/employees",

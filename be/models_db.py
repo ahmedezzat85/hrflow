@@ -93,7 +93,7 @@ class EmployeeDB(Base):
     invoice_id = Column(String(20), default="")
     address_line_1 = Column(String(255), default="")
     address_line_2 = Column(String(255), default="")
-    # Personal details (D-035): HR-admin only, never returned by the list/detail endpoints.
+    # Personal details (D-036): HR-admin only, never returned by the list/detail endpoints.
     legal_name = Column(String(255), nullable=True)
     phone = Column(String(32), nullable=True)
     id_type = Column(String(20), nullable=True)      # national_id | passport

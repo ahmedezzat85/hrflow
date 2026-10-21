@@ -58,7 +58,7 @@ function renderEmployeesTable(filter = '') {
 }
 document.getElementById('empSearch').addEventListener('input', e => renderEmployeesTable(e.target.value));
 
-// Personal details (D-035) -------------------------------------------------------------------
+// Personal details (D-036) -------------------------------------------------------------------
 let empNameTouched = false;
 // What the server already holds for the ID, so an untouched ID is never re-sent.
 let empPersonalLoaded = { has_id: false, id_type: '', masked: '' };
@@ -219,7 +219,7 @@ async function saveEmployee(evt) {
     }
     closeModal('employeeModal');
     await loadAdminData();
-    // D-035: pay is set in the Pay plan, so a new employee goes straight to it (Cancel = set it later).
+    // D-036: pay is set in the Pay plan, so a new employee goes straight to it (Cancel = set it later).
     if (created && created.id != null && employees.some(x => String(x.id) === String(created.id)) && typeof openCompPlanModal === 'function') {
       openCompPlanModal(created.id);
     }
@@ -234,7 +234,7 @@ function askDelete(id) {
   currentDeleteId = id;
   const emp = employees.find(e => String(e.id) === String(id));
   document.getElementById('delEmpName').textContent = emp ? emp.name : 'this employee';
-  document.getElementById('confirmModal').classList.add('active');
+  openModal('confirmModal');
 }
 async function confirmDelete(evt) {
   const btn = (evt && evt.currentTarget) || document.querySelector('#confirmModal .btn-danger-outline');
@@ -346,7 +346,7 @@ function refreshProfileCompensation() {
   loadPayrollPaymentsCard(currentDetailEmployeeId);
 }
 
-// Personal details rows on the employee page (D-035); the ID is masked until revealed.
+// Personal details rows on the employee page (D-036); the ID is masked until revealed.
 async function loadPersonalRows(id, revealId = false) {
   const host = document.getElementById('detailPersonalRows');
   if (!host) return;
@@ -572,7 +572,7 @@ function openBehalfVacationModal(empId = null) {
   document.getElementById('bvDays').value = '1';
   document.getElementById('bvStatus').value = 'Approved';
   document.getElementById('bvRecordDate').value = '';
-  document.getElementById('behalfVacationModal').classList.add('active');
+  openModal('behalfVacationModal');
 }
 async function submitBehalfVacation(evt) {
   const btn = (evt && evt.currentTarget) || document.getElementById('behalfVacationSaveBtn') || document.querySelector('#behalfVacationModal .btn-fill');
@@ -624,7 +624,7 @@ async function openBehalfClaimModal(empId = null) {
   document.getElementById('bcStatus').value = 'Approved';
   document.getElementById('bcRecordDate').value = '';
   clearBcDocFileSelection();
-  document.getElementById('behalfClaimModal').classList.add('active');
+  openModal('behalfClaimModal');
 }
 async function submitBehalfClaim(evt) {
   const btn = (evt && evt.currentTarget) || document.getElementById('behalfClaimSaveBtn') || document.querySelector('#behalfClaimModal .btn-fill');
@@ -700,7 +700,7 @@ function previewEmployeeDocument(docId, name, fileType) {
     Api.downloadEmployeeDocumentFile(docId, name).catch(err => toast(err.message, 'fa-solid fa-triangle-exclamation'));
   };
   renderLoadingState(container, 'Loading preview...');
-  document.getElementById('documentPreviewModal').classList.add('active');
+  openModal('documentPreviewModal');
   Api.getDocumentPreviewBlobUrl(docId).then(url => {
     if (fileType === 'image') {
       container.innerHTML = `<img src="${url}" style="max-width:100%;max-height:100%;object-fit:contain;">`;
@@ -713,7 +713,7 @@ function previewEmployeeDocument(docId, name, fileType) {
 }
 
 function closeDocumentPreview() {
-  document.getElementById('documentPreviewModal').classList.remove('active');
+  closeModal('documentPreviewModal');
   document.getElementById('docPreviewContainer').innerHTML = '';
 }
 
@@ -739,7 +739,7 @@ function openEmployeeDocumentModal() {
   document.getElementById('docUploadProgressFill').style.width = '0%';
   document.getElementById('docUploadBtn').disabled = false;
   document.getElementById('docCancelBtn').disabled = false;
-  document.getElementById('employeeDocumentModal').classList.add('active');
+  openModal('employeeDocumentModal');
 }
 
 function clearDocFileSelection() {
@@ -1188,7 +1188,7 @@ async function openSocialInsuranceModal() {
     }
   }
 
-  document.getElementById('socialInsuranceModal').classList.add('active');
+  openModal('socialInsuranceModal');
 }
 
 async function saveSocialInsurance(evt) {

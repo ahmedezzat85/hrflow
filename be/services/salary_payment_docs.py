@@ -111,7 +111,7 @@ def check_eligibility(employee: dict) -> str:
     except ValueError:
         raise SalaryPaymentDocEligibilityError(f"invoice_id must be numeric (got {raw_inv_id})")
 
-    # D-035: the rendered document carries the legal name; never fall back to the display name.
+    # D-036: the rendered document carries the legal name; never fall back to the display name.
     legal_name = employee.get("legal_name")
     if not legal_name or not str(legal_name).strip():
         raise SalaryPaymentDocEligibilityError("legal_name is missing")
@@ -134,7 +134,7 @@ def build_template_context(employee: dict, payment_year: int, payment_month: int
     addr2 = (employee.get("address_line_2") or "").strip()
     address_display = f"{addr1}\n{addr2}" if addr2 else addr1
 
-    # The document prints the legal name (D-035); the display name stays in lists and file names.
+    # The document prints the legal name (D-036); the display name stays in lists and file names.
     emp_name = (employee.get("legal_name") or "").strip()
     month_name = MONTH_NAMES[payment_month].capitalize() if 1 <= payment_month <= 12 else ""
 

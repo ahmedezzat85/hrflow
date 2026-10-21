@@ -7965,7 +7965,7 @@ async getEntityActivity(entityType, entityId) {
       return apiRequest("GET", `/api/finance/employees/${employeeId}/compensation-plan/history`);
     },
 
-    // One row per pay change (both components as columns), newest first (D-035).
+    // One row per pay change (both components as columns), newest first (D-036).
     async getEmployeePayHistory(employeeId) {
       if (_isMock()) {
         const emp = (typeof employees !== "undefined" && Array.isArray(employees))

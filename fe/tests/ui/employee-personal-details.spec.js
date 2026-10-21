@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-// D-035 / S2: legal name, phone, address and ID behind hr.employee_personal.*; the display name is what
+// D-036 / S2: legal name, phone, address and ID behind hr.employee_personal.*; the display name is what
 // lists show. Mock mode serves the personal endpoint from window._mockPersonalStore.
 async function openAdmin(page) {
   await page.goto('/?mock=admin', { waitUntil: 'domcontentloaded' });

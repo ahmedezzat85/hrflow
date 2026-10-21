@@ -26,7 +26,7 @@ def _personal_to_dict(emp: EmployeeDB) -> dict:
 
 
 def _employee_to_dict(emp: EmployeeDB, include_personal: bool = False) -> dict:
-    """Profile dict. Personal details (D-035) are only included when explicitly requested."""
+    """Profile dict. Personal details (D-036) are only included when explicitly requested."""
     if not emp:
         return {}
     data = {
@@ -115,7 +115,7 @@ class SqlEmployeeRepository:
             return [_employee_to_dict(e, include_personal) for e in employees]
 
     def create(self, data: Dict[str, Any]) -> int:
-        # Data layer only. The API never passes pay (D-035: the Pay plan owns it, so the columns start at 0
+        # Data layer only. The API never passes pay (D-036: the Pay plan owns it, so the columns start at 0
         # and no plan rows are written here); imports and fixtures may still seed the salary columns.
         internal_salary = float(data.get("internal_salary_usd") or 0)
         external_salary = float(data.get("external_salary_usd") or 0)
@@ -171,7 +171,7 @@ class SqlEmployeeRepository:
                 return False
 
             updates_dict = dict(updates)
-            # Pay is changed only through the Pay plan (D-035); salary keys are never applied here.
+            # Pay is changed only through the Pay plan (D-036); salary keys are never applied here.
             for pay_key in ("internal_salary_usd", "external_salary_usd", "salary"):
                 updates_dict.pop(pay_key, None)
 

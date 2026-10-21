@@ -1,6 +1,6 @@
 """
 be/services/employee_personal.py
-Validation and masking helpers for employee personal details (D-035): phone, ID type/number.
+Validation and masking helpers for employee personal details (D-036): phone, ID type/number.
 Pure functions, no I/O, so the API models and the repository can share them.
 """
 import re

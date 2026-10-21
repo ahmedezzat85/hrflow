@@ -57,7 +57,7 @@ def get_pay_history(
     service: CompensationPlanService = Depends(get_compensation_plan_service),
     current_user: dict = Depends(require_permission("finance.payroll.read")),
 ):
-    """Pay history as one row per change, with internal and external as columns (D-035)."""
+    """Pay history as one row per change, with internal and external as columns (D-036)."""
     return service.get_pay_history(employee_id)
 
 

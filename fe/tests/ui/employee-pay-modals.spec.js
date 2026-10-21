@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-// D-035 / S3: pay is not part of the employee dialog. A new employee goes straight to the Pay plan,
+// D-036 / S3: pay is not part of the employee dialog. A new employee goes straight to the Pay plan,
 // and editing an employee never sends pay.
 async function openAdmin(page) {
   await page.goto('/?mock=admin', { waitUntil: 'domcontentloaded' });

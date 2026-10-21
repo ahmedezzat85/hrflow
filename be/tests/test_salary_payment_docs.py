@@ -299,7 +299,7 @@ def test_build_template_context_includes_address_and_full_name():
     fixed_now = dt.datetime(2026, 9, 23, 12, 0, 0, tzinfo=dt.timezone.utc)
     ctx = build_template_context(emp, 2026, 9, now=fixed_now)
 
-    # The document prints the legal name, never the display name (D-035).
+    # The document prints the legal name, never the display name (D-036).
     assert ctx["employee_name"] == "Jane Marie Developer"
     assert ctx["employee_full_name"] == "Jane Marie Developer"
     assert ctx["address_line_1"] == "100 Innovation Blvd"

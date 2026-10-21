@@ -158,7 +158,7 @@ function openRaiseModal(empId=null){
   document.getElementById('rDate').value = new Date().toISOString().slice(0, 10);
   document.getElementById('rReason').value = 'Annual performance raise';
   onRaiseEmployeeChange();
-  document.getElementById('raiseModal').classList.add('active');
+  openModal('raiseModal');
 }
 function onRaiseEmployeeChange(){
   const emp = employees.find(e=>String(e.id)===String(document.getElementById('rEmpSelect').value));
@@ -329,7 +329,7 @@ function renderCompPlanDeltas() {
   if (saveBtn) saveBtn.disabled = bothZero;
 }
 
-// Pay history: one row per change, internal and external as columns (D-035).
+// Pay history: one row per change, internal and external as columns (D-036).
 function renderCompPlanHistory(history) {
   const histTbody = document.getElementById('compPlanHistoryBody');
   const summary = document.getElementById('compPlanHistorySummary');

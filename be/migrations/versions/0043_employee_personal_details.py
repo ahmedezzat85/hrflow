@@ -1,6 +1,6 @@
 """0043_employee_personal_details
 
-Employee personal details (D-035, slice S2): adds nullable legal_name, phone, id_type and id_number to
+Employee personal details (D-036, slice S2): adds nullable legal_name, phone, id_type and id_number to
 `employees` (address_line_1/2 already exist) and backfills legal_name from name so local databases stay
 valid. Idempotent; the downgrade drops the four columns.
 

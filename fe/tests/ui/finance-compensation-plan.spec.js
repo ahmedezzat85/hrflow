@@ -40,7 +40,7 @@ test.describe('FUX-416: Employee Compensation Plan', () => {
     await expect(modal.locator('#compPlanExternalAmount')).toHaveValue('7500');
     await modal.locator('#compPlanHistorySummary').click();
     await expect(modal.locator('#compPlanHistoryBody')).toBeVisible();
-    // D-035: one row per change, Internal and External as columns (same shape as every other screen).
+    // D-036: one row per change, Internal and External as columns (same shape as every other screen).
     await expect(modal.locator('#compPlanHistoryDetails thead th')).toHaveText(['Effective', 'Internal', 'External', 'Total', 'Change', 'Reason']);
     await expect(modal.locator('#compPlanHistoryBody tr')).toHaveCount(2);
     await modal.locator('#compPlanCloseBtn').click();

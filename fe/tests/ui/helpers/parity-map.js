@@ -252,7 +252,7 @@ export const PARITY_MAP = {
       mockContainerSelector: 'main',
       appContainerSelector: '#a-employee-detail',
       // Issue 9 (owner decision 2026-10-19): Notes and Medical insurance cards are kept features; 'Payroll runs' link is not in the app
-      // D-035: the personal details rows (HR-admin only) add height to the details card and a Reveal button for the ID
+      // D-036: the personal details rows (HR-admin only) add height to the details card and a Reveal button for the ID
       keptLabels: ['Medical insurance consumption', 'Notes and performance tracking', 'Date', 'Category', 'Note', 'Add Note', 'Payroll runs', 'Reveal'],
       setup: async (page) => {
         await page.waitForFunction(() => window.Router && typeof viewProfile === 'function' && typeof employees !== 'undefined' && employees.length > 0);

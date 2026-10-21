@@ -1,6 +1,6 @@
 """
 test_employee_salary_split.py
-Pay is not an input of the employee create/update API (D-035). It is set only through the Pay plan
+Pay is not an input of the employee create/update API (D-036). It is set only through the Pay plan
 (PUT /api/finance/employees/{id}/compensation-plan), which keeps the employee's internal/external
 fields and the legacy `salary` total in step. These tests pin that boundary.
 """

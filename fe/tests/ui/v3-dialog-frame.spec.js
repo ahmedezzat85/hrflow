@@ -63,7 +63,7 @@ test.describe('v3 dialog frame (fixes slice 1)', () => {
     await page.evaluate(() => openModal('employeeModal'));
     const titles = await page.locator('#employeeModal .fv-dialog-section-title').allTextContents();
     expect(titles).toEqual(['Basic details', 'Personal details', 'Employment', 'Salary payment docs']);
-    // D-035: pay lives only in the Pay plan.
+    // D-036: pay lives only in the Pay plan.
     await expect(page.locator('#employeeModal input[id*="Salary"], #employeeModal #fEmpPayFrom')).toHaveCount(0);
   });
 

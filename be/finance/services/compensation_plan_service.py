@@ -58,7 +58,7 @@ class CompensationPlanService:
         return self.repo.get_history(employee_id)
 
     def get_pay_history(self, employee_id: int) -> List[Dict[str, Any]]:
-        """One row per pay change (both components as columns), newest first (D-035)."""
+        """One row per pay change (both components as columns), newest first (D-036)."""
         self._ensure_employee(employee_id)
         rows = (
             self.db.query(SalaryHistoryDB)
@@ -239,7 +239,7 @@ class CompensationPlanService:
     ) -> Dict[str, Any]:
         """
         Apply a pay change to both components in ONE transaction with ONE audit entry
-        and, when anything changed, ONE salary_history row (D-035). Both amounts are
+        and, when anything changed, ONE salary_history row (D-036). Both amounts are
         required and >= 0; 0 closes the active row of that component
         (end = effective date - 1 day). Both at 0 is rejected before any write.
         internal_basis None keeps the active row's basis (NET when there is none).

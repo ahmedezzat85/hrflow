@@ -1,7 +1,7 @@
 """
 be/tests/test_pay_history_single_row.py
 
-Slice S1 of plan 29 (decision D-035): every pay change writes exactly one salary_history row
+Slice S1 of plan 29 (decision D-036): every pay change writes exactly one salary_history row
 carrying both components, and the Pay plan modal reads that table through
 GET /api/finance/employees/{id}/compensation-plan/pay-history.
 

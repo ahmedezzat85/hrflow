@@ -99,7 +99,7 @@ class SqlSalaryRepository:
                 force_history=True,
             )
 
-            # The single salary_history row is written by apply_pay_change (D-035).
+            # The single salary_history row is written by apply_pay_change (D-036).
             emp.next_raise = (datetime.strptime(eff_date, "%Y-%m-%d") + timedelta(days=365)).strftime("%Y-%m-%d")
 
             emp_dict = {

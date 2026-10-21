@@ -359,7 +359,7 @@ const Api = {
   getEmployee(empId) { return apiRequest("GET", `/api/employees/${empId}`); },
   createEmployee(payload) { return apiRequest("POST", "/api/employees", payload); },
   updateEmployee(empId, payload) { return apiRequest("PUT", `/api/employees/${empId}`, payload); },
-  // Personal details (D-035): legal name, phone, address, ID. HR-admin only; the ID is masked unless revealed.
+  // Personal details (D-036): legal name, phone, address, ID. HR-admin only; the ID is masked unless revealed.
   getEmployeePersonal(empId, revealId = false) {
     if (typeof _isMock === "function" && _isMock()) return Promise.resolve(_mockPersonalView(empId, revealId));
     return apiRequest("GET", `/api/employees/${empId}/personal${revealId ? "?reveal_id=true" : ""}`);
