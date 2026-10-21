@@ -149,6 +149,7 @@ This register tracks unresolved product, accounting, and technical architecture 
   Part of the RBAC initiative (D-011 to D-013, accepted October 1, 2026); the answer changes the permission catalog, role grants, or lifecycle rules.  
 - **Known Current Context:**  
   - Interim treatment until decided: Mapped to `finance.payroll.prepare`.  
+  - October 21, 2026 (D-034): the interim treatment is extended so that raises update the compensation plan through the service under `hr.salary.write`, as employee create/update already do under `hr.employee.write`. The question itself remains Open.  
   - Details: [rbac/technical-spec.md](rbac/technical-spec.md) and [rbac/implementation-plan.md](rbac/implementation-plan.md).  
 - **Decision Needed from Owner:**  
   Choose an option or confirm the interim treatment, then record it in [04-decision-log.md](04-decision-log.md).  

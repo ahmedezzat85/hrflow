@@ -4,7 +4,7 @@
         <span class="modal-head-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18v10H3zM7 7v10M17 7v10"></path></svg></span>
         <div class="modal-head-text">
           <h3 id="compPlanModalTitle">Pay plan</h3>
-          <p>Effective-dated external USD and internal USD cash amounts</p>
+          <p>Set both parts in one change. Enter 0 to end a part.</p>
         </div>
         <button class="modal-close" onclick="closeModal('compensationPlanModal')" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
       </div>
@@ -38,42 +38,50 @@
           </div>
         </div>
 
-        <!-- Add a change -->
+        <!-- Change pay: one form, one atomic save (D-034) -->
         <div class="form-section">
-          <div class="fv-dialog-section-title">Add a change</div>
+          <div class="fv-dialog-section-title" id="compPlanChangeTitle">Change pay</div>
+          <div class="fv-plan-edit">
+            <div class="form-field">
+              <label for="compPlanInternalAmount">Internal USD cash, paid locally</label>
+              <input inputmode="decimal" type="number" id="compPlanInternalAmount" step="0.01" min="0" placeholder="0.00" style="text-align: right;" oninput="onCompPlanInput()">
+              <div class="fv-plan-hint" id="compPlanInternalDelta"></div>
+            </div>
+            <div class="form-field">
+              <label for="compPlanSalaryBasis">Basis</label>
+              <select id="compPlanSalaryBasis">
+                <option value="NET" selected>Net</option>
+                <option value="GROSS">Gross</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="compPlanExternalAmount">External USD, US transfer</label>
+              <input inputmode="decimal" type="number" id="compPlanExternalAmount" step="0.01" min="0" placeholder="0.00" style="text-align: right;" oninput="onCompPlanInput()">
+              <div class="fv-plan-hint" id="compPlanExternalDelta"></div>
+            </div>
+            <div class="form-field">
+              <label>Basis</label>
+              <div class="fv-plan-hint">Net</div>
+            </div>
+          </div>
+          <div class="fv-plan-total" id="compPlanNewTotal" aria-live="polite"></div>
           <div class="form-grid">
             <div class="form-field">
-              <label for="compPlanComponentType">Part</label>
-              <select id="compPlanComponentType" onchange="onCompPlanTypeChange()">
-                <option value="external_usd">External USD, US transfer</option>
-                <option value="internal_usd_cash">Internal USD cash, paid locally</option>
-              </select>
-            </div>
-            <div class="form-field">
-              <label for="compPlanAmount">New amount, USD</label>
-              <input inputmode="decimal" type="number" id="compPlanAmount" step="0.01" min="0.01" placeholder="0.00" style="text-align: right;">
-            </div>
-            <div class="form-field" id="compPlanSalaryBasisContainer" style="display:none;">
-              <label for="compPlanSalaryBasis">Salary basis</label>
-              <select id="compPlanSalaryBasis">
-                <option value="NET" selected>Net, target net pay protected</option>
-                <option value="GROSS">Gross, local statutory deductions apply</option>
-              </select>
-            </div>
-            <div class="form-field">
               <label for="compPlanStartDate">Effective from</label>
-              <input type="date" id="compPlanStartDate">
+              <input type="date" id="compPlanStartDate" oninput="onCompPlanInput()">
+              <div class="fv-plan-hint" id="compPlanEarliestHint"></div>
             </div>
             <div class="form-field full">
-              <label for="compPlanNotes">Notes, optional</label>
+              <label for="compPlanNotes">Note, optional</label>
               <textarea id="compPlanNotes" rows="2" placeholder="Why this changes"></textarea>
             </div>
           </div>
+          <div class="fv-plan-hint" id="compPlanBothZeroError" role="alert" style="display:none;">At least one component must be above 0.</div>
         </div>
 
-        <!-- Effective-dated history (real feature, kept after the mock sections) -->
-        <div class="form-section">
-          <div class="fv-dialog-section-title">History</div>
+        <!-- Effective-dated history -->
+        <details class="form-section" id="compPlanHistoryDetails">
+          <summary class="fv-dialog-section-title" id="compPlanHistorySummary">History</summary>
           <div style="max-height:220px; overflow-y:auto; border:1px solid var(--fv-line); border-radius:10px;">
             <table class="responsive-card-table" style="font-size:12.5px;">
               <thead>
@@ -90,11 +98,11 @@
               <tbody id="compPlanHistoryBody"></tbody>
             </table>
           </div>
-        </div>
+        </details>
       </div>
       <div class="modal-foot">
-        <button class="btn" id="compPlanCloseBtn" onclick="closeModal('compensationPlanModal')">Close</button>
-        <button class="btn btn-fill" id="compPlanSaveBtn" onclick="saveCompPlanComponent(event)">Add change</button>
+        <button class="btn" id="compPlanCloseBtn" onclick="closeModal('compensationPlanModal')">Cancel</button>
+        <button class="btn btn-fill" id="compPlanSaveBtn" onclick="saveCompPlanComponent(event)">Save pay change</button>
       </div>
     </div>
   </div>

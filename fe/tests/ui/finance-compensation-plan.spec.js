@@ -36,48 +36,90 @@ test.describe('FUX-416: Employee Compensation Plan', () => {
     await expect(modal.locator('#compPlanEmpName')).not.toBeEmpty();
     await expect(modal.locator('#compPlanActiveExternal')).toBeVisible();
     await expect(modal.locator('#compPlanActiveInternal')).toBeVisible();
+    await expect(modal.locator('#compPlanInternalAmount')).toHaveValue('5000');
+    await expect(modal.locator('#compPlanExternalAmount')).toHaveValue('7500');
+    await modal.locator('#compPlanHistorySummary').click();
     await expect(modal.locator('#compPlanHistoryBody')).toBeVisible();
     await modal.locator('#compPlanCloseBtn').click();
     await expect(modal).not.toBeVisible();
   });
 
-  test('Saving an External USD change updates the modal and the profile card', async ({ page }) => {
+  test('Raise-style change shows per-field deltas and a new total, then saves both parts at once', async ({ page }) => {
     const modal = await openPlanFromProfile(page);
-    await modal.locator('#compPlanComponentType').selectOption('external_usd');
-    await modal.locator('#compPlanAmount').fill('11500');
+    await modal.locator('#compPlanInternalAmount').fill('6000');
+    await modal.locator('#compPlanExternalAmount').fill('11500');
     await modal.locator('#compPlanStartDate').fill('2026-10-01');
+    await expect(modal.locator('#compPlanInternalDelta')).toContainText('+$1,000');
+    await expect(modal.locator('#compPlanInternalDelta')).toContainText('+20.0%');
+    await expect(modal.locator('#compPlanExternalDelta')).toContainText('+$4,000');
+    await expect(modal.locator('#compPlanNewTotal')).toContainText('$17,500');
+    await modal.locator('#compPlanSalaryBasis').selectOption('GROSS');
     await modal.locator('#compPlanNotes').fill('Q4 Market adjustment');
     await modal.locator('#compPlanSaveBtn').click();
 
     await expect(modal.locator('#compPlanActiveExternal')).toContainText('11,500');
+    await expect(modal.locator('#compPlanActiveInternal')).toContainText('$6,000');
+    await expect(modal.locator('#compPlanIntBasis')).toContainText('Gross');
+    await modal.locator('#compPlanHistorySummary').click();
     const histBody = modal.locator('#compPlanHistoryBody');
     await expect(histBody).toContainText('11,500');
     await expect(histBody).toContainText('Q4 Market adjustment');
+    await expect(histBody).toContainText('GROSS');
 
     await modal.locator('#compPlanCloseBtn').click();
     await expect(modal).not.toBeVisible();
     await expect(page.locator('#compExternalVal')).toContainText('11,500');
   });
 
-  test('FUX-421: internal_usd_cash shows Salary Basis selector and saves GROSS basis', async ({ page }) => {
+  test('Setting a part to 0 ends it; both at 0 shows an inline error and disables Save', async ({ page }) => {
     const modal = await openPlanFromProfile(page);
-    await modal.locator('#compPlanComponentType').selectOption('internal_usd_cash');
-    const basisContainer = modal.locator('#compPlanSalaryBasisContainer');
-    await expect(basisContainer).toBeVisible();
-    await modal.locator('#compPlanSalaryBasis').selectOption('GROSS');
-
-    await modal.locator('#compPlanAmount').fill('6500');
     await modal.locator('#compPlanStartDate').fill('2026-10-01');
-    await modal.locator('#compPlanNotes').fill('Internal Gross basis test');
+    await modal.locator('#compPlanInternalAmount').fill('0');
+    await expect(modal.locator('#compPlanInternalDelta')).toContainText('Ends this part on 2026-09-30');
+    await expect(modal.locator('#compPlanBothZeroError')).toBeHidden();
+
+    await modal.locator('#compPlanExternalAmount').fill('0');
+    await expect(modal.locator('#compPlanBothZeroError')).toBeVisible();
+    await expect(modal.locator('#compPlanSaveBtn')).toBeDisabled();
+
+    await modal.locator('#compPlanExternalAmount').fill('7500');
+    await expect(modal.locator('#compPlanSaveBtn')).toBeEnabled();
     await modal.locator('#compPlanSaveBtn').click();
-
-    await expect(modal.locator('#compPlanActiveInternal')).toContainText('$6,500');
-    await expect(modal.locator('#compPlanIntBasis')).toContainText('Gross');
-    await expect(modal.locator('#compPlanHistoryBody')).toContainText('GROSS');
-
-    await modal.locator('#compPlanComponentType').selectOption('external_usd');
-    await expect(basisContainer).not.toBeVisible();
+    await expect(modal.locator('#compPlanActiveInternal')).toHaveText('$0');
+    await expect(modal.locator('#compPlanActiveExternal')).toContainText('7,500');
     await modal.locator('#compPlanCloseBtn').click();
-    await expect(modal).not.toBeVisible();
+  });
+
+  test('Server rejection appears in the dialog error summary and nothing changes', async ({ page }) => {
+    const modal = await openPlanFromProfile(page);
+    await modal.locator('#compPlanStartDate').fill('2025-06-01');
+    await modal.locator('#compPlanInternalAmount').fill('6000');
+    await modal.locator('#compPlanSaveBtn').click();
+    await expect(modal.locator('.form-error-summary')).toContainText('must be strictly after');
+    await expect(modal.locator('#compPlanActiveInternal')).toContainText('$5,000');
+    await modal.locator('#compPlanCloseBtn').click();
+  });
+
+  test('Employee with no plan sees "Set up pay plan" with empty fields and no deltas', async ({ page }) => {
+    await page.goto('/?mock=admin', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 15000 });
+    await page.waitForFunction(() => window.Router && typeof viewProfile === 'function' && employees.length);
+    await page.evaluate(() => {
+      FinanceMockState.compensationPlans = (FinanceMockState.compensationPlans || []).filter((p) => String(p.employee_id) !== 'EMP001');
+      viewProfile('EMP001');
+    });
+    await page.locator('#compEditPlanBtn').click();
+    const modal = page.locator('#compensationPlanModal');
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('#compPlanModalTitle')).toContainText('Set up pay plan');
+    await expect(modal.locator('#compPlanInternalAmount')).toHaveValue('');
+    await expect(modal.locator('#compPlanExternalAmount')).toHaveValue('');
+    await expect(modal.locator('#compPlanSaveBtn')).toBeDisabled();
+    await modal.locator('#compPlanExternalAmount').fill('3000');
+    await expect(modal.locator('#compPlanExternalDelta')).toHaveText('');
+    await modal.locator('#compPlanSaveBtn').click();
+    await expect(modal.locator('#compPlanActiveExternal')).toContainText('3,000');
+    await expect(modal.locator('#compPlanModalTitle')).toContainText('Pay plan');
+    await modal.locator('#compPlanCloseBtn').click();
   });
 });

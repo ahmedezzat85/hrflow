@@ -70,6 +70,7 @@ def create_employee(
         "dept": payload.dept,
         "job_role": payload.job_role,
         "join_date": payload.join_date,
+        "pay_effective_from": payload.pay_effective_from,
         "status": payload.status,
         "vac_total": payload.vac_total,
         "next_raise": payload.next_raise,

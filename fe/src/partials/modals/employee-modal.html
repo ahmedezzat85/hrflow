@@ -59,7 +59,15 @@
             </div>
             <div class="form-field">
               <label for="fEmpJoin">Join date</label>
-              <input type="date" id="fEmpJoin">
+              <input type="date" id="fEmpJoin" oninput="syncEmpPayFrom()">
+            </div>
+            <div class="form-field" id="fEmpPayFromField">
+              <label for="fEmpPayFrom">Pay effective from</label>
+              <input type="date" id="fEmpPayFrom" oninput="empPayFromTouched = true">
+            </div>
+            <div class="form-field full" id="fEmpEditPayRow" style="display:none;">
+              <button type="button" class="btn btn-sm btn-outline" id="fEmpEditPayBtn" onclick="editPayFromEmployeeModal()">Edit pay plan</button>
+              <div class="fv-plan-hint">Pay changes are dated and recorded in the Pay plan.</div>
             </div>
             <div class="form-field">
               <label for="fEmpStatus">Status</label>

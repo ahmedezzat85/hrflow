@@ -2693,6 +2693,27 @@ class EmployeeCompensationPlanResponse(BaseModel):
     external_usd: Optional[CompensationComponentResponse] = None
     internal_usd_cash: Optional[CompensationComponentResponse] = None
     total_monthly_usd: float = 0.0
+    earliest_effective_date: Optional[str] = None
+
+
+class CompensationPlanSetRequest(BaseModel):
+    """Atomic pay change for both components (D-034). 0 closes a component; both 0 is rejected."""
+    effective_start_date: str = Field(..., description="Effective start date in YYYY-MM-DD format")
+    internal_usd_cash: float = Field(..., ge=0, description="Internal USD cash amount; 0 ends the component")
+    external_usd: float = Field(..., ge=0, description="External USD amount; 0 ends the component")
+    internal_salary_basis: Optional[str] = Field("NET", description="NET or GROSS (internal component only)")
+    notes: Optional[str] = Field("", description="Optional notes or rationale")
+
+
+class CompensationPlanChange(BaseModel):
+    component_type: str
+    action: str
+    previous_amount: float
+    new_amount: float
+
+
+class CompensationPlanSetResponse(EmployeeCompensationPlanResponse):
+    changes: List[CompensationPlanChange] = []
 
 
 # =========================================================================

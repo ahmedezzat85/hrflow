@@ -233,52 +233,132 @@ function updateSalaryChart(){ const emp = employees.find(e=>e.id===window.LOGGED
 // Employee Compensation Plan (FUX-416)
 // ==========================================
 let currentCompPlanEmpId = null;
+let compPlanState = { internal: 0, external: 0, intStart: null, extStart: null, hasPlan: false, earliest: null, touched: false };
 
-async function openCompPlanModal(empId, preselectType = null) {
+function compPlanNum(id) {
+  const v = parseFloat(document.getElementById(id)?.value);
+  return Number.isFinite(v) && v > 0 ? Math.round(v * 100) / 100 : 0;
+}
+
+function compPlanDayBefore(iso) {
+  if (!iso) return '';
+  const d = new Date(iso + 'T00:00:00Z');
+  if (isNaN(d.getTime())) return '';
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
+async function openCompPlanModal(empId) {
   currentCompPlanEmpId = String(empId);
   const emp = employees.find(e => String(e.id) === currentCompPlanEmpId);
   if (!emp) return;
 
+  compPlanState = { internal: 0, external: 0, intStart: null, extStart: null, hasPlan: false, earliest: null, touched: false };
   document.getElementById('compPlanEmpName').textContent = `${emp.name} — ${emp.job_role || emp.role || ''}`;
   document.getElementById('compPlanModalTitle').textContent = `Pay plan · ${emp.name}`;
   document.getElementById('compPlanActiveExternal').textContent = fmtUSD(emp.externalSalaryUsd || 0);
   document.getElementById('compPlanActiveInternal').textContent = fmtUSD(emp.internalSalaryUsd || 0);
   document.getElementById('compPlanTotalBadge').textContent = `${fmtUSD((emp.externalSalaryUsd || 0) + (emp.internalSalaryUsd || 0))} / month`;
-
-  const typeSelect = document.getElementById('compPlanComponentType');
-  if (preselectType) {
-    typeSelect.value = preselectType;
-  }
-  onCompPlanTypeChange();
-
-  const today = new Date().toISOString().slice(0, 10);
-  document.getElementById('compPlanStartDate').value = today;
   document.getElementById('compPlanNotes').value = '';
+  const details = document.getElementById('compPlanHistoryDetails');
+  if (details) details.open = false;
+  FinanceForm.clearErrors('compensationPlanModal');
 
   openModal('compensationPlanModal');
-
-  await reloadCompPlanData(currentCompPlanEmpId);
+  await reloadCompPlanData(currentCompPlanEmpId, true);
 }
 
+function onCompPlanInput() {
+  compPlanState.touched = true;
+  renderCompPlanDeltas();
+}
 
-function onCompPlanTypeChange() {
-  const type = document.getElementById('compPlanComponentType').value;
-  const emp = employees.find(e => String(e.id) === currentCompPlanEmpId);
-  const amtInput = document.getElementById('compPlanAmount');
-  const basisContainer = document.getElementById('compPlanSalaryBasisContainer');
-  if (basisContainer) {
-    basisContainer.style.display = type === 'internal_usd_cash' ? 'block' : 'none';
+function compPlanDeltaText(cur, next, startDate) {
+  if (!compPlanState.hasPlan) return { text: '', cls: '' };
+  if (next === cur) return { text: cur > 0 ? 'No change' : '', cls: '' };
+  if (next === 0) {
+    const end = compPlanDayBefore(startDate);
+    return { text: end ? `Ends this part on ${end}` : 'Ends this part', cls: 'fv-delta-down' };
   }
-  if (emp) {
-    if (type === 'external_usd') {
-      amtInput.value = emp.externalSalaryUsd || '';
-    } else {
-      amtInput.value = emp.internalSalaryUsd || '';
-    }
+  if (cur === 0) return { text: 'New part', cls: 'fv-delta-up' };
+  const diff = Math.round((next - cur) * 100) / 100;
+  const pct = (diff / cur) * 100;
+  const sign = diff > 0 ? '+' : '−';
+  return {
+    text: `${sign}${fmtUSD(Math.abs(diff))} (${sign}${Math.abs(pct).toFixed(1)}%)`,
+    cls: diff > 0 ? 'fv-delta-up' : 'fv-delta-down',
+  };
+}
+
+function renderCompPlanDeltas() {
+  const intNew = compPlanNum('compPlanInternalAmount');
+  const extNew = compPlanNum('compPlanExternalAmount');
+  const start = document.getElementById('compPlanStartDate').value;
+  const st = compPlanState;
+
+  const setHint = (id, d) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = d.text;
+    el.classList.remove('fv-delta-up', 'fv-delta-down');
+    if (d.cls) el.classList.add(d.cls);
+  };
+  setHint('compPlanInternalDelta', compPlanDeltaText(st.internal, intNew, start));
+  setHint('compPlanExternalDelta', compPlanDeltaText(st.external, extNew, start));
+
+  const newTotal = Math.round((intNew + extNew) * 100) / 100;
+  const curTotal = Math.round((st.internal + st.external) * 100) / 100;
+  let totalText = `New total: ${fmtUSD(newTotal)} / month`;
+  if (st.hasPlan && curTotal > 0 && newTotal !== curTotal) {
+    const diff = Math.round((newTotal - curTotal) * 100) / 100;
+    const sign = diff > 0 ? '+' : '−';
+    totalText += ` (${sign}${fmtUSD(Math.abs(diff))}, ${sign}${Math.abs((diff / curTotal) * 100).toFixed(1)}%)`;
+  }
+  document.getElementById('compPlanNewTotal').textContent = totalText;
+
+  // Advisory earliest date: later of the finalized-period lock and the start of any changed active part.
+  let earliest = st.earliest || '';
+  if (intNew !== st.internal && st.intStart && st.intStart > earliest) earliest = st.intStart;
+  if (extNew !== st.external && st.extStart && st.extStart > earliest) earliest = st.extStart;
+  document.getElementById('compPlanEarliestHint').textContent = earliest ? `Earliest allowed: ${earliest}` : '';
+
+  const bothZero = intNew === 0 && extNew === 0;
+  const err = document.getElementById('compPlanBothZeroError');
+  err.style.display = bothZero && (st.hasPlan || st.touched) ? 'block' : 'none';
+  const saveBtn = document.getElementById('compPlanSaveBtn');
+  if (saveBtn) saveBtn.disabled = bothZero;
+}
+
+function renderCompPlanHistory(history) {
+  const histTbody = document.getElementById('compPlanHistoryBody');
+  const summary = document.getElementById('compPlanHistorySummary');
+  if (summary) summary.textContent = `History (${history ? history.length : 0} rows)`;
+  if (history && history.length > 0) {
+    histTbody.innerHTML = history.map(h => {
+      const isExternal = h.component_type === 'external_usd';
+      const typeBadge = isExternal
+        ? '<span class="badge-pill pill-primary"><i class="fa-solid fa-building-columns"></i> External USD</span>'
+        : '<span class="badge-pill pill-success"><i class="fa-solid fa-money-bill-wave"></i> Internal USD Cash</span>';
+      const statusBadge = !h.effective_end_date
+        ? '<span class="badge-pill pill-success">Active</span>'
+        : '<span class="badge-pill pill-neutral">Closed</span>';
+      const basisText = isExternal ? 'NET' : (h.salary_basis || 'NET');
+      return `<tr>
+        <td>${typeBadge}</td>
+        <td><span class="badge-pill pill-neutral">${basisText}</span></td>
+        <td><strong>${fmtUSD(h.amount)}</strong></td>
+        <td>${h.effective_start_date}</td>
+        <td>${h.effective_end_date || '—'}</td>
+        <td>${statusBadge}</td>
+        <td>${escapeHtml(h.notes || '—')}</td>
+      </tr>`;
+    }).join('');
+  } else {
+    histTbody.innerHTML = renderEmptyTableRow(7, 'No compensation history recorded yet.', 'fa-solid fa-clock');
   }
 }
 
-async function reloadCompPlanData(empId) {
+async function reloadCompPlanData(empId, prefill) {
   const histTbody = document.getElementById('compPlanHistoryBody');
   if (!histTbody) return;
   histTbody.innerHTML = renderEmptyTableRow(7, 'Loading history...', 'fa-solid fa-spinner fa-spin');
@@ -288,53 +368,41 @@ async function reloadCompPlanData(empId) {
       FinanceApi.getEmployeeCompensationPlanHistory(empId)
     ]);
 
-    if (plan) {
-      if (plan.external_usd) {
-        document.getElementById('compPlanActiveExternal').textContent = fmtUSD(plan.external_usd.amount);
-        document.getElementById('compPlanExtEffective').textContent = fmtDateShort(plan.external_usd.effective_start_date);
-      } else {
-        document.getElementById('compPlanActiveExternal').textContent = '$0.00';
-        document.getElementById('compPlanExtEffective').textContent = '—';
-      }
+    const ext = plan && plan.external_usd;
+    const intc = plan && plan.internal_usd_cash;
+    document.getElementById('compPlanActiveExternal').textContent = fmtUSD(ext ? ext.amount : 0);
+    document.getElementById('compPlanExtEffective').textContent = ext ? fmtDateShort(ext.effective_start_date) : '—';
+    document.getElementById('compPlanActiveInternal').textContent = fmtUSD(intc ? intc.amount : 0);
+    const basisLabel = ((intc && intc.salary_basis) || 'NET').toUpperCase();
+    document.getElementById('compPlanIntBasis').textContent = basisLabel === 'GROSS' ? 'Gross' : 'Net';
+    document.getElementById('compPlanIntEffective').textContent = intc ? fmtDateShort(intc.effective_start_date) : '—';
+    document.getElementById('compPlanTotalBadge').textContent = `${fmtUSD((plan && plan.total_monthly_usd) || 0)} / month`;
 
-      if (plan.internal_usd_cash) {
-        const basisLabel = (plan.internal_usd_cash.salary_basis || 'NET').toUpperCase();
-        document.getElementById('compPlanActiveInternal').textContent = fmtUSD(plan.internal_usd_cash.amount);
-        document.getElementById('compPlanIntBasis').textContent = basisLabel === 'GROSS' ? 'Gross' : 'Net';
-        document.getElementById('compPlanIntEffective').textContent = fmtDateShort(plan.internal_usd_cash.effective_start_date);
-        const basisSelect = document.getElementById('compPlanSalaryBasis');
-        if (basisSelect) basisSelect.value = basisLabel;
-      } else {
-        document.getElementById('compPlanActiveInternal').textContent = '$0.00';
-        document.getElementById('compPlanIntEffective').textContent = '—';
-      }
+    compPlanState = {
+      internal: intc ? Number(intc.amount) : 0,
+      external: ext ? Number(ext.amount) : 0,
+      intStart: intc ? intc.effective_start_date : null,
+      extStart: ext ? ext.effective_start_date : null,
+      hasPlan: !!(ext || intc),
+      earliest: (plan && plan.earliest_effective_date) || null,
+      touched: false,
+    };
 
-      document.getElementById('compPlanTotalBadge').textContent = `${fmtUSD(plan.total_monthly_usd || 0)} / month`;
+    const emp = employees.find(e => String(e.id) === String(empId));
+    document.getElementById('compPlanModalTitle').textContent =
+      `${compPlanState.hasPlan ? 'Pay plan' : 'Set up pay plan'} · ${emp ? emp.name : ''}`;
+    document.getElementById('compPlanChangeTitle').textContent = compPlanState.hasPlan ? 'Change pay' : 'Set up pay';
+
+    if (prefill) {
+      document.getElementById('compPlanInternalAmount').value = compPlanState.internal || '';
+      document.getElementById('compPlanExternalAmount').value = compPlanState.external || '';
+      document.getElementById('compPlanSalaryBasis').value = intc ? basisLabel : 'NET';
+      const today = new Date().toISOString().slice(0, 10);
+      document.getElementById('compPlanStartDate').value =
+        compPlanState.earliest && compPlanState.earliest > today ? compPlanState.earliest : today;
     }
-
-    if (history && history.length > 0) {
-      histTbody.innerHTML = history.map(h => {
-        const isExternal = h.component_type === 'external_usd';
-        const typeBadge = isExternal
-          ? '<span class="badge-pill pill-primary"><i class="fa-solid fa-building-columns"></i> External USD</span>'
-          : '<span class="badge-pill pill-success"><i class="fa-solid fa-money-bill-wave"></i> Internal USD Cash</span>';
-        const statusBadge = !h.effective_end_date
-          ? '<span class="badge-pill pill-success">Active</span>'
-          : '<span class="badge-pill pill-neutral">Closed</span>';
-        const basisText = isExternal ? 'NET' : (h.salary_basis || 'NET');
-        return `<tr>
-          <td>${typeBadge}</td>
-          <td><span class="badge-pill pill-neutral">${basisText}</span></td>
-          <td><strong>${fmtUSD(h.amount)}</strong></td>
-          <td>${h.effective_start_date}</td>
-          <td>${h.effective_end_date || '—'}</td>
-          <td>${statusBadge}</td>
-          <td>${h.notes || '—'}</td>
-        </tr>`;
-      }).join('');
-    } else {
-      histTbody.innerHTML = renderEmptyTableRow(7, 'No compensation history recorded yet.', 'fa-solid fa-clock');
-    }
+    renderCompPlanHistory(history);
+    renderCompPlanDeltas();
   } catch (err) {
     console.warn('Failed to load compensation plan details:', err);
     histTbody.innerHTML = renderEmptyTableRow(7, 'Could not load history.', 'fa-solid fa-triangle-exclamation');
@@ -343,45 +411,49 @@ async function reloadCompPlanData(empId) {
 
 async function saveCompPlanComponent(evt) {
   const btn = (evt && evt.currentTarget) || document.getElementById('compPlanSaveBtn');
-  const type = document.getElementById('compPlanComponentType').value;
-  const amountVal = document.getElementById('compPlanAmount').value;
+  const internal = compPlanNum('compPlanInternalAmount');
+  const external = compPlanNum('compPlanExternalAmount');
   const startDate = document.getElementById('compPlanStartDate').value;
-  const notes = document.getElementById('compPlanNotes').value;
-  const salaryBasis = type === 'internal_usd_cash' ? (document.getElementById('compPlanSalaryBasis')?.value || 'NET') : 'NET';
 
   if (!FinanceForm.validateRequiredFields('compensationPlanModal', [
-    { id: 'compPlanAmount', message: 'Enter an amount greater than 0.', check: (v) => Number(v) > 0 },
     { id: 'compPlanStartDate', message: 'Select an effective start date.' },
   ])) return;
+  if (internal === 0 && external === 0) {
+    FinanceForm.showErrorSummary('compensationPlanModal', [
+      { fieldId: 'compPlanInternalAmount', message: 'At least one component must be above 0.' },
+    ]);
+    return;
+  }
 
   setButtonLoading(btn, true, 'Saving…');
   try {
-    const payload = {
-      amount: Number(amountVal),
+    const result = await FinanceApi.setEmployeeCompensationPlan(currentCompPlanEmpId, {
       effective_start_date: startDate,
-      notes: notes
-    };
-    if (type === 'internal_usd_cash') {
-      payload.salary_basis = salaryBasis;
-    }
-
-    await FinanceApi.setEmployeeCompensationPlanComponent(currentCompPlanEmpId, type, payload);
-
-    toast('Compensation component updated successfully.', 'fa-solid fa-check');
+      internal_usd_cash: internal,
+      external_usd: external,
+      internal_salary_basis: document.getElementById('compPlanSalaryBasis')?.value || 'NET',
+      notes: document.getElementById('compPlanNotes').value,
+    });
+    FinanceForm.clearErrors('compensationPlanModal');
+    const changed = (result.changes || []).filter(c => c.action !== 'unchanged');
+    toast(changed.length ? 'Pay plan updated.' : 'No changes to save.', 'fa-solid fa-check');
 
     const emp = employees.find(e => String(e.id) === String(currentCompPlanEmpId));
     if (emp) {
-      if (type === 'external_usd') emp.externalSalaryUsd = Number(amountVal);
-      if (type === 'internal_usd_cash') emp.internalSalaryUsd = Number(amountVal);
+      emp.externalSalaryUsd = result.external_usd ? Number(result.external_usd.amount) : 0;
+      emp.internalSalaryUsd = result.internal_usd_cash ? Number(result.internal_usd_cash.amount) : 0;
       emp.salary = (emp.externalSalaryUsd || 0) + (emp.internalSalaryUsd || 0);
     }
 
-    await reloadCompPlanData(currentCompPlanEmpId);
+    await reloadCompPlanData(currentCompPlanEmpId, true);
     renderSalaryPage(document.getElementById('salarySearch')?.value || '');
     if (typeof refreshProfileCompensation === 'function') refreshProfileCompensation();
   } catch (err) {
-    toast(err.message || 'Failed to update component', 'fa-solid fa-triangle-exclamation');
+    FinanceForm.showErrorSummary('compensationPlanModal', [
+      { message: err.message || 'Failed to update the pay plan' },
+    ]);
   } finally {
     setButtonLoading(btn, false);
+    renderCompPlanDeltas();
   }
 }
