@@ -21,6 +21,8 @@ from finance.models import SalesInvoiceDB, PaymentDB, FinanceBankAccountDB
 
 from datetime import datetime, date
 
+import file_layout
+
 VALID_INVOICE_STATUSES = inv_status.LIST_FILTERS  # list filters; only the five real statuses are ever stored
 VALID_PAYMENT_METHODS = {"bank_transfer", "cash", "card", "other"}
 VALID_DIRECTIONS = {"incoming", "outgoing"}
@@ -295,16 +297,16 @@ class InvoicesService:
         ]
 
     def get_attachment_file(self, invoice_id: int, attachment_id: int):
-        import os
-
         if not self.repo.get_by_id(invoice_id):
             raise HTTPException(status_code=404, detail=f"Invoice {invoice_id} not found")
         att = self.repo.get_attachment(invoice_id, attachment_id)
         if not att:
             raise HTTPException(status_code=404, detail=f"Attachment {attachment_id} not found for invoice {invoice_id}")
-        if not att.storage_ref or not os.path.isfile(att.storage_ref):
+        try:
+            file_path = file_layout.resolve_path(att.storage_ref, must_exist=True)
+        except (FileNotFoundError, ValueError):
             raise HTTPException(status_code=404, detail="Attachment file not found on disk")
-        return att.storage_ref, att.file_name, att.mime_type or "application/octet-stream"
+        return file_path, att.file_name, att.mime_type or "application/octet-stream"
 
     @staticmethod
     def _lines_changed(invoice: SalesInvoiceDB, new_lines: List[dict]) -> bool:

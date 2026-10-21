@@ -39,9 +39,17 @@ def _counts():
 
 
 def _upload_dir_files():
-    from finance.services.bills_service import BILL_UPLOADS_DIR
+    import file_layout
 
-    return sorted(os.listdir(BILL_UPLOADS_DIR))
+    root = file_layout.get_files_root()
+    files = []
+    if os.path.exists(root):
+        for dirpath, _, filenames in os.walk(root):
+            if "_meta" in dirpath.replace("\\", "/"):
+                continue
+            for f in filenames:
+                files.append(os.path.join(dirpath, f))
+    return sorted(files)
 
 
 def _run(client, cookies, rows, files, commit=False):

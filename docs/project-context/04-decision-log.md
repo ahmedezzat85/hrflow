@@ -454,7 +454,19 @@ This document records durable product and architectural decisions approved by th
 
 - **Status:** Accepted by owner, October 21, 2026. Plan: [../finance-module/27-pay-plan-sync-and-modal-plan.md](../finance-module/27-pay-plan-sync-and-modal-plan.md). Not implemented yet (slices P1–P3 on `feature/pay-plan-sync`). Extends the Q-008 interim treatment; Q-008 stays Open.
 - **Decision:** (1) Either pay component (internal USD cash, external USD) may be 0, never both; a 0 closes the active plan row the day before the effective date and keeps history. (2) The Pay plan modal writes plan rows only; the Raise modal remains the raise event (plan + raise history + next-raise date). (3) A raise dated today or earlier applies to the plan if the plan guards pass; future dates and guard failures are rejected and nothing is written. (4) Raises update the plan through the service under `hr.salary.write` (as employee create/update already do under `hr.employee.write`). (5) The Pay plan modal becomes one form saved through one atomic endpoint (`PUT /api/finance/employees/{id}/compensation-plan`), single transaction, single audit entry. (6) The employee create modal gains "Pay effective from"; the edit modal shows pay read-only with an "Edit pay plan" button.
-- **Rationale:** Verified October 20–21, 2026: a raise updated employee fields and history but not the compensation plan that payroll reads; re-saving the employee edit modal split plan rows; there was no way to end a component. All three are the same class of problem (two salary stores). Employees in the team have every combination of internal-only, external-only, split, and switches between them.
+### D-035 — Unified File Storage Root and Folder Layout
+
+- **Status:** Accepted by owner, October 21, 2026. Resolves local scope of Q-003. Plan: [../file-storage/26-file-storage-layout-plan.md](../file-storage/26-file-storage-layout-plan.md). Implemented on `feature/file-storage-layout` (slices F0–F6).
+- **Decision:**
+  - HRFlow unifies all stored files (Finance and HR) under a single environment-configured root `HRFLOW_FILES_ROOT` (defaults to `/data/documents` in container, `${HRFLOW_DATA_DIR}/documents` on host).
+  - Database records store root-relative POSIX paths only (e.g., `finance/2026/bills/2026-04/12-vendor.pdf`), never absolute host filesystem paths.
+  - Files are written once to their canonical layout path and never moved or renamed afterwards, even if underlying records (vendor name, account details) change.
+  - File deletions are hard deletes (no recycle bin).
+  - Finance files follow year-first layout: `finance/<yyyy>/<type>/...` (`bills`, `cheques`, `invoices`, `statements`, `subscription-proofs`, `balance-checkpoints`, `ledger-attachments`, `imports`).
+  - HR files preserve approved structure: `hr/salary-payment-docs/<yyyy>/<yyyy-mm>/...`, `hr/employees/<id>-<name>/...`, `hr/company-documents/...`.
+  - Account folders are structured as `<id>-<bank-slug>-<currency>` (cash accounts: `<id>-<account-name-slug>`).
+  - Google Drive is used strictly as an additive, unencrypted one-way backup clone (`deploy/prod/scripts/backup-files-clone.ps1`) for instant disaster recovery and file browsing, plus the existing encrypted tar.gz backup destination; it is not a runtime API backend.
+- **Rationale:** Eliminate fragmented storage locations (`BILL_UPLOADS_DIR`, `FINANCE_UPLOADS_DIR`, `LOCAL_STORAGE_PATH`), replace brittle absolute file paths in database tables with root-relative paths, and make the files folder human-browsable and portable without database updates.
 
 ---
 

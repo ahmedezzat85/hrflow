@@ -15,6 +15,7 @@ from finance.models import (
     StatementLineDB,
     StatementMappingTemplateDB,
     FinanceAttachmentDB,
+    FinanceBankAccountDB,
 )
 from finance.schemas import (
     StatementImportResponse,
@@ -41,6 +42,7 @@ from finance.services.statement_parsers import (
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 UPLOAD_DIR = resolve_uploads_dir("FINANCE_UPLOADS_DIR", "finance_attachments")
+import file_layout
 
 
 class StatementsService:
@@ -322,19 +324,12 @@ class StatementsService:
                 detail=f"This exact statement file was already imported on {existing_dup.created_at.strftime('%Y-%m-%d')} (Import #{existing_dup.id}). Set allow_duplicate=true to re-import.",
             )
 
-        # Save to private uploads/finance_attachments/
-        os.makedirs(UPLOAD_DIR, exist_ok=True)
-        unique_name = f"stmt_{uuid.uuid4().hex[:12]}_{filename}"
-        disk_path = os.path.join(UPLOAD_DIR, unique_name)
-        with open(disk_path, "wb") as f:
-            f.write(content)
-
         # Create BankStatementImportDB
         stmt_import = self.repo.create_import(
             account_id=account_id,
             period_month=period_month,
             file_type=file_type,
-            uploaded_file_ref=disk_path,
+            uploaded_file_ref="",
             file_fingerprint=file_fp,
             opening_balance=opening_balance,
             closing_balance=closing_balance,
@@ -351,10 +346,31 @@ class StatementsService:
             file_name=filename,
             file_size=len(content),
             mime_type=file.content_type or "application/octet-stream",
-            storage_ref=disk_path,
+            storage_ref="pending",
             uploaded_by=created_by,
         )
         self.repo.db.add(att)
+        self.repo.db.flush()
+
+        acc = self.repo.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == account_id).first()
+        account_folder = file_layout.build_account_folder(
+            account_id=acc.id if acc else account_id,
+            bank_name=acc.bank_name if acc else None,
+            currency=acc.currency if acc else None,
+            account_name=acc.account_name if acc else None,
+        )
+        clean_ext = os.path.splitext(filename)[1].lstrip(".")
+        ref = file_layout.build_ref(
+            "statement",
+            date=period_month,
+            account_folder=account_folder,
+            period=period_month,
+            att_id=att.id,
+            ext=clean_ext,
+        )
+        file_layout.save_file(content, ref)
+        att.storage_ref = ref
+        stmt_import.uploaded_file_ref = ref
         self.repo.db.commit()
 
         # Parse lines

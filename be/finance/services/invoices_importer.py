@@ -22,6 +22,7 @@ from finance.schemas import SalesInvoiceCreate, SalesInvoiceLineCreate
 from finance.services.import_service import ImportActor, RowContext, finding, register_importer
 from finance.services.invoices_service import InvoicesService
 from finance.services.subscriptions_service import FINANCE_UPLOADS_DIR
+import file_layout
 
 REQUIRED_FIELDS = ("customer_name", "invoice_number", "issue_date", "due_date")
 _MIME = {"pdf": "application/pdf", "png": "image/png", "jpeg": "image/jpeg", "webp": "image/webp", "heic": "image/heic"}
@@ -185,32 +186,33 @@ class InvoicesImporter:
             lines=lines,
         )
 
-        path = None
-        if ctx.entry is not None:
-            ext = os.path.splitext(ctx.entry.base_name)[1].lower()
-            os.makedirs(FINANCE_UPLOADS_DIR, exist_ok=True)
-            path = os.path.join(FINANCE_UPLOADS_DIR, f"{uuid.uuid4().hex}{ext}")
-            with open(path, "wb") as fh:
-                fh.write(ctx.entry.data)
         try:
             invoice = self.service.create_invoice(payload, import_batch_id=ctx.batch_id)
-            if path is not None:
+            if ctx.entry is not None:
+                ext = os.path.splitext(ctx.entry.base_name)[1].lower()
+                clean_ext = ext.lstrip(".")
                 mime = _MIME.get(detect_content_type(ctx.entry.data[:16]) or "", "application/octet-stream")
-                self.repo.add_attachment(
+                att = self.repo.add_attachment(
                     invoice_id=invoice.id,
                     file_name=_display_name(ctx.entry.base_name),
                     file_size=len(ctx.entry.data),
                     mime_type=mime,
-                    storage_ref=path,
+                    storage_ref="pending",
                     uploaded_by=ctx.actor.email,
                 )
+                cust_name = getattr(invoice, "customer_name", None) or data.get("customer_name") or "customer"
+                ref = file_layout.build_ref(
+                    "sales_invoice",
+                    date=invoice.issue_date,
+                    invoice_id=invoice.id,
+                    customer_name=cust_name,
+                    ext=clean_ext,
+                )
+                file_layout.save_file(ctx.entry.data, ref)
+                att.storage_ref = ref
+                self.db.commit()
         except Exception:
             self.db.rollback()
-            if path:
-                try:
-                    os.remove(path)
-                except OSError:
-                    pass
             raise
 
         try:

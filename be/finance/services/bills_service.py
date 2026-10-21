@@ -6,13 +6,14 @@ import os
 import uuid
 import hashlib
 import mimetypes
-from datetime import datetime
+from datetime import datetime, date
 from dataclasses import dataclass, field
 from typing import FrozenSet, List, Optional, Tuple
 from fastapi import HTTPException, status, UploadFile
 
 from finance.repositories.bills_repository import BillsRepository
 from finance.storage_paths import ensure_dir, resolve_uploads_dir
+import file_layout
 from finance.schemas import (
     BillCreate,
     BillUpdate,
@@ -644,20 +645,16 @@ class BillsService:
         label = bill.bill_number or bill.attachment_name or "draft"
         self.repo.delete_bill(bill_id)
         if file_path:
-            if not os.path.isabs(file_path):
-                file_path = os.path.join(BILL_UPLOADS_DIR, file_path)
-            try:
-                if os.path.isfile(file_path):
-                    os.remove(file_path)
-            except OSError:
-                pass
+            file_layout.delete_file(file_path)
         self._audit("discarded", bill_id, actor, bs.DRAFT, None, label)
 
     UPLOAD_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".webp", ".heic"}
 
     @staticmethod
-    def write_file(stored_name: str, content: bytes) -> str:
-        """Writes a bill document under the bill uploads folder and returns its path."""
+    def write_file(stored_name: str, content: bytes, ref: Optional[str] = None) -> str:
+        """Writes a bill document and returns its path/ref."""
+        if ref:
+            return file_layout.save_file(content, ref)
         os.makedirs(BILL_UPLOADS_DIR, exist_ok=True)
         file_path = os.path.join(BILL_UPLOADS_DIR, stored_name)
         with open(file_path, "wb") as fh:
@@ -700,15 +697,13 @@ class BillsService:
                 if extraction is not None and not extraction.is_readable:
                     extraction = None
 
-            file_path = self.write_file(f"{uuid.uuid4().hex}_{filename}", content)
-
             data = {
                 "status": bs.DRAFT,
                 "capture_source": "upload",
                 "is_reviewed": False,
                 "created_by": actor.email,
                 "attachment_name": filename,
-                "attachment_url": file_path,
+                "attachment_url": "",
                 "file_fingerprint": fingerprint,
                 "currency": "EGP",
                 "vendor_to_confirm": True,
@@ -744,12 +739,20 @@ class BillsService:
                     data["suggested_vendor_name"] = extraction.vendor_name[:255]
             try:
                 bill = self.repo.create(data, lines_data)
+                vendor_slug = matched["name"] if (extraction and matched) else (data.get("suggested_vendor_name") or "vendor")
+                clean_ext = ext.lstrip(".")
+                ref = file_layout.build_ref(
+                    "bill",
+                    date=bill.issue_date or date.today(),
+                    bill_id=bill.id,
+                    vendor_slug=vendor_slug,
+                    ext=clean_ext,
+                )
+                file_layout.save_file(content, ref)
+                bill.attachment_url = ref
+                self.repo.db.commit()
             except Exception as e:  # keep one bad file from sinking the batch
                 self.repo.db.rollback()
-                try:
-                    os.remove(file_path)
-                except OSError:
-                    pass
                 results.append(BillUploadResult(filename=filename, error=f"Could not create the draft: {e}"))
                 continue
             self._audit("created", bill.id, actor, None, bill.status, f"uploaded {filename}")
@@ -829,18 +832,22 @@ class BillsService:
             raise HTTPException(status_code=400, detail="Uploaded file cannot be empty.")
 
         fingerprint = hashlib.sha256(content).hexdigest()
-        unique_name = f"{uuid.uuid4().hex}_{safe_filename}"
-        os.makedirs(BILL_UPLOADS_DIR, exist_ok=True)
-        file_path = os.path.join(BILL_UPLOADS_DIR, unique_name)
+        clean_ext = os.path.splitext(safe_filename)[1].lstrip(".")
+        vendor_slug = (bill.vendor.name if bill.vendor else bill.suggested_vendor_name) or "vendor"
+        ref = file_layout.build_ref(
+            "bill",
+            date=bill.issue_date or bill.created_at or date.today(),
+            bill_id=bill.id,
+            vendor_slug=vendor_slug,
+            ext=clean_ext,
+        )
+        file_layout.save_file(content, ref)
 
-        with open(file_path, "wb") as f:
-            f.write(content)
-
-        # Store persistent local file path in attachment_url
+        # Store persistent local file ref in attachment_url
         updated = self.repo.update_attachment(
             bill_id=bill_id,
             attachment_name=safe_filename,
-            attachment_url=file_path,
+            attachment_url=ref,
             file_fingerprint=fingerprint,
         )
         return self._bill_to_response(updated)
@@ -854,11 +861,9 @@ class BillsService:
         if not bill.attachment_url:
             raise HTTPException(status_code=404, detail=f"Bill {bill_id} has no attachment")
 
-        file_path = bill.attachment_url
-        if not os.path.isabs(file_path):
-            file_path = os.path.join(BILL_UPLOADS_DIR, file_path)
-
-        if not os.path.isfile(file_path):
+        try:
+            file_path = file_layout.resolve_path(bill.attachment_url, must_exist=True)
+        except (FileNotFoundError, ValueError):
             raise HTTPException(status_code=404, detail="Attachment file not found on disk")
 
         filename = bill.attachment_name or os.path.basename(file_path)
@@ -875,16 +880,8 @@ class BillsService:
         if not bill.attachment_url and not bill.attachment_name:
             raise HTTPException(status_code=400, detail="Bill has no attachment to delete")
 
-        # Optionally remove local file from disk if it exists
         if bill.attachment_url:
-            file_path = bill.attachment_url
-            if not os.path.isabs(file_path):
-                file_path = os.path.join(BILL_UPLOADS_DIR, file_path)
-            try:
-                if os.path.isfile(file_path):
-                    os.remove(file_path)
-            except OSError:
-                pass
+            file_layout.delete_file(bill.attachment_url)
 
         updated = self.repo.delete_attachment(bill_id)
         return self._bill_to_response(updated)

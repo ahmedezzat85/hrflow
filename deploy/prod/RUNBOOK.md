@@ -2,7 +2,7 @@
 
 Host folder (never committed): `D:/services/hrflow-prod/` containing `.env`, `data/documents`, `data/logs`, `backups/`.
 Database lives in the Docker named volume `hrflow-prod_pgdata` (use backups, not file copies).
-The app container is read-only: uploaded Finance files (bill PDFs, cheque and invoice scans, statements, subscription proofs) are written under `data/documents/finance_bills` and `data/documents/finance_attachments` (set by `BILL_UPLOADS_DIR` / `FINANCE_UPLOADS_DIR` in `docker-compose.yml`). They are inside `data/documents`, so the encrypted backup already includes them.
+The app container is read-only: uploaded files (Finance and HR) are stored under the unified files root `HRFLOW_FILES_ROOT` (`/data/documents` in the container, backed by `D:/services/hrflow-prod/data/documents` on the host). All stored references are relative to this root (e.g. `finance/2026/bills/...`, `hr/salary-payment-docs/...`).
 
 All commands run from the repo root of a checkout of `main`. (The automatic deploy builds from the runner's own checkout of the release tag, `D:/services/actions-runner/_work/hrflow/hrflow`; nothing in the stack depends on any other folder or branch.)
 
@@ -25,6 +25,7 @@ Rollback: set `HRFLOW_VERSION` to the previous tag and `$C up -d`; if a migratio
 
 ## Backup / restore
 - `powershell deploy/prod/scripts/backup.ps1` - encrypted (AES-256, PBKDF2) dump + documents to `BACKUP_LOCAL_DIR` and, if set, `BACKUP_DRIVE_DIR` (point it at a Google Drive for Desktop folder). Schedule it nightly with Windows Task Scheduler.
+- `powershell deploy/prod/scripts/backup-files-clone.ps1` - unencrypted additive one-way clone of the unified files root to `FILES_CLONE_DIR` (Google Drive for Desktop synced folder). Never deletes files from the clone even if removed from the app. Schedule hourly or nightly.
 - `powershell deploy/prod/scripts/restore.ps1 -File <backup.enc>` - destructive; replaces DB and documents.
 - Restore drill verified on 2026-10-16 (data deleted, restored, health OK). Repeat after any change to the scripts.
 - Losing `BACKUP_PASSPHRASE` makes all backups unreadable.
@@ -34,6 +35,23 @@ Rollback: set `HRFLOW_VERSION` to the previous tag and `$C up -d`; if a migratio
 - Rotate `SECRET_KEY`: edit `.env`, `$C up -d` (all users must sign in again).
 - Stop: `$C down` (data is kept). **Never** run `down -v` in production: it deletes the database volume.
 - Windows: set Docker Desktop to start at sign-in and keep the PC from sleeping.
+
+## Moving the files root
+All stored file references in HRFlow are root-relative POSIX paths. Moving the files root to another drive or volume requires zero database updates:
+1. Stop the application stack:
+   ```bash
+   $C down
+   ```
+2. Copy files recursively to the new host folder:
+   ```powershell
+   robocopy D:\services\hrflow-prod\data\documents E:\hrflow-files /E /COPY:DAT
+   ```
+3. Update `HRFLOW_DATA_DIR` in `D:/services/hrflow-prod/.env` (or override `HRFLOW_FILES_ROOT`).
+4. Restart the stack:
+   ```bash
+   $C up -d
+   ```
+5. Check health: browse to `http://localhost/api/health` and verify document downloads.
 
 ## Adding the Cloudflare Tunnel later
 Run `cloudflared` pointing at `http://web:80` on the `internal` network, add the public https hostname to the OAuth client origins and to `ALLOWED_ORIGINS`. Cloudflare terminates HTTPS; nginx honours `X-Forwarded-Proto`.
