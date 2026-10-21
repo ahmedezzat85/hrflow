@@ -3,6 +3,7 @@ be/tests/test_sql_repositories.py
 Unit tests testing SQLAlchemy-backed SQL repositories and Dual-Write shadow-mode
 repositories on an isolated test SQLite database.
 """
+from datetime import datetime
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -104,7 +105,7 @@ def test_sql_salary_repository():
         employee_id=emp_id,
         new_internal=3500.0,
         new_external=1200.0,
-        effective_date="2026-08-20",
+        effective_date=datetime.utcnow().strftime("%Y-%m-%d"),
         reason="Promotion",
         actor_email="admin@hrflow.test",
     )

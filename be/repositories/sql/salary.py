@@ -75,7 +75,27 @@ class SqlSalaryRepository:
             total_delta_amount = round(new_total - current_total, 2)
             total_delta_pct = round(total_delta_amount / current_total * 100, 2) if current_total > 0 else 0.0
 
-            eff_date = effective_date or datetime.utcnow().strftime("%Y-%m-%d")
+            today = datetime.utcnow().strftime("%Y-%m-%d")
+            eff_date = effective_date or today
+            try:
+                datetime.strptime(eff_date, "%Y-%m-%d")
+            except (ValueError, TypeError):
+                raise ValueError("effective_date must be in YYYY-MM-DD format")
+            if eff_date > today:
+                raise ValueError("Raise effective date cannot be in the future")
+
+            # Apply to the compensation plan payroll reads (D-034). Same transaction: any
+            # guard failure aborts the whole raise before a history row is written.
+            from finance.services.compensation_plan_service import CompensationPlanService
+            CompensationPlanService(db).apply_pay_change(
+                employee_id=emp.id,
+                internal_amount=new_internal,
+                external_amount=new_external,
+                effective_start_date=eff_date,
+                notes=f"Raise: {reason}" if reason else "Raise",
+                actor_email=actor_email,
+                commit=False,
+            )
 
             history = SalaryHistoryDB(
                 employee_id=emp.id,
@@ -91,14 +111,7 @@ class SqlSalaryRepository:
                 new_external_usd=new_external,
             )
             db.add(history)
-
-            is_backdated = effective_date is not None and eff_date < datetime.utcnow().strftime("%Y-%m-%d")
-            if not is_backdated:
-                next_raise_date = (datetime.strptime(eff_date, "%Y-%m-%d") + timedelta(days=365)).strftime("%Y-%m-%d")
-                emp.internal_salary_usd = new_internal
-                emp.external_salary_usd = new_external
-                emp.salary = new_total
-                emp.next_raise = next_raise_date
+            emp.next_raise = (datetime.strptime(eff_date, "%Y-%m-%d") + timedelta(days=365)).strftime("%Y-%m-%d")
 
             emp_dict = {
                 "id": emp.id,
