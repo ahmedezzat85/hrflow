@@ -50,8 +50,9 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:-hrflow}
       FILE_STORAGE_BACKEND: local
+      HRFLOW_FILES_ROOT: /data/documents
       LOCAL_STORAGE_PATH: /data/documents
-      # Finance uploads (bill PDFs, cheque and invoice scans, statements, proofs): the container is read-only, so they live in the data volume
+      # Deprecated legacy fallbacks:
       BILL_UPLOADS_DIR: /data/documents/finance_bills
       FINANCE_UPLOADS_DIR: /data/documents/finance_attachments
       LOG_FILE_PATH: /data/logs/hrflow.log

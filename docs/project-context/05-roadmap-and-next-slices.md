@@ -243,6 +243,20 @@ Plan: [../finance-module/27-pay-plan-sync-and-modal-plan.md](../finance-module/2
 | P2 | **Done** (October 21, 2026): atomic `PUT /compensation-plan`, single-form Pay plan modal, mock mode, Playwright | M | P1 |
 | P3 | **Done** (October 21, 2026): "Pay effective from" on create modal, read-only pay + "Edit pay plan" on edit modal | S | P2 |
 
+## 3H. File-Storage Root and Folder Layout (accepted October 21, 2026)
+
+Plan: [../file-storage/26-file-storage-layout-plan.md](../file-storage/26-file-storage-layout-plan.md). Handoff: [../file-storage/27-agent-handoff.md](../file-storage/27-agent-handoff.md). Decision D-035, related Q-003. Branch `feature/file-storage-layout`. No migration.
+
+| Slice | Scope | Size | Depends on |
+| :--- | :--- | :--- | :--- |
+| F0 | **Done** (October 21, 2026): Plan and handoff committed to repository | S | — |
+| F1 | **Done** (October 21, 2026): `be/file_layout.py` module (unified call-time root, slug/length rules, path traversal/symlink guards, legacy fallback, `_meta/layout.json`) | M | F0 |
+| F2 | **Done** (October 21, 2026): Finance writers use `file_layout` (bills, cheques, invoices, statements, subscription proofs, ledger attachments, checkpoints) | M | F1 |
+| F3 | **Done** (October 21, 2026): HR writers use `file_layout` via `LocalStorageClient` (salary payment docs, employee docs, company docs; Drive backend untouched) | M | F1 |
+| F4 | **Done** (October 21, 2026): `scripts/migrate_file_layout.py` (dry-run default, copy -> SHA-256 verify -> DB update -> delete old, idempotent, CSV report, orphan scan) | M | F2, F3 |
+| F5 | **Done** (October 21, 2026): Prod config (`docker-compose.yml`, `prod.env.example`, `RUNBOOK.md` "Moving the files root", backend-only) | S | F4 |
+| F6 | **Done** (October 21, 2026): Additive one-way clone of `<ROOT>` to Google Drive (`deploy/prod/scripts/backup-files-clone.ps1`) | S | F5 |
+
 ---
 
 ## 4. Deferred Until Decision
@@ -253,7 +267,7 @@ The following initiatives remain on hold until formally decided in [04-decision-
 | :--- | :--- | :--- |
 | **Q-001** (Payroll Paid Funding Scope) | Redesigning `mark_paid()` accounting entries; bank balance deduction scope (net pay vs full employer cost); ledger accruals. | **Resolved** by D-025 (October 10, 2026): net pay only; delivered in slice F5 (section 3C). |
 | **Q-002** (Non-Payroll Statutory Creation) | Automated scheduling for recurring VAT and corporate tax obligations; background queue implementation. | **Blocked** pending owner choice between Option A (scheduled recurring) and Option B (manual entry). |
-| **Q-003** (Production Document Storage) | S3-compatible storage adapter development; migration of Google Drive archives; storage credential redesign. | **Blocked** pending owner choice between Google Drive, S3-compatible storage, or dual driver. |
+| **Q-003** (Production Document Storage) | S3-compatible storage adapter development; migration of Google Drive archives; storage credential redesign. | **Partly resolved** by D-035 (October 21, 2026): local unified files root `HRFLOW_FILES_ROOT` with relative POSIX paths; Drive is an additive backup clone. Cloud object storage deferred until multi-host deployment. |
 | **Q-004** (Automated FX-Rate Source) | External exchange-rate API integration; automated currency conversion pipelines in transfers and ledger. | **Blocked** pending owner choice between manual rate entry and automated market feeds. |
 | **Q-006** (Restoring Archived Users) | Restore flow for archived users; email reuse for returning people. | **Open** — restore is not built until decided. |
 | **Q-005** (Sheets Export Retention) | Permanent deletion of `be/sheets_client.py`, removal of `gspread` dependency, and revocation of Sheets service scopes. | **Blocked** pending business stakeholder review of live spreadsheet export usage. |

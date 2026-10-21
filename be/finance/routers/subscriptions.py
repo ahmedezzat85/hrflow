@@ -6,6 +6,7 @@ Gated with RBAC permissions:
 - finance.subscription.write
 """
 import os
+import file_layout
 from typing import List, Optional
 from fastapi import (
     APIRouter,
@@ -203,14 +204,16 @@ def download_finance_attachment(
 ):
     """Download a private finance attachment (receipt/invoice)."""
     att = service.get_attachment(attachment_id)
-    if not os.path.exists(att.storage_ref):
+    try:
+        file_path = file_layout.resolve_path(att.storage_ref, must_exist=True)
+    except (FileNotFoundError, ValueError):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Attachment file not found on disk",
         )
 
     return FileResponse(
-        path=att.storage_ref,
+        path=file_path,
         filename=att.file_name,
         media_type=att.mime_type,
     )

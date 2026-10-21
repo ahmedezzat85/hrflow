@@ -203,14 +203,16 @@ def test_discard_draft_removes_row_and_file_and_other_bills_are_refused(app_clie
 
     maker = make_maker()
     uploaded = _upload(app_client, admin_cookies, [("discard_me.png", b"\x89PNG\r\n" + b"1" * 40, "image/png")]).json()["results"][0]["bill"]
+    import file_layout
     with get_db_context() as db:
-        path = db.query(BillDB).filter(BillDB.id == uploaded["id"]).one().attachment_url
-    assert os.path.isfile(path)
+        ref = db.query(BillDB).filter(BillDB.id == uploaded["id"]).one().attachment_url
+    resolved_path = file_layout.resolve_path(ref)
+    assert os.path.isfile(resolved_path)
 
     gone = app_client.delete(f"{BASE}/{uploaded['id']}", cookies=admin_cookies)
     assert gone.status_code == 204
     assert app_client.get(f"{BASE}/{uploaded['id']}", cookies=admin_cookies).status_code == 404
-    assert not os.path.exists(path)
+    assert not os.path.exists(resolved_path)
     with get_db_context() as db:
         assert db.query(BillDB).filter(BillDB.id == uploaded["id"]).count() == 0
 

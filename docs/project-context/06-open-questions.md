@@ -58,23 +58,22 @@ This register tracks unresolved product, accounting, and technical architecture 
   - [04-decision-log.md](04-decision-log.md) (`D-001`, `D-002`)  
 
 ### Q-003 — Production Document-Storage Direction
-- **Status:** Open — affects deployment architecture  
+- **Status:** Partly resolved — D-035 (October 21, 2026): Local unified files root (`HRFLOW_FILES_ROOT`) with human-readable directory layout is primary for all production deployments; Google Drive is an unencrypted additive backup clone (F6) and encrypted tar.gz destination, not a runtime API backend. Scoped strictly to cloud primary storage if HRFlow moves off local host.  
 - **Question:**  
-  Should Google Drive remain the long-term production document store, or should HRFlow adopt an S3-compatible object store for containerized cloud deployments?  
+  If HRFlow moves off a single-host deployment to horizontal cloud hosting in the future, what primary cloud object store should be adopted?  
 - **Why It Matters:**  
-  This choice impacts production credential management, container portability, horizontal scaling, backup retention policies, and file streaming access.  
+  This choice impacts cloud credential management, container portability, horizontal scaling, backup retention policies, and file streaming access.  
 - **Known Current Context:**  
-  - The application currently supports Google Drive and local filesystem storage via `StorageClient`.  
-  - Baseline documentation in [01-repository-baseline.md](01-repository-baseline.md) flags long-term cloud storage as an open question.  
-  - Migration to an S3-compatible store is not currently approved.  
+  - Decision `D-035` establishes `HRFLOW_FILES_ROOT` with relative POSIX refs as the operational baseline.  
+  - Google Drive runtime API backend is retained for legacy compatibility but not extended; Google Drive is used for additive backup cloning (`backup-files-clone.ps1`).  
+  - S3 or cloud object store is deferred until horizontal multi-host hosting is needed.  
 - **Decision Needed from Owner:**  
-  Choose:  
-  A. Retain Google Drive as the supported production cloud store;  
-  B. Adopt an S3-compatible store as the primary cloud backend; or  
-  C. Retain both behind the existing storage abstraction, defining which is the production default.  
+  If moving to cloud containers, choose between S3-compatible object storage (e.g., Cloudflare R2, MinIO, AWS S3) or managed persistent block storage volumes.  
 - **Related References:**  
   - [01-repository-baseline.md](01-repository-baseline.md)  
   - [02-architecture-and-domain-boundaries.md](02-architecture-and-domain-boundaries.md)  
+  - [04-decision-log.md](04-decision-log.md) (`D-035`)  
+  - [../file-storage/26-file-storage-layout-plan.md](../file-storage/26-file-storage-layout-plan.md)  
 
 ### Q-004 — Automated Foreign-Exchange-Rate Source
 - **Status:** Open — affects multi-currency finance behavior  

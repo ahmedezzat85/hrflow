@@ -30,10 +30,10 @@ class TestLocalStorageClient:
         data_url = _valid_pdf_data_url()
 
         res = client.upload_file(101, "Jane Doe", "offer_letter.pdf", data_url)
-        assert res["file_id"] == "employees/101 - Jane Doe/offer_letter.pdf"
+        assert res["file_id"] == "hr/employees/101-jane-doe/documents/offer-letter.pdf"
 
         # Verify physical file on disk
-        disk_path = tmp_path / "employees" / "101 - Jane Doe" / "offer_letter.pdf"
+        disk_path = tmp_path / "hr" / "employees" / "101-jane-doe" / "documents" / "offer-letter.pdf"
         assert disk_path.is_file()
         assert disk_path.read_bytes() == b"%PDF-1.4 minimal test pdf content"
 
@@ -41,23 +41,23 @@ class TestLocalStorageClient:
         raw_bytes, mime, file_name = client.download_file(res["file_id"])
         assert raw_bytes == b"%PDF-1.4 minimal test pdf content"
         assert mime == "application/pdf"
-        assert file_name == "offer_letter.pdf"
+        assert file_name == "offer-letter.pdf"
 
     def test_company_document_upload_and_download(self, tmp_path):
         client = LocalStorageClient(base_path=str(tmp_path))
         data_url = _valid_png_data_url()
 
         res = client.upload_company_file("company_policy.png", data_url)
-        assert res["file_id"] == "Company Documents/company_policy.png"
+        assert res["file_id"] == "hr/company-documents/company-policy.png"
 
-        disk_path = tmp_path / "Company Documents" / "company_policy.png"
+        disk_path = tmp_path / "hr" / "company-documents" / "company-policy.png"
         assert disk_path.is_file()
 
         raw_bytes, mime, file_name = client.download_file(res["file_id"])
         assert mime == "image/png"
-        assert file_name == "company_policy.png"
+        assert file_name == "company-policy.png"
 
-    def test_invoice_upload_both_locations(self, tmp_path):
+    def test_invoice_upload(self, tmp_path):
         client = LocalStorageClient(base_path=str(tmp_path))
         docx_bytes = b"PK\x03\x04 fake docx bytes"
 
@@ -69,24 +69,19 @@ class TestLocalStorageClient:
             employee_id=101,
             employee_name="Jane Doe",
         )
-        assert res["file_id"] == "Invoices/2026/2026-08/INV-2026-08-101.docx"
+        assert res["file_id"] == "hr/salary-payment-docs/2026/2026-08/inv-2026-08-101__101-jane-doe.docx"
 
         # Verify primary archive
-        primary_path = tmp_path / "Invoices" / "2026" / "2026-08" / "INV-2026-08-101.docx"
+        primary_path = tmp_path / "hr" / "salary-payment-docs" / "2026" / "2026-08" / "inv-2026-08-101__101-jane-doe.docx"
         assert primary_path.is_file()
         assert primary_path.read_bytes() == docx_bytes
-
-        # Verify employee copy
-        emp_copy_path = tmp_path / "employees" / "101 - Jane Doe" / "invoices" / "2026" / "INV-2026-08-101.docx"
-        assert emp_copy_path.is_file()
-        assert emp_copy_path.read_bytes() == docx_bytes
 
     def test_delete_file(self, tmp_path):
         client = LocalStorageClient(base_path=str(tmp_path))
         res = client.upload_file(102, "Bob Smith", "contract.pdf", _valid_pdf_data_url())
         assert client.delete_file(res["file_id"]) is True
 
-        disk_path = tmp_path / "employees" / "102 - Bob Smith" / "contract.pdf"
+        disk_path = tmp_path / "hr" / "employees" / "102-bob-smith" / "documents" / "contract.pdf"
         assert not disk_path.exists()
 
         # Deleting again returns False
@@ -104,7 +99,19 @@ class TestLocalStorageClient:
     def test_download_missing_file_raises_error(self, tmp_path):
         client = LocalStorageClient(base_path=str(tmp_path))
         with pytest.raises(FileNotFoundError):
-            client.download_file("employees/101 - Jane Doe/nonexistent.pdf")
+            client.download_file("hr/employees/101-jane-doe/documents/nonexistent.pdf")
+
+    def test_legacy_path_fallback_download(self, tmp_path):
+        """Verifies that legacy unmigrated files can still be downloaded."""
+        client = LocalStorageClient(base_path=str(tmp_path))
+        legacy_dir = tmp_path / "employees" / "101 - Jane Doe"
+        legacy_dir.mkdir(parents=True, exist_ok=True)
+        legacy_file = legacy_dir / "old_doc.pdf"
+        legacy_file.write_bytes(b"%PDF-1.4 legacy bytes")
+
+        raw_bytes, mime, file_name = client.download_file("employees/101 - Jane Doe/old_doc.pdf")
+        assert raw_bytes == b"%PDF-1.4 legacy bytes"
+        assert file_name == "old_doc.pdf"
 
 
 class TestLocalStorageAPIIntegration:
@@ -132,8 +139,8 @@ class TestLocalStorageAPIIntegration:
         assert upload_resp.status_code == 201
         doc_id = upload_resp.json()["id"]
 
-        # 2. Verify file was saved to local disk
-        expected_file = local_storage_dir / "employees" / "2 - Employee Two" / "id_card.pdf"
+        # 2. Verify file was saved to local disk in new layout
+        expected_file = local_storage_dir / "hr" / "employees" / "2-employee-two" / "documents" / "id-card.pdf"
         assert expected_file.is_file()
 
         # 3. Stream document
@@ -177,7 +184,7 @@ class TestLocalStorageAPIIntegration:
         assert upload_resp.status_code == 201
         doc_id = upload_resp.json()["id"]
 
-        expected_file = local_storage_dir / "Company Documents" / "handbook.pdf"
+        expected_file = local_storage_dir / "hr" / "company-documents" / "handbook.pdf"
         assert expected_file.is_file()
 
         # 2. Stream company document

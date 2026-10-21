@@ -42,6 +42,7 @@ def add_cycle(day: date, cycle: Optional[str], steps: int = 1) -> date:
 
 
 FINANCE_UPLOADS_DIR = resolve_uploads_dir("FINANCE_UPLOADS_DIR", "finance_attachments")
+import file_layout
 
 
 class SubscriptionsService:
@@ -469,14 +470,25 @@ class SubscriptionsService:
         if len(content) > 15 * 1024 * 1024:
             raise HTTPException(status_code=413, detail="File exceeds the 15 MB limit.")
         safe = os.path.basename(file.filename)
-        os.makedirs(FINANCE_UPLOADS_DIR, exist_ok=True)
-        path = os.path.join(FINANCE_UPLOADS_DIR, f"{uuid.uuid4().hex}_{safe}")
-        with open(path, "wb") as fh:
-            fh.write(content)
-        self.repo.add_attachment(
+        clean_ext = os.path.splitext(safe)[1].lstrip(".")
+        att = self.repo.add_attachment(
             subscription_charge_id=charge.id, file_name=safe, file_size=len(content),
-            mime_type=file.content_type or "application/octet-stream", storage_ref=path, uploaded_by=uploaded_by,
+            mime_type=file.content_type or "application/octet-stream", storage_ref="pending", uploaded_by=uploaded_by,
         )
+        sub = charge.subscription
+        sub_id = sub.id if sub else charge.subscription_id
+        sub_slug = sub.name if sub else "subscription"
+        ref = file_layout.build_ref(
+            "subscription_proof",
+            date=charge.billing_date,
+            subscription_id=sub_id,
+            slug=sub_slug,
+            charge_date=charge.billing_date,
+            att_id=att.id,
+            ext=clean_ext,
+        )
+        file_layout.save_file(content, ref)
+        att.storage_ref = ref
         charge.proof_status = "attached"
         charge.proof_note = None
         self.repo.db.commit()
