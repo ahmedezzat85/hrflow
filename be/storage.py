@@ -16,6 +16,7 @@ from threading import Lock
 from typing import Tuple, Optional, Dict, Any
 
 from config import Config
+import file_layout
 from logging_config import get_logger
 
 logger = get_logger("storage")
@@ -97,24 +98,28 @@ class LocalStorageClient(StorageClient):
     INVOICES_FOLDER_NAME = "Invoices"
 
     def __init__(self, base_path: Optional[str] = None):
-        self.base_path = os.path.abspath(base_path or Config.LOCAL_STORAGE_PATH)
-        os.makedirs(self.base_path, exist_ok=True)
+        self._custom_base_path = os.path.abspath(base_path) if base_path else None
+        try:
+            file_layout.ensure_meta(self.base_path)
+        except Exception:
+            os.makedirs(self.base_path, exist_ok=True)
         logger.info("Initialized LocalStorageClient (base_path=%s)", self.base_path)
+
+    @property
+    def base_path(self) -> str:
+        if self._custom_base_path:
+            return self._custom_base_path
+        return file_layout.get_files_root()
+
+    @base_path.setter
+    def base_path(self, val: Optional[str]):
+        self._custom_base_path = os.path.abspath(val) if val else None
 
     def _resolve_secure_path(self, relative_path: str) -> str:
         """
         Resolves a relative path against base_path and prevents directory traversal attacks.
         """
-        # Normalize relative path (replace backslashes with forward slashes for POSIX consistency)
-        clean_rel = os.path.normpath(relative_path.replace("\\", "/")).lstrip("/\\")
-        resolved = os.path.abspath(os.path.join(self.base_path, clean_rel))
-        try:
-            common = os.path.commonpath([self.base_path, resolved])
-        except ValueError:
-            raise ValueError(f"Security error: Invalid path traversal attempt '{relative_path}'")
-        if common != self.base_path:
-            raise ValueError(f"Security error: Invalid path traversal attempt '{relative_path}'")
-        return resolved
+        return file_layout.resolve_path(relative_path, root=self.base_path, must_exist=False)
 
     def _to_relative_file_id(self, absolute_path: str) -> str:
         """Converts an absolute path to a portable relative file_id with POSIX forward slashes."""
@@ -150,34 +155,32 @@ class LocalStorageClient(StorageClient):
 
     def upload_file(self, employee_id, employee_name: str, file_name: str, data_url: str) -> Dict[str, str]:
         mime, raw_bytes = parse_data_url(data_url)
-        folder_path = self.get_or_create_employee_folder(employee_id, employee_name)
         safe_name = sanitize_filename(file_name)
-        target_path = os.path.join(folder_path, safe_name)
-
-        logger.info("Saving local employee document: employee_id=%s, target_path=%s (%d bytes)", employee_id, target_path, len(raw_bytes))
-        with open(target_path, "wb") as f:
-            f.write(raw_bytes)
-
-        file_id = self._to_relative_file_id(target_path)
+        ref = file_layout.build_ref(
+            "employee_document",
+            employee_id=employee_id,
+            employee_name=employee_name,
+            filename=safe_name,
+        )
+        file_layout.save_file(raw_bytes, ref, root=self.base_path)
+        logger.info("Saved local employee document: employee_id=%s, ref=%s (%d bytes)", employee_id, ref, len(raw_bytes))
         return {
-            "file_id": file_id,
+            "file_id": ref,
             "view_url": "",
             "download_url": "",
         }
 
     def upload_company_file(self, file_name: str, data_url: str) -> Dict[str, str]:
         mime, raw_bytes = parse_data_url(data_url)
-        folder_path = self.get_or_create_company_docs_folder()
         safe_name = sanitize_filename(file_name)
-        target_path = os.path.join(folder_path, safe_name)
-
-        logger.info("Saving local company document: target_path=%s (%d bytes)", target_path, len(raw_bytes))
-        with open(target_path, "wb") as f:
-            f.write(raw_bytes)
-
-        file_id = self._to_relative_file_id(target_path)
+        ref = file_layout.build_ref(
+            "company_document",
+            filename=safe_name,
+        )
+        file_layout.save_file(raw_bytes, ref, root=self.base_path)
+        logger.info("Saved local company document: ref=%s (%d bytes)", ref, len(raw_bytes))
         return {
-            "file_id": file_id,
+            "file_id": ref,
             "view_url": "",
             "download_url": "",
         }
@@ -186,61 +189,48 @@ class LocalStorageClient(StorageClient):
         self, payment_year: int, payment_month: int, file_name: str, file_bytes: bytes,
         employee_id=None, employee_name: str = "", pdf_bytes: Optional[bytes] = None,
     ) -> Dict[str, str]:
-        folder_path = self.get_or_create_invoices_period_folder(payment_year, payment_month)
-        safe_name = sanitize_filename(file_name)
-        target_path = os.path.join(folder_path, safe_name)
+        period = f"{payment_year}-{payment_month:02d}"
+        doc_num = os.path.splitext(os.path.basename(file_name))[0]
+        ext = os.path.splitext(file_name)[1].lstrip(".") or "docx"
 
-        logger.info("Saving local invoice file: target_path=%s (%d bytes)", target_path, len(file_bytes))
-        with open(target_path, "wb") as f:
-            f.write(file_bytes)
+        ref = file_layout.build_ref(
+            "salary_payment_doc",
+            year=payment_year,
+            month=payment_month,
+            period=period,
+            doc_number=doc_num,
+            employee_id=employee_id or 0,
+            employee_name=employee_name or "employee",
+            ext=ext,
+        )
+        file_layout.save_file(file_bytes, ref, root=self.base_path)
+        logger.info("Saved local salary payment doc: ref=%s (%d bytes)", ref, len(file_bytes))
 
-        # Also write PDF version if available
         if pdf_bytes is not None:
-            pdf_filename = os.path.splitext(safe_name)[0] + ".pdf"
-            target_pdf_path = os.path.join(folder_path, pdf_filename)
-            try:
-                with open(target_pdf_path, "wb") as f:
-                    f.write(pdf_bytes)
-                logger.info("Saved local invoice PDF file: target_path=%s (%d bytes)", target_pdf_path, len(pdf_bytes))
-            except Exception:
-                logger.exception("Warning: Failed to save invoice PDF to %s", target_pdf_path)
+            pdf_ref = file_layout.build_ref(
+                "salary_payment_doc",
+                year=payment_year,
+                month=payment_month,
+                period=period,
+                doc_number=doc_num,
+                employee_id=employee_id or 0,
+                employee_name=employee_name or "employee",
+                ext="pdf",
+            )
+            file_layout.save_file(pdf_bytes, pdf_ref, root=self.base_path)
+            logger.info("Saved local salary payment doc PDF: ref=%s (%d bytes)", pdf_ref, len(pdf_bytes))
 
-        # Also store copy in employee's invoices directory if employee_id provided
-        if employee_id is not None:
-            try:
-                emp_invoices_folder = self.get_or_create_employee_invoices_year_folder(
-                    employee_id, employee_name, payment_year
-                )
-                emp_target_path = os.path.join(emp_invoices_folder, safe_name)
-                with open(emp_target_path, "wb") as f:
-                    f.write(file_bytes)
-                logger.info("Saved local invoice copy to employee folder: %s", emp_target_path)
-
-                if pdf_bytes is not None:
-                    emp_target_pdf_path = os.path.join(emp_invoices_folder, pdf_filename)
-                    with open(emp_target_pdf_path, "wb") as f:
-                        f.write(pdf_bytes)
-                    logger.info("Saved local invoice PDF copy to employee folder: %s", emp_target_pdf_path)
-            except Exception:
-                logger.exception("Warning: Failed to save second invoice copy to employee folder for employee_id=%s", employee_id)
-
-        file_id = self._to_relative_file_id(target_path)
         return {
-            "file_id": file_id,
+            "file_id": ref,
             "view_url": "",
             "download_url": "",
         }
-
 
     def download_file(self, file_id: str) -> Tuple[bytes, str, str]:
         if not file_id:
             raise ValueError("file_id is required")
 
-        full_path = self._resolve_secure_path(file_id)
-        if not os.path.isfile(full_path):
-            logger.error("Local file not found: file_id=%s, full_path=%s", file_id, full_path)
-            raise FileNotFoundError(f"File not found: {file_id}")
-
+        full_path = file_layout.resolve_path(file_id, root=self.base_path, must_exist=True)
         with open(full_path, "rb") as f:
             raw_bytes = f.read()
 
@@ -257,12 +247,14 @@ class LocalStorageClient(StorageClient):
             return False
 
         try:
-            full_path = self._resolve_secure_path(file_id)
+            full_path = file_layout.resolve_path(file_id, root=self.base_path, must_exist=True)
             if os.path.isfile(full_path):
                 os.remove(full_path)
                 logger.info("Deleted local file: file_id=%s (path=%s)", file_id, full_path)
                 return True
-            logger.warning("Local file to delete did not exist: file_id=%s (path=%s)", file_id, full_path)
+            return False
+        except (FileNotFoundError, ValueError):
+            logger.warning("Local file to delete did not exist: file_id=%s", file_id)
             return False
         except Exception:
             logger.exception("Failed to delete local file_id=%s", file_id)
