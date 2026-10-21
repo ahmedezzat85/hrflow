@@ -7,6 +7,7 @@ from datetime import datetime
 from db import get_db_context
 from finance.models import EmployeeCompensationPlanDB, PayrollRunDB
 from models_db import EmployeeDB
+from employee_test_helpers import PERSONAL
 
 _counter = [0]
 
@@ -16,7 +17,7 @@ def _create(app_client, admin_cookies, internal=0.0, external=0.0, join_date="20
     resp = app_client.post(
         "/api/employees",
         json={
-            "name": "Atomic Plan Test",
+            **PERSONAL, "name": "Atomic Plan Test",
             "email": f"atomic_plan_{_counter[0]}_{int(datetime.utcnow().timestamp() * 1000)}@hrflow.test",
             "dept": "Engineering", "job_role": "Engineer", "join_date": join_date, "status": "Active",
             "vac_total": 21, "next_raise": "2027-01-01", "employment_state": "Full-Time",

@@ -11,10 +11,25 @@ from db import get_db_context
 from models_db import EmployeeDB, EmployeeNoteDB, EmployeeDocumentDB
 
 
-def _employee_to_dict(emp: EmployeeDB) -> dict:
+PERSONAL_FIELDS = ("legal_name", "phone", "address_line_1", "address_line_2", "id_type", "id_number")
+
+
+def _personal_to_dict(emp: EmployeeDB) -> dict:
+    return {
+        "legal_name": emp.legal_name or "",
+        "phone": emp.phone or "",
+        "address_line_1": emp.address_line_1 or "",
+        "address_line_2": emp.address_line_2 or "",
+        "id_type": emp.id_type or "",
+        "id_number": emp.id_number or "",
+    }
+
+
+def _employee_to_dict(emp: EmployeeDB, include_personal: bool = False) -> dict:
+    """Profile dict. Personal details (D-035) are only included when explicitly requested."""
     if not emp:
         return {}
-    return {
+    data = {
         "id": emp.id,
         "name": emp.name or "",
         "email": emp.email or "",
@@ -31,9 +46,10 @@ def _employee_to_dict(emp: EmployeeDB) -> dict:
         "next_raise": emp.next_raise or "",
         "employment_state": emp.employment_state or "Full-Time",
         "invoice_id": emp.invoice_id or "",
-        "address_line_1": emp.address_line_1 or "",
-        "address_line_2": emp.address_line_2 or "",
     }
+    if include_personal:
+        data.update(_personal_to_dict(emp))
+    return data
 
 
 def _note_to_dict(n: EmployeeNoteDB) -> dict:
@@ -68,18 +84,35 @@ class SqlEmployeeRepository:
     def _get_session(self) -> Session:
         return get_db_context()
 
-    def get_by_id(self, employee_id: Union[int, str]) -> Optional[Dict[str, Any]]:
+    def get_by_id(self, employee_id: Union[int, str], include_personal: bool = False) -> Optional[Dict[str, Any]]:
         with self._get_session() as db:
             emp = db.query(EmployeeDB).filter(EmployeeDB.id == int(employee_id)).first()
-            return _employee_to_dict(emp) if emp else None
+            return _employee_to_dict(emp, include_personal) if emp else None
 
-    def list_all(self, scoped_employee_id: Optional[Union[int, str]] = None) -> List[Dict[str, Any]]:
+    def get_personal(self, employee_id: Union[int, str]) -> Optional[Dict[str, Any]]:
+        """Personal details with the full ID number; the router masks it. None if the employee is missing."""
+        with self._get_session() as db:
+            emp = db.query(EmployeeDB).filter(EmployeeDB.id == int(employee_id)).first()
+            return _personal_to_dict(emp) if emp else None
+
+    def update_personal(self, employee_id: Union[int, str], updates: Dict[str, Any]) -> bool:
+        with self._get_session() as db:
+            emp = db.query(EmployeeDB).filter(EmployeeDB.id == int(employee_id)).first()
+            if not emp:
+                return False
+            for k, v in updates.items():
+                if k in PERSONAL_FIELDS:
+                    setattr(emp, k, v)
+            db.commit()
+            return True
+
+    def list_all(self, scoped_employee_id: Optional[Union[int, str]] = None, include_personal: bool = False) -> List[Dict[str, Any]]:
         with self._get_session() as db:
             query = db.query(EmployeeDB)
             if scoped_employee_id is not None:
                 query = query.filter(EmployeeDB.id == int(scoped_employee_id))
             employees = query.order_by(EmployeeDB.id).all()
-            return [_employee_to_dict(e) for e in employees]
+            return [_employee_to_dict(e, include_personal) for e in employees]
 
     def create(self, data: Dict[str, Any]) -> int:
         internal_salary = float(data.get("internal_salary_usd") or 0)
@@ -105,6 +138,10 @@ class SqlEmployeeRepository:
                 "invoice_id": data.get("invoice_id") or "",
                 "address_line_1": data.get("address_line_1") or "",
                 "address_line_2": data.get("address_line_2") or "",
+                "legal_name": data.get("legal_name") or None,
+                "phone": data.get("phone") or None,
+                "id_type": data.get("id_type") or None,
+                "id_number": data.get("id_number") or None,
             }
             if data.get("id") is not None and str(data.get("id")).isdigit():
                 emp_kwargs["id"] = int(data["id"])

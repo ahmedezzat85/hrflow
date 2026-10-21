@@ -9,10 +9,16 @@ from typing import Optional, Protocol, Union, Tuple, List, Dict, Any, runtime_ch
 
 @runtime_checkable
 class EmployeeRepository(Protocol):
-    def get_by_id(self, employee_id: Union[int, str]) -> Optional[Dict[str, Any]]:
+    def get_by_id(self, employee_id: Union[int, str], include_personal: bool = False) -> Optional[Dict[str, Any]]:
         ...
 
-    def list_all(self, scoped_employee_id: Optional[Union[int, str]] = None) -> List[Dict[str, Any]]:
+    def get_personal(self, employee_id: Union[int, str]) -> Optional[Dict[str, Any]]:
+        ...
+
+    def update_personal(self, employee_id: Union[int, str], updates: Dict[str, Any]) -> bool:
+        ...
+
+    def list_all(self, scoped_employee_id: Optional[Union[int, str]] = None, include_personal: bool = False) -> List[Dict[str, Any]]:
         ...
 
     def create(self, data: Dict[str, Any]) -> int:

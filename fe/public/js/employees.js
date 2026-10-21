@@ -72,54 +72,160 @@ function editPayFromEmployeeModal() {
   if (id) openCompPlanModal(id);
 }
 
+// Personal details (D-035) -------------------------------------------------------------------
+let empNameTouched = false;
+// What the server already holds for the ID, so an untouched ID is never re-sent.
+let empPersonalLoaded = { has_id: false, id_type: '', masked: '' };
+
+function canWritePersonal() { return typeof SessionInfo === 'undefined' || SessionInfo.hasPermission('hr.employee_personal.write'); }
+function canReadPersonal() { return typeof SessionInfo === 'undefined' || SessionInfo.hasPermission('hr.employee_personal.read'); }
+function canRevealPersonalId() { return typeof SessionInfo === 'undefined' || SessionInfo.hasPermission('hr.employee_personal.reveal'); }
+
+// First and last word of the legal name, as a starting point for the display name.
+function suggestDisplayName(legal) {
+  const words = String(legal || '').trim().split(/\s+/).filter(Boolean);
+  if (words.length <= 2) return words.join(' ');
+  return `${words[0]} ${words[words.length - 1]}`;
+}
+
+function updateEmpNameHint() {
+  const words = fEmpName.value.trim().split(/\s+/).filter(Boolean);
+  document.getElementById('fEmpNameHint').style.display = fEmpName.value.trim() && words.length < 2 ? '' : 'none';
+}
+
+function syncEmpDisplayName() {
+  if (!empNameTouched) {
+    fEmpName.value = suggestDisplayName(document.getElementById('fEmpLegalName').value);
+  }
+  updateEmpNameHint();
+}
+
+function updateEmpIdFields() {
+  const type = document.getElementById('fEmpIdType').value;
+  const field = document.getElementById('fEmpIdNumberField');
+  const input = document.getElementById('fEmpIdNumber');
+  const keepHint = document.getElementById('fEmpIdKeepHint');
+  field.style.display = type ? '' : 'none';
+  document.getElementById('fEmpIdNumberLabel').textContent = type === 'passport' ? 'Passport number' : 'National ID number';
+  input.placeholder = type === 'passport' ? 'Letters and digits, 6-12 characters' : '14 digits';
+  input.inputMode = type === 'passport' ? 'text' : 'numeric';
+  const sameAsSaved = empPersonalLoaded.has_id && empPersonalLoaded.id_type === type;
+  keepHint.style.display = sameAsSaved ? '' : 'none';
+  keepHint.textContent = sameAsSaved ? `Saved as ${empPersonalLoaded.masked}. Leave blank to keep it.` : '';
+}
+
+// Returns the id_type/id_number to send, or null to leave the saved ID alone. Throws a message on bad input.
+function readEmpIdFields() {
+  const type = document.getElementById('fEmpIdType').value;
+  const raw = document.getElementById('fEmpIdNumber').value.trim();
+  if (!type) return empPersonalLoaded.has_id ? { id_type: null, id_number: null } : null; // clearing a saved ID
+  if (!raw) {
+    if (empPersonalLoaded.has_id && empPersonalLoaded.id_type === type) return null;      // unchanged
+    throw new Error(type === 'passport' ? 'Enter the passport number.' : 'Enter the national ID number.');
+  }
+  const compact = raw.replace(/\s+/g, '');
+  if (type === 'national_id' && !/^\d{14}$/.test(compact)) throw new Error('A national ID must be exactly 14 digits.');
+  if (type === 'passport' && !/^[A-Za-z0-9]{6,12}$/.test(compact)) throw new Error('A passport number must be 6-12 letters or digits.');
+  return { id_type: type, id_number: type === 'passport' ? compact.toUpperCase() : compact };
+}
+
+function isValidPhone(v) {
+  const cleaned = String(v || '').replace(/[\s\-().]/g, '');
+  return /^\+?\d{7,15}$/.test(cleaned);
+}
+
+async function loadEmployeePersonalIntoModal(id) {
+  try {
+    const p = await Api.getEmployeePersonal(id);
+    if (String(currentEditId) !== String(id)) return;
+    document.getElementById('fEmpLegalName').value = p.legal_name || '';
+    document.getElementById('fEmpPhone').value = p.phone || '';
+    document.getElementById('fEmpAddressLine1').value = p.address_line_1 || '';
+    document.getElementById('fEmpAddressLine2').value = p.address_line_2 || '';
+    empPersonalLoaded = { has_id: !!p.has_id, id_type: p.id_type || '', masked: p.id_number_masked || '' };
+    document.getElementById('fEmpIdType').value = empPersonalLoaded.id_type;
+    document.getElementById('fEmpIdNumber').value = '';
+    updateEmpIdFields();
+  } catch (err) {
+    toast(err.message, 'fa-solid fa-triangle-exclamation');
+  }
+}
+
 function openEmployeeModal(id = null) {
   const numId = id !== null ? Number(id) : null;
   currentEditId = (numId !== null && !isNaN(numId)) ? numId : id;
   document.getElementById('empModalTitle').textContent = id ? 'Edit employee' : 'Add employee';
+  empPersonalLoaded = { has_id: false, id_type: '', masked: '' };
+  ['fEmpLegalName', 'fEmpPhone', 'fEmpAddressLine1', 'fEmpAddressLine2', 'fEmpIdNumber'].forEach(fid => { document.getElementById(fid).value = ''; });
+  document.getElementById('fEmpIdType').value = '';
+  document.getElementById('fEmpPersonalSection').style.display = canWritePersonal() ? '' : 'none';
+  updateEmpIdFields();
   if (id) {
     const e = employees.find(x => String(x.id) === String(id));
     if (!e) return;
+    empNameTouched = true;
     fEmpName.value = e.name || ''; fEmpEmail.value = e.email || ''; fEmpDept.value = e.dept || e.department || ''; fEmpRole.value = e.role || '';
     document.getElementById('fEmpInternalSalary').value = e.internalSalaryUsd || 0;
     document.getElementById('fEmpExternalSalary').value = e.externalSalaryUsd || 0;
     document.getElementById('fEmpInvoiceId').value = e.invoice_id || '';
-    document.getElementById('fEmpAddressLine1').value = e.address_line_1 || '';
-    document.getElementById('fEmpAddressLine2').value = e.address_line_2 || '';
+    if (canWritePersonal()) loadEmployeePersonalIntoModal(id);
     fEmpJoin.value = e.join || ''; fEmpStatus.value = e.status || 'Active'; fEmpVac.value = (e.vacTotal || 21) - (e.vacUsed || 0);
     document.getElementById('fEmpEmploymentState').value = e.employment_state || 'Full-Time';
   } else {
+    empNameTouched = false;
     ['fEmpName', 'fEmpEmail', 'fEmpRole'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('fEmpInternalSalary').value = '';
     document.getElementById('fEmpExternalSalary').value = '';
     document.getElementById('fEmpInvoiceId').value = '';
-    document.getElementById('fEmpAddressLine1').value = '';
-    document.getElementById('fEmpAddressLine2').value = '';
     fEmpJoin.value = ''; fEmpVac.value = 21; fEmpStatus.value = 'Active'; fEmpDept.value = 'Engineering';
     document.getElementById('fEmpEmploymentState').value = 'Full-Time';
   }
   const editing = !!id;
+  updateEmpNameHint();
   empPayFromTouched = false;
   ['fEmpInternalSalary', 'fEmpExternalSalary'].forEach(fid => { document.getElementById(fid).readOnly = editing; });
   document.getElementById('fEmpPayFromField').style.display = editing ? 'none' : '';
   document.getElementById('fEmpEditPayRow').style.display = editing ? '' : 'none';
   document.getElementById('fEmpPayFrom').value = editing ? '' : fEmpJoin.value;
-  document.getElementById('employeeModal').classList.add('active');
+  // openModal resets the inline display that closeModal sets, so the dialog can reopen in the same page load
+  openModal('employeeModal');
 }
 
 async function saveEmployee(evt) {
   const btn = (evt && evt.currentTarget) || document.getElementById('empModalSaveBtn') || document.querySelector('#employeeModal .btn-fill');
   const name = document.getElementById('fEmpName').value.trim();
   const empEmailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!FinanceForm.validateRequiredFields('employeeModal', [
-    { id: 'fEmpName', message: 'Enter the employee\'s full name.' },
+  const withPersonal = canWritePersonal();
+  const rules = [
+    { id: 'fEmpName', message: 'Enter the employee\'s display name.' },
     { id: 'fEmpEmail', message: 'Enter a valid email address.', check: (v) => empEmailRe.test(v) },
-  ])) return;
+  ];
+  if (withPersonal) {
+    rules.push(
+      { id: 'fEmpLegalName', message: 'Enter the legal full name.' },
+      { id: 'fEmpPhone', message: 'Enter a valid phone number (7-15 digits, optional leading +).', check: isValidPhone },
+      { id: 'fEmpAddressLine1', message: 'Enter address line 1.' },
+    );
+  }
+  if (!FinanceForm.validateRequiredFields('employeeModal', rules)) return;
+  let idFields = null;
+  if (withPersonal) {
+    try { idFields = readEmpIdFields(); }
+    catch (err) {
+      FinanceForm.showErrorSummary('employeeModal', [{ fieldId: 'fEmpIdNumber', message: err.message }]);
+      return;
+    }
+  }
   const vacTotal = Number(fEmpVac.value) || 21;
   const internal_salary_usd = Number(document.getElementById('fEmpInternalSalary').value) || 0;
   const external_salary_usd = Number(document.getElementById('fEmpExternalSalary').value) || 0;
   const invoice_id = document.getElementById('fEmpInvoiceId').value.trim();
-  const address_line_1 = document.getElementById('fEmpAddressLine1').value.trim();
-  const address_line_2 = document.getElementById('fEmpAddressLine2').value.trim();
+  const personal = withPersonal ? {
+    legal_name: document.getElementById('fEmpLegalName').value.trim(),
+    phone: document.getElementById('fEmpPhone').value.trim(),
+    address_line_1: document.getElementById('fEmpAddressLine1').value.trim(),
+    address_line_2: document.getElementById('fEmpAddressLine2').value.trim(),
+  } : {};
   if (invoice_id && !/^\d{1,2}$/.test(invoice_id)) {
     FinanceForm.showErrorSummary('employeeModal', [{ fieldId: 'fEmpInvoiceId', message: 'Payment doc ID must be a number between 01 and 99.' }]);
     return;
@@ -127,11 +233,12 @@ async function saveEmployee(evt) {
   setButtonLoading(btn, true, 'Saving…');
   try {
     if (currentEditId) {
-      const updates = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, join_date: fEmpJoin.value, status: fEmpStatus.value, vac_total: vacTotal, employment_state: document.getElementById('fEmpEmploymentState').value, invoice_id, address_line_1, address_line_2 };
+      const updates = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, join_date: fEmpJoin.value, status: fEmpStatus.value, vac_total: vacTotal, employment_state: document.getElementById('fEmpEmploymentState').value, invoice_id };
       await Api.updateEmployee(currentEditId, updates);
+      if (withPersonal) await Api.updateEmployeePersonal(currentEditId, { ...personal, ...(idFields || {}) });
       toast('Employee updated successfully.');
     } else {
-      const payload = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, internal_salary_usd, external_salary_usd, join_date: fEmpJoin.value, pay_effective_from: document.getElementById('fEmpPayFrom').value || fEmpJoin.value || null, status: fEmpStatus.value, vac_total: vacTotal, next_raise: '2027-01-01', employment_state: document.getElementById('fEmpEmploymentState').value, invoice_id, address_line_1, address_line_2 };
+      const payload = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, internal_salary_usd, external_salary_usd, join_date: fEmpJoin.value, pay_effective_from: document.getElementById('fEmpPayFrom').value || fEmpJoin.value || null, status: fEmpStatus.value, vac_total: vacTotal, next_raise: '2027-01-01', employment_state: document.getElementById('fEmpEmploymentState').value, invoice_id, ...personal, ...(idFields || {}) };
       await Api.createEmployee(payload);
       toast('New employee added.');
     }
@@ -255,6 +362,35 @@ function refreshProfileCompensation() {
   loadPayrollPaymentsCard(currentDetailEmployeeId);
 }
 
+// Personal details rows on the employee page (D-035); the ID is masked until revealed.
+async function loadPersonalRows(id, revealId = false) {
+  const host = document.getElementById('detailPersonalRows');
+  if (!host) return;
+  if (!canReadPersonal()) { host.innerHTML = ''; return; }
+  try {
+    const p = await Api.getEmployeePersonal(id, revealId);
+    if (String(currentDetailEmployeeId) !== String(id)) return;
+    const unset = '<span class="ed-unset">Not set</span>';
+    const address = [p.address_line_1, p.address_line_2].filter(Boolean).join(', ');
+    let idHtml = unset;
+    if (p.has_id) {
+      const label = p.id_type === 'passport' ? 'Passport' : 'National ID';
+      const shown = revealId ? escapeHtml(p.id_number || '') : escapeHtml(p.id_number_masked || '');
+      const toggle = canRevealPersonalId()
+        ? ` <button type="button" class="btn btn-sm btn-outline" id="detailIdToggleBtn" onclick="loadPersonalRows('${id}', ${revealId ? 'false' : 'true'})">${revealId ? 'Hide' : 'Reveal'}</button>`
+        : '';
+      idHtml = `${label} <span id="detailIdValue">${shown}</span>${toggle}`;
+    }
+    host.innerHTML = `
+      ${escRow('fa-id-card', 'Legal name', p.legal_name ? escapeHtml(p.legal_name) : unset, { wrap: true })}
+      ${escRow('fa-phone', 'Phone', p.phone ? escapeHtml(p.phone) : unset)}
+      ${escRow('fa-location-dot', 'Address', address ? escapeHtml(address) : unset, { wrap: true, title: escapeHtml(address) })}
+      ${escRow('fa-passport', 'ID', idHtml, { wrap: true })}`;
+  } catch (err) {
+    host.innerHTML = escRow('fa-id-card', 'Personal details', '<span class="ed-unset">Could not load</span>');
+  }
+}
+
 function escRow(icon, label, valueHtml, opts = {}) {
   const { wrap = false, title = '' } = opts;
   return `<div class="esc-row${wrap ? ' wrap' : ''}">
@@ -279,7 +415,6 @@ async function viewProfile(id, section) {
 
   renderCompensationCard(e);
   const vacRemaining = (e.vacTotal || 21) - (e.vacUsed || 0);
-  const address = [e.address_line_1, e.address_line_2].filter(Boolean).join(', ');
 
   const canWriteEmp = typeof SessionInfo !== 'undefined' ? SessionInfo.hasPermission('hr.employee.write') : true;
   document.getElementById('detailProfileHead').innerHTML = `
@@ -320,7 +455,8 @@ async function viewProfile(id, section) {
     ${escRow('fa-envelope', 'Email', e.email, { title: e.email })}
     ${e.join ? escRow('fa-calendar', 'Joined', fmtDateShort(e.join)) : ''}
     ${escRow('fa-hashtag', 'Payment doc ID', e.invoice_id ? escapeHtml(String(e.invoice_id)) : '<span class="ed-unset">Not set</span>')}
-    ${escRow('fa-location-dot', 'Address', address ? escapeHtml(address) : '<span class="ed-unset">Not set</span>', { wrap: true, title: escapeHtml(address) })}`;
+    <div id="detailPersonalRows"></div>`;
+    loadPersonalRows(id);
     const consumption = insuranceConsumption.find(c => String(c.employee_id) === String(id));
     document.getElementById('detailInsuranceGrid').innerHTML = consumption && consumption.categories.length ? consumption.categories.map(renderCategoryChip).join('') : '<p style="color:var(--text2);font-size:13px;">No insurance consumption data available.</p>';
     document.getElementById('detailInsuranceTotal').innerHTML = consumption ? `${fmtMoney(consumption.total_consumed)} <span style="font-size:12px;color:var(--text2);font-weight:500">of ${fmtMoney(consumption.total_limit)}</span>` : '—';

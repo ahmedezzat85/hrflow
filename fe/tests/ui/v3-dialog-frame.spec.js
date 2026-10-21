@@ -63,7 +63,7 @@ test.describe('v3 dialog frame (fixes slice 1)', () => {
     await openAdmin(page);
     await page.evaluate(() => openModal('employeeModal'));
     const titles = await page.locator('#employeeModal .fv-dialog-section-title').allTextContents();
-    expect(titles).toEqual(['Basic details', 'Pay and employment', 'Salary payment docs']);
+    expect(titles).toEqual(['Basic details', 'Pay and employment', 'Personal details', 'Salary payment docs']);
     const cols = await page.locator('#fEmpInternalSalary').evaluate((e) => getComputedStyle(e.closest('.form-grid')).gridTemplateColumns.split(' ').length);
     expect(cols).toBe(3);
   });

@@ -29,6 +29,9 @@ test.describe('P3: employee create/edit pay handling', () => {
 
     await modal.locator('#fEmpName').fill('Pay From Test');
     await modal.locator('#fEmpEmail').fill('payfrom@hrflow.test');
+    await modal.locator('#fEmpLegalName').fill('Pay From Test Legal');
+    await modal.locator('#fEmpPhone').fill('+20 100 123 4567');
+    await modal.locator('#fEmpAddressLine1').fill('1 Test Street');
     await modal.locator('#fEmpJoin').fill('2022-05-01');
     await expect(modal.locator('#fEmpPayFrom')).toHaveValue('2022-05-01');
     await modal.locator('#fEmpPayFrom').fill('2026-01-01');
@@ -74,10 +77,13 @@ test.describe('P3: employee create/edit pay handling', () => {
     });
     await page.evaluate(() => openEmployeeModal('EMP001'));
     const modal = page.locator('#employeeModal');
+    await expect(modal.locator('#fEmpAddressLine1')).not.toHaveValue('');   // personal details load asynchronously
     await modal.locator('#fEmpAddressLine1').fill('1 Test Street');
     await modal.locator('#empModalSaveBtn, .btn-fill').first().click();
     await expect.poll(() => put).not.toBeNull();
-    expect(put.address_line_1).toBe('1 Test Street');
+    // Address now travels with the personal details, never with the profile update.
+    expect(put).not.toHaveProperty('address_line_1');
+    expect(await page.evaluate(() => window._mockPersonalStore.EMP001.address_line_1)).toBe('1 Test Street');
     expect(put).not.toHaveProperty('internal_salary_usd');
     expect(put).not.toHaveProperty('external_salary_usd');
   });

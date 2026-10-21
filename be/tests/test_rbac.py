@@ -28,6 +28,7 @@ from core.rbac_models import PermissionDB, RoleDB, RolePermissionDB, UserRoleDB
 from core.permissions import get_user_permissions
 from models_db import UserDB, EmployeeDB
 from db import get_db_context, init_db
+from employee_test_helpers import PERSONAL
 
 
 def test_rbac_models_and_seed_data(app_client):
@@ -69,7 +70,7 @@ def test_rbac_models_and_seed_data(app_client):
 
         # Super-Admin has all 63 catalog keys
         sa_perm_keys = {p.key for p in super_admin.permissions}
-        assert len(sa_perm_keys) == 67
+        assert len(sa_perm_keys) == 70
         assert "system.users.manage" in sa_perm_keys
         assert "hr.employee.write" in sa_perm_keys
         assert "finance.payroll.prepare" in sa_perm_keys
@@ -77,7 +78,7 @@ def test_rbac_models_and_seed_data(app_client):
         # HR-Admin has 20 permissions
         hr_admin = db.query(RoleDB).filter(RoleDB.name == "HR-Admin").first()
         assert hr_admin is not None
-        assert len(hr_admin.permissions) == 20
+        assert len(hr_admin.permissions) == 23
         assert "hr.employee.write" in {p.key for p in hr_admin.permissions}
         assert "finance.payroll.prepare" not in {p.key for p in hr_admin.permissions}
 
@@ -141,7 +142,7 @@ def test_get_user_permissions_resolution(app_client):
         admin_user = db.query(UserDB).filter(UserDB.email == "admin@hrflow.test").first()
         assert admin_user is not None
         admin_perms = get_user_permissions(admin_user.id, db)
-        assert len(admin_perms) == 67
+        assert len(admin_perms) == 70
         assert "hr.employee.write" in admin_perms
         assert "hr.employee.read" in admin_perms
         assert "self.profile.read" in admin_perms
@@ -157,7 +158,7 @@ def test_get_user_permissions_resolution(app_client):
 def test_require_permission_endpoint_admin_allowed(app_client, admin_cookies):
     """Super-Admin has 'hr.employee.write' and can call POST /api/employees."""
     payload = {
-        "name": "RBAC Test New Employee",
+        **PERSONAL, "name": "RBAC Test New Employee",
         "email": "rbac.new@hrflow.test",
         "dept": "Engineering",
         "job_role": "Backend Engineer",
@@ -175,7 +176,7 @@ def test_require_permission_endpoint_admin_allowed(app_client, admin_cookies):
 def test_require_permission_endpoint_employee_forbidden(app_client, employee_cookies):
     """User with only 'employee' role lacks 'hr.employee.write' and gets 403 Forbidden."""
     payload = {
-        "name": "Should Fail Employee",
+        **PERSONAL, "name": "Should Fail Employee",
         "email": "fail@hrflow.test",
     }
     response = app_client.post("/api/employees", json=payload, cookies=employee_cookies)
@@ -187,7 +188,7 @@ def test_require_permission_endpoint_employee_forbidden(app_client, employee_coo
 def test_require_permission_endpoint_unauthenticated(app_client):
     """Unauthenticated call to permission-gated endpoint returns 401."""
     payload = {
-        "name": "Unauth Test",
+        **PERSONAL, "name": "Unauth Test",
         "email": "unauth@hrflow.test",
     }
     response = app_client.post("/api/employees", json=payload)
@@ -1684,7 +1685,7 @@ def test_slice5_r4_r5_employee_deletion_lifecycle(app_client):
     resp_emp1 = app_client.post(
         "/api/employees",
         json={
-            "name": "Baseline Worker",
+            **PERSONAL, "name": "Baseline Worker",
             "email": "baseline_worker@voyance.health",
             "dept": "Operations",
             "job_role": "Specialist",
@@ -1712,7 +1713,7 @@ def test_slice5_r4_r5_employee_deletion_lifecycle(app_client):
     resp_emp2 = app_client.post(
         "/api/employees",
         json={
-            "name": "Elevated Worker",
+            **PERSONAL, "name": "Elevated Worker",
             "email": "elevated_worker@voyance.health",
             "dept": "Finance",
             "job_role": "Analyst",
@@ -1934,7 +1935,7 @@ def test_slice5_r12_employee_provisioning_rules(app_client):
     resp_arch = app_client.post(
         "/api/employees",
         json={
-            "name": "Archived Person",
+            **PERSONAL, "name": "Archived Person",
             "email": "archived_person@voyance.health",
             "dept": "Sales",
             "job_role": "Rep",
@@ -1950,7 +1951,7 @@ def test_slice5_r12_employee_provisioning_rules(app_client):
     resp_link = app_client.post(
         "/api/employees",
         json={
-            "name": "Linked Consultant",
+            **PERSONAL, "name": "Linked Consultant",
             "email": "ext_to_link@voyance.health",
             "dept": "Finance",
             "job_role": "Director",
@@ -1973,7 +1974,7 @@ def test_slice5_r12_employee_provisioning_rules(app_client):
     resp_new = app_client.post(
         "/api/employees",
         json={
-            "name": "Fresh Hire",
+            **PERSONAL, "name": "Fresh Hire",
             "email": "fresh_hire@voyance.health",
             "dept": "Engineering",
             "job_role": "Developer",
@@ -2060,7 +2061,7 @@ def test_slice5_r14_employee_email_update_sync(app_client):
     resp_create = app_client.post(
         "/api/employees",
         json={
-            "name": "Sync Person",
+            **PERSONAL, "name": "Sync Person",
             "email": "sync_v1@voyance.health",
             "dept": "Design",
             "job_role": "UI Designer",
@@ -2913,7 +2914,7 @@ def test_employee_delete_failure_after_user_removal_rolls_back_both(app_client, 
     """F3 AC2: if the delete fails after the user removal, neither row is gone."""
     from core.access_service import AccessService
     admin = _super_admin_cookies()
-    resp = app_client.post("/api/employees", json={"name": "Rollback Delete", "email": "rollback_delete@voyance.health", "dept": "Ops", "job_role": "Tester", "internal_salary_usd": 0, "external_salary_usd": 0}, cookies=admin)
+    resp = app_client.post("/api/employees", json={**PERSONAL, "name": "Rollback Delete", "email": "rollback_delete@voyance.health", "dept": "Ops", "job_role": "Tester", "internal_salary_usd": 0, "external_salary_usd": 0}, cookies=admin)
     assert resp.status_code == 201, resp.text
     emp_id = resp.json()["id"]
 
@@ -2949,7 +2950,7 @@ def test_employee_create_failure_leaves_no_employee_and_no_user(app_client, monk
         patch.setattr(CompensationPlanService, "set_component", failing_set_component)
         resp = app_client.post(
             "/api/employees",
-            json={"name": "Rollback Create", "email": "rollback_create@voyance.health", "dept": "Ops", "job_role": "Tester", "internal_salary_usd": 500, "external_salary_usd": 0},
+            json={**PERSONAL, "name": "Rollback Create", "email": "rollback_create@voyance.health", "dept": "Ops", "job_role": "Tester", "internal_salary_usd": 500, "external_salary_usd": 0},
             cookies=admin,
         )
         assert resp.status_code == 500

@@ -3,7 +3,7 @@ be/core/permission_catalog.py
 Authoritative code-defined catalog of RBAC permissions and implication rules.
 Provides:
 - PermissionDef data structure
-- CATALOG definition of all 63 keys
+- CATALOG definition of all keys
 - all_keys()
 - closure(keys)
 - validate_role_keys(keys)
@@ -56,6 +56,25 @@ CATALOG: Tuple[PermissionDef, ...] = (
         group="HR / Employees",
         description="Create, edit, and delete employee records",
         implies=("hr.employee.read",),
+    ),
+
+    # HR / Employee personal details (D-035)
+    PermissionDef(
+        key="hr.employee_personal.read",
+        group="HR / Employee personal details",
+        description="View employee legal name, phone, address and masked ID",
+    ),
+    PermissionDef(
+        key="hr.employee_personal.write",
+        group="HR / Employee personal details",
+        description="Edit employee legal name, phone, address and ID",
+        implies=("hr.employee_personal.read",),
+    ),
+    PermissionDef(
+        key="hr.employee_personal.reveal",
+        group="HR / Employee personal details",
+        description="Reveal the unmasked employee ID or passport number",
+        implies=("hr.employee_personal.read",),
     ),
 
     # HR / Compensation

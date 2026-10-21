@@ -3,8 +3,10 @@ models.py
 Pydantic request/response models for the HRFlow API.
 """
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 from typing import Optional, Literal, List, Union
+
+from services.employee_personal import normalize_id, normalize_phone
 
 # Allowed values for an employee's employment state (single source of truth
 # shared by EmployeeCreate / EmployeeUpdate).
@@ -68,9 +70,35 @@ class EmployeeCreate(BaseModel):
     next_raise: str = ""
     employment_state: EmploymentState = "Full-Time"
     invoice_id: Optional[str] = None
-    address_line_1: Optional[str] = None
+    # Personal details (D-035). Legal name, phone and address line 1 are required for a new employee;
+    # the ID is optional. They are stored through the personal-details path, not the profile one.
+    legal_name: str
+    phone: str
+    address_line_1: str
     address_line_2: Optional[str] = None
+    id_type: Optional[str] = None
+    id_number: Optional[str] = None
 
+    @field_validator("name", "legal_name", "address_line_1")
+    @classmethod
+    def _required_text(cls, v):
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("This field is required")
+        return v
+
+    @field_validator("phone")
+    @classmethod
+    def _phone_valid(cls, v):
+        normalized = normalize_phone(v)
+        if not normalized:
+            raise ValueError("Phone is required")
+        return normalized
+
+    @model_validator(mode="after")
+    def _id_pair_valid(self):
+        self.id_type, self.id_number = normalize_id(self.id_type, self.id_number)
+        return self
 
     @field_validator("pay_effective_from")
     @classmethod
@@ -98,8 +126,50 @@ class EmployeeUpdate(BaseModel):
     next_raise: Optional[str] = None
     employment_state: Optional[EmploymentState] = None
     invoice_id: Optional[str] = None
+
+
+class EmployeePersonalUpdate(BaseModel):
+    """
+    Partial update of the personal details (D-035). Only the fields sent change. legal_name, phone and
+    address_line_1 cannot be blanked. Sending id_type/id_number both empty clears the ID.
+    """
+    legal_name: Optional[str] = None
+    phone: Optional[str] = None
     address_line_1: Optional[str] = None
     address_line_2: Optional[str] = None
+    id_type: Optional[str] = None
+    id_number: Optional[str] = None
+
+    @field_validator("legal_name", "address_line_1")
+    @classmethod
+    def _not_blank(cls, v):
+        if v is None:
+            return v
+        v = v.strip()
+        if not v:
+            raise ValueError("This field cannot be empty")
+        return v
+
+    @field_validator("address_line_2")
+    @classmethod
+    def _strip_optional(cls, v):
+        return None if v is None else v.strip()
+
+    @field_validator("phone")
+    @classmethod
+    def _phone_valid(cls, v):
+        if v is None:
+            return v
+        normalized = normalize_phone(v)
+        if not normalized:
+            raise ValueError("Phone cannot be empty")
+        return normalized
+
+    @model_validator(mode="after")
+    def _id_pair_valid(self):
+        if "id_type" in self.model_fields_set or "id_number" in self.model_fields_set:
+            self.id_type, self.id_number = normalize_id(self.id_type, self.id_number)
+        return self
 
 
 class RequestCreate(BaseModel):

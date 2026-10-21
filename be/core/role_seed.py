@@ -45,6 +45,8 @@ DEFAULT_ROLES: Dict[str, RoleSeedDef] = {
         is_locked=False,
         base_keys=(
             "hr.employee.write",
+            "hr.employee_personal.write",
+            "hr.employee_personal.reveal",
             "hr.salary.write",
             "hr.employee_bank_account.write",
             "hr.employee_bank_account.reveal",

@@ -51,7 +51,7 @@ def test_format_invoice_date_format():
 def test_eligibility_passes_with_all_fields():
     emp = {
         "id": 1, "external_salary_usd": 300, "invoice_id": "2",
-        "address_line_1": "15 Example St",
+        "legal_name": "Test Legal Name", "address_line_1": "15 Example St",
     }
     assert check_eligibility(emp) == "02"
 
@@ -75,8 +75,15 @@ def test_eligibility_fails_on_invalid_invoice_id_out_of_range():
 
 
 def test_eligibility_fails_on_missing_address():
-    emp = {"id": 1, "external_salary_usd": 300, "invoice_id": "02", "address_line_1": ""}
+    emp = {"id": 1, "external_salary_usd": 300, "invoice_id": "02", "legal_name": "Test Legal Name", "address_line_1": ""}
     with pytest.raises(InvoiceEligibilityError, match="address_line_1 is missing"):
+        check_eligibility(emp)
+
+
+def test_eligibility_fails_on_missing_legal_name_even_with_a_display_name():
+    emp = {"id": 1, "name": "Display Name", "external_salary_usd": 300, "invoice_id": "02",
+           "legal_name": "  ", "address_line_1": "15 Example St"}
+    with pytest.raises(InvoiceEligibilityError, match="legal_name is missing"):
         check_eligibility(emp)
 
 
@@ -178,6 +185,7 @@ def test_regenerate_invoice_updates_existing_record_in_place(monkeypatch):
     emp = {
         "id": 10,
         "name": "Test Emp",
+        "legal_name": "Test Emp Legal",
         "external_salary_usd": 600,  # salary updated from 500 to 600
         "invoice_id": "10",
         "address_line_1": "123 Main St",
@@ -208,9 +216,15 @@ def test_api_regenerate_single_invoice_flow(app_client, admin_cookies, monkeypat
     # 1. Setup employee with external salary
     app_client.put(
         "/api/employees/2",
-        json={"external_salary_usd": 750, "invoice_id": "02", "address_line_1": "Test Address"},
+        json={"external_salary_usd": 750, "invoice_id": "02"},
         cookies=admin_cookies,
     )
+    personal = app_client.put(
+        "/api/employees/2/personal",
+        json={"legal_name": "Employee Two Legal", "address_line_1": "Test Address"},
+        cookies=admin_cookies,
+    )
+    assert personal.status_code == 200, personal.text
 
     # 2. First generation (skip_existing=True)
     res1 = app_client.post(
@@ -274,6 +288,7 @@ def test_build_template_context_includes_address_and_full_name():
     emp = {
         "id": 1,
         "name": "Jane Developer",
+        "legal_name": "Jane Marie Developer",
         "external_salary_usd": 4200,
         "invoice_id": "05",
         "address_line_1": "100 Innovation Blvd",
@@ -282,8 +297,9 @@ def test_build_template_context_includes_address_and_full_name():
     fixed_now = dt.datetime(2026, 9, 23, 12, 0, 0, tzinfo=dt.timezone.utc)
     ctx = build_template_context(emp, 2026, 9, now=fixed_now)
 
-    assert ctx["employee_name"] == "Jane Developer"
-    assert ctx["employee_full_name"] == "Jane Developer"
+    # The document prints the legal name, never the display name (D-035).
+    assert ctx["employee_name"] == "Jane Marie Developer"
+    assert ctx["employee_full_name"] == "Jane Marie Developer"
     assert ctx["address_line_1"] == "100 Innovation Blvd"
     assert ctx["address_line_2"] == "Suite 300"
     assert ctx["current_month"] == "September"
@@ -308,6 +324,7 @@ def test_render_invoice_document_populates_address_in_template():
     emp = {
         "id": 2,
         "name": "Ahmed Ezzat",
+        "legal_name": "Ahmed Ezzat",
         "external_salary_usd": 5000,
         "invoice_id": "02",
         "address_line_1": "15 Example St",

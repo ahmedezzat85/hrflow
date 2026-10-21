@@ -49,7 +49,8 @@
 - **Permissions:** add the three keys to `permission_catalog.py` (group "HR / Employee personal details", read ⊂ write; reveal implies read), grant write and reveal to the HR-Admin seed, and update the catalog key count wherever it is asserted.
 - **Payment docs:** eligibility also requires `legal_name`; the template context's `employee_name` / `employee_full_name` use the legal name; the stored document name and record `employee_name` keep the display name so lists never show the legal name. Verify that regeneration stores rather than recomputes the printed content (decision 8).
 - **Frontend:** the Add/Edit modal gets a "Personal details" section (legal name, display name with pre-fill and soft check, phone, address lines, ID type + number). The employee page gets a Personal details card (permission-gated, ID masked with a reveal control). The employees table and every list keep showing only `name`. Mock mode serves a personal endpoint and enforces the same shape.
-- **Export:** confirm `services/export.py` does not export personal fields.
+- **Export:** the new fields (legal name, phone, ID) are not added to `services/export.py`. The existing employees export already carries the address columns; they are left as they were (no export contract change in this slice).
+- **Side fix:** `openEmployeeModal` now uses `openModal`, because `closeModal` leaves an inline `display:none` that made the dialog impossible to reopen in the same page load (needed for the S3 create-then-Pay-plan flow).
 - Tests: validation matrix (national ID, passport, phone, soft rules), permission matrix (HR-Admin, other admin roles, employee self), list/detail endpoints never leak personal fields, reveal audit, payment-doc eligibility and template context, migration backfill. UI specs for the modal and the card.
 
 ### 3.3 Slice S3 — Pay out of the employee modal

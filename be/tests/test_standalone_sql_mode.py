@@ -14,6 +14,7 @@ from repositories.sql.employees import SqlEmployeeRepository
 from repositories.sql.auth import SqlUserRepository
 from storage import reset_storage_client_for_testing
 from main import app
+from employee_test_helpers import PERSONAL
 
 
 @pytest.fixture
@@ -80,7 +81,7 @@ def test_standalone_sql_employee_crud(standalone_sql_app):
 
     # 2. Add new employee
     payload = {
-        "name": "Jane Developer",
+        **PERSONAL, "name": "Jane Developer",
         "email": "jane@example.com",
         "role": "employee",
         "dept": "Engineering",

@@ -19,6 +19,7 @@ from db import get_db_context
 from models_db import EmployeeDB
 from finance.models import EmployeeCompensationPlanDB, PayrollRunDB
 from finance.repositories.compensation_plan_repository import CompensationPlanRepository
+from employee_test_helpers import PERSONAL
 
 
 def _create_test_employee(email_suffix="comp"):
@@ -239,7 +240,7 @@ def test_employee_creation_and_update_syncs_compensation_plan(app_client, admin_
     create_resp = app_client.post(
         "/api/employees",
         json={
-            "name": "Sync Candidate",
+            **PERSONAL, "name": "Sync Candidate",
             "email": unique_email,
             "dept": "Design",
             "job_role": "UI Designer",

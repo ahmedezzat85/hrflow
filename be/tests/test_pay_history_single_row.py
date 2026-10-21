@@ -11,6 +11,7 @@ from datetime import datetime
 
 from db import get_db_context
 from models_db import SalaryHistoryDB
+from employee_test_helpers import PERSONAL
 
 TODAY = datetime.utcnow().strftime("%Y-%m-%d")
 _counter = [0]
@@ -21,7 +22,7 @@ def _create_employee(app_client, admin_cookies, internal=1000.0, external=2000.0
     resp = app_client.post(
         "/api/employees",
         json={
-            "name": "Pay History Test",
+            **PERSONAL, "name": "Pay History Test",
             "email": f"pay_history_{_counter[0]}_{int(datetime.utcnow().timestamp() * 1000)}@hrflow.test",
             "dept": "Engineering",
             "job_role": "Engineer",

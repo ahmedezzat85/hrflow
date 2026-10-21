@@ -18,6 +18,7 @@ from db import get_db_context
 from finance.models import EmployeeCompensationPlanDB, PayrollRunDB
 from finance.services.compensation_plan_service import CompensationPlanService
 from models_db import AuditLogDB, EmployeeDB, SalaryHistoryDB
+from employee_test_helpers import PERSONAL
 
 TODAY = datetime.utcnow().strftime("%Y-%m-%d")
 YESTERDAY = (datetime.utcnow() - timedelta(days=1)).strftime("%Y-%m-%d")
@@ -31,7 +32,7 @@ def _create_via_api(app_client, admin_cookies, internal=0.0, external=0.0, join_
         "/api/employees",
         json={
             **extra,
-            "name": "Salary Entry Test",
+            **PERSONAL, "name": "Salary Entry Test",
             "email": f"salary_entry_{_counter[0]}_{int(datetime.utcnow().timestamp() * 1000)}@hrflow.test",
             "dept": "Engineering",
             "job_role": "Engineer",
@@ -136,7 +137,7 @@ def test_pay_effective_from_overrides_join_date_on_create(app_client, admin_cook
 def test_pay_effective_from_must_be_a_valid_date(app_client, admin_cookies):
     resp = app_client.post(
         "/api/employees",
-        json={"name": "Bad Date", "email": "bad_date_pay@hrflow.test", "internal_salary_usd": 1.0,
+        json={**PERSONAL, "name": "Bad Date", "email": "bad_date_pay@hrflow.test", "internal_salary_usd": 1.0,
               "external_salary_usd": 0.0, "pay_effective_from": "01/01/2026"},
         cookies=admin_cookies,
     )

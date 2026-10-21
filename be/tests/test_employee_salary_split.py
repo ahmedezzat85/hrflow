@@ -5,11 +5,12 @@ EmployeeCreate/EmployeeUpdate split into internal_salary_usd /
 external_salary_usd, with a derived legacy `salary` total maintained for
 backward compatibility with not-yet-migrated frontend code.
 """
+from employee_test_helpers import PERSONAL
 
 
 def test_create_employee_requires_both_salary_components(app_client, admin_cookies):
     resp = app_client.post("/api/employees", json={
-        "name": "New Hire", "email": "newhire@hrflow.test", "dept": "Engineering",
+        **PERSONAL, "name": "New Hire", "email": "newhire@hrflow.test", "dept": "Engineering",
         "job_role": "Developer", "internal_salary_usd": 1000,
         # external_salary_usd intentionally omitted
     }, cookies=admin_cookies)
@@ -18,7 +19,7 @@ def test_create_employee_requires_both_salary_components(app_client, admin_cooki
 
 def test_create_employee_zero_is_a_valid_component_value(app_client, admin_cookies, fake_sheets_client):
     resp = app_client.post("/api/employees", json={
-        "name": "Internal Only", "email": "internalonly@hrflow.test", "dept": "Engineering",
+        **PERSONAL, "name": "Internal Only", "email": "internalonly@hrflow.test", "dept": "Engineering",
         "job_role": "Developer", "internal_salary_usd": 1500, "external_salary_usd": 0,
     }, cookies=admin_cookies)
     assert resp.status_code == 201
@@ -32,7 +33,7 @@ def test_create_employee_zero_is_a_valid_component_value(app_client, admin_cooki
 
 def test_create_employee_derives_legacy_salary_as_sum(app_client, admin_cookies, fake_sheets_client):
     resp = app_client.post("/api/employees", json={
-        "name": "Split Pay", "email": "splitpay@hrflow.test", "dept": "Engineering",
+        **PERSONAL, "name": "Split Pay", "email": "splitpay@hrflow.test", "dept": "Engineering",
         "job_role": "Developer", "internal_salary_usd": 1000, "external_salary_usd": 500,
     }, cookies=admin_cookies)
     assert resp.status_code == 201

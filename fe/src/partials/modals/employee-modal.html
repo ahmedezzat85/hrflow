@@ -15,8 +15,9 @@
           <div class="fv-dialog-section-title">Basic details</div>
           <div class="form-grid">
             <div class="form-field">
-              <label for="fEmpName">Full name</label>
-              <input id="fEmpName" placeholder="e.g. Laila Hassan" required>
+              <label for="fEmpName">Display name</label>
+              <input id="fEmpName" placeholder="e.g. Laila Hassan" required oninput="empNameTouched = true; updateEmpNameHint()">
+              <div class="fv-plan-hint" id="fEmpNameHint" style="display:none;">Shown across HRFlow. First and last name works best, e.g. Laila Hassan.</div>
             </div>
             <div class="form-field">
               <label for="fEmpEmail">Work email</label>
@@ -93,6 +94,44 @@
           </div>
         </div>
 
+        <div class="form-section" id="fEmpPersonalSection">
+          <div class="fv-dialog-section-title">Personal details</div>
+          <p style="font-size:11.5px;color:var(--ink-muted);margin-bottom:12px;">
+            Visible only on this form and the employee page. The legal name and address are printed on contracts and salary payment docs.
+          </p>
+          <div class="form-grid">
+            <div class="form-field full">
+              <label for="fEmpLegalName">Legal full name</label>
+              <input id="fEmpLegalName" placeholder="e.g. Laila Ahmed Hassan Ali" autocomplete="off" oninput="syncEmpDisplayName()">
+            </div>
+            <div class="form-field">
+              <label for="fEmpPhone">Phone</label>
+              <input id="fEmpPhone" type="tel" placeholder="e.g. +20 100 123 4567" autocomplete="off" inputmode="tel">
+            </div>
+            <div class="form-field">
+              <label for="fEmpIdType">ID (optional)</label>
+              <select id="fEmpIdType" onchange="updateEmpIdFields()">
+                <option value="">No ID on file</option>
+                <option value="national_id">National ID</option>
+                <option value="passport">Passport</option>
+              </select>
+            </div>
+            <div class="form-field full" id="fEmpIdNumberField" style="display:none;">
+              <label for="fEmpIdNumber" id="fEmpIdNumberLabel">ID number</label>
+              <input id="fEmpIdNumber" autocomplete="off" placeholder="">
+              <div class="fv-plan-hint" id="fEmpIdKeepHint" style="display:none;"></div>
+            </div>
+            <div class="form-field full">
+              <label for="fEmpAddressLine1">Address line 1</label>
+              <input id="fEmpAddressLine1" placeholder="e.g. 15 Example Street">
+            </div>
+            <div class="form-field full">
+              <label for="fEmpAddressLine2">Address line 2 (optional)</label>
+              <input id="fEmpAddressLine2" placeholder="e.g. New Cairo, Cairo Governorate">
+            </div>
+          </div>
+        </div>
+
         <div class="form-section optional-section">
           <div class="fv-dialog-section-title">Salary payment docs</div>
           <p style="font-size:11.5px;color:var(--ink-muted);margin-bottom:12px;">
@@ -102,14 +141,6 @@
             <div class="form-field">
               <label for="fEmpInvoiceId">Payment doc ID, 01-99</label>
               <input type="text" id="fEmpInvoiceId" placeholder="e.g. 02" maxlength="2" inputmode="numeric">
-            </div>
-            <div class="form-field full">
-              <label for="fEmpAddressLine1">Address line 1</label>
-              <input id="fEmpAddressLine1" placeholder="e.g. 15 Example Street">
-            </div>
-            <div class="form-field full">
-              <label for="fEmpAddressLine2">Address line 2</label>
-              <input id="fEmpAddressLine2" placeholder="e.g. New Cairo, Cairo Governorate">
             </div>
           </div>
         </div>

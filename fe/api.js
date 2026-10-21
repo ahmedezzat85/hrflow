@@ -77,6 +77,37 @@ function getLastCorrelationId() {
   return _lastCorrelationId;
 }
 
+// Mock-mode personal details (?mock=admin), seeded from the mock employee list.
+function _mockPersonalRecord(empId) {
+  window._mockPersonalStore = window._mockPersonalStore || {};
+  const key = String(empId);
+  if (!window._mockPersonalStore[key]) {
+    const e = (typeof employees !== "undefined" && Array.isArray(employees) && employees.find((x) => String(x.id) === key)) || {};
+    window._mockPersonalStore[key] = {
+      legal_name: e.legal_name || e.name || "",
+      phone: e.phone || "",
+      address_line_1: e.address_line_1 || "1 Mock Street",
+      address_line_2: e.address_line_2 || "Cairo",
+      id_type: key === "EMP001" ? "national_id" : "",
+      id_number: key === "EMP001" ? "12345678901234" : "",
+    };
+  }
+  return window._mockPersonalStore[key];
+}
+function _mockPersonalView(empId, reveal) {
+  const rec = _mockPersonalRecord(empId);
+  const n = rec.id_number || "";
+  const view = {
+    employee_id: empId,
+    legal_name: rec.legal_name, phone: rec.phone,
+    address_line_1: rec.address_line_1, address_line_2: rec.address_line_2,
+    id_type: rec.id_type, has_id: !!n,
+    id_number_masked: n.length > 4 ? "*".repeat(n.length - 4) + n.slice(-4) : "*".repeat(n.length),
+  };
+  if (reveal) view.id_number = n;
+  return view;
+}
+
 async function apiRequest(method, path, body = null, auth = true, extraHeaders = {}) {
   const correlationId = (extraHeaders && extraHeaders["X-Correlation-ID"]) || generateCorrelationId();
   _lastCorrelationId = correlationId;
@@ -328,6 +359,19 @@ const Api = {
   getEmployee(empId) { return apiRequest("GET", `/api/employees/${empId}`); },
   createEmployee(payload) { return apiRequest("POST", "/api/employees", payload); },
   updateEmployee(empId, payload) { return apiRequest("PUT", `/api/employees/${empId}`, payload); },
+  // Personal details (D-035): legal name, phone, address, ID. HR-admin only; the ID is masked unless revealed.
+  getEmployeePersonal(empId, revealId = false) {
+    if (typeof _isMock === "function" && _isMock()) return Promise.resolve(_mockPersonalView(empId, revealId));
+    return apiRequest("GET", `/api/employees/${empId}/personal${revealId ? "?reveal_id=true" : ""}`);
+  },
+  updateEmployeePersonal(empId, payload) {
+    if (typeof _isMock === "function" && _isMock()) {
+      const rec = _mockPersonalRecord(empId);
+      Object.keys(payload).forEach((k) => { rec[k] = payload[k] == null ? "" : payload[k]; });
+      return Promise.resolve(_mockPersonalView(empId, false));
+    }
+    return apiRequest("PUT", `/api/employees/${empId}/personal`, payload);
+  },
   deleteEmployee(empId) { return apiRequest("DELETE", `/api/employees/${empId}`); },
 
   getEmployeeNotes(empId) { return apiRequest("GET", `/api/employees/${empId}/notes`); },
