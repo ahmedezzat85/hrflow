@@ -49,6 +49,7 @@ class CompensationPlanService:
             "external_usd": ext,
             "internal_usd_cash": int_cash,
             "total_monthly_usd": total,
+            "earliest_effective_date": self.get_earliest_effective_date(),
         }
 
     def get_history(self, employee_id: int) -> List[EmployeeCompensationPlanDB]:

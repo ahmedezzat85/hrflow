@@ -222,6 +222,32 @@
         created_at: "2026-01-01T09:00:00Z",
         updated_at: "2026-01-01T09:00:00Z",
       },
+      {
+        id: 5,
+        employee_id: "EMP001",
+        component_type: "external_usd",
+        amount: 7500.0,
+        currency: "USD",
+        salary_basis: "NET",
+        effective_start_date: "2026-01-01",
+        effective_end_date: null,
+        notes: "US transfer",
+        created_at: "2026-01-01T09:00:00Z",
+        updated_at: "2026-01-01T09:00:00Z",
+      },
+      {
+        id: 6,
+        employee_id: "EMP001",
+        component_type: "internal_usd_cash",
+        amount: 5000.0,
+        currency: "USD",
+        salary_basis: "NET",
+        effective_start_date: "2026-01-01",
+        effective_end_date: null,
+        notes: "Local cash",
+        created_at: "2026-01-01T09:00:00Z",
+        updated_at: "2026-01-01T09:00:00Z",
+      },
     ];
   }
 
@@ -983,6 +1009,7 @@
           external_usd: ext,
           internal_usd_cash: intCash,
           total_monthly_usd: total,
+          earliest_effective_date: FinanceMockState.compensationPlanEarliest || null,
         };
       }
       return apiRequest("GET", `/api/finance/employees/${employeeId}/compensation-plan`);
@@ -1055,6 +1082,84 @@
         return newRow;
       }
       return apiRequest("PUT", `/api/finance/employees/${employeeId}/compensation-plan/${componentType}`, data);
+    },
+
+    // Atomic pay change for both components (D-034); 0 closes a component, both 0 is rejected.
+    async setEmployeeCompensationPlan(employeeId, data) {
+      if (_isMock()) {
+        const parse = (v) => { const n = Number(v); return Number.isFinite(n) ? round(n) : NaN; };
+        const amounts = { internal_usd_cash: parse(data.internal_usd_cash), external_usd: parse(data.external_usd) };
+        const date = data.effective_start_date;
+        if (!date) throw new Error("effective_start_date is required");
+        if (Object.values(amounts).some((a) => isNaN(a) || a < 0)) throw new Error("Component amount cannot be negative");
+        if (amounts.internal_usd_cash <= 0 && amounts.external_usd <= 0) throw new Error("At least one component must be above 0");
+        const earliest = FinanceMockState.compensationPlanEarliest;
+        const plans = FinanceMockState.compensationPlans || (FinanceMockState.compensationPlans = []);
+        const dayBefore = (iso) => { const d = new Date(iso + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10); };
+        const basis = (data.internal_salary_basis || "NET").toUpperCase();
+        const todo = [];
+        for (const type of ["internal_usd_cash", "external_usd"]) {
+          const amt = amounts[type];
+          const active = plans.find((p) => String(p.employee_id) === String(employeeId) && p.component_type === type && !p.effective_end_date);
+          const prev = active ? Number(active.amount) : 0;
+          const sameBasis = type !== "internal_usd_cash" || ((active && active.salary_basis) || "NET").toUpperCase() === basis;
+          let action;
+          if ((!active && amt === 0) || (active && amt === prev && sameBasis)) action = "unchanged";
+          else if (amt === 0) {
+            if (date <= active.effective_start_date) throw new Error(`Cannot end ${type} on ${date}: the effective date must be after the current row's start date (${active.effective_start_date}); pick a later date`);
+            action = "closed";
+          } else if (!active) {
+            const closed = plans.filter((p) => String(p.employee_id) === String(employeeId) && p.component_type === type && p.effective_end_date).map((p) => p.effective_end_date).sort().pop();
+            if (closed && date <= closed) throw new Error(`effective_start_date (${date}) overlaps an earlier closed ${type} row (ended ${closed}); choose a later date`);
+            action = "created";
+          } else {
+            if (date < active.effective_start_date) throw new Error(`New effective_start_date (${date}) must be strictly after the current component's start date (${active.effective_start_date})`);
+            action = "updated";
+          }
+          todo.push({ type, amt, prev, action, active });
+        }
+        if (earliest && todo.some((t) => t.action !== "unchanged") && date < earliest) {
+          throw new Error(`effective_start_date (${date}) cannot be in or before an already finalized payroll period (earliest allowed ${earliest})`);
+        }
+        const changes = [];
+        for (const t of todo) {
+          if (t.action === "closed") {
+            t.active.effective_end_date = dayBefore(date);
+          } else if (t.action === "created" || t.action === "updated") {
+            if (t.action === "updated" && date === t.active.effective_start_date) {
+              t.active.amount = t.amt;
+              if (t.type === "internal_usd_cash") t.active.salary_basis = basis;
+            } else {
+              if (t.active) t.active.effective_end_date = dayBefore(date);
+              plans.push({
+                id: plans.length ? Math.max(...plans.map((p) => p.id)) + 1 : 1,
+                employee_id: employeeId,
+                component_type: t.type,
+                amount: t.amt,
+                currency: "USD",
+                salary_basis: t.type === "internal_usd_cash" ? basis : "NET",
+                effective_start_date: date,
+                effective_end_date: null,
+                notes: data.notes || "",
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              });
+            }
+          }
+          changes.push({ component_type: t.type, action: t.action, previous_amount: t.prev, new_amount: t.amt });
+        }
+        if (typeof employees !== "undefined" && Array.isArray(employees)) {
+          const emp = employees.find((e) => String(e.id) === String(employeeId));
+          if (emp) {
+            emp.externalSalaryUsd = amounts.external_usd;
+            emp.internalSalaryUsd = amounts.internal_usd_cash;
+            emp.salary = round(amounts.external_usd + amounts.internal_usd_cash);
+          }
+        }
+        const plan = await this.getEmployeeCompensationPlan(employeeId);
+        return { ...plan, changes };
+      }
+      return apiRequest("PUT", `/api/finance/employees/${employeeId}/compensation-plan`, data);
     },
 
     async getPayrollSettings() {

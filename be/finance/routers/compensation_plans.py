@@ -14,6 +14,8 @@ from finance.schemas import (
     EmployeeCompensationPlanResponse,
     CompensationComponentResponse,
     CompensationComponentSetRequest,
+    CompensationPlanSetRequest,
+    CompensationPlanSetResponse,
 )
 from finance.services.compensation_plan_service import CompensationPlanService
 
@@ -47,6 +49,32 @@ def get_compensation_plan_history(
 ):
     """Retrieve full effective-dated history of all compensation plan rows for an employee."""
     return service.get_history(employee_id)
+
+
+@router.put("", response_model=CompensationPlanSetResponse)
+def set_compensation_plan(
+    payload: CompensationPlanSetRequest,
+    employee_id: int = Path(..., description="Employee ID"),
+    service: CompensationPlanService = Depends(get_compensation_plan_service),
+    current_user: dict = Depends(require_permission("finance.payroll.prepare")),
+):
+    """
+    Set both pay components in one atomic call (D-034). A component set to 0 is ended the day
+    before the effective date; both at 0 is rejected. Unchanged components are not written.
+    """
+    user_email = current_user.get("email") if isinstance(current_user, dict) else None
+    result = service.apply_pay_change(
+        employee_id=employee_id,
+        internal_amount=payload.internal_usd_cash,
+        external_amount=payload.external_usd,
+        effective_start_date=payload.effective_start_date,
+        internal_basis=payload.internal_salary_basis,
+        notes=payload.notes or "",
+        actor_email=user_email,
+    )
+    plan = service.get_active_plan(employee_id)
+    plan["changes"] = result["changes"]
+    return plan
 
 
 @router.put("/{component_type}", response_model=CompensationComponentResponse)

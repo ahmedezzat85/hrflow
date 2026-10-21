@@ -1005,6 +1005,13 @@
   border-radius: 12px;
   overflow: hidden;
 }
+.fv-dialog .fv-plan-edit { display: grid; grid-template-columns: 1fr 140px; gap: 12px 14px; align-items: start; }
+.fv-dialog .fv-plan-hint { font-size: 12px; margin-top: 4px; min-height: 16px; color: inherit; opacity: .85; }
+.fv-dialog .fv-plan-hint.fv-delta-up { color: var(--fv-area-green-ink); opacity: 1; }
+.fv-dialog .fv-plan-hint.fv-delta-down,
+.fv-dialog #compPlanBothZeroError { color: var(--fv-area-danger-ink); opacity: 1; }
+.fv-dialog .fv-plan-total { margin: 10px 0 14px; font-weight: 600; }
+.fv-dialog details > summary.fv-dialog-section-title { cursor: pointer; }
 .fv-dialog .fv-plan-table table { width: 100%; font-size: 13px; }
 .fv-dialog .fv-plan-table th { text-align: left; }
 .fv-dialog .fv-plan-table th.fv-num,
