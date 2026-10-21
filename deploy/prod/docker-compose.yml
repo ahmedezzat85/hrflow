@@ -51,6 +51,9 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-hrflow}
       FILE_STORAGE_BACKEND: local
       LOCAL_STORAGE_PATH: /data/documents
+      # Finance uploads (bill PDFs, cheque and invoice scans, statements, proofs): the container is read-only, so they live in the data volume
+      BILL_UPLOADS_DIR: /data/documents/finance_bills
+      FINANCE_UPLOADS_DIR: /data/documents/finance_attachments
       LOG_FILE_PATH: /data/logs/hrflow.log
       INVOICE_TEMPLATE_PATH: /app/templates/us_invoice_template.docx
     volumes:

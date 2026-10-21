@@ -10,6 +10,7 @@ from typing import List, Optional
 from fastapi import HTTPException, status, UploadFile
 
 from finance.repositories.subscriptions_repository import SubscriptionsRepository
+from finance.storage_paths import ensure_dir, resolve_uploads_dir
 from finance.schemas import (
     SubscriptionCreate,
     SubscriptionUpdate,
@@ -40,13 +41,13 @@ def add_cycle(day: date, cycle: Optional[str], steps: int = 1) -> date:
     return date(year, month, min(day.day, calendar.monthrange(year, month)[1]))
 
 
-FINANCE_UPLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads", "finance_attachments")
+FINANCE_UPLOADS_DIR = resolve_uploads_dir("FINANCE_UPLOADS_DIR", "finance_attachments")
 
 
 class SubscriptionsService:
     def __init__(self, repo: SubscriptionsRepository):
         self.repo = repo
-        os.makedirs(FINANCE_UPLOADS_DIR, exist_ok=True)
+        ensure_dir(FINANCE_UPLOADS_DIR)
 
     def _attachment_to_response(self, att: FinanceAttachmentDB) -> FinanceAttachmentResponse:
         return FinanceAttachmentResponse(
