@@ -14,7 +14,7 @@ import pytest
 from conftest import create_test_user
 from core.rbac_models import PermissionDB, RoleDB, RolePermissionDB, UserRoleDB
 from db import get_db_context
-from employee_test_helpers import PERSONAL
+from employee_test_helpers import PERSONAL, set_pay
 from models_db import AuditLogDB, EmployeeDB, UserDB
 from services.employee_personal import mask_id, normalize_id, normalize_phone
 from services.salary_payment_docs import (
@@ -290,8 +290,10 @@ def test_payment_doc_template_prints_the_legal_name_and_both_address_lines():
 
 
 def test_payment_doc_preview_reads_personal_details_and_flags_a_missing_legal_name(app_client, admin_cookies):
-    ready = _create(app_client, admin_cookies, name="Doc Ready", external_salary_usd=2000, invoice_id="07")
-    legacy = _create(app_client, admin_cookies, name="Doc Legacy", external_salary_usd=2000, invoice_id="08")
+    ready = _create(app_client, admin_cookies, name="Doc Ready", invoice_id="07")
+    legacy = _create(app_client, admin_cookies, name="Doc Legacy", invoice_id="08")
+    for emp_id in (ready, legacy):
+        set_pay(app_client, admin_cookies, emp_id, 0.0, 2000.0)
     with get_db_context() as db:   # a pre-D-035 row has no legal name
         db.query(EmployeeDB).filter(EmployeeDB.id == legacy).update({"legal_name": None})
         db.commit()

@@ -21,10 +21,9 @@ test.describe('v3 dialog frame (fixes slice 1)', () => {
     }
   });
 
-  test('add-on prefixes sit inside the input group (Category, Claim, Employee salaries, Social insurance)', async ({ page }) => {
+  test('add-on prefixes sit inside the input group (Category, Claim, Social insurance)', async ({ page }) => {
     await openAdmin(page);
     const cases = [['categoryModal', 'fCatLimit', 'EGP'], ['behalfClaimModal', 'bcAmount', 'EGP'],
-      ['employeeModal', 'fEmpInternalSalary', 'USD'], ['employeeModal', 'fEmpExternalSalary', 'USD'],
       ['socialInsuranceModal', 'fSocialInsBase', 'EGP']];
     for (const [modal, input, text] of cases) {
       await page.evaluate((m) => openModal(m), modal);
@@ -59,13 +58,13 @@ test.describe('v3 dialog frame (fixes slice 1)', () => {
     expect(overlap).toBe(false);
   });
 
-  test('Employee dialog has sentence-case section headings and a 3-column pay grid', async ({ page }) => {
+  test('Employee dialog has sentence-case section headings and no pay inputs', async ({ page }) => {
     await openAdmin(page);
     await page.evaluate(() => openModal('employeeModal'));
     const titles = await page.locator('#employeeModal .fv-dialog-section-title').allTextContents();
-    expect(titles).toEqual(['Basic details', 'Pay and employment', 'Personal details', 'Salary payment docs']);
-    const cols = await page.locator('#fEmpInternalSalary').evaluate((e) => getComputedStyle(e.closest('.form-grid')).gridTemplateColumns.split(' ').length);
-    expect(cols).toBe(3);
+    expect(titles).toEqual(['Basic details', 'Personal details', 'Employment', 'Salary payment docs']);
+    // D-035: pay lives only in the Pay plan.
+    await expect(page.locator('#employeeModal input[id*="Salary"], #employeeModal #fEmpPayFrom')).toHaveCount(0);
   });
 
   test('Vacation dialog follows the mock field order and button text', async ({ page }) => {

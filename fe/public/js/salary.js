@@ -83,7 +83,7 @@ function renderSalaryPage(filter=''){
       <td class="tname"><div class="avatar">${initials(e.name)}</div><div><a class="salary-emp-link" href="${profileHref}" data-action="open-employee-profile" data-employee-id="${escapeHtml(e.id)}">${escapeHtml(e.name)}</a><div class="hv-sub-line">${escapeHtml(e.dept || e.department || '')}</div></div></td>
       <td class="hv-right" style="font-variant-numeric:tabular-nums;"><span class="comp-val-external">${fmtUSD(ext)}</span></td>
       <td class="hv-right" style="font-variant-numeric:tabular-nums;"><span class="comp-val-internal">${fmtUSD(intCash)}</span></td>
-      <td class="hv-right" style="font-variant-numeric:tabular-nums;"><strong style="color:var(--ink-strong);">${fmtUSD(total)}</strong></td>
+      <td class="hv-right" style="font-variant-numeric:tabular-nums;">${total > 0 ? `<strong style="color:var(--ink-strong);">${fmtUSD(total)}</strong>` : '<span style="color:var(--ink-muted);">Not set</span>'}</td>
       <td>${nextStr}</td>
       <td>${lastStr}</td>
       <td class="hv-right" style="white-space:nowrap;">${actionsHtml}</td>

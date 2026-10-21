@@ -6,6 +6,7 @@ USD/date formatting, eligibility rules, and idempotency, using a fake
 sheets client so no real Google Sheets/Drive access is required.
 """
 import pytest
+from employee_test_helpers import set_pay
 
 from services.salary_payment_docs import (
     format_invoice_number,
@@ -216,9 +217,10 @@ def test_api_regenerate_single_invoice_flow(app_client, admin_cookies, monkeypat
     # 1. Setup employee with external salary
     app_client.put(
         "/api/employees/2",
-        json={"external_salary_usd": 750, "invoice_id": "02"},
+        json={"invoice_id": "02"},
         cookies=admin_cookies,
     )
+    set_pay(app_client, admin_cookies, 2, 0.0, 750.0, start="2026-01-01")
     personal = app_client.put(
         "/api/employees/2/personal",
         json={"legal_name": "Employee Two Legal", "address_line_1": "Test Address"},

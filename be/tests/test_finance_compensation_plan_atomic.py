@@ -7,7 +7,7 @@ from datetime import datetime
 from db import get_db_context
 from finance.models import EmployeeCompensationPlanDB, PayrollRunDB
 from models_db import EmployeeDB
-from employee_test_helpers import PERSONAL
+from employee_test_helpers import PERSONAL, set_pay
 
 _counter = [0]
 
@@ -21,12 +21,13 @@ def _create(app_client, admin_cookies, internal=0.0, external=0.0, join_date="20
             "email": f"atomic_plan_{_counter[0]}_{int(datetime.utcnow().timestamp() * 1000)}@hrflow.test",
             "dept": "Engineering", "job_role": "Engineer", "join_date": join_date, "status": "Active",
             "vac_total": 21, "next_raise": "2027-01-01", "employment_state": "Full-Time",
-            "internal_salary_usd": internal, "external_salary_usd": external,
         },
         cookies=admin_cookies,
     )
     assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
+    emp_id = resp.json()["id"]
+    set_pay(app_client, admin_cookies, emp_id, internal, external, start=join_date)
+    return emp_id
 
 
 def _rows(emp_id):

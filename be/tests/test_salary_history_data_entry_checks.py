@@ -5,6 +5,8 @@ Regression tests for salary data entry (plan 27, findings F1-F9, decision D-034)
 
 Slice P1 fixed F6 (edit re-save), F7 (backdated raise) and F8 (raise -> plan) and added
 zero-closes-a-component. Slice P3 fixed F3 with "Pay effective from" on create.
+D-035 / S3 then moved pay out of the employee create/update API: tests here give an employee pay
+through the Pay plan (set_pay), effective on the join date, and assert that create/update ignore pay.
 
 Run:  cd be && python -m pytest tests/test_salary_history_data_entry_checks.py -q
 Uses the standard test fixtures (isolated temp DB). Touches no production data.
@@ -18,21 +20,25 @@ from db import get_db_context
 from finance.models import EmployeeCompensationPlanDB, PayrollRunDB
 from finance.services.compensation_plan_service import CompensationPlanService
 from models_db import AuditLogDB, EmployeeDB, SalaryHistoryDB
-from employee_test_helpers import PERSONAL
+from employee_test_helpers import PERSONAL, set_pay
 
 TODAY = datetime.utcnow().strftime("%Y-%m-%d")
 YESTERDAY = (datetime.utcnow() - timedelta(days=1)).strftime("%Y-%m-%d")
 _counter = [0]
 
 
+_HISTORY_BASE = {}
+
+
 def _create_via_api(app_client, admin_cookies, internal=0.0, external=0.0, join_date="2026-01-01", **extra):
-    """Same payload shape the Add Employee modal sends."""
+    """Same payload shape the Add Employee modal sends (no pay), then pay through the Pay plan."""
     _counter[0] += 1
     resp = app_client.post(
         "/api/employees",
         json={
+            **PERSONAL,
             **extra,
-            **PERSONAL, "name": "Salary Entry Test",
+            "name": "Salary Entry Test",
             "email": f"salary_entry_{_counter[0]}_{int(datetime.utcnow().timestamp() * 1000)}@hrflow.test",
             "dept": "Engineering",
             "job_role": "Engineer",
@@ -41,13 +47,16 @@ def _create_via_api(app_client, admin_cookies, internal=0.0, external=0.0, join_
             "vac_total": 21,
             "next_raise": "2027-01-01",
             "employment_state": "Full-Time",
-            "internal_salary_usd": internal,
-            "external_salary_usd": external,
         },
         cookies=admin_cookies,
     )
     assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
+    emp_id = resp.json()["id"]
+    set_pay(app_client, admin_cookies, emp_id, internal, external, start=join_date)
+    with get_db_context() as db:
+        # The starting-pay history row is written by the Pay plan; tests count rows added after it.
+        _HISTORY_BASE[emp_id] = db.query(SalaryHistoryDB).filter(SalaryHistoryDB.employee_id == emp_id).count()
+    return emp_id
 
 
 def _plan_rows(emp_id):
@@ -86,14 +95,27 @@ def _raise(app_client, admin_cookies, emp_id, internal, external, date=TODAY):
 
 
 def _history_count(emp_id):
+    """History rows written since the employee's starting pay was set."""
     with get_db_context() as db:
-        return db.query(SalaryHistoryDB).filter(SalaryHistoryDB.employee_id == emp_id).count()
+        total = db.query(SalaryHistoryDB).filter(SalaryHistoryDB.employee_id == emp_id).count()
+    return total - _HISTORY_BASE.get(emp_id, 0)
 
 
 # ---------------------------------------------------------------- creation modal
 
-def test_creation_with_salary_creates_plan_rows_at_join_date(app_client, admin_cookies):
-    """Salary typed in the creation modal is written through to the plan. No second entry needed."""
+def test_creation_ignores_salary_fields_and_creates_no_plan(app_client, admin_cookies):
+    """D-035: pay is not a create input. Old clients that still send it get an employee with no plan."""
+    resp = app_client.post(
+        "/api/employees",
+        json={**PERSONAL, "name": "Old Client", "email": "old_client_pay@hrflow.test",
+              "internal_salary_usd": 1000.0, "external_salary_usd": 2000.0, "join_date": "2026-03-01"},
+        cookies=admin_cookies,
+    )
+    assert resp.status_code == 201, resp.text
+    assert _plan_rows(resp.json()["id"]) == []
+
+
+def test_pay_plan_after_creation_writes_both_rows_at_the_chosen_date(app_client, admin_cookies):
     emp_id = _create_via_api(app_client, admin_cookies, internal=1000.0, external=2000.0, join_date="2026-03-01")
     rows = _plan_rows(emp_id)
     assert ("external_usd", 2000.0, "2026-03-01", None) in rows
@@ -101,47 +123,16 @@ def test_creation_with_salary_creates_plan_rows_at_join_date(app_client, admin_c
     assert len(rows) == 2
 
 
-def test_creation_with_zero_salary_creates_no_plan_rows(app_client, admin_cookies):
-    """Both salary fields at 0 -> no plan; the plan can then be set with an exact effective date."""
-    emp_id = _create_via_api(app_client, admin_cookies, internal=0.0, external=0.0, join_date="2022-05-01")
-    assert _plan_rows(emp_id) == []
-
-
-def test_plan_start_after_zero_salary_creation_can_be_any_date(app_client, admin_cookies):
-    """Recommended path: create with 0/0, then set the plan from the real effective date."""
+def test_plan_start_after_creation_without_pay_can_be_any_date(app_client, admin_cookies):
+    """Create with no pay, then set the plan from the real effective date, even long after the join date."""
     emp_id = _create_via_api(app_client, admin_cookies, join_date="2022-05-01")
+    assert _plan_rows(emp_id) == []
     assert _put_component(app_client, admin_cookies, emp_id, "external_usd", 3000.0, "2026-01-01").status_code == 200
     assert _put_component(app_client, admin_cookies, emp_id, "internal_usd_cash", 1500.0, "2026-01-01").status_code == 200
     assert _plan_rows(emp_id) == [
         ("external_usd", 3000.0, "2026-01-01", None),
         ("internal_usd_cash", 1500.0, "2026-01-01", None),
     ]
-
-
-def test_old_join_date_without_pay_effective_from_falls_back_to_join_date(app_client, admin_cookies):
-    """Without pay_effective_from the salary typed on create still takes effect on the Join date."""
-    emp_id = _create_via_api(app_client, admin_cookies, external=2000.0, join_date="2022-05-01")
-    assert ("external_usd", 2000.0, "2022-05-01", None) in _plan_rows(emp_id)
-
-
-def test_pay_effective_from_overrides_join_date_on_create(app_client, admin_cookies):
-    """P3 / F3 fixed: old Join date + Pay effective from 2026-01-01 => plan rows start 2026-01-01."""
-    emp_id = _create_via_api(app_client, admin_cookies, internal=1000.0, external=2000.0,
-                             join_date="2022-05-01", pay_effective_from="2026-01-01")
-    rows = _plan_rows(emp_id)
-    assert ("external_usd", 2000.0, "2026-01-01", None) in rows
-    assert ("internal_usd_cash", 1000.0, "2026-01-01", None) in rows
-    assert len(rows) == 2
-
-
-def test_pay_effective_from_must_be_a_valid_date(app_client, admin_cookies):
-    resp = app_client.post(
-        "/api/employees",
-        json={**PERSONAL, "name": "Bad Date", "email": "bad_date_pay@hrflow.test", "internal_salary_usd": 1.0,
-              "external_salary_usd": 0.0, "pay_effective_from": "01/01/2026"},
-        cookies=admin_cookies,
-    )
-    assert resp.status_code == 422
 
 
 # ---------------------------------------------------------------- plan history rules
@@ -187,51 +178,38 @@ def test_per_component_put_still_rejects_zero(app_client, admin_cookies):
 
 # ---------------------------------------------------------------- employee edit modal
 
-def test_edit_modal_resave_with_unchanged_salaries_writes_no_plan_rows(app_client, admin_cookies):
-    """F6 fixed: re-saving the edit modal with UNCHANGED salaries leaves the plan untouched."""
+def test_edit_modal_save_never_touches_the_plan(app_client, admin_cookies):
+    """F6, closed for good by D-035: the profile update has no pay inputs, so the plan cannot be split by it."""
     emp_id = _create_via_api(app_client, admin_cookies, internal=1000.0, external=2000.0, join_date="2026-01-01")
     before = _plan_rows(emp_id)
     assert len(before) == 2
 
     resp = app_client.put(
         f"/api/employees/{emp_id}",
-        json={
-            "name": "Salary Entry Test", "dept": "Engineering", "job_role": "Engineer",
-            "internal_salary_usd": 1000.0, "external_salary_usd": 2000.0,   # unchanged
-            "address_line_1": "Only the address changed",
-        },
+        json={"name": "Salary Entry Test", "dept": "Engineering", "job_role": "Engineer",
+              "internal_salary_usd": 1000.0, "external_salary_usd": 2000.0},    # ignored
         cookies=admin_cookies,
     )
     assert resp.status_code == 200, resp.text
     assert _plan_rows(emp_id) == before
+    assert _history_count(emp_id) == 0
 
 
-def test_edit_modal_without_salary_fields_leaves_plan_untouched(app_client, admin_cookies):
-    """An update that omits the salary fields does not touch the plan."""
-    emp_id = _create_via_api(app_client, admin_cookies, internal=1000.0, external=2000.0, join_date="2026-01-01")
-    before = _plan_rows(emp_id)
-    resp = app_client.put(f"/api/employees/{emp_id}", json={"address_line_1": "New address"}, cookies=admin_cookies)
-    assert resp.status_code == 200, resp.text
-    assert _plan_rows(emp_id) == before
-
-
-def test_edit_with_zero_salaries_and_no_plan_still_saves(app_client, admin_cookies):
-    """An employee with no plan can still be edited with 0/0 salary fields."""
-    emp_id = _create_via_api(app_client, admin_cookies, join_date="2026-01-01")
-    resp = app_client.put(
-        f"/api/employees/{emp_id}",
-        json={"internal_salary_usd": 0.0, "external_salary_usd": 0.0, "address_line_1": "x"},
-        cookies=admin_cookies,
-    )
-    assert resp.status_code == 200, resp.text
-    assert _plan_rows(emp_id) == []
-
-
-def test_edit_changed_salary_goes_through_plan(app_client, admin_cookies):
+def test_edit_cannot_change_pay_even_when_a_client_sends_it(app_client, admin_cookies):
     emp_id = _create_via_api(app_client, admin_cookies, internal=1000.0, external=2000.0, join_date="2026-01-01")
     resp = app_client.put(f"/api/employees/{emp_id}", json={"external_salary_usd": 2500.0}, cookies=admin_cookies)
     assert resp.status_code == 200, resp.text
-    assert _active(emp_id) == {"internal_usd_cash": 1000.0, "external_usd": 2500.0}
+    assert _active(emp_id) == {"internal_usd_cash": 1000.0, "external_usd": 2000.0}
+    with get_db_context() as db:
+        emp = db.query(EmployeeDB).filter(EmployeeDB.id == emp_id).one()
+        assert emp.external_salary_usd == 2000.0 and emp.salary == 3000.0
+
+
+def test_employee_with_no_plan_can_still_be_edited(app_client, admin_cookies):
+    emp_id = _create_via_api(app_client, admin_cookies, join_date="2026-01-01")
+    resp = app_client.put(f"/api/employees/{emp_id}", json={"dept": "Design"}, cookies=admin_cookies)
+    assert resp.status_code == 200, resp.text
+    assert _plan_rows(emp_id) == []
 
 
 # ---------------------------------------------------------------- raises
@@ -244,8 +222,8 @@ def test_raise_with_unchanged_amounts_logs_history_without_plan_rows(app_client,
     assert resp.status_code == 201, resp.text
     assert _plan_rows(emp_id) == before
     with get_db_context() as db:
-        hist = db.query(SalaryHistoryDB).filter(SalaryHistoryDB.employee_id == emp_id).all()
-        assert len(hist) == 1 and hist[0].date == "2024-06-01"
+        hist = db.query(SalaryHistoryDB).filter(SalaryHistoryDB.employee_id == emp_id).order_by(SalaryHistoryDB.id).all()
+        assert len(hist) == _HISTORY_BASE[emp_id] + 1 and hist[-1].date == "2024-06-01"
 
 
 def test_backdated_raise_before_active_plan_is_rejected_and_writes_nothing(app_client, admin_cookies):
@@ -268,7 +246,8 @@ def test_todays_raise_updates_employee_fields_and_plan_together(app_client, admi
         assert emp.internal_salary_usd == 1200.0 and emp.external_salary_usd == 2500.0
         assert emp.salary == 3700.0
         assert emp.next_raise == (datetime.strptime(TODAY, "%Y-%m-%d") + timedelta(days=365)).strftime("%Y-%m-%d")
-        h = db.query(SalaryHistoryDB).filter(SalaryHistoryDB.employee_id == emp_id).one()
+        assert _history_count(emp_id) == 1
+        h = db.query(SalaryHistoryDB).filter(SalaryHistoryDB.employee_id == emp_id).order_by(SalaryHistoryDB.id.desc()).first()
         assert h.previous_salary == 3000.0 and h.new_salary == 3700.0
     assert _active(emp_id) == {"internal_usd_cash": 1200.0, "external_usd": 2500.0}
 

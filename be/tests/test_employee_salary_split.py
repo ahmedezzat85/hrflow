@@ -1,74 +1,60 @@
 """
 test_employee_salary_split.py
-Backend tests for Stage 1 of docs/analysis/salary-advanced-plan.md:
-EmployeeCreate/EmployeeUpdate split into internal_salary_usd /
-external_salary_usd, with a derived legacy `salary` total maintained for
-backward compatibility with not-yet-migrated frontend code.
+Pay is not an input of the employee create/update API (D-035). It is set only through the Pay plan
+(PUT /api/finance/employees/{id}/compensation-plan), which keeps the employee's internal/external
+fields and the legacy `salary` total in step. These tests pin that boundary.
 """
+from db import get_db_context
 from employee_test_helpers import PERSONAL
+from finance.models import EmployeeCompensationPlanDB
+from models_db import EmployeeDB
 
 
-def test_create_employee_requires_both_salary_components(app_client, admin_cookies):
+def _employee_pay(emp_id):
+    with get_db_context() as db:
+        emp = db.query(EmployeeDB).filter(EmployeeDB.id == emp_id).one()
+        plan_rows = db.query(EmployeeCompensationPlanDB).filter(EmployeeCompensationPlanDB.employee_id == emp_id).count()
+        return emp.internal_salary_usd, emp.external_salary_usd, emp.salary, plan_rows
+
+
+def test_create_employee_needs_no_pay_and_starts_with_none(app_client, admin_cookies):
     resp = app_client.post("/api/employees", json={
-        **PERSONAL, "name": "New Hire", "email": "newhire@hrflow.test", "dept": "Engineering",
-        "job_role": "Developer", "internal_salary_usd": 1000,
-        # external_salary_usd intentionally omitted
+        **PERSONAL, "name": "New Hire", "email": "newhire@hrflow.test", "dept": "Engineering", "job_role": "Developer",
     }, cookies=admin_cookies)
-    assert resp.status_code == 422
+    assert resp.status_code == 201, resp.text
+    assert _employee_pay(resp.json()["id"]) == (0.0, 0.0, 0.0, 0)
 
 
-def test_create_employee_zero_is_a_valid_component_value(app_client, admin_cookies, fake_sheets_client):
+def test_create_employee_ignores_salary_fields_sent_by_old_clients(app_client, admin_cookies):
     resp = app_client.post("/api/employees", json={
-        **PERSONAL, "name": "Internal Only", "email": "internalonly@hrflow.test", "dept": "Engineering",
-        "job_role": "Developer", "internal_salary_usd": 1500, "external_salary_usd": 0,
+        **PERSONAL, "name": "Old Client", "email": "oldclient@hrflow.test", "dept": "Engineering",
+        "job_role": "Developer", "internal_salary_usd": 1500, "external_salary_usd": 500,
     }, cookies=admin_cookies)
-    assert resp.status_code == 201
-    new_id = resp.json()["id"]
-    employees = fake_sheets_client.get_all_records("Employees")
-    emp = next(e for e in employees if e["id"] == new_id)
-    assert emp["internal_salary_usd"] == 1500
-    assert emp["external_salary_usd"] == 0
-    assert emp["salary"] == 1500
+    assert resp.status_code == 201, resp.text
+    assert _employee_pay(resp.json()["id"]) == (0.0, 0.0, 0.0, 0)
 
 
-def test_create_employee_derives_legacy_salary_as_sum(app_client, admin_cookies, fake_sheets_client):
-    resp = app_client.post("/api/employees", json={
-        **PERSONAL, "name": "Split Pay", "email": "splitpay@hrflow.test", "dept": "Engineering",
-        "job_role": "Developer", "internal_salary_usd": 1000, "external_salary_usd": 500,
+def test_pay_plan_sets_the_split_and_the_derived_total(app_client, admin_cookies):
+    emp_id = app_client.post("/api/employees", json={
+        **PERSONAL, "name": "Split Pay", "email": "splitpay@hrflow.test", "dept": "Engineering", "job_role": "Developer",
+    }, cookies=admin_cookies).json()["id"]
+    resp = app_client.put(f"/api/finance/employees/{emp_id}/compensation-plan", json={
+        "effective_start_date": "2026-01-01", "internal_usd_cash": 1000, "external_usd": 500,
     }, cookies=admin_cookies)
-    assert resp.status_code == 201
-    new_id = resp.json()["id"]
-    employees = fake_sheets_client.get_all_records("Employees")
-    emp = next(e for e in employees if e["id"] == new_id)
-    assert emp["salary"] == 1500
+    assert resp.status_code == 200, resp.text
+    assert _employee_pay(emp_id) == (1000.0, 500.0, 1500.0, 2)
 
 
-def test_update_single_component_recomputes_total_with_other_component(app_client, admin_cookies, fake_sheets_client):
-    fake_sheets_client.append_row("Employees", {
-        "id": 99, "name": "Existing", "email": "existing@hrflow.test", "role": "employee",
-        "dept": "Sales", "job_role": "Rep", "salary": 1500, "join_date": "2024-01-01",
-        "status": "Active", "vac_total": 21, "vac_used": 0, "next_raise": "2027-01-01",
-        "employment_state": "Full-Time", "internal_salary_usd": 1000, "external_salary_usd": 500,
-    })
-    resp = app_client.put("/api/employees/99", json={"internal_salary_usd": 1200}, cookies=admin_cookies)
-    assert resp.status_code == 200
-    employees = fake_sheets_client.get_all_records("Employees")
-    emp = next(e for e in employees if e["id"] == 99)
-    assert emp["internal_salary_usd"] == 1200
-    assert emp["external_salary_usd"] == 500
-    assert emp["salary"] == 1700
+def test_employee_update_never_changes_pay(app_client, admin_cookies):
+    emp_id = app_client.post("/api/employees", json={
+        **PERSONAL, "name": "Stays Put", "email": "staysput@hrflow.test", "dept": "Sales", "job_role": "Rep",
+    }, cookies=admin_cookies).json()["id"]
+    app_client.put(f"/api/finance/employees/{emp_id}/compensation-plan", json={
+        "effective_start_date": "2026-01-01", "internal_usd_cash": 1000, "external_usd": 500,
+    }, cookies=admin_cookies)
 
-
-def test_update_unrelated_field_does_not_touch_salary(app_client, admin_cookies, fake_sheets_client):
-    fake_sheets_client.append_row("Employees", {
-        "id": 98, "name": "Existing2", "email": "existing2@hrflow.test", "role": "employee",
-        "dept": "Sales", "job_role": "Rep", "salary": 1500, "join_date": "2024-01-01",
-        "status": "Active", "vac_total": 21, "vac_used": 0, "next_raise": "2027-01-01",
-        "employment_state": "Full-Time", "internal_salary_usd": 1000, "external_salary_usd": 500,
-    })
-    resp = app_client.put("/api/employees/98", json={"dept": "Marketing"}, cookies=admin_cookies)
-    assert resp.status_code == 200
-    employees = fake_sheets_client.get_all_records("Employees")
-    emp = next(e for e in employees if e["id"] == 98)
-    assert emp["dept"] == "Marketing"
-    assert emp["salary"] == 1500
+    resp = app_client.put(f"/api/employees/{emp_id}", json={"dept": "Marketing", "internal_salary_usd": 9999},
+                          cookies=admin_cookies)
+    assert resp.status_code == 200, resp.text
+    assert _employee_pay(emp_id) == (1000.0, 500.0, 1500.0, 2)
+    assert app_client.get(f"/api/employees/{emp_id}", cookies=admin_cookies).json()["dept"] == "Marketing"

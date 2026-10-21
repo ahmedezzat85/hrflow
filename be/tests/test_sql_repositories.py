@@ -63,11 +63,12 @@ def test_sql_employee_and_user_repository():
     assert user["employee_id"] == emp_id
     assert "role" not in user
 
-    # Test update
-    emp_repo.update(emp_id, {"internal_salary_usd": 4500.0})
+    # Test update: profile fields change; pay keys are ignored (pay is changed only through the Pay plan, D-035)
+    emp_repo.update(emp_id, {"dept": "Strategy", "internal_salary_usd": 4500.0})
     updated = emp_repo.get_by_id(emp_id)
-    assert updated["internal_salary_usd"] == 4500.0
-    assert updated["salary"] == 6500.0
+    assert updated["dept"] == "Strategy"
+    assert updated["internal_salary_usd"] == 4000.0
+    assert updated["salary"] == 6000.0
 
     # Test notes
     note_id = emp_repo.create_note(emp_id, {"date": "2026-08-20", "category": "Review", "note": "Excellent", "created_by": "admin@hrflow.test"})

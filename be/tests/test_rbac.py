@@ -2940,17 +2940,19 @@ def test_employee_delete_failure_after_user_removal_rolls_back_both(app_client, 
 
 def test_employee_create_failure_leaves_no_employee_and_no_user(app_client, monkeypatch):
     """F3 AC3: a later step failing in employee creation leaves neither an employees nor a users row."""
-    from finance.services.compensation_plan_service import CompensationPlanService
+    from core.access_service import AccessService
     admin = _super_admin_cookies()
+    real_on_employee_create = AccessService.on_employee_create
 
-    def failing_set_component(self, *args, **kwargs):
-        raise RuntimeError("forced failure in compensation sync")
+    def failing_after_user_created(self, *args, **kwargs):
+        real_on_employee_create(self, *args, **kwargs)     # the user row is added, then a later step fails
+        raise RuntimeError("forced failure after the user was provisioned")
 
     with monkeypatch.context() as patch:
-        patch.setattr(CompensationPlanService, "set_component", failing_set_component)
+        patch.setattr(AccessService, "on_employee_create", failing_after_user_created)
         resp = app_client.post(
             "/api/employees",
-            json={**PERSONAL, "name": "Rollback Create", "email": "rollback_create@voyance.health", "dept": "Ops", "job_role": "Tester", "internal_salary_usd": 500, "external_salary_usd": 0},
+            json={**PERSONAL, "name": "Rollback Create", "email": "rollback_create@voyance.health", "dept": "Ops", "job_role": "Tester"},
             cookies=admin,
         )
         assert resp.status_code == 500

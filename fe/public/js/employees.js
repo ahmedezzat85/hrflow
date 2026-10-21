@@ -58,20 +58,6 @@ function renderEmployeesTable(filter = '') {
 }
 document.getElementById('empSearch').addEventListener('input', e => renderEmployeesTable(e.target.value));
 
-let empPayFromTouched = false;
-
-function syncEmpPayFrom() {
-  if (empPayFromTouched || currentEditId) return;
-  document.getElementById('fEmpPayFrom').value = document.getElementById('fEmpJoin').value;
-}
-
-// Edit mode shows pay read-only; changes go through the Pay plan so they are dated and recorded.
-function editPayFromEmployeeModal() {
-  const id = currentEditId;
-  closeModal('employeeModal');
-  if (id) openCompPlanModal(id);
-}
-
 // Personal details (D-035) -------------------------------------------------------------------
 let empNameTouched = false;
 // What the server already holds for the ID, so an untouched ID is never re-sent.
@@ -165,8 +151,6 @@ function openEmployeeModal(id = null) {
     if (!e) return;
     empNameTouched = true;
     fEmpName.value = e.name || ''; fEmpEmail.value = e.email || ''; fEmpDept.value = e.dept || e.department || ''; fEmpRole.value = e.role || '';
-    document.getElementById('fEmpInternalSalary').value = e.internalSalaryUsd || 0;
-    document.getElementById('fEmpExternalSalary').value = e.externalSalaryUsd || 0;
     document.getElementById('fEmpInvoiceId').value = e.invoice_id || '';
     if (canWritePersonal()) loadEmployeePersonalIntoModal(id);
     fEmpJoin.value = e.join || ''; fEmpStatus.value = e.status || 'Active'; fEmpVac.value = (e.vacTotal || 21) - (e.vacUsed || 0);
@@ -174,19 +158,11 @@ function openEmployeeModal(id = null) {
   } else {
     empNameTouched = false;
     ['fEmpName', 'fEmpEmail', 'fEmpRole'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('fEmpInternalSalary').value = '';
-    document.getElementById('fEmpExternalSalary').value = '';
     document.getElementById('fEmpInvoiceId').value = '';
     fEmpJoin.value = ''; fEmpVac.value = 21; fEmpStatus.value = 'Active'; fEmpDept.value = 'Engineering';
     document.getElementById('fEmpEmploymentState').value = 'Full-Time';
   }
-  const editing = !!id;
   updateEmpNameHint();
-  empPayFromTouched = false;
-  ['fEmpInternalSalary', 'fEmpExternalSalary'].forEach(fid => { document.getElementById(fid).readOnly = editing; });
-  document.getElementById('fEmpPayFromField').style.display = editing ? 'none' : '';
-  document.getElementById('fEmpEditPayRow').style.display = editing ? '' : 'none';
-  document.getElementById('fEmpPayFrom').value = editing ? '' : fEmpJoin.value;
   // openModal resets the inline display that closeModal sets, so the dialog can reopen in the same page load
   openModal('employeeModal');
 }
@@ -217,8 +193,6 @@ async function saveEmployee(evt) {
     }
   }
   const vacTotal = Number(fEmpVac.value) || 21;
-  const internal_salary_usd = Number(document.getElementById('fEmpInternalSalary').value) || 0;
-  const external_salary_usd = Number(document.getElementById('fEmpExternalSalary').value) || 0;
   const invoice_id = document.getElementById('fEmpInvoiceId').value.trim();
   const personal = withPersonal ? {
     legal_name: document.getElementById('fEmpLegalName').value.trim(),
@@ -231,6 +205,7 @@ async function saveEmployee(evt) {
     return;
   }
   setButtonLoading(btn, true, 'Saving…');
+  let created = null;
   try {
     if (currentEditId) {
       const updates = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, join_date: fEmpJoin.value, status: fEmpStatus.value, vac_total: vacTotal, employment_state: document.getElementById('fEmpEmploymentState').value, invoice_id };
@@ -238,12 +213,16 @@ async function saveEmployee(evt) {
       if (withPersonal) await Api.updateEmployeePersonal(currentEditId, { ...personal, ...(idFields || {}) });
       toast('Employee updated successfully.');
     } else {
-      const payload = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, internal_salary_usd, external_salary_usd, join_date: fEmpJoin.value, pay_effective_from: document.getElementById('fEmpPayFrom').value || fEmpJoin.value || null, status: fEmpStatus.value, vac_total: vacTotal, next_raise: '2027-01-01', employment_state: document.getElementById('fEmpEmploymentState').value, invoice_id, ...personal, ...(idFields || {}) };
-      await Api.createEmployee(payload);
-      toast('New employee added.');
+      const payload = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, join_date: fEmpJoin.value, status: fEmpStatus.value, vac_total: vacTotal, next_raise: '2027-01-01', employment_state: document.getElementById('fEmpEmploymentState').value, invoice_id, ...personal, ...(idFields || {}) };
+      created = await Api.createEmployee(payload);
+      toast('New employee added. Set their pay plan next, or skip it for now.');
     }
     closeModal('employeeModal');
     await loadAdminData();
+    // D-035: pay is set in the Pay plan, so a new employee goes straight to it (Cancel = set it later).
+    if (created && created.id != null && employees.some(x => String(x.id) === String(created.id)) && typeof openCompPlanModal === 'function') {
+      openCompPlanModal(created.id);
+    }
   } catch (err) {
     toast(err.message, 'fa-solid fa-triangle-exclamation');
   } finally {
@@ -282,6 +261,11 @@ function compZoneInnerHtml(e) {
       <div class="ed-kpi-s">Not available for your role.</div>`;
   }
   const total = Number(e.internalSalaryUsd || 0) + Number(e.externalSalaryUsd || 0);
+  if (total <= 0) {
+    return `<div class="ed-kpi-k">Monthly total</div>
+    <div class="ed-kpi-v ed-kpi-v--brand">Not set</div>
+    <div class="ed-kpi-s">no pay plan yet</div>`;
+  }
   return `<div class="ed-kpi-k">Monthly total</div>
     <div class="ed-kpi-v ed-kpi-v--brand">${fmtUSD(total)}</div>
     <div class="ed-kpi-s">per month, USD</div>`;

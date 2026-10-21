@@ -65,20 +65,16 @@ def create_employee(
     access_service = AccessService(db, audit_repo)
     access_service.validate_employee_provisioning(payload.email)
 
-    # `salary` (legacy, total) is derived inside employee_repo.create()
     new_id = employee_repo.create({
         "name": payload.name,
         "email": payload.email,
         "dept": payload.dept,
         "job_role": payload.job_role,
         "join_date": payload.join_date,
-        "pay_effective_from": payload.pay_effective_from,
         "status": payload.status,
         "vac_total": payload.vac_total,
         "next_raise": payload.next_raise,
         "employment_state": payload.employment_state,
-        "internal_salary_usd": payload.internal_salary_usd,
-        "external_salary_usd": payload.external_salary_usd,
         "invoice_id": payload.invoice_id or "",
         "address_line_1": payload.address_line_1,
         "address_line_2": payload.address_line_2 or "",

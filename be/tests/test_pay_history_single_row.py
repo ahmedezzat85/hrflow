@@ -11,7 +11,7 @@ from datetime import datetime
 
 from db import get_db_context
 from models_db import SalaryHistoryDB
-from employee_test_helpers import PERSONAL
+from employee_test_helpers import PERSONAL, set_pay
 
 TODAY = datetime.utcnow().strftime("%Y-%m-%d")
 _counter = [0]
@@ -31,13 +31,13 @@ def _create_employee(app_client, admin_cookies, internal=1000.0, external=2000.0
             "vac_total": 21,
             "next_raise": "2027-01-01",
             "employment_state": "Full-Time",
-            "internal_salary_usd": internal,
-            "external_salary_usd": external,
         },
         cookies=admin_cookies,
     )
     assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
+    emp_id = resp.json()["id"]
+    set_pay(app_client, admin_cookies, emp_id, internal, external, start="2026-01-01")   # writes the starting-pay row
+    return emp_id
 
 
 def _put_plan(app_client, admin_cookies, emp_id, internal, external, start=TODAY, notes="test change"):
@@ -69,14 +69,30 @@ def _history(app_client, admin_cookies, emp_id):
     return resp.json()
 
 
+def test_first_pay_plan_writes_a_starting_pay_row(app_client, admin_cookies):
+    emp_id = _create_employee(app_client, admin_cookies, internal=1000.0, external=2000.0)
+    rows = _rows(emp_id)
+    assert len(rows) == 1
+    h = rows[0]
+    assert (h["previous_internal_usd"], h["previous_external_usd"]) == (0.0, 0.0)
+    assert (h["new_internal_usd"], h["new_external_usd"]) == (1000.0, 2000.0)
+    assert h["date"] == "2026-01-01"
+
+
+def test_an_employee_with_no_pay_has_no_history(app_client, admin_cookies):
+    emp_id = _create_employee(app_client, admin_cookies, internal=0.0, external=0.0)
+    assert _rows(emp_id) == []
+    assert _history(app_client, admin_cookies, emp_id) == []
+
+
 def test_pay_plan_save_writes_one_history_row_with_both_components(app_client, admin_cookies):
     emp_id = _create_employee(app_client, admin_cookies, internal=1000.0, external=2000.0)
     resp = _put_plan(app_client, admin_cookies, emp_id, 1200.0, 2500.0, notes="Q4 adjustment")
     assert resp.status_code == 200, resp.text
 
     rows = _rows(emp_id)
-    assert len(rows) == 1
-    h = rows[0]
+    assert len(rows) == 2                      # the starting-pay row, then this change
+    h = rows[-1]
     assert (h["previous_internal_usd"], h["previous_external_usd"]) == (1000.0, 2000.0)
     assert (h["new_internal_usd"], h["new_external_usd"]) == (1200.0, 2500.0)
     assert (h["previous_salary"], h["new_salary"]) == (3000.0, 3700.0)
@@ -89,7 +105,7 @@ def test_pay_plan_save_with_nothing_changed_writes_no_history(app_client, admin_
     emp_id = _create_employee(app_client, admin_cookies, internal=1000.0, external=2000.0)
     resp = _put_plan(app_client, admin_cookies, emp_id, 1000.0, 2000.0)
     assert resp.status_code == 200, resp.text
-    assert _rows(emp_id) == []
+    assert len(_rows(emp_id)) == 1             # still only the starting-pay row
 
 
 def test_closing_a_component_is_one_row_with_zero_in_its_column(app_client, admin_cookies):
@@ -99,9 +115,9 @@ def test_closing_a_component_is_one_row_with_zero_in_its_column(app_client, admi
     assert resp.status_code == 200, resp.text
 
     rows = _rows(emp_id)
-    assert len(rows) == 1
-    assert (rows[0]["new_internal_usd"], rows[0]["new_external_usd"]) == (1000.0, 0.0)
-    assert (rows[0]["previous_internal_usd"], rows[0]["previous_external_usd"]) == (1000.0, 2000.0)
+    assert len(rows) == 2
+    assert (rows[-1]["new_internal_usd"], rows[-1]["new_external_usd"]) == (1000.0, 0.0)
+    assert (rows[-1]["previous_internal_usd"], rows[-1]["previous_external_usd"]) == (1000.0, 2000.0)
 
 
 def test_raise_writes_exactly_one_row_through_the_plan_service(app_client, admin_cookies):
@@ -114,9 +130,9 @@ def test_raise_writes_exactly_one_row_through_the_plan_service(app_client, admin
     )
     assert resp.status_code == 201, resp.text
     rows = _rows(emp_id)
-    assert len(rows) == 1
-    assert rows[0]["reason"] == "annual"
-    assert (rows[0]["previous_salary"], rows[0]["new_salary"]) == (3000.0, 3200.0)
+    assert len(rows) == 2
+    assert rows[-1]["reason"] == "annual"
+    assert (rows[-1]["previous_salary"], rows[-1]["new_salary"]) == (3000.0, 3200.0)
 
 
 def test_pay_history_endpoint_returns_one_row_per_change_newest_first(app_client, admin_cookies):
@@ -125,12 +141,13 @@ def test_pay_history_endpoint_returns_one_row_per_change_newest_first(app_client
     assert _put_plan(app_client, admin_cookies, emp_id, 1100.0, 2400.0, notes="second").status_code == 200
 
     history = _history(app_client, admin_cookies, emp_id)
-    assert len(history) == 2
+    assert len(history) == 3                   # starting pay + two changes
     newest = history[0]
     assert newest["reason"] == "second"
     assert (newest["new_internal_usd"], newest["new_external_usd"], newest["new_total_usd"]) == (1100.0, 2400.0, 3500.0)
     assert (newest["previous_internal_usd"], newest["previous_external_usd"]) == (1100.0, 2000.0)
     assert history[1]["reason"] == "first"
+    assert history[2]["previous_internal_usd"] == 0.0     # the starting-pay row is last
 
 
 def test_pay_history_endpoint_for_unknown_employee_is_404(app_client, admin_cookies):

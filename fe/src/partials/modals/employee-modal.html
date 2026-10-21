@@ -41,59 +41,6 @@
           </div>
         </div>
 
-        <div class="form-section">
-          <div class="fv-dialog-section-title">Pay and employment</div>
-          <div class="form-grid" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
-            <div class="form-field">
-              <label for="fEmpInternalSalary">Internal salary</label>
-              <div class="input-group">
-                <span class="input-addon">USD</span>
-                <input type="number" id="fEmpInternalSalary" placeholder="e.g. 1000" inputmode="decimal" min="0" step="0.01" style="text-align: right;">
-              </div>
-            </div>
-            <div class="form-field">
-              <label for="fEmpExternalSalary">External salary</label>
-              <div class="input-group">
-                <span class="input-addon">USD</span>
-                <input type="number" id="fEmpExternalSalary" placeholder="0" inputmode="decimal" min="0" step="0.01" style="text-align: right;">
-              </div>
-            </div>
-            <div class="form-field">
-              <label for="fEmpJoin">Join date</label>
-              <input type="date" id="fEmpJoin" oninput="syncEmpPayFrom()">
-            </div>
-            <div class="form-field" id="fEmpPayFromField">
-              <label for="fEmpPayFrom">Pay effective from</label>
-              <input type="date" id="fEmpPayFrom" oninput="empPayFromTouched = true">
-            </div>
-            <div class="form-field full" id="fEmpEditPayRow" style="display:none;">
-              <button type="button" class="btn btn-sm btn-outline" id="fEmpEditPayBtn" onclick="editPayFromEmployeeModal()">Edit pay plan</button>
-              <div class="fv-plan-hint">Pay changes are dated and recorded in the Pay plan.</div>
-            </div>
-            <div class="form-field">
-              <label for="fEmpStatus">Status</label>
-              <select id="fEmpStatus">
-                <option>Active</option>
-                <option>On Leave</option>
-                <option>Suspended</option>
-              </select>
-            </div>
-            <div class="form-field">
-              <label for="fEmpEmploymentState">Employment</label>
-              <select id="fEmpEmploymentState">
-                <option>Full-Time</option>
-                <option>Part-Time</option>
-                <option>Freelance</option>
-                <option>Occasional</option>
-              </select>
-            </div>
-            <div class="form-field">
-              <label for="fEmpVac">Vacation days a year</label>
-              <input type="number" id="fEmpVac" value="21" inputmode="numeric" min="0">
-            </div>
-          </div>
-        </div>
-
         <div class="form-section" id="fEmpPersonalSection">
           <div class="fv-dialog-section-title">Personal details</div>
           <p style="font-size:11.5px;color:var(--ink-muted);margin-bottom:12px;">
@@ -128,6 +75,40 @@
             <div class="form-field full">
               <label for="fEmpAddressLine2">Address line 2 (optional)</label>
               <input id="fEmpAddressLine2" placeholder="e.g. New Cairo, Cairo Governorate">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="fv-dialog-section-title">Employment</div>
+          <p style="font-size:11.5px;color:var(--ink-muted);margin-bottom:12px;">
+            Pay is set in the Pay plan, from the employee page or right after you add the employee.
+          </p>
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="fEmpJoin">Join date</label>
+              <input type="date" id="fEmpJoin">
+            </div>
+            <div class="form-field">
+              <label for="fEmpStatus">Status</label>
+              <select id="fEmpStatus">
+                <option>Active</option>
+                <option>On Leave</option>
+                <option>Suspended</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="fEmpEmploymentState">Employment</label>
+              <select id="fEmpEmploymentState">
+                <option>Full-Time</option>
+                <option>Part-Time</option>
+                <option>Freelance</option>
+                <option>Occasional</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="fEmpVac">Vacation days a year</label>
+              <input type="number" id="fEmpVac" value="21" inputmode="numeric" min="0">
             </div>
           </div>
         </div>

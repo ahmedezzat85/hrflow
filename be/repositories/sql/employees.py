@@ -3,7 +3,7 @@ be/repositories/sql/employees.py
 SQLAlchemy-backed implementation of EmployeeRepository.
 """
 from typing import Optional, List, Dict, Any, Union
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from sqlalchemy.orm import Session
 
@@ -115,6 +115,8 @@ class SqlEmployeeRepository:
             return [_employee_to_dict(e, include_personal) for e in employees]
 
     def create(self, data: Dict[str, Any]) -> int:
+        # Data layer only. The API never passes pay (D-035: the Pay plan owns it, so the columns start at 0
+        # and no plan rows are written here); imports and fixtures may still seed the salary columns.
         internal_salary = float(data.get("internal_salary_usd") or 0)
         external_salary = float(data.get("external_salary_usd") or 0)
         legacy_total_salary = (internal_salary + external_salary) if (internal_salary or external_salary) else float(data.get("salary") or 0)
@@ -159,48 +161,6 @@ class SqlEmployeeRepository:
                 role=data.get("role", "employee"),
             )
 
-            # Fix 2a: Write-through to CompensationPlanService
-            if internal_salary > 0 or external_salary > 0:
-                from finance.services.compensation_plan_service import CompensationPlanService
-                from finance.models import PayrollRunDB
-                comp_service = CompensationPlanService(db)
-                today_str = datetime.utcnow().strftime("%Y-%m-%d")
-                join_date = data.get("join_date", "")
-                pay_from = data.get("pay_effective_from") or ""
-
-                def _is_iso(v):
-                    return bool(v) and len(v) == 10 and v[4] == '-' and v[7] == '-'
-
-                eff_date = pay_from if _is_iso(pay_from) else (join_date if _is_iso(join_date) else today_str)
-                finalized_runs = (
-                    db.query(PayrollRunDB)
-                    .filter(PayrollRunDB.status.in_(["finalized", "paid", "partially_paid"]))
-                    .all()
-                )
-                if finalized_runs:
-                    max_period_end = max(r.period_end for r in finalized_runs)
-                    if eff_date <= max_period_end:
-                        eff_date = today_str
-                        if eff_date <= max_period_end:
-                            eff_date = (datetime.strptime(max_period_end, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
-
-                if internal_salary > 0:
-                    comp_service.set_component(
-                        employee_id=emp.id,
-                        component_type="internal_usd_cash",
-                        amount=internal_salary,
-                        effective_start_date=eff_date,
-                        notes="Synced from employee profile",
-                    )
-                if external_salary > 0:
-                    comp_service.set_component(
-                        employee_id=emp.id,
-                        component_type="external_usd",
-                        amount=external_salary,
-                        effective_start_date=eff_date,
-                        notes="Synced from employee profile",
-                    )
-
             db.commit()
             return emp.id
 
@@ -211,13 +171,9 @@ class SqlEmployeeRepository:
                 return False
 
             updates_dict = dict(updates)
-            has_salary_change = "internal_salary_usd" in updates_dict or "external_salary_usd" in updates_dict
-            if has_salary_change:
-                current_internal = emp.internal_salary_usd or 0.0
-                current_external = emp.external_salary_usd or 0.0
-                new_internal = float(updates_dict.get("internal_salary_usd", current_internal))
-                new_external = float(updates_dict.get("external_salary_usd", current_external))
-                updates_dict["salary"] = new_internal + new_external
+            # Pay is changed only through the Pay plan (D-035); salary keys are never applied here.
+            for pay_key in ("internal_salary_usd", "external_salary_usd", "salary"):
+                updates_dict.pop(pay_key, None)
 
             for k, v in updates_dict.items():
                 if hasattr(emp, k):
@@ -227,26 +183,6 @@ class SqlEmployeeRepository:
             if "email" in updates_dict:
                 from core.access_service import AccessService
                 AccessService(db).sync_user_email_for_employee(emp.id, updates_dict["email"])
-
-            if has_salary_change:
-                from finance.services.compensation_plan_service import CompensationPlanService
-                comp_service = CompensationPlanService(db)
-                has_plan = bool(comp_service.repo.get_active_components(emp.id))
-                eff_date = datetime.utcnow().strftime("%Y-%m-%d")
-                earliest = comp_service.get_earliest_effective_date()
-                if earliest and eff_date < earliest:
-                    eff_date = earliest
-                # Unchanged amounts write nothing; 0 closes a component (D-034).
-                # 0/0 with no plan yet (employee not provisioned) has nothing to sync.
-                if has_plan or new_internal > 0 or new_external > 0:
-                    comp_service.apply_pay_change(
-                        employee_id=emp.id,
-                        internal_amount=new_internal,
-                        external_amount=new_external,
-                        effective_start_date=eff_date,
-                        notes="Synced from employee profile",
-                        commit=False,
-                    )
 
             db.commit()
             return True

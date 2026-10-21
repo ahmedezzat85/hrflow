@@ -1,6 +1,6 @@
 # 29 — Personal Details, Single-Row Pay History, and Pay Moved Out of the Employee Modal: Plan (S1–S3)
 
-**Status:** **Approved by owner, October 21, 2026** (recorded as D-035). Implementation in progress on `feature/personal-details-pay-history`.
+**Status:** **Approved by owner, October 21, 2026** (recorded as D-035). **Implemented** on `feature/personal-details-pay-history` (slices S1, S2, S3).
 **Baseline:** `main` at `f7bd75b` (after D-034 / P1–P3). **Re-verify the code facts in section 1 in the branch-intake step of each slice.**
 **Scope in one line:** show pay history as one row per change on every screen; add legal name, phone and optional ID to the employee record behind a dedicated permission; and make the Pay plan modal the only place pay is edited.
 
@@ -58,7 +58,9 @@
 - After a successful create, open the Pay plan modal for the new employee ("Skip, set later" closes it).
 - Backend: remove `internal_salary_usd`, `external_salary_usd`, `pay_effective_from` from `EmployeeCreate` and the salary fields from `EmployeeUpdate`; delete the create/update write-through in `repositories/sql/employees.py`. The `employees` salary columns stay (they are still synced by `apply_pay_change`).
 - Employees table and any consumer treat "no active plan" as a valid state ("Not set", not 0).
-- Update every test and mock path that creates an employee with a salary (use the Pay plan endpoint after creation instead).
+- Update every test and mock path that creates an employee with a salary (use the Pay plan endpoint after creation instead; `tests/employee_test_helpers.py` has `set_pay`).
+- `SqlEmployeeRepository.create` stays a data layer that can seed the salary columns (imports, fixtures); `update` ignores pay keys. The API never passes pay to either.
+- Starting pay is recorded by the first Pay plan save (one `salary_history` row, previous values 0).
 
 ## 4. Order and delivery
 S1 → S2 → S3, each as its own commit with its own targeted tests, then one final full backend run (`cd be && python -m pytest tests -q -n 12`), `npm run build` in `fe/`, and the affected Playwright specs. Update `docs/project-context/04-decision-log.md` (D-035), the roadmap and `docs/project-context/06-open-questions.md` as needed.

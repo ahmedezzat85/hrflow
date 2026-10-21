@@ -14,7 +14,7 @@ from repositories.sql.employees import SqlEmployeeRepository
 from repositories.sql.auth import SqlUserRepository
 from storage import reset_storage_client_for_testing
 from main import app
-from employee_test_helpers import PERSONAL
+from employee_test_helpers import PERSONAL, set_pay
 
 
 @pytest.fixture
@@ -86,8 +86,6 @@ def test_standalone_sql_employee_crud(standalone_sql_app):
         "role": "employee",
         "dept": "Engineering",
         "job_role": "Backend Engineer",
-        "internal_salary_usd": 3000.0,
-        "external_salary_usd": 1500.0,
         "join_date": "2026-03-01",
         "status": "Active",
     }
@@ -95,6 +93,7 @@ def test_standalone_sql_employee_crud(standalone_sql_app):
     assert create_res.status_code == 201
     new_emp_id = create_res.json()["id"]
     assert new_emp_id > 1
+    set_pay(client, cookies, new_emp_id, 3000.0, 1500.0, start="2026-03-01")
 
     # 3. Fetch single employee
     get_res = client.get(f"/api/employees/{new_emp_id}", cookies=cookies)

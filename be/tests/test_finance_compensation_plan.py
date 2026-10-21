@@ -19,7 +19,7 @@ from db import get_db_context
 from models_db import EmployeeDB
 from finance.models import EmployeeCompensationPlanDB, PayrollRunDB
 from finance.repositories.compensation_plan_repository import CompensationPlanRepository
-from employee_test_helpers import PERSONAL
+from employee_test_helpers import PERSONAL, set_pay
 
 
 def _create_test_employee(email_suffix="comp"):
@@ -232,11 +232,9 @@ def test_finalized_payroll_run_boundary_guard(app_client, admin_cookies):
     assert resp_open.status_code == 200
 
 
-def test_employee_creation_and_update_syncs_compensation_plan(app_client, admin_cookies):
-    """Creating an employee with salary components writes through to CompensationPlan, and updating profile syncs."""
+def test_employee_profile_create_and_update_never_write_pay_but_the_pay_plan_does(app_client, admin_cookies):
+    """D-035: creating or updating an employee does not touch pay; the Pay plan sets it and keeps the fields in step."""
     unique_email = f"sync_test_{int(datetime.utcnow().timestamp() * 1000)}@hrflow.test"
-
-    # 1. Create employee with internal and external salary components
     create_resp = app_client.post(
         "/api/employees",
         json={
@@ -244,47 +242,30 @@ def test_employee_creation_and_update_syncs_compensation_plan(app_client, admin_
             "email": unique_email,
             "dept": "Design",
             "job_role": "UI Designer",
-            "internal_salary_usd": 1200.0,
-            "external_salary_usd": 800.0,
             "join_date": "2026-01-15",
         },
         cookies=admin_cookies,
     )
     assert create_resp.status_code == 201
     emp_id = create_resp.json()["id"]
+    plan_url = f"/api/finance/employees/{emp_id}/compensation-plan"
 
-    # 2. Verify active compensation plan endpoint returns both components automatically
-    plan_resp = app_client.get(
-        f"/api/finance/employees/{emp_id}/compensation-plan",
-        cookies=admin_cookies,
-    )
-    assert plan_resp.status_code == 200
-    plan_data = plan_resp.json()
-    assert plan_data["employee_id"] == emp_id
-    assert plan_data["internal_usd_cash"] is not None
-    assert plan_data["internal_usd_cash"]["amount"] == 1200.0
-    assert plan_data["external_usd"] is not None
-    assert plan_data["external_usd"]["amount"] == 800.0
-    assert plan_data["total_monthly_usd"] == 2000.0
+    empty = app_client.get(plan_url, cookies=admin_cookies).json()
+    assert empty["internal_usd_cash"] is None and empty["external_usd"] is None
+    assert empty["total_monthly_usd"] == 0
 
-    # 3. Update employee profile via PUT /api/employees/{id}
-    upd_resp = app_client.put(
-        f"/api/employees/{emp_id}",
-        json={"internal_salary_usd": 1500.0},
-        cookies=admin_cookies,
-    )
+    set_pay(app_client, admin_cookies, emp_id, 1200.0, 800.0, start="2026-01-15")
+    plan = app_client.get(plan_url, cookies=admin_cookies).json()
+    assert plan["internal_usd_cash"]["amount"] == 1200.0
+    assert plan["external_usd"]["amount"] == 800.0
+    assert plan["total_monthly_usd"] == 2000.0
+
+    # A profile update that carries a salary leaves the plan alone.
+    upd_resp = app_client.put(f"/api/employees/{emp_id}", json={"internal_salary_usd": 1500.0}, cookies=admin_cookies)
     assert upd_resp.status_code == 200
-
-    # 4. Verify compensation plan reflects the updated amount
-    updated_plan_resp = app_client.get(
-        f"/api/finance/employees/{emp_id}/compensation-plan",
-        cookies=admin_cookies,
-    )
-    assert updated_plan_resp.status_code == 200
-    updated_plan = updated_plan_resp.json()
-    assert updated_plan["internal_usd_cash"]["amount"] == 1500.0
-    assert updated_plan["external_usd"]["amount"] == 800.0
-    assert updated_plan["total_monthly_usd"] == 2300.0
+    again = app_client.get(plan_url, cookies=admin_cookies).json()
+    assert again["internal_usd_cash"]["amount"] == 1200.0
+    assert again["total_monthly_usd"] == 2000.0
 
 
 def test_backfill_compensation_plans_script(app_client, admin_cookies):

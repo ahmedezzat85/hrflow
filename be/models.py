@@ -38,33 +38,18 @@ class LoginResponse(BaseModel):
 
 class EmployeeCreate(BaseModel):
     """
-    Salary is modeled as two USD-denominated components (see docs/analysis/
-    salary-advanced-plan.md, Phase 1):
-    - internal_salary_usd: paid within Egypt.
-    - external_salary_usd: paid directly from the USA.
-    Both are required (no defaults) - 0 is a valid explicit value for an
-    employee who is 100% one or the other, but the field must be present.
-    There is no flat `salary` field on create anymore; any legacy total
-    shown elsewhere in the app is derived server-side as the sum of the
-    two components.
+    Pay is not part of creating an employee (D-035): set it afterwards through the Pay plan
+    (PUT /api/finance/employees/{id}/compensation-plan). An employee with no plan is valid ("Not set").
 
-    invoice_id / address_line_1 / address_line_2 (docs/analysis/
-    invoice-autopay-plan.md) are only required at invoice-generation time,
-    not at employee-creation time, so they stay optional here. invoice_id
-    must be a two-digit numeric string ("01"-"99") when set, since it is
-    embedded directly into the six-digit invoice number (YY + invoice_id
-    + MM).
+    invoice_id (docs/analysis/invoice-autopay-plan.md) is only required at payment-doc generation time, so it
+    stays optional here. It must be a two-digit numeric string ("01"-"99") when set, since it is embedded
+    directly into the six-digit document number (YY + invoice_id + MM).
     """
     name: str
     email: EmailStr
     dept: str = ""
     job_role: str = ""
-    internal_salary_usd: float
-    external_salary_usd: float
     join_date: str = ""
-    # Date the salary typed on create takes effect in the compensation plan (D-034 / P3).
-    # Falls back to join_date, then today.
-    pay_effective_from: Optional[str] = None
     status: str = "Active"
     vac_total: int = 21
     next_raise: str = ""
@@ -100,25 +85,12 @@ class EmployeeCreate(BaseModel):
         self.id_type, self.id_number = normalize_id(self.id_type, self.id_number)
         return self
 
-    @field_validator("pay_effective_from")
-    @classmethod
-    def _pay_effective_from_format(cls, v):
-        if v in (None, ""):
-            return None
-        try:
-            datetime.strptime(v, "%Y-%m-%d")
-        except ValueError:
-            raise ValueError("pay_effective_from must be in YYYY-MM-DD format")
-        return v
-
 
 class EmployeeUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
     dept: Optional[str] = None
     job_role: Optional[str] = None
-    internal_salary_usd: Optional[float] = None
-    external_salary_usd: Optional[float] = None
     join_date: Optional[str] = None
     status: Optional[str] = None
     vac_total: Optional[int] = None
