@@ -555,8 +555,12 @@ const ModalController = {
     const entry = { id: el.id, overlay: el, dialog, invoker };
     this._stack.push(entry);
 
-    // Set initial focus into modal
+    // Set initial focus into modal, unless focus is already inside it: whoever started typing in the
+    // first 45 ms (a fast typist, autofill, a test) must not have their keystrokes moved to another field.
     setTimeout(() => {
+      const active = document.activeElement;
+      if (active && active !== dialog && dialog.contains(active)) return;
+
       const autoFocusEl = dialog.querySelector('[autofocus], [data-autofocus]');
       if (autoFocusEl && typeof autoFocusEl.focus === 'function') {
         autoFocusEl.focus();
