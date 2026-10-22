@@ -23,8 +23,12 @@
   If anything fails after step 2 the runner is unregistered locally; run this script again with a new token.
 
 .PARAMETER DryRun  Only print what would be done; change nothing (no Administrator rights needed).
-.EXAMPLE   .\install-runner-service.ps1 -Token <token> -DryRun
-.EXAMPLE   .\install-runner-service.ps1 -Token <token>
+.NOTES
+  Windows blocks PowerShell scripts by default ("running scripts is disabled on this system"). Start this script through
+  powershell.exe with a bypass for this one run; no setting on the PC is changed:
+      powershell -NoProfile -ExecutionPolicy Bypass -File .\install-runner-service.ps1 -Token <token> -DryRun
+.EXAMPLE   powershell -NoProfile -ExecutionPolicy Bypass -File .\install-runner-service.ps1 -Token <token> -DryRun
+.EXAMPLE   powershell -NoProfile -ExecutionPolicy Bypass -File .\install-runner-service.ps1 -Token <token>
 #>
 param(
     [Parameter(Mandatory)][string]$Token,
