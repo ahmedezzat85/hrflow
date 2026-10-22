@@ -9,8 +9,8 @@
     1. Refuses to run without Administrator rights, or while a deploy job is running on this runner.
     2. Stops the current runner and removes its sign-in startup entry (so two runners never listen at once).
     3. Removes the local runner configuration and registers the same runner (same name, label hrflow-prod) again as a
-       service that runs as YOUR Windows account (it needs to reach Docker). You are asked for that account's password;
-       it is passed to the runner's own configuration command and is not stored by this script.
+       service that runs as YOUR Windows account (it needs to reach Docker). Microsoft's runner tool (config.cmd) asks for
+       that account's password itself, hidden; this script never sees, passes on, stores or logs it.
     4. Sets the service to start automatically (delayed, after the network and other services) and to restart itself
        after a failure, then starts it.
 
@@ -67,12 +67,9 @@ if (Get-LocalGroup -Name 'docker-users' -ErrorAction SilentlyContinue) {
 }
 Write-Host "Runner folder: $Dir`nRunner name:   $Name`nService runs as: $Account"
 
-$plainPassword = ''
-if (-not $DryRun) {
-    $secure = Read-Host -Prompt "Windows password of $Account (needed for the service to run as that account)" -AsSecureString
-    $plainPassword = [System.Net.NetworkCredential]::new('', $secure).Password
-    if (-not $plainPassword) { throw 'A password is required to run the service as your account.' }
-}
+# The password is NOT handled by this script: config.cmd (Microsoft's runner tool) asks for it itself, hidden, on its own
+# prompt, and stores it the standard Windows way for services (an encrypted LSA secret). It never appears in this script,
+# in a command line, in a file or in a log.
 
 Step 'Stop the sign-in runner'
 Run 'Stopping Runner.Listener' { Get-Process -Name 'Runner.Listener' -ErrorAction SilentlyContinue | Stop-Process -Force }
@@ -84,12 +81,13 @@ Step 'Register the runner as a service'
 Push-Location $Dir
 try {
     Run 'config.cmd remove --local' { & $config remove --local; if ($LASTEXITCODE) { throw 'config.cmd remove --local failed' } }
-    Run "config.cmd --url $RepoUrl --name $Name --labels hrflow-prod --runasservice --windowslogonaccount $Account --replace" {
-        & $config --unattended --url $RepoUrl --token $Token --name $Name --labels hrflow-prod --work _work --replace `
-            --runasservice --windowslogonaccount $Account --windowslogonpassword $plainPassword
+    # Not --unattended on purpose: the runner then prompts for the account password itself (type it when asked).
+    Run "config.cmd --url $RepoUrl --name $Name --labels hrflow-prod --runasservice --windowslogonaccount $Account --replace   (it will ask for the password of $Account)" {
+        & $config --url $RepoUrl --token $Token --name $Name --labels hrflow-prod --work _work --replace `
+            --runasservice --windowslogonaccount $Account
         if ($LASTEXITCODE) { throw 'runner service registration failed (check the token is new, and the account password is right)' }
     }
-} finally { Pop-Location; $plainPassword = $null }
+} finally { Pop-Location }
 
 Step 'Start at boot, restart on failure'
 if ($DryRun) {
