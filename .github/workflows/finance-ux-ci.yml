@@ -51,15 +51,22 @@ jobs:
       - name: Verify application imports
         run: python -c "import main; print('Backend import OK')"
 
-      - name: Run backend test suite
-        run: python -m pytest -ra --junitxml=pytest-results.xml
+      # Every test builds its own temporary database, so the suite runs in parallel (pytest-xdist). The latency
+      # benchmark asserts wall-clock limits, which parallel load can break, so it runs alone in the next step.
+      - name: Run backend test suite (parallel)
+        run: python -m pytest -ra -n auto --deselect tests/test_rbac.py::test_rbac_latency_benchmark --junitxml=pytest-results.xml
+
+      - name: Run latency benchmark (alone)
+        run: python -m pytest -ra tests/test_rbac.py::test_rbac_latency_benchmark --junitxml=pytest-benchmark-results.xml
 
       - name: Upload backend test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: backend-test-results
-          path: be/pytest-results.xml
+          path: |
+            be/pytest-results.xml
+            be/pytest-benchmark-results.xml
           if-no-files-found: ignore
           retention-days: 14
 
