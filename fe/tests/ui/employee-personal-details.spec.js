@@ -8,6 +8,14 @@ async function openAdmin(page) {
   await page.waitForFunction(() => window.Router && typeof openEmployeeModal === 'function' && employees.length);
 }
 
+// ModalController moves focus into the first field 45 ms after a dialog opens. If a test starts typing
+// before that, the late focus can steal the keystrokes (text lands in the display name). Wait for it.
+async function openEmployeeDialog(page, id) {
+  await page.evaluate((empId) => openEmployeeModal(empId), id);
+  await expect(page.locator('#employeeModal')).toBeVisible();
+  await expect(page.locator('#employeeModal #fEmpName')).toBeFocused();
+}
+
 async function captureCreate(page) {
   const box = { posted: null };
   await page.route('**/api/employees', async (route) => {
@@ -31,7 +39,7 @@ async function fillRequired(modal) {
 test.describe('S2: employee personal details', () => {
   test('legal name pre-fills the display name until it is edited, with a soft hint for one word', async ({ page }) => {
     await openAdmin(page);
-    await page.evaluate(() => openEmployeeModal());
+    await openEmployeeDialog(page);
     const modal = page.locator('#employeeModal');
     await modal.locator('#fEmpLegalName').fill('Laila Ahmed Hassan Ali');
     await expect(modal.locator('#fEmpName')).toHaveValue('Laila Ali');
@@ -46,7 +54,7 @@ test.describe('S2: employee personal details', () => {
   test('create sends the normalised personal details and keeps the ID optional', async ({ page }) => {
     await openAdmin(page);
     const box = await captureCreate(page);
-    await page.evaluate(() => openEmployeeModal());
+    await openEmployeeDialog(page);
     const modal = page.locator('#employeeModal');
     await fillRequired(modal);
     await modal.locator('#empModalSaveBtn').click();
@@ -61,7 +69,7 @@ test.describe('S2: employee personal details', () => {
 
   test('a bad phone number is rejected before sending', async ({ page }) => {
     await openAdmin(page);
-    await page.evaluate(() => openEmployeeModal());
+    await openEmployeeDialog(page);
     const modal = page.locator('#employeeModal');
     await fillRequired(modal);
     await modal.locator('#fEmpPhone').fill('call me');
@@ -72,7 +80,7 @@ test.describe('S2: employee personal details', () => {
   test('national ID needs 14 digits; a passport takes letters and is sent upper-cased', async ({ page }) => {
     await openAdmin(page);
     const box = await captureCreate(page);
-    await page.evaluate(() => openEmployeeModal());
+    await openEmployeeDialog(page);
     const modal = page.locator('#employeeModal');
     await fillRequired(modal);
     await expect(modal.locator('#fEmpIdNumberField')).toBeHidden();
@@ -101,7 +109,7 @@ test.describe('S2: employee personal details', () => {
         await route.continue();
       }
     });
-    await page.evaluate(() => openEmployeeModal('EMP001'));
+    await openEmployeeDialog(page, 'EMP001');
     const modal = page.locator('#employeeModal');
     await expect(modal.locator('#fEmpLegalName')).toHaveValue('Sarah Connor');
     await expect(modal.locator('#fEmpIdType')).toHaveValue('national_id');
@@ -116,7 +124,7 @@ test.describe('S2: employee personal details', () => {
     expect(kept.id_number).toBe('12345678901234');      // untouched ID stays
 
     await page.waitForFunction(() => !document.getElementById('employeeModal').classList.contains('active'));
-    await page.evaluate(() => openEmployeeModal('EMP001'));
+    await openEmployeeDialog(page, 'EMP001');
     await expect(modal).toBeVisible();
     await expect(modal.locator('#fEmpIdType')).toHaveValue('national_id');
     await modal.locator('#fEmpIdType').selectOption('');
@@ -157,7 +165,7 @@ test.describe('S2: employee personal details', () => {
     await page.evaluate(() => {
       SessionInfo._permissions = SessionInfo._permissions.filter((p) => !p.startsWith('hr.employee_personal'));
     });
-    await page.evaluate(() => openEmployeeModal('EMP001'));
+    await openEmployeeDialog(page, 'EMP001');
     await expect(page.locator('#fEmpPersonalSection')).toBeHidden();
     await page.evaluate(() => closeModal('employeeModal'));
     await page.evaluate(() => viewProfile('EMP001'));

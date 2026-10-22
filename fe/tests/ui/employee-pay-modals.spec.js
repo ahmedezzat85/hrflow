@@ -8,6 +8,14 @@ async function openAdmin(page) {
   await page.waitForFunction(() => window.Router && typeof openEmployeeModal === 'function' && employees.length);
 }
 
+// ModalController moves focus into the first field 45 ms after a dialog opens. If a test starts typing
+// before that, the late focus can steal the keystrokes (text lands in the display name). Wait for it.
+async function openEmployeeDialog(page, id) {
+  await page.evaluate((empId) => openEmployeeModal(empId), id);
+  await expect(page.locator('#employeeModal')).toBeVisible();
+  await expect(page.locator('#employeeModal #fEmpName')).toBeFocused();
+}
+
 test.describe('S3: employee dialog without pay', () => {
   test('Create has no pay fields, sends none, and opens the Pay plan for the new employee', async ({ page }) => {
     await openAdmin(page);
@@ -21,7 +29,7 @@ test.describe('S3: employee dialog without pay', () => {
         await route.continue();
       }
     });
-    await page.evaluate(() => openEmployeeModal());
+    await openEmployeeDialog(page);
     const modal = page.locator('#employeeModal');
     await expect(modal).toBeVisible();
     await expect(modal.locator('#fEmpInternalSalary')).toHaveCount(0);
@@ -50,7 +58,7 @@ test.describe('S3: employee dialog without pay', () => {
 
   test('Edit shows no pay fields or pay shortcuts', async ({ page }) => {
     await openAdmin(page);
-    await page.evaluate(() => openEmployeeModal('EMP001'));
+    await openEmployeeDialog(page, 'EMP001');
     const modal = page.locator('#employeeModal');
     await expect(modal).toBeVisible();
     await expect(modal.locator('#fEmpName')).toHaveValue('Sarah Connor');
@@ -69,7 +77,7 @@ test.describe('S3: employee dialog without pay', () => {
         await route.continue();
       }
     });
-    await page.evaluate(() => openEmployeeModal('EMP001'));
+    await openEmployeeDialog(page, 'EMP001');
     const modal = page.locator('#employeeModal');
     await expect(modal.locator('#fEmpAddressLine1')).not.toHaveValue('');   // personal details load asynchronously
     await modal.locator('#fEmpAddressLine1').fill('1 Test Street');
@@ -78,7 +86,8 @@ test.describe('S3: employee dialog without pay', () => {
     expect(put).not.toHaveProperty('internal_salary_usd');
     expect(put).not.toHaveProperty('external_salary_usd');
     expect(put).not.toHaveProperty('address_line_1');
-    expect(await page.evaluate(() => window._mockPersonalStore.EMP001.address_line_1)).toBe('1 Test Street');
+    // The personal details are saved right after the profile update, so wait for them instead of reading once.
+    await expect.poll(() => page.evaluate(() => window._mockPersonalStore.EMP001.address_line_1)).toBe('1 Test Street');
   });
 
   test('An employee with no pay shows "Not set" on the profile and the salary overview', async ({ page }) => {
