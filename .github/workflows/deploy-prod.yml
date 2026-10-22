@@ -78,7 +78,10 @@ jobs:
           ref: refs/tags/${{ needs.verify.outputs.version }}
 
       - name: Backup, build, start, health check (rolls back on failure)
-        shell: powershell
+        # Same command GitHub uses for "powershell", plus -ExecutionPolicy Bypass for this one process only. Windows
+        # defaults to "Restricted", which refused to run the job script ("running scripts is disabled on this system")
+        # when the runner was started outside the usual context. No machine setting is changed.
+        shell: powershell -ExecutionPolicy Bypass -command ". '{0}'"
         env:
           VERSION: ${{ needs.verify.outputs.version }}
         run: |
