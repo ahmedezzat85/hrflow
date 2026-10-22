@@ -70,7 +70,12 @@ jobs:
           cd ci-smoke-test
           npm init -y > /dev/null
           npm install playwright http-server
-          npx playwright install --with-deps chromium
+          # Retry: the browser download occasionally drops mid-transfer and used to fail the job before any check ran.
+          for attempt in 1 2 3; do
+            npx playwright install --with-deps chromium && break
+            [ "$attempt" = 3 ] && { echo "Playwright install failed 3 times"; exit 1; }
+            echo "Playwright install failed (attempt $attempt of 3)"; sleep $((attempt * 20))
+          done
 
       - name: Serve fe/ as site root (matches real deployment layout)
         run: |

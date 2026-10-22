@@ -85,4 +85,11 @@ Rules for a change that needs a migration:
 
 Roll back to an older release: GitHub > Actions > Deploy production > Run workflow > enter the old tag (e.g. `v1.1.0`). If a bad migration already ran, restore the backup taken at the start of that deploy with `scripts/restore.ps1`.
 
-The runner (`D:/services/actions-runner`) starts at Windows sign-in through a per-user startup entry (HKCU Run, "HRFlowGitHubRunner"), so this PC must be signed in with Docker Desktop running. Only the deploy workflow targets it (label `hrflow-prod`); test workflows run on GitHub's own machines.
+### The deploy runner
+The runner (`D:/services/actions-runner`, name `hrflow-prod-pc`, label `hrflow-prod`) is the only thing that deploys; test workflows run on GitHub's own machines.
+
+- **Preferred: a Windows service that starts at boot.** Run `deploy/prod/scripts/install-runner-service.ps1` once, from an elevated PowerShell, started as `powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\prod\scripts\install-runner-service.ps1 -Token <token>` (Windows blocks scripts by default; this bypasses that for the one run only; try `-DryRun` first). The runner then starts when Windows boots, has no window, survives sign-out and is restarted by Windows if it crashes. It runs as your Windows account so it can reach Docker.
+- **Docker Desktop still has to be running.** It only runs inside a signed-in session, so keep it set to start at sign-in. A deploy that arrives while Docker is not running stops at the backup step (nothing is changed); start Docker Desktop and run **Deploy production** again.
+- **Before the service is installed** the runner starts at Windows sign-in through a per-user startup entry (HKCU Run, "HRFlowGitHubRunner"), so the PC must be signed in. If it is offline, a queued deploy waits (GitHub gives up after about 24 hours); start `D:/services/actions-runner/run.cmd`, and if the job still does not start, run **Deploy production** again with the same tag.
+- **Check it:** GitHub > Settings > Actions > Runners should show `hrflow-prod-pc` as Idle.
+- **PowerShell policy:** the deploy workflow starts its script with `-ExecutionPolicy Bypass` for that one process, so it works even when Windows blocks scripts by default.
