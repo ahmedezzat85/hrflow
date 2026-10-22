@@ -11,10 +11,11 @@ folders), and records one salary_payment_docs row per attempt so that:
 - Every generated document keeps a durable audit trail: the exact salary
   amount used, the Drive file location, who triggered it, and when.
 
-Eligibility rule (all three required):
+Eligibility rule (all four required):
   1. external_salary_usd > 0 for the employee
   2. employee.invoice_id is present (two-digit numeric string, "01"-"99")
-  3. employee.address_line_1 is present
+  3. employee.legal_name is present (printed on the document; no fallback to the display name)
+  4. employee.address_line_1 is present
 
 Document number format: YYIIMM
   YY = last two digits of payment_year
@@ -110,6 +111,11 @@ def check_eligibility(employee: dict) -> str:
     except ValueError:
         raise SalaryPaymentDocEligibilityError(f"invoice_id must be numeric (got {raw_inv_id})")
 
+    # D-036: the rendered document carries the legal name; never fall back to the display name.
+    legal_name = employee.get("legal_name")
+    if not legal_name or not str(legal_name).strip():
+        raise SalaryPaymentDocEligibilityError("legal_name is missing")
+
     addr1 = employee.get("address_line_1")
     if not addr1 or not str(addr1).strip():
         raise SalaryPaymentDocEligibilityError("address_line_1 is missing")
@@ -128,7 +134,8 @@ def build_template_context(employee: dict, payment_year: int, payment_month: int
     addr2 = (employee.get("address_line_2") or "").strip()
     address_display = f"{addr1}\n{addr2}" if addr2 else addr1
 
-    emp_name = (employee.get("name") or "").strip()
+    # The document prints the legal name (D-036); the display name stays in lists and file names.
+    emp_name = (employee.get("legal_name") or "").strip()
     month_name = MONTH_NAMES[payment_month].capitalize() if 1 <= payment_month <= 12 else ""
 
     return {
@@ -353,11 +360,11 @@ def generate_salary_payment_docs_bulk(
     employee_repo=None,
 ) -> dict:
     if employee_repo is not None and hasattr(employee_repo, "list_all"):
-        employees = employee_repo.list_all()
+        employees = employee_repo.list_all(include_personal=True)
     else:
         from repositories.deps import get_employee_repo
         emp_repo = get_employee_repo()
-        employees = emp_repo.list_all()
+        employees = emp_repo.list_all(include_personal=True)
 
     if invoice_repo is None:
         from repositories.deps import get_salary_payment_doc_repo

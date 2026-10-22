@@ -15,7 +15,8 @@ from logging_config import get_logger
 from auth import get_current_user
 from deps import audit_log, permission_scope, Scope
 from services.uploads import validate_upload_content, safe_content_disposition_filename
-from models import EmployeeCreate, EmployeeUpdate, EmployeeNoteCreate, EmployeeDocumentCreate
+from models import EmployeeCreate, EmployeeUpdate, EmployeePersonalUpdate, EmployeeNoteCreate, EmployeeDocumentCreate
+from services.employee_personal import mask_id
 from repositories.interfaces import EmployeeRepository, AuditRepository
 from repositories.deps import get_employee_repo, get_audit_repo
 from core.permissions import require_permission
@@ -55,6 +56,7 @@ def get_employee(
 def create_employee(
     payload: EmployeeCreate,
     current_user: dict = Depends(require_permission("hr.employee.write")),
+    _personal_writer: dict = Depends(require_permission("hr.employee_personal.write")),
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
     audit_repo: AuditRepository = Depends(get_audit_repo),
     db: Session = Depends(get_db),
@@ -63,23 +65,23 @@ def create_employee(
     access_service = AccessService(db, audit_repo)
     access_service.validate_employee_provisioning(payload.email)
 
-    # `salary` (legacy, total) is derived inside employee_repo.create()
     new_id = employee_repo.create({
         "name": payload.name,
         "email": payload.email,
         "dept": payload.dept,
         "job_role": payload.job_role,
         "join_date": payload.join_date,
-        "pay_effective_from": payload.pay_effective_from,
         "status": payload.status,
         "vac_total": payload.vac_total,
         "next_raise": payload.next_raise,
         "employment_state": payload.employment_state,
-        "internal_salary_usd": payload.internal_salary_usd,
-        "external_salary_usd": payload.external_salary_usd,
         "invoice_id": payload.invoice_id or "",
-        "address_line_1": payload.address_line_1 or "",
+        "address_line_1": payload.address_line_1,
         "address_line_2": payload.address_line_2 or "",
+        "legal_name": payload.legal_name,
+        "phone": payload.phone,
+        "id_type": payload.id_type,
+        "id_number": payload.id_number,
     })
     logger.info("Admin %s created employee id=%s (%s)", current_user.get("email"), new_id, payload.email)
     audit_log(audit_repo, "employee.create", current_user.get("email"), "employee", new_id, f"name={payload.name}, email={payload.email}")
@@ -106,6 +108,65 @@ def update_employee(
         raise HTTPException(status_code=404, detail="Employee not found")
     audit_log(audit_repo, "employee.update", current_user.get("email"), "employee", emp_id, f"fields={list(updates.keys())}")
     return {"message": "Employee updated"}
+
+
+def _personal_view(emp_id: int, details: dict, reveal: bool) -> dict:
+    view = {
+        "employee_id": emp_id,
+        "legal_name": details["legal_name"],
+        "phone": details["phone"],
+        "address_line_1": details["address_line_1"],
+        "address_line_2": details["address_line_2"],
+        "id_type": details["id_type"],
+        "has_id": bool(details["id_number"]),
+        "id_number_masked": mask_id(details["id_number"]),
+    }
+    if reveal:
+        view["id_number"] = details["id_number"]
+    return view
+
+
+@router.get("/{emp_id}/personal")
+def get_employee_personal(
+    emp_id: int,
+    reveal_id: bool = Query(False),
+    current_user: dict = Depends(require_permission("hr.employee_personal.read")),
+    employee_repo: EmployeeRepository = Depends(get_employee_repo),
+    audit_repo: AuditRepository = Depends(get_audit_repo),
+):
+    """Personal details (HR-admin only). The ID number is masked unless reveal_id=true and the caller may reveal."""
+    if reveal_id and "hr.employee_personal.reveal" not in set(current_user.get("permissions", [])):
+        raise HTTPException(
+            status_code=403,
+            detail="Permission denied: 'hr.employee_personal.reveal' required to reveal the ID number",
+        )
+    details = employee_repo.get_personal(emp_id)
+    if details is None:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    if reveal_id and details["id_number"]:
+        audit_log(audit_repo, "employee.personal.reveal_id", current_user.get("email"), "employee", emp_id)
+    return _personal_view(emp_id, details, reveal_id)
+
+
+@router.put("/{emp_id}/personal")
+def update_employee_personal(
+    emp_id: int,
+    payload: EmployeePersonalUpdate,
+    current_user: dict = Depends(require_permission("hr.employee_personal.write")),
+    employee_repo: EmployeeRepository = Depends(get_employee_repo),
+    audit_repo: AuditRepository = Depends(get_audit_repo),
+):
+    if employee_repo.get_personal(emp_id) is None:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    sent = payload.model_fields_set
+    updates = {k: getattr(payload, k) for k in sent}
+    # Clearing the ID stores nothing (not empty strings); blank optional text is stored as empty.
+    if "address_line_2" in updates and updates["address_line_2"] is None:
+        updates["address_line_2"] = ""
+    employee_repo.update_personal(emp_id, updates)
+    # Field names only: personal values never go to the audit log.
+    audit_log(audit_repo, "employee.personal.update", current_user.get("email"), "employee", emp_id, f"fields={sorted(updates.keys())}")
+    return _personal_view(emp_id, employee_repo.get_personal(emp_id), False)
 
 
 @router.delete("/{emp_id}")

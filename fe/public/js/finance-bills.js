@@ -2334,7 +2334,7 @@ async function previewBillDocument(billId) {
     container.innerHTML = '<div style="color:var(--text3); padding:20px; font-size:14px;"><i class="fa-solid fa-spinner fa-spin"></i> Loading document preview...</div>';
 
     if (modal.classList) {
-      modal.classList.add("active");
+      openModal(modal.id);
     } else {
       modal.style.display = "flex";
     }
@@ -2384,7 +2384,7 @@ async function previewCurrentModalBillDocument() {
       downloadBtn.href = url;
       downloadBtn.download = _currentModalPendingFile.name;
     }
-    if (modal) modal.classList.add("active");
+    if (modal) openModal(modal.id);
     if (_currentModalPendingFile.name.toLowerCase().endsWith(".pdf")) {
       container.innerHTML = `<iframe src="${url}" style="width:100%; height:75vh; border:none; background:var(--surface);"></iframe>`;
     } else {

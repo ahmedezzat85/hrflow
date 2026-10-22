@@ -14,7 +14,7 @@ function openCompanyDocumentModal(){
   document.getElementById('dochubDocCategory').value = 'General';
   clearDochubDocFileSelection();
   document.getElementById('dochubUploadProgressWrap').style.display = 'none';
-  document.getElementById('companyDocumentModal').classList.add('active');
+  openModal('companyDocumentModal');
 }
 
 function clearDochubDocFileSelection(){
@@ -295,7 +295,7 @@ function previewCompanyDocument(docId, name, fileType){
   if(container){
     renderLoadingState(container, 'Loading preview...');
   }
-  document.getElementById('documentPreviewModal').classList.add('active');
+  openModal('documentPreviewModal');
   Api.getCompanyDocumentPreviewBlobUrl(docId).then(url => {
     if(!container) return;
     container.innerHTML = fileType === 'image'

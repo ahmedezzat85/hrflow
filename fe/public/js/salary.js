@@ -83,7 +83,7 @@ function renderSalaryPage(filter=''){
       <td class="tname"><div class="avatar">${initials(e.name)}</div><div><a class="salary-emp-link" href="${profileHref}" data-action="open-employee-profile" data-employee-id="${escapeHtml(e.id)}">${escapeHtml(e.name)}</a><div class="hv-sub-line">${escapeHtml(e.dept || e.department || '')}</div></div></td>
       <td class="hv-right" style="font-variant-numeric:tabular-nums;"><span class="comp-val-external">${fmtUSD(ext)}</span></td>
       <td class="hv-right" style="font-variant-numeric:tabular-nums;"><span class="comp-val-internal">${fmtUSD(intCash)}</span></td>
-      <td class="hv-right" style="font-variant-numeric:tabular-nums;"><strong style="color:var(--ink-strong);">${fmtUSD(total)}</strong></td>
+      <td class="hv-right" style="font-variant-numeric:tabular-nums;">${total > 0 ? `<strong style="color:var(--ink-strong);">${fmtUSD(total)}</strong>` : '<span style="color:var(--ink-muted);">Not set</span>'}</td>
       <td>${nextStr}</td>
       <td>${lastStr}</td>
       <td class="hv-right" style="white-space:nowrap;">${actionsHtml}</td>
@@ -158,7 +158,7 @@ function openRaiseModal(empId=null){
   document.getElementById('rDate').value = new Date().toISOString().slice(0, 10);
   document.getElementById('rReason').value = 'Annual performance raise';
   onRaiseEmployeeChange();
-  document.getElementById('raiseModal').classList.add('active');
+  openModal('raiseModal');
 }
 function onRaiseEmployeeChange(){
   const emp = employees.find(e=>String(e.id)===String(document.getElementById('rEmpSelect').value));
@@ -329,43 +329,58 @@ function renderCompPlanDeltas() {
   if (saveBtn) saveBtn.disabled = bothZero;
 }
 
+// Pay history: one row per change, internal and external as columns (D-036).
 function renderCompPlanHistory(history) {
   const histTbody = document.getElementById('compPlanHistoryBody');
   const summary = document.getElementById('compPlanHistorySummary');
-  if (summary) summary.textContent = `History (${history ? history.length : 0} rows)`;
+  if (summary) summary.textContent = `History (${history ? history.length : 0} ${history && history.length === 1 ? 'change' : 'changes'})`;
   if (history && history.length > 0) {
     histTbody.innerHTML = history.map(h => {
-      const isExternal = h.component_type === 'external_usd';
-      const typeBadge = isExternal
-        ? '<span class="badge-pill pill-primary"><i class="fa-solid fa-building-columns"></i> External USD</span>'
-        : '<span class="badge-pill pill-success"><i class="fa-solid fa-money-bill-wave"></i> Internal USD Cash</span>';
-      const statusBadge = !h.effective_end_date
-        ? '<span class="badge-pill pill-success">Active</span>'
-        : '<span class="badge-pill pill-neutral">Closed</span>';
-      const basisText = isExternal ? 'NET' : (h.salary_basis || 'NET');
+      const prevInt = Number(h.previous_internal_usd || 0);
+      const prevExt = Number(h.previous_external_usd || 0);
+      const newInt = Number(h.new_internal_usd || 0);
+      const newExt = Number(h.new_external_usd || 0);
+      const d = computeRowDeltas(prevInt, prevExt, newInt, newExt);
+      const change = (prevInt + prevExt) > 0
+        ? `<span class="badge-pill ${d.totalAmt >= 0 ? 'pill-success' : 'pill-neutral'}">${fmtDelta(d.totalAmt, d.totalPct)}</span>`
+        : '<span class="badge-pill pill-neutral">Starting pay</span>';
       return `<tr>
-        <td>${typeBadge}</td>
-        <td><span class="badge-pill pill-neutral">${basisText}</span></td>
-        <td><strong>${fmtUSD(h.amount)}</strong></td>
-        <td>${h.effective_start_date}</td>
-        <td>${h.effective_end_date || '—'}</td>
-        <td>${statusBadge}</td>
-        <td>${escapeHtml(h.notes || '—')}</td>
+        <td data-label="Effective">${escapeHtml(fmtDateShort(h.date))}</td>
+        <td data-label="Internal">${fmtUSD(newInt)}</td>
+        <td data-label="External">${fmtUSD(newExt)}</td>
+        <td data-label="Total"><strong>${fmtUSD(newInt + newExt)}</strong></td>
+        <td data-label="Change">${change}</td>
+        <td data-label="Reason">${escapeHtml(h.reason || '—')}</td>
       </tr>`;
     }).join('');
   } else {
-    histTbody.innerHTML = renderEmptyTableRow(7, 'No compensation history recorded yet.', 'fa-solid fa-clock');
+    histTbody.innerHTML = renderEmptyTableRow(6, 'No pay changes recorded yet.', 'fa-solid fa-clock');
   }
+}
+
+// Keep the in-memory profile history in step with what the server now holds.
+function syncEmployeeSalaryHistory(empId, history) {
+  const emp = employees.find(e => String(e.id) === String(empId));
+  if (!emp) return;
+  emp.salaryHistory = (history || []).map(h => ({
+    date: h.date,
+    prev: Number(h.previous_internal_usd || 0) + Number(h.previous_external_usd || 0),
+    next: Number(h.new_internal_usd || 0) + Number(h.new_external_usd || 0),
+    pct: h.pct_change || '',
+    reason: h.reason || '',
+    newInternal: Number(h.new_internal_usd || 0), newExternal: Number(h.new_external_usd || 0),
+    prevInternal: Number(h.previous_internal_usd || 0), prevExternal: Number(h.previous_external_usd || 0),
+  }));
 }
 
 async function reloadCompPlanData(empId, prefill) {
   const histTbody = document.getElementById('compPlanHistoryBody');
   if (!histTbody) return;
-  histTbody.innerHTML = renderEmptyTableRow(7, 'Loading history...', 'fa-solid fa-spinner fa-spin');
+  histTbody.innerHTML = renderEmptyTableRow(6, 'Loading history...', 'fa-solid fa-spinner fa-spin');
   try {
     const [plan, history] = await Promise.all([
       FinanceApi.getEmployeeCompensationPlan(empId),
-      FinanceApi.getEmployeeCompensationPlanHistory(empId)
+      FinanceApi.getEmployeePayHistory(empId)
     ]);
 
     const ext = plan && plan.external_usd;
@@ -401,11 +416,12 @@ async function reloadCompPlanData(empId, prefill) {
       document.getElementById('compPlanStartDate').value =
         compPlanState.earliest && compPlanState.earliest > today ? compPlanState.earliest : today;
     }
+    syncEmployeeSalaryHistory(empId, history);
     renderCompPlanHistory(history);
     renderCompPlanDeltas();
   } catch (err) {
     console.warn('Failed to load compensation plan details:', err);
-    histTbody.innerHTML = renderEmptyTableRow(7, 'Could not load history.', 'fa-solid fa-triangle-exclamation');
+    histTbody.innerHTML = renderEmptyTableRow(6, 'Could not load history.', 'fa-solid fa-triangle-exclamation');
   }
 }
 

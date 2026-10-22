@@ -88,7 +88,7 @@ function openCategoryModal(id=null){
   document.getElementById('categoryModalTitle').textContent = id ? 'Edit category' : 'Add category';
   if(id){ const c = insuranceCategories.find(x=>String(x.id)===String(id)); document.getElementById('fCatName').value = c.name; document.getElementById('fCatLimit').value = c.annual_limit; }
   else { document.getElementById('fCatName').value = ''; document.getElementById('fCatLimit').value = ''; }
-  document.getElementById('categoryModal').classList.add('active');
+  openModal('categoryModal');
 }
 async function saveCategory(evt){
   const btn = (evt && evt.currentTarget) || document.getElementById('categoryModalSaveBtn') || document.querySelector('#categoryModal .btn-fill');
@@ -151,7 +151,7 @@ function showReceiptPreview(claim){
       document.body.appendChild(a); a.click(); a.remove();
     };
   }
-  document.getElementById('documentPreviewModal').classList.add('active');
+  openModal('documentPreviewModal');
 }
 function renderInsuranceTable(){
   const body = document.getElementById('insuranceTableBody');

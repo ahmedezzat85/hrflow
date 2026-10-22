@@ -95,22 +95,11 @@ class SqlSalaryRepository:
                 notes=f"Raise: {reason}" if reason else "Raise",
                 actor_email=actor_email,
                 commit=False,
+                reason=reason,
+                force_history=True,
             )
 
-            history = SalaryHistoryDB(
-                employee_id=emp.id,
-                date=eff_date,
-                previous_salary=current_total,
-                new_salary=new_total,
-                pct_change=f"{'+' if total_delta_pct >= 0 else ''}{total_delta_pct}%",
-                reason=reason,
-                applied_by=actor_email,
-                previous_internal_usd=current_internal,
-                previous_external_usd=current_external,
-                new_internal_usd=new_internal,
-                new_external_usd=new_external,
-            )
-            db.add(history)
+            # The single salary_history row is written by apply_pay_change (D-036).
             emp.next_raise = (datetime.strptime(eff_date, "%Y-%m-%d") + timedelta(days=365)).strftime("%Y-%m-%d")
 
             emp_dict = {

@@ -17,7 +17,11 @@ test.describe('U5 forms and feedback', () => {
     await expect(page.locator('#employeeModal .form-error-summary')).toBeVisible();
     await expect(page.locator('#fEmpName')).toHaveAttribute('aria-invalid', 'true');
     await expect(page.locator('#fEmpEmail')).toHaveAttribute('aria-invalid', 'true');
-    await expect(page.locator('#employeeModal .field-error-msg')).toHaveCount(2);
+    // D-036: the personal details are required on create too (legal name, phone, address line 1).
+    for (const id of ['#fEmpLegalName', '#fEmpPhone', '#fEmpAddressLine1']) {
+      await expect(page.locator(id)).toHaveAttribute('aria-invalid', 'true');
+    }
+    await expect(page.locator('#employeeModal .field-error-msg')).toHaveCount(5);
     // errors clear as the user edits the field
     await page.fill('#fEmpName', 'Laila Hassan');
     await expect(page.locator('#fEmpName')).not.toHaveAttribute('aria-invalid', 'true');

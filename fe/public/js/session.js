@@ -1,5 +1,6 @@
 const MOCK_PERMISSIONS_HR = [
   "hr.employee.read", "hr.employee.write",
+  "hr.employee_personal.read", "hr.employee_personal.write", "hr.employee_personal.reveal",
   "hr.salary.read", "hr.salary.write",
   "hr.employee_bank_account.read", "hr.employee_bank_account.write", "hr.employee_bank_account.reveal",
   "hr.employee_document.read", "hr.employee_document.write",

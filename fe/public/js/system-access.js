@@ -28,6 +28,9 @@
 
     { key: "hr.employee.read", group: "HR / Employees", description: "View company employee profiles", assignable: true, implies: [] },
     { key: "hr.employee.write", group: "HR / Employees", description: "Create, edit, and delete employee records", assignable: true, implies: ["hr.employee.read"] },
+    { key: "hr.employee_personal.read", group: "HR / Employee personal details", description: "View employee legal name, phone, address and masked ID", assignable: true, implies: [] },
+    { key: "hr.employee_personal.write", group: "HR / Employee personal details", description: "Edit employee legal name, phone, address and ID", assignable: true, implies: ["hr.employee_personal.read"] },
+    { key: "hr.employee_personal.reveal", group: "HR / Employee personal details", description: "Reveal the unmasked employee ID or passport number", assignable: true, implies: ["hr.employee_personal.read"] },
     { key: "hr.salary.read", group: "HR / Compensation", description: "View employee salaries and raise history", assignable: true, implies: [] },
     { key: "hr.salary.write", group: "HR / Compensation", description: "Update employee salaries and record compensation changes", assignable: true, implies: ["hr.salary.read"] },
     { key: "hr.employee_bank_account.read", group: "HR / Employee bank details", description: "View employee bank account details", assignable: true, implies: [] },
@@ -114,7 +117,8 @@
       is_locked: false,
       user_count: 1,
       permissions: [
-        "hr.employee.read", "hr.employee.write", "hr.salary.read", "hr.salary.write",
+        "hr.employee.read", "hr.employee.write", "hr.employee_personal.read", "hr.employee_personal.write", "hr.employee_personal.reveal",
+        "hr.salary.read", "hr.salary.write",
         "hr.employee_bank_account.read", "hr.employee_bank_account.write", "hr.employee_bank_account.reveal",
         "hr.employee_document.read", "hr.employee_document.write", "hr.company_document.read", "hr.company_document.write",
         "hr.salary_payment_doc.read", "hr.salary_payment_doc.write", "hr.vacation.read", "hr.vacation.write",

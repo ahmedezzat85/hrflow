@@ -42,7 +42,7 @@ def preview_eligible_employees(
     eligible, already have a payment document for this period, or would be
     skipped (with the reason) - without generating or uploading anything.
     """
-    employees = employee_repo.list_all()
+    employees = employee_repo.list_all(include_personal=True)
     results = []
     for emp in employees:
         existing = find_existing_salary_payment_doc(invoice_repo, emp["id"], payment_year, payment_month)
@@ -97,7 +97,7 @@ def generate_invoice_single(
     invoice_repo: SalaryPaymentDocRepository = Depends(get_salary_payment_doc_repo),
     audit_repo: AuditRepository = Depends(get_audit_repo),
 ):
-    emp = employee_repo.get_by_id(employee_id)
+    emp = employee_repo.get_by_id(employee_id, include_personal=True)
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
 

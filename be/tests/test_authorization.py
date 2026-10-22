@@ -6,6 +6,7 @@ paths flagged in docs/analysis/security-analysis-plan.md - regression
 tests for findings #1, #6, #7, #9, #10 and the Phase 1 cookie-session migration.
 """
 import base64
+from employee_test_helpers import PERSONAL
 
 
 def test_unauthenticated_request_is_rejected(app_client):
@@ -39,13 +40,13 @@ def test_admin_can_view_any_employee_profile(app_client, admin_cookies):
 
 
 def test_non_admin_cannot_create_employee(app_client, employee_cookies):
-    payload = {"name": "New Person", "email": "new@hrflow.test"}
+    payload = {**PERSONAL, "name": "New Person", "email": "new@hrflow.test"}
     response = app_client.post("/api/employees", json=payload, cookies=employee_cookies)
     assert response.status_code == 403
 
 
 def test_admin_can_create_employee(app_client, admin_cookies):
-    payload = {"name": "New Person", "email": "new@hrflow.test",
+    payload = {**PERSONAL, "name": "New Person", "email": "new@hrflow.test",
                "internal_salary_usd": 1000, "external_salary_usd": 0}
     response = app_client.post("/api/employees", json=payload, cookies=admin_cookies)
     assert response.status_code == 201

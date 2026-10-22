@@ -40,6 +40,9 @@ test.describe('FUX-416: Employee Compensation Plan', () => {
     await expect(modal.locator('#compPlanExternalAmount')).toHaveValue('7500');
     await modal.locator('#compPlanHistorySummary').click();
     await expect(modal.locator('#compPlanHistoryBody')).toBeVisible();
+    // D-036: one row per change, Internal and External as columns (same shape as every other screen).
+    await expect(modal.locator('#compPlanHistoryDetails thead th')).toHaveText(['Effective', 'Internal', 'External', 'Total', 'Change', 'Reason']);
+    await expect(modal.locator('#compPlanHistoryBody tr')).toHaveCount(2);
     await modal.locator('#compPlanCloseBtn').click();
     await expect(modal).not.toBeVisible();
   });
@@ -62,9 +65,13 @@ test.describe('FUX-416: Employee Compensation Plan', () => {
     await expect(modal.locator('#compPlanIntBasis')).toContainText('Gross');
     await modal.locator('#compPlanHistorySummary').click();
     const histBody = modal.locator('#compPlanHistoryBody');
-    await expect(histBody).toContainText('11,500');
-    await expect(histBody).toContainText('Q4 Market adjustment');
-    await expect(histBody).toContainText('GROSS');
+    // One new row carrying both components, not one row per component.
+    await expect(histBody.locator('tr')).toHaveCount(3);
+    const newRow = histBody.locator('tr').first();
+    await expect(newRow).toContainText('$6,000');
+    await expect(newRow).toContainText('$11,500');
+    await expect(newRow).toContainText('$17,500');
+    await expect(newRow).toContainText('Q4 Market adjustment');
 
     await modal.locator('#compPlanCloseBtn').click();
     await expect(modal).not.toBeVisible();

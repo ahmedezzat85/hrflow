@@ -3,8 +3,10 @@ models.py
 Pydantic request/response models for the HRFlow API.
 """
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 from typing import Optional, Literal, List, Union
+
+from services.employee_personal import normalize_id, normalize_phone
 
 # Allowed values for an employee's employment state (single source of truth
 # shared by EmployeeCreate / EmployeeUpdate).
@@ -36,52 +38,52 @@ class LoginResponse(BaseModel):
 
 class EmployeeCreate(BaseModel):
     """
-    Salary is modeled as two USD-denominated components (see docs/analysis/
-    salary-advanced-plan.md, Phase 1):
-    - internal_salary_usd: paid within Egypt.
-    - external_salary_usd: paid directly from the USA.
-    Both are required (no defaults) - 0 is a valid explicit value for an
-    employee who is 100% one or the other, but the field must be present.
-    There is no flat `salary` field on create anymore; any legacy total
-    shown elsewhere in the app is derived server-side as the sum of the
-    two components.
+    Pay is not part of creating an employee (D-036): set it afterwards through the Pay plan
+    (PUT /api/finance/employees/{id}/compensation-plan). An employee with no plan is valid ("Not set").
 
-    invoice_id / address_line_1 / address_line_2 (docs/analysis/
-    invoice-autopay-plan.md) are only required at invoice-generation time,
-    not at employee-creation time, so they stay optional here. invoice_id
-    must be a two-digit numeric string ("01"-"99") when set, since it is
-    embedded directly into the six-digit invoice number (YY + invoice_id
-    + MM).
+    invoice_id (docs/analysis/invoice-autopay-plan.md) is only required at payment-doc generation time, so it
+    stays optional here. It must be a two-digit numeric string ("01"-"99") when set, since it is embedded
+    directly into the six-digit document number (YY + invoice_id + MM).
     """
     name: str
     email: EmailStr
     dept: str = ""
     job_role: str = ""
-    internal_salary_usd: float
-    external_salary_usd: float
     join_date: str = ""
-    # Date the salary typed on create takes effect in the compensation plan (D-034 / P3).
-    # Falls back to join_date, then today.
-    pay_effective_from: Optional[str] = None
     status: str = "Active"
     vac_total: int = 21
     next_raise: str = ""
     employment_state: EmploymentState = "Full-Time"
     invoice_id: Optional[str] = None
-    address_line_1: Optional[str] = None
+    # Personal details (D-036). Legal name, phone and address line 1 are required for a new employee;
+    # the ID is optional. They are stored through the personal-details path, not the profile one.
+    legal_name: str
+    phone: str
+    address_line_1: str
     address_line_2: Optional[str] = None
+    id_type: Optional[str] = None
+    id_number: Optional[str] = None
 
-
-    @field_validator("pay_effective_from")
+    @field_validator("name", "legal_name", "address_line_1")
     @classmethod
-    def _pay_effective_from_format(cls, v):
-        if v in (None, ""):
-            return None
-        try:
-            datetime.strptime(v, "%Y-%m-%d")
-        except ValueError:
-            raise ValueError("pay_effective_from must be in YYYY-MM-DD format")
+    def _required_text(cls, v):
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("This field is required")
         return v
+
+    @field_validator("phone")
+    @classmethod
+    def _phone_valid(cls, v):
+        normalized = normalize_phone(v)
+        if not normalized:
+            raise ValueError("Phone is required")
+        return normalized
+
+    @model_validator(mode="after")
+    def _id_pair_valid(self):
+        self.id_type, self.id_number = normalize_id(self.id_type, self.id_number)
+        return self
 
 
 class EmployeeUpdate(BaseModel):
@@ -89,8 +91,6 @@ class EmployeeUpdate(BaseModel):
     email: Optional[EmailStr] = None
     dept: Optional[str] = None
     job_role: Optional[str] = None
-    internal_salary_usd: Optional[float] = None
-    external_salary_usd: Optional[float] = None
     join_date: Optional[str] = None
     status: Optional[str] = None
     vac_total: Optional[int] = None
@@ -98,8 +98,50 @@ class EmployeeUpdate(BaseModel):
     next_raise: Optional[str] = None
     employment_state: Optional[EmploymentState] = None
     invoice_id: Optional[str] = None
+
+
+class EmployeePersonalUpdate(BaseModel):
+    """
+    Partial update of the personal details (D-036). Only the fields sent change. legal_name, phone and
+    address_line_1 cannot be blanked. Sending id_type/id_number both empty clears the ID.
+    """
+    legal_name: Optional[str] = None
+    phone: Optional[str] = None
     address_line_1: Optional[str] = None
     address_line_2: Optional[str] = None
+    id_type: Optional[str] = None
+    id_number: Optional[str] = None
+
+    @field_validator("legal_name", "address_line_1")
+    @classmethod
+    def _not_blank(cls, v):
+        if v is None:
+            return v
+        v = v.strip()
+        if not v:
+            raise ValueError("This field cannot be empty")
+        return v
+
+    @field_validator("address_line_2")
+    @classmethod
+    def _strip_optional(cls, v):
+        return None if v is None else v.strip()
+
+    @field_validator("phone")
+    @classmethod
+    def _phone_valid(cls, v):
+        if v is None:
+            return v
+        normalized = normalize_phone(v)
+        if not normalized:
+            raise ValueError("Phone cannot be empty")
+        return normalized
+
+    @model_validator(mode="after")
+    def _id_pair_valid(self):
+        if "id_type" in self.model_fields_set or "id_number" in self.model_fields_set:
+            self.id_type, self.id_number = normalize_id(self.id_type, self.id_number)
+        return self
 
 
 class RequestCreate(BaseModel):

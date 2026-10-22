@@ -252,7 +252,8 @@ export const PARITY_MAP = {
       mockContainerSelector: 'main',
       appContainerSelector: '#a-employee-detail',
       // Issue 9 (owner decision 2026-10-19): Notes and Medical insurance cards are kept features; 'Payroll runs' link is not in the app
-      keptLabels: ['Medical insurance consumption', 'Notes and performance tracking', 'Date', 'Category', 'Note', 'Add Note', 'Payroll runs'],
+      // D-036: the personal details rows (HR-admin only) add height to the details card and a Reveal button for the ID
+      keptLabels: ['Medical insurance consumption', 'Notes and performance tracking', 'Date', 'Category', 'Note', 'Add Note', 'Payroll runs', 'Reveal'],
       setup: async (page) => {
         await page.waitForFunction(() => window.Router && typeof viewProfile === 'function' && typeof employees !== 'undefined' && employees.length > 0);
         const empId = await page.evaluate(() => String(employees[0].id));
@@ -266,7 +267,7 @@ export const PARITY_MAP = {
         { name: 'profile header card', mockSelector: 'main > section:first-child', appSelector: '#a-employee-detail .emp-summary-card', accepted: { light: { fontSize: '16px', color: 'rgb(20, 30, 48)', borderColor: 'rgba(30, 60, 140, 0.08)', height: '169px' }, dark: { fontSize: '16px', height: '169px' } } },
         { name: 'profile identity heading', mockSelector: 'main > section:first-child h1', appSelector: '#detailProfileHead h4', accepted: { light: { height: '26px' }, dark: { height: '26px' } } },
         { name: 'compensation card', mockSelector: 'main > div:last-child > div:first-child > section:first-child', appSelector: '#employeeCompensationCard', accepted: { light: { fontSize: '16px', color: 'rgb(20, 30, 48)', borderColor: 'rgba(30, 60, 140, 0.08)', height: '187px', width: '690px' }, dark: { fontSize: '16px', height: '187px', width: '690px' } } },
-        { name: 'details card', mockSelector: 'main > div:last-child > div:last-child > section:first-child', appSelector: '#detailMetaCard', accepted: { light: { fontSize: '16px', color: 'rgb(20, 30, 48)', borderColor: 'rgba(30, 60, 140, 0.08)', paddingTop: '0px', paddingRight: '0px', paddingBottom: '0px', paddingLeft: '0px', height: '191px', width: '380px' }, dark: { fontSize: '16px', paddingTop: '0px', paddingRight: '0px', paddingBottom: '0px', paddingLeft: '0px', height: '191px', width: '380px' } } },
+        { name: 'details card', mockSelector: 'main > div:last-child > div:last-child > section:first-child', appSelector: '#detailMetaCard', accepted: { light: { fontSize: '16px', color: 'rgb(20, 30, 48)', borderColor: 'rgba(30, 60, 140, 0.08)', paddingTop: '0px', paddingRight: '0px', paddingBottom: '0px', paddingLeft: '0px', height: '302px', width: '380px' }, dark: { fontSize: '16px', paddingTop: '0px', paddingRight: '0px', paddingBottom: '0px', paddingLeft: '0px', height: '302px', width: '380px' } } },
         { name: 'bank account card', mockSelector: 'main > div:last-child > div:last-child > section:nth-child(2)', appSelector: '#bankAccountCard', accepted: { light: { fontSize: '16px', color: 'rgb(20, 30, 48)', height: '137px', width: '380px' }, dark: { fontSize: '16px', borderColor: /^rgba\(214, 116, 43, 0\.4\)$/, height: '137px', width: '380px' } } }
       ]
     }

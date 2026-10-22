@@ -79,20 +79,19 @@
           <div class="fv-plan-hint" id="compPlanBothZeroError" role="alert" style="display:none;">At least one component must be above 0.</div>
         </div>
 
-        <!-- Effective-dated history -->
+        <!-- Pay history: one row per change (D-036) -->
         <details class="form-section" id="compPlanHistoryDetails">
           <summary class="fv-dialog-section-title" id="compPlanHistorySummary">History</summary>
           <div style="max-height:220px; overflow-y:auto; border:1px solid var(--fv-line); border-radius:10px;">
             <table class="responsive-card-table" style="font-size:12.5px;">
               <thead>
                 <tr>
-                  <th>Component</th>
-                  <th>Basis</th>
-                  <th>Amount</th>
-                  <th>Start date</th>
-                  <th>End date</th>
-                  <th>Status</th>
-                  <th>Notes</th>
+                  <th>Effective</th>
+                  <th>Internal</th>
+                  <th>External</th>
+                  <th>Total</th>
+                  <th>Change</th>
+                  <th>Reason</th>
                 </tr>
               </thead>
               <tbody id="compPlanHistoryBody"></tbody>
