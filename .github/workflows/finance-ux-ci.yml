@@ -85,7 +85,15 @@ jobs:
         run: npm ci
 
       - name: Install Playwright Chrome
-        run: npx playwright install --with-deps chrome
+        # The browser download occasionally drops mid-transfer (curl 92 / INTERNAL_ERROR) and used to fail the whole
+        # job before any test ran. Retry a few times; a persistent outage still fails the step.
+        run: |
+          for attempt in 1 2 3; do
+            npx playwright install --with-deps chrome && exit 0
+            echo "Playwright Chrome install failed (attempt $attempt of 3)"
+            sleep $((attempt * 20))
+          done
+          exit 1
 
       - name: Create CI runtime config
         run: |
