@@ -84,7 +84,7 @@
 (function (root) {
   const P = {
     empId: null, preset: 'ytd', start: '', end: '', group: 'month', currency: 'USD',
-    cache: new Map(), data: null, status: 'idle', error: '', token: 0, chart: null, built: false, currencies: ['USD'],
+    cache: new Map(), data: null, status: 'idle', error: '', token: 0, chart: null, built: false, currencies: ['USD'], showAll: false, exporting: false,
   };
   const $ = (id) => document.getElementById(id);
   const esc = (v) => (typeof escapeHtml === 'function' ? escapeHtml(v) : String(v));
@@ -183,6 +183,7 @@
     if (!range) { destroyChart(); P.status = 'invalid'; renderBody(); return; }
     const key = [P.empId, range.start, range.end, P.group, P.currency].join('|');
     const token = ++P.token;
+    P.showAll = false;
     if (P.cache.has(key)) { P.data = P.cache.get(key); P.status = 'ready'; renderBody(); return; }
     P.status = 'loading';
     renderBody();
@@ -234,16 +235,18 @@
     const body = $('payBody');
     if (!body) return;
     destroyChart();
-    if (P.status === 'loading') { body.setAttribute('aria-busy', 'true'); body.innerHTML = note('Loading pay analytics…'); return; }
+    if (P.status === 'loading') { body.setAttribute('aria-busy', 'true'); body.innerHTML = note('Loading pay analytics…'); renderExport(null); return; }
     body.removeAttribute('aria-busy');
-    if (P.status === 'invalid') { body.innerHTML = note('Choose a start date on or before the end date.'); return; }
+    if (P.status === 'invalid') { renderExport(null); body.innerHTML = note('Choose a start date on or before the end date.'); return; }
     if (P.status === 'error') {
+      renderExport(null);
       body.innerHTML = `<div class="card pay-card"><div class="pay-empty pay-empty--error" role="alert">${esc(P.error)} <button type="button" class="btn btn-outline btn-sm" id="payRetryBtn">Retry</button></div></div>`;
       return;
     }
     const d = P.data;
     if (!d) { body.innerHTML = ''; return; }
     syncCurrency(d);
+    renderExport(d);
     const parts = [];
     if (d.payments) parts.push(...paymentsSections(d));
     else if (d.plan) parts.push(...planSections(d.plan));
@@ -279,7 +282,7 @@
     const raiseLine = d.plan ? `<div class="pay-chart-meta">${plural(raises.length, 'raise', 'raises')} in this period ${raises.length ? '· ' : ''}<button type="button" class="ed-link-btn" id="paySeeRaisesBtn">See raise history</button></div>` : '';
     const chart = card('Pay by month', 'fa-chart-column', 'blue', 'Payroll-line amounts · dashed line marks a raise',
       `${legend}<div class="pay-chart-wrap"><canvas id="payChartCanvas" role="img"></canvas><div class="pay-tip" id="payTip" hidden></div></div>${raiseLine}`);
-    return [summary, chart];
+    return [summary, chart, tableCard(d)];
   }
 
   function timeAt(dateStr) {
@@ -313,8 +316,117 @@
     return [summary, chart];
   }
 
+
+  const PAY_PILL = {
+    paid: ['success', 'success', 'Paid'], pending: ['warning', 'warning', 'Pending'],
+    mixed: ['warning', 'warning', 'Mixed'], draft: ['neutral', 'muted', 'Draft'],
+  };
+  function payPill(b) {
+    const [tone, dot, text] = PAY_PILL[b.payment_status] || PAY_PILL.draft;
+    const when = b.payment_status === 'paid' && b.paid_at ? ` · ${esc(fmtDateShort(b.paid_at))}` : '';
+    return `<span class="badge-pill pill-${tone}"><span class="hv-dot hv-dot--${dot}"></span>${text}${when}</span>`;
+  }
+  const PREVIEW_ROWS = 5;
+  function tableCard(d) {
+    const t = d.payments.totals;
+    const rows = d.payments.series.slice().sort((a, b) => (a.bucket < b.bucket ? 1 : -1)); // newest first
+    const q = P.group === 'quarter';
+    const shown = P.showAll ? rows : rows.slice(0, PREVIEW_ROWS);
+    const num = (v) => `<td class="pay-num">${esc(money(v))}</td>`;
+    const body = shown.map((b) => `<tr><td>${esc(b.label)}</td>${num(b.base_external + b.base_internal)}${num(b.commission)}${num(b.bonus)}<td class="pay-num pay-num--total">${esc(money(b.total))}</td><td>${payPill(b)}</td></tr>`).join('');
+    const more = rows.length > PREVIEW_ROWS && !P.showAll
+      ? `<div class="pay-table-more"><button type="button" class="ed-link-btn" id="payShowAllBtn">Show all ${rows.length} ${q ? 'quarters' : 'months'}</button></div>` : '';
+    const html = `<div class="pay-table-scroll"><table class="pay-table" id="payMonthlyTable">
+      <thead><tr><th>${q ? 'Quarter' : 'Month'}</th><th class="pay-num">Base</th><th class="pay-num">Commission</th><th class="pay-num">Bonus</th><th class="pay-num">Total</th><th>Payment</th></tr></thead>
+      <tbody>${body}</tbody>
+      <tfoot><tr><th scope="row">Period total</th>${num(t.base_external + t.base_internal)}${num(t.commission)}${num(t.bonus)}<td class="pay-num pay-num--total">${esc(money(t.total))}</td><td></td></tr></tfoot>
+    </table></div>${more}`;
+    return `<div id="payTableCard">${card('Monthly breakdown', 'fa-table', 'teal', 'What the export contains', html)}</div>`;
+  }
+
+  // ---- export ---------------------------------------------------------------------------------
+  const EXPORTS = [
+    { id: 'monthly-xlsx', label: 'Monthly breakdown (.xlsx)', dataset: 'monthly', format: 'xlsx', needs: 'payments' },
+    { id: 'monthly-csv', label: 'Monthly breakdown (.csv)', dataset: 'monthly', format: 'csv', needs: 'payments' },
+    { id: 'raises-csv', label: 'Raise history (.csv)', dataset: 'raises', format: 'csv', needs: 'plan' },
+  ];
+  function renderExport(d) {
+    const host = $('payControlsEnd');
+    if (!host) return;
+    const items = d ? EXPORTS.filter((e) => d[e.needs]) : [];
+    if (!items.length) { host.innerHTML = ''; return; }
+    host.innerHTML = `<div class="pay-export">
+      <button type="button" class="btn btn-outline btn-sm" id="payExportBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="payExportMenu"><i class="fa-solid fa-download"></i> <span>Export</span></button>
+      <div class="pay-menu" id="payExportMenu" role="menu" hidden>
+        ${items.map((e) => `<button type="button" role="menuitem" data-export="${e.id}">${esc(e.label)}</button>`).join('')}
+        <p class="pay-menu-note">Exports include only the sections shown on this page</p>
+      </div></div>`;
+    const btn = $('payExportBtn'), menu = $('payExportMenu');
+    btn.addEventListener('click', () => (menu.hidden ? openMenu() : closeMenu(true)));
+    menu.addEventListener('click', (ev) => {
+      const it = ev.target.closest('[data-export]');
+      if (it) runExport(EXPORTS.find((e) => e.id === it.dataset.export));
+    });
+    menu.addEventListener('keydown', (ev) => {
+      const its = [...menu.querySelectorAll('[role="menuitem"]')];
+      const i = its.indexOf(document.activeElement);
+      if (ev.key === 'ArrowDown') { ev.preventDefault(); its[(i + 1) % its.length].focus(); }
+      else if (ev.key === 'ArrowUp') { ev.preventDefault(); its[(i - 1 + its.length) % its.length].focus(); }
+      else if (ev.key === 'Escape') { ev.preventDefault(); closeMenu(true); }
+      else if (ev.key === 'Tab') closeMenu(false);
+    });
+  }
+  function openMenu() {
+    const btn = $('payExportBtn'), menu = $('payExportMenu');
+    if (!menu || btn.disabled) return;
+    menu.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
+    const first = menu.querySelector('[role="menuitem"]');
+    if (first) first.focus();
+  }
+  function closeMenu(refocus) {
+    const btn = $('payExportBtn'), menu = $('payExportMenu');
+    if (!menu || menu.hidden) return;
+    menu.hidden = true;
+    btn.setAttribute('aria-expanded', 'false');
+    if (refocus) btn.focus();
+  }
+  document.addEventListener('click', (ev) => { if (!ev.target.closest('.pay-export')) closeMenu(false); });
+
+  async function runExport(e) {
+    if (!e || P.exporting) return;
+    const range = resolveRange();
+    if (!range) return;
+    const btn = $('payExportBtn');
+    P.exporting = true;
+    closeMenu(false);
+    btn.disabled = true;
+    btn.setAttribute('aria-busy', 'true');
+    btn.querySelector('span').textContent = 'Exporting…';
+    try {
+      const { blob, filename } = await AnalyticsApi.exportEmployeePay(P.empId, { format: e.format, dataset: e.dataset, startDate: range.start, endDate: range.end, groupBy: P.group, currency: P.currency });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch (err) {
+      toast((err && err.message) || 'Export failed.', 'fa-solid fa-circle-exclamation');
+    } finally {
+      P.exporting = false;
+      const b = $('payExportBtn');
+      if (b) { b.disabled = false; b.removeAttribute('aria-busy'); b.querySelector('span').textContent = 'Export'; }
+    }
+  }
+
   function onBodyClick(e) {
     if (e.target.closest('#payRetryBtn')) { load(); return; }
+    if (e.target.closest('#payShowAllBtn')) {
+      P.showAll = true;
+      const c = $('payTableCard');
+      if (c && P.data) { c.outerHTML = tableCard(P.data); const t = $('payMonthlyTable'); if (t) t.scrollIntoView({ block: 'nearest' }); }
+      return;
+    }
     if (e.target.closest('#paySeeRaisesBtn')) {
       if (root.EmployeePayAnalytics) EmployeePayAnalytics.selectTab('overview');
       const c = $('employeeCompensationCard');

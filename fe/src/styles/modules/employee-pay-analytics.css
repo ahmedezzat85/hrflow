@@ -54,3 +54,19 @@
   #a-employee-detail #employeePayPanel .pay-kpis, #a-employee-detail #employeePayPanel .pay-kpis--3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   #employeePayPanel .pay-kpis .ed-kpi { border-bottom: 1px solid var(--fv-line); }
 }
+
+/* Monthly breakdown table and export menu */
+#employeePayPanel .pay-table-scroll { overflow-x: auto; }
+#employeePayPanel .pay-table { width: 100%; border-collapse: collapse; min-width: 640px; font-variant-numeric: tabular-nums; }
+#employeePayPanel .pay-table th, #employeePayPanel .pay-table td { padding: 10px 16px; text-align: left; font-size: 14px; color: var(--ink-body); border-bottom: 1px solid var(--fv-line-row); white-space: nowrap; }
+#employeePayPanel .pay-table thead th { font-size: 12px; font-weight: 600; color: var(--ink-label); background: transparent; text-transform: none; letter-spacing: 0; }
+#employeePayPanel .pay-table .pay-num { text-align: right; }
+#employeePayPanel .pay-table .pay-num--total { font-weight: 700; color: var(--ink-strong); }
+#employeePayPanel .pay-table tfoot th, #employeePayPanel .pay-table tfoot td { font-weight: 700; color: var(--ink-strong); border-top: 1px solid var(--fv-line-strong); border-bottom: 0; }
+#employeePayPanel .pay-table-more { padding: 10px 16px 14px; }
+#employeePayPanel .pay-export { position: relative; }
+#employeePayPanel .pay-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; min-width: 270px; padding: 6px; background: var(--surface); border: 1px solid var(--fv-line-strong); border-radius: 10px; box-shadow: var(--fv-shadow-card); }
+#employeePayPanel .pay-menu[hidden] { display: none; }
+#employeePayPanel .pay-menu button { display: block; width: 100%; text-align: left; padding: 8px 10px; border: 0; border-radius: 6px; background: none; font: inherit; font-size: 13px; color: var(--ink-body); cursor: pointer; }
+#employeePayPanel .pay-menu button:hover, #employeePayPanel .pay-menu button:focus-visible { background: var(--brand-wash); color: var(--ink-strong); }
+#employeePayPanel .pay-menu-note { margin: 4px 0 0; padding: 8px 10px 4px; border-top: 1px solid var(--fv-line); font-size: 12px; color: var(--ink-muted); }
