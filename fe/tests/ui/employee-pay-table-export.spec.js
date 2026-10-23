@@ -80,4 +80,22 @@ test.describe('Pay analytics: monthly breakdown and export', () => {
     await page.click('#payRetryBtn');
     await expect(page.locator('#payMonthlyTable')).toBeVisible();
   });
+
+  test('no console errors through the whole flow, and a theme flip redraws the chart', async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push(m.text()); });
+    await openPay(page, 'admin');
+    await page.click('#employeePayTab');
+    await expect(page.locator('#payChartCanvas')).toBeVisible();
+    await page.click('#payGroupBy button[data-group="quarter"]');
+    await page.selectOption('#payPeriodSelect', 'custom');
+    await page.fill('#payStartDate', '2026-03-01');
+    await page.fill('#payEndDate', '2026-05-31');
+    await expect(rowsOf(page)).toHaveCount(2); // Mar falls in Q1, Apr and May in Q2
+    await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
+    await expect(page.locator('#payChartCanvas')).toBeVisible();
+    await page.evaluate(() => document.documentElement.removeAttribute('data-theme'));
+    expect(errors).toEqual([]);
+  });
 });

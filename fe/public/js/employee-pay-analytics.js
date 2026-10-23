@@ -96,7 +96,7 @@
   function compact(n) {
     const a = Math.abs(n);
     if (a >= 1e6) return (n / 1e6).toFixed(a >= 1e7 ? 0 : 1).replace(/\.0$/, '') + 'M';
-    if (a >= 1e3) return (n / 1e3).toFixed(a >= 1e4 ? 0 : 1).replace(/\.0$/, '') + 'k';
+    if (a >= 1e3) return (n / 1e3).toFixed(a >= 1e5 ? 0 : 1).replace(/\.0$/, '') + 'k';
     return String(Math.round(n));
   }
   function pct(n) { return Number(n).toFixed(1).replace(/\.0$/, ''); }
