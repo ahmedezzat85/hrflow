@@ -1958,3 +1958,9 @@ tbody tr[hidden] {
 .hv-dd__item[aria-selected="true"] { color: var(--brand-text, var(--accent-text)); font-weight: 600; }
 .hv-dd__item[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
 .hv-dd__check { flex: none; }
+
+/* Phone layouts: every tap target is at least 44px (matches the other controls in hr-v3.css) */
+@media (max-width: 768px) {
+  .hv-dd__btn, .hv-dd--sm .hv-dd__btn, .modal-v2 .form-field .hv-dd__btn { min-height: 44px; }
+  .hv-dd__item { min-height: 44px; }
+}
