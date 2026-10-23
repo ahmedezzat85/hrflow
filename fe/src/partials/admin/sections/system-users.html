@@ -2,7 +2,7 @@
           <h2 class="section-title sr-only" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); font-size: 18px;">User accounts and access</h2>
           <div class="toolbar sys-toolbar" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap;">
             <div class="filter-group">
-              <select id="systemUsersFilter" class="filter-select hv-select" aria-label="Show users" style="height: 32px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 8px; background-color: var(--fv-surface); font-size: 13px; color: var(--ink-strong);">
+              <select id="systemUsersFilter" data-hv-dropdown="sm" class="filter-select hv-select" aria-label="Show users" style="height: 32px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 8px; background-color: var(--fv-surface); font-size: 13px; color: var(--ink-strong);">
                 <option value="all">All</option>
                 <option value="employees">Employees</option>
                 <option value="external">External</option>
@@ -10,7 +10,7 @@
               </select>
             </div>
             <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-              <select id="systemUsersRoleFilter" aria-label="Filter by role" class="filter-select hv-select" style="height: 32px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 8px; background-color: var(--fv-surface); font-size: 13px; color: var(--ink-strong);">
+              <select id="systemUsersRoleFilter" data-hv-dropdown="sm" aria-label="Filter by role" class="filter-select hv-select" style="height: 32px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 8px; background-color: var(--fv-surface); font-size: 13px; color: var(--ink-strong);">
                 <option value="all">All roles</option>
               </select>
               <div class="search-box" style="display: flex; align-items: center; gap: 8px; height: 32px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--fv-input-border); border-radius: 8px; background: var(--fv-surface); color: var(--ink-muted); font-size: 13px; width: 200px;">

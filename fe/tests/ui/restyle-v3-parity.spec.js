@@ -58,13 +58,13 @@ async function collectVisibleLabels(locator) {
       const clone = node.cloneNode(true);
       clone.querySelectorAll('svg, script, style').forEach((child) => child.remove());
       if (node.matches('label')) {
-        clone.querySelectorAll('input, select, textarea').forEach((control) => control.remove());
+        clone.querySelectorAll('input, select, textarea, .hv-dd__btn').forEach((control) => control.remove());
       }
       clone.querySelectorAll('*').forEach((el) => el.after(' '));
       return clone.textContent.replace(/\*/g, '').replace(/\s+/g, ' ').trim();
     };
     const visible = (node) => node.getClientRects().length > 0;
-    return Array.from(root.querySelectorAll('h1, h2, h3, h4, th, label, button, a, .modal-title, .modal-subtitle, option:checked'))
+    return Array.from(root.querySelectorAll('h1, h2, h3, h4, th, label, button:not(.hv-dd__btn), a, .modal-title, .modal-subtitle, option:checked'))
       .filter(visible)
       .map(clean)
       .filter(Boolean);

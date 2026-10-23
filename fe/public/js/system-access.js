@@ -656,8 +656,8 @@
       const isArchived = !!u.archived_at;
       const isSelf = !!u.is_self;
       const statusPill = isArchived
-        ? `<span class="badge badge-status" style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--ink-muted); background: var(--fv-surface-soft);"><span style="width: 7px; height: 7px; border-radius: 50%; background: var(--ink-muted);"></span>Archived</span>`
-        : `<span class="badge badge-status" style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #06703f; background: #e3f5ec;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #06703f;"></span>Active</span>`;
+        ? `<span class="badge-pill pill-neutral badge-status"><span class="hv-dot hv-dot--muted"></span>Archived</span>`
+        : `<span class="badge-pill pill-success badge-status"><span class="hv-dot hv-dot--success"></span>Active</span>`;
 
       const assignedRole = getUserRole(u);
       const roleBadges = assignedRole

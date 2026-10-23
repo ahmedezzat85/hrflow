@@ -35,7 +35,7 @@
                 </div>
                 <div class="card">
                   <div class="card-head">
-                    <h3><span class="ed-tile ed-tile--teal"><i class="fa-solid fa-briefcase-medical"></i></span> Insurance claims</h3>
+                    <h3><span class="ed-tile ed-tile--sky"><i class="fa-solid fa-briefcase-medical"></i></span> Insurance claims</h3>
                     <span class="ed-card-meta" id="detailClaimsMeta"></span>
                   </div>
                   <table class="responsive-card-table ed-list">
@@ -52,7 +52,7 @@
 
               <div class="card employee-insurance-summary-card">
                 <div class="card-head">
-                  <h3><span class="ed-tile ed-tile--teal"><i class="fa-solid fa-shield-heart"></i></span> Medical insurance consumption</h3>
+                  <h3><span class="ed-tile ed-tile--ochre"><i class="fa-solid fa-shield-heart"></i></span> Medical insurance consumption</h3>
                 </div>
                 <div class="card-body">
                   <div class="hv-total-row">
@@ -65,7 +65,7 @@
 
               <div class="card">
                 <div class="card-head">
-                  <h3><span class="ed-tile ed-tile--ochre"><i class="fa-solid fa-folder-open"></i></span> Employee documents</h3>
+                  <h3><span class="ed-tile ed-tile--pink"><i class="fa-solid fa-folder-open"></i></span> Employee documents</h3>
                   <button class="btn btn-sm btn-outline" onclick="openEmployeeDocumentModal()">Upload document</button>
                 </div>
                 <table class="responsive-card-table ed-list">
@@ -87,7 +87,7 @@
                   <div class="form-grid hv-mb-16">
                     <div class="form-field"><label>Date</label><input type="date" id="fNoteDate"></div>
                     <div class="form-field"><label>Category</label>
-                      <select id="fNoteCategory">
+                      <select id="fNoteCategory" data-hv-dropdown>
                         <option>General</option>
                         <option>Performance</option>
                         <option>Incident</option>
@@ -114,7 +114,7 @@
               <div class="card employee-bank-card" id="bankAccountCard">
                 <div class="card-head">
                   <h3>Employee bank account</h3>
-                  <span class="badge-pill hv-pill-neutral" id="bankAccountPill">
+                  <span class="badge-pill pill-neutral" id="bankAccountPill">
                     <i class="fa-solid fa-circle-question"></i> Not loaded
                   </span>
                   <button type="button" class="ed-link-btn" id="bankAccountActionBtn" onclick="openBankAccountModal(event)" title="Edit bank details">Edit</button>
@@ -134,7 +134,7 @@
               <div class="card employee-bank-card hv-mt-16" id="socialInsuranceCard">
                 <div class="card-head">
                   <h3>Social insurance</h3>
-                  <span class="badge-pill hv-pill-neutral" id="socialInsurancePill">
+                  <span class="badge-pill pill-neutral" id="socialInsurancePill">
                     <i class="fa-solid fa-circle-question"></i> Not loaded
                   </span>
                   <button type="button" class="ed-link-btn" id="socialInsuranceActionBtn" onclick="openSocialInsuranceModal(event)" title="Edit social insurance">Edit</button>

@@ -581,9 +581,9 @@ function renderWizardPreviewRows(rows) {
   tbody.innerHTML = rows.map((r) => {
     const isCredit = r.direction === "in";
     const dirBadge = isCredit
-      ? '<span class="badge" style="background:#f0fdf4; color:#16a34a; font-weight:600;"><i class="fa-solid fa-arrow-down"></i> Inflow</span>'
-      : '<span class="badge" style="background:#fef2f2; color:#dc2626; font-weight:600;"><i class="fa-solid fa-arrow-up"></i> Outflow</span>';
-    const amtColor = isCredit ? '#16a34a' : 'inherit';
+      ? '<span class="badge-pill pill-success"><i class="fa-solid fa-arrow-down"></i> Inflow</span>'
+      : '<span class="badge-pill pill-danger"><i class="fa-solid fa-arrow-up"></i> Outflow</span>';
+    const amtColor = isCredit ? 'var(--success)' : 'inherit';
 
     return `
       <tr>
@@ -1552,7 +1552,7 @@ function renderCompletionReport(r) {
   const balancePill = isBalanced
     ? '<span style="background:rgba(22,163,74,0.15);color:#15803d;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;"><i class="fa-solid fa-check"></i> Balanced ($0.00)</span>'
     : r.is_exception_override
-    ? '<span style="background:rgba(245,158,11,0.15);color:#b45309;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;"><i class="fa-solid fa-triangle-exclamation"></i> Exception Override</span>'
+    ? '<span class="badge-pill pill-warning"><i class="fa-solid fa-triangle-exclamation"></i> Exception Override</span>'
     : '<span style="background:rgba(239,68,68,0.15);color:#b91c1c;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;"><i class="fa-solid fa-xmark"></i> Unbalanced</span>';
 
   let ignoredTableHtml = '';
@@ -1680,7 +1680,7 @@ function renderCompletionReport(r) {
         <div>Closed By: <strong>${escapeHtml(r.closed_by || '—')}</strong></div>
         <div>Closed Date: <strong>${r.closed_at ? new Date(r.closed_at).toLocaleString() : '—'}</strong></div>
         ${r.closing_notes ? `<div style="grid-column: span 2;">Closing Comments: <em>${escapeHtml(r.closing_notes)}</em></div>` : ''}
-        ${r.is_exception_override ? `<div style="grid-column: span 2; color:#b45309;"><strong>Exception Override Justification:</strong> ${escapeHtml(r.exception_override_reason || '—')}</div>` : ''}
+        ${r.is_exception_override ? `<div style="grid-column: span 2; color:var(--warning);"><strong>Exception Override Justification:</strong> ${escapeHtml(r.exception_override_reason || '—')}</div>` : ''}
         ${r.reopened_at ? `
           <div style="grid-column: span 2; border-top:1px dashed var(--border-color); padding-top:6px; margin-top:4px; color:#d97706;">
             Reopened By: <strong>${escapeHtml(r.reopened_by || '—')}</strong> on ${new Date(r.reopened_at).toLocaleString()}<br>

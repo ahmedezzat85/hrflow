@@ -129,8 +129,9 @@
 #a-employee-detail .employee-bank-card .iban-row .k {
   text-transform: none; letter-spacing: 0; font-size: 12.5px; font-weight: 600; color: var(--ink-label);
 }
-#a-employee-detail .employee-bank-card .helper { font-size: 12.5px; color: var(--ink-muted); }
+#a-employee-detail .employee-bank-card .helper { font-size: 12.5px; color: var(--ink-muted); line-height: 1.5; padding-top: 10px; margin: 0; }
 #a-employee-detail .employee-bank-card .iban-row { border-bottom: 1px solid var(--fv-line-row); }
+#a-employee-detail .employee-bank-card .iban-row:last-child { border-bottom: 0; }
 #a-employee-detail .employee-quick-action {
   height: 36px; border: 1px solid var(--fv-line); border-radius: 9px; background: var(--fv-surface);
   color: var(--ink-body); font-size: 13px; font-weight: 600;
@@ -774,7 +775,6 @@
 }
 #a-employee-detail .emp-summary-card .esc-identity h4 { font-size: 20px; font-weight: 700; color: var(--ink-strong); }
 #a-employee-detail .emp-summary-card .esc-identity .esc-meta { font-size: 13px; color: var(--ink-muted); }
-#a-employee-detail .emp-summary-card .esc-pill { padding: 2px 10px; font-size: 12px; font-weight: 600; }
 #a-employee-detail .emp-summary-card .esc-comp-total .esc-amount { font-size: 22px; font-weight: 700; color: var(--brand-text); }
 #a-employee-detail .emp-summary-card .esc-comp-piece .esc-v { font-size: 20px; font-weight: 700; color: var(--ink-strong); }
 #a-employee-detail .emp-summary-card .esc-row .esc-v { color: var(--ink-strong); font-weight: 600; font-size: 13.5px; }
@@ -830,8 +830,10 @@
   display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; margin-right: 10px; vertical-align: middle;
 }
 #a-employee-detail .ed-tile i { font-size: 13px; color: inherit; }
-#a-employee-detail .ed-tile--green { background: rgba(63, 154, 60, .14); color: var(--id-green-ink); }
-#a-employee-detail .ed-tile--teal { background: rgba(15, 157, 140, .14); color: var(--id-teal-ink); }
+#a-employee-detail .ed-tile--green { background: color-mix(in srgb, var(--id-green) var(--fv-tint-pct), transparent); color: var(--id-green-ink); }
+#a-employee-detail .ed-tile--teal { background: color-mix(in srgb, var(--id-teal) var(--fv-tint-pct), transparent); color: var(--id-teal-ink); }
+#a-employee-detail .ed-tile--sky { background: color-mix(in srgb, var(--id-sky) var(--fv-tint-pct), transparent); color: var(--id-sky-ink); }
+#a-employee-detail .ed-tile--pink { background: color-mix(in srgb, var(--id-pink) var(--fv-tint-pct), transparent); color: var(--id-pink-ink); }
 #a-employee-detail .ed-tile--ochre { background: color-mix(in srgb, var(--id-ochre) var(--fv-tint-pct), transparent); color: var(--id-ochre-ink); }
 #a-employee-detail .ed-tile--blue { background: var(--brand-tint); color: var(--brand-ink); }
 #a-employee-detail .card-head h3 i { color: inherit; }
@@ -864,7 +866,7 @@
 #a-employee-detail .employee-bank-card .status-line { padding: 10px 16px 0; border: 0; }
 #a-employee-detail .employee-bank-card .status-line:not(:has(.btn:not([hidden]))) { display: none; }
 #a-employee-detail .employee-bank-card .card-body { padding: 4px 16px 12px; }
-#a-employee-detail .employee-bank-card .iban-row { padding: 8px 0; display: flex; justify-content: space-between; }
+#a-employee-detail .employee-bank-card .iban-row { padding: 8px 0; display: flex; align-items: center; justify-content: space-between; }
 #a-employee-detail .employee-bank-card .iban-row .k { font-weight: 400; color: var(--ink-muted); font-size: 13.5px; }
 #a-employee-detail .employee-bank-card .iban-row .v { font-weight: 600; color: var(--ink-strong); font-size: 13.5px; }
 @media (max-width: 1100px) {
@@ -875,8 +877,6 @@
 #a-employee-detail .ed-back { display: inline-flex; width: auto; align-self: flex-start; }
 #a-employee-detail .card { margin: 0; }
 #a-employee-detail .ed-main > .card, #a-employee-detail .ed-pair > .card { margin: 0; }
-#a-employee-detail .esc-pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; }
-
 /* =====================================================================
    HR list tables: footer, two-line cells, document rows (mocks HR-Employees / Requests / Documents)
    ===================================================================== */
@@ -1270,3 +1270,17 @@
 /* Vacations table: the profile (eye) icon is a bare icon, no boxed tile */
 #a-vacations tbody .icon-action { width: 28px; height: 28px; border: 0; background: transparent; box-shadow: none; color: var(--ink-muted); }
 #a-vacations tbody .icon-action:hover { background: var(--brand-wash); color: var(--brand-text); border: 0; }
+
+/* Employee notes timeline, empty and total helpers (replace inline styles in employees.js) */
+#a-employee-detail .timeline .txt { flex: 1; min-width: 0; }
+#a-employee-detail .timeline .ic--accent { background: var(--accent-soft); color: var(--accent-text); }
+#a-employee-detail .timeline .ic--success { background: var(--success-soft); color: var(--success); }
+#a-employee-detail .timeline .ic--danger { background: var(--danger-soft); color: var(--danger); }
+#a-employee-detail .timeline .ic--info { background: var(--info-soft); color: var(--info); }
+#a-employee-detail .timeline .ic--warning { background: var(--warning-soft); color: var(--warning); }
+#a-employee-detail .timeline .ed-note-by { font-size: 12px; color: var(--ink-muted); margin-top: 2px; }
+#a-employee-detail .ed-empty-note { margin: 0; font-size: 13px; color: var(--ink-muted); }
+#a-employee-detail .ed-total-of { font-size: 12px; font-weight: 500; color: var(--ink-muted); }
+#a-employees .hv-name-link { display: block; font-weight: 600; font-size: 14px; color: var(--ink-strong); line-height: 1.45; text-decoration: none; }
+#a-employees td .hv-sub-line { font-size: 12px; font-weight: 400; line-height: 1.45; margin-top: 2px; color: var(--ink-muted); }
+#a-employees .hv-role-line { color: var(--ink-strong); line-height: 1.45; }
