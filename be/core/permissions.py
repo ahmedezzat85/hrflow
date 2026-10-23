@@ -233,6 +233,6 @@ def require_any_permission(*permission_keys: str):
             )
         return current_user
 
-    _dependency.hrflow_permissions = list(permission_keys)
+    _dependency.hrflow_permission_any = list(permission_keys)
     return _dependency
 
