@@ -474,7 +474,23 @@ This document records durable product and architectural decisions approved by th
 - **Decision:** (1) Every pay change writes exactly one `salary_history` record, and every screen, including the Pay plan modal, shows that table as one row per change with Internal and External as columns. (2) The Add/Edit employee modal has no pay fields; after creating an employee the Pay plan modal opens and may be skipped (an employee may have no plan, shown as "Not set"). (3) `name` stays the short display name used everywhere; new `legal_name` is the full legal name used only on the employee page, contracts and rendered payment documents. (4) New personal fields `legal_name`, `phone`, `id_type`, `id_number` join the existing address lines; the ID is optional, validated per type and stored as text. (5) Personal details are HR-admin only through new permissions `hr.employee_personal.read|write|reveal`, served only by a dedicated endpoint, audited, and excluded from lists, self-service and the Sheets export. (6) Payment-doc generation is blocked when the legal name or address line 1 is missing and never falls back to the display name; generated documents are not rewritten when details change.
 - **Rationale:** Two pay surfaces and two history shapes kept disagreeing (D-034 findings); the payment documents need a legal name and address that the system's short names and open employee reads should not expose. Production is empty, so the schema and permission changes need no data migration beyond local test data.
 
+### D-037 — Employee Pay Analytics: Composer Architecture, Scoped Permissions, and Export Audit
+
+- **Status:** Draft — pending owner review, October 23, 2026. Implemented backend on `feat/employee-pay-analytics-backend`.
+- **Decision:**
+  1. New read-only composer package `be/analytics/`. It depends on HR and Finance service interfaces only; no domain depends on it.
+  2. No new permission. Payments section requires `finance.report.read`. Plan/raises section requires `hr.salary.read`. The endpoint requires at least one of them, otherwise 403.
+  3. Sections the caller cannot see are omitted from the response (key absent). No placeholder, no flag that data exists.
+  4. Amounts are gross payroll-line amounts as recorded (`base_salary + allowances_total`), as the existing compensation report does. Not net, not statutory.
+  5. Classify by `compensation_type`: `external_usd` = base external; `internal_usd_cash` = base internal; any type containing "commission" = commission; "bonus" = bonus. An unknown type is counted under base internal and logged, never dropped.
+  6. Cancelled runs are excluded. Draft runs are included with `payment_status = "draft"`.
+  7. An employee viewing their own record (self-service scope) gets 403. Unknown employee id gets 404.
+  8. Currency: one currency per request, default USD. Never sum across currencies. No FX. Return `currencies_available` with the payments section.
+  9. Export audit: log through the existing HR audit repository (`AuditRepository`, as `routers/salary.py` does) with action key `analytics.employee_pay.export`, recording user email, employee id, format and filters.
+- **Rationale:** Delivers an employee-level pay view combining gross payment history (split into base external, base internal, commission, bonus) and compensation plan changes (raises) for HR and Finance users while preserving modular-monolith domain boundaries and avoiding cross-domain direct table queries.
+
 ---
+
 
 ## Related but Not Decisions
 
