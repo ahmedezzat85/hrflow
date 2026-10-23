@@ -47,6 +47,9 @@ const APP_SCRIPT_ORDER = [
   'app.js',
 ];
 
+// Page-scoped API clients that live outside public/js (inlined ahead of the app scripts).
+const EXTRA_API_SCRIPTS = ['api/analytics-api.js'];
+
 // Files that live directly in fe/ and that the built dist/index.html
 // expects to find in its own directory, matching the legacy fe/index.html
 // deployment layout (one flat folder). None of these go through Vite's
@@ -104,8 +107,10 @@ function singleFileDeployBundle() {
       order: 'post',
       handler(html) {
         let out = resolveHtmlPartials(html, resolve(__dirname, 'src'));
-        const combined = APP_SCRIPT_ORDER
-          .map((name) => readFileSync(resolve(__dirname, 'public/js', name), 'utf-8'))
+        const combined = [
+          ...EXTRA_API_SCRIPTS.map((rel) => readFileSync(resolve(__dirname, rel), 'utf-8')),
+          ...APP_SCRIPT_ORDER.map((name) => readFileSync(resolve(__dirname, 'public/js', name), 'utf-8')),
+        ]
           .join('\n;\n');
         out = out.replace('</body>', () => `<script>\n${combined}\n</script>\n</body>`);
         const deployScripts = isBuild
