@@ -1,0 +1,10 @@
+/* Employee detail tabs (Overview / Pay analytics) */
+#a-employee-detail .ed-tabs { display: flex; gap: 22px; margin: 0 0 14px; border-bottom: 1px solid var(--fv-line); }
+#a-employee-detail .ed-tabs[hidden] { display: none; }
+#a-employee-detail .ed-tab {
+  appearance: none; background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  padding: 8px 2px 10px; font: inherit; font-size: 14px; font-weight: 600; color: var(--ink-muted); cursor: pointer;
+}
+#a-employee-detail .ed-tab:hover { color: var(--ink-strong); }
+#a-employee-detail .ed-tab.is-active { color: var(--brand-text); border-bottom-color: var(--brand); }
+#a-employee-detail .ed-tab:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 4px; }

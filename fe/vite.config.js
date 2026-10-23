@@ -15,6 +15,7 @@ const APP_SCRIPT_ORDER = [
   'router.js',
   'session.js',
   'employees.js',
+  'employee-pay-analytics.js',
   'search.js',
   'requests.js',
   'salary.js',
