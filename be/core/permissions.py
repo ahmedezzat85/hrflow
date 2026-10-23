@@ -206,3 +206,33 @@ def require_permission(permission_key: str):
 
     _dependency.hrflow_permission = permission_key
     return _dependency
+
+
+def require_any_permission(*permission_keys: str):
+    """
+    FastAPI dependency factory to gate routes by RBAC permission keys,
+    requiring AT LEAST ONE of the specified permissions.
+    Asserts at import time that all permission_keys are in the catalog.
+    Raises 403 Forbidden if the authenticated user lacks all of the required permissions.
+    Returns the current_user dict on success.
+    """
+    catalog_keys = all_keys()
+    for pk in permission_keys:
+        assert pk in catalog_keys, f"Unknown permission key in require_any_permission: '{pk}'"
+
+    def _dependency(
+        request: Request,
+        current_user: dict = Depends(get_current_user),
+        db: Session = Depends(get_db),
+    ) -> dict:
+        perms = get_current_user_permissions(request, current_user=current_user, db=db)
+        if not any(pk in perms for pk in permission_keys):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Permission denied: at least one of {list(permission_keys)} required",
+            )
+        return current_user
+
+    _dependency.hrflow_permissions = list(permission_keys)
+    return _dependency
+

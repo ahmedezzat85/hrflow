@@ -59,6 +59,8 @@ from finance.routers import observability as finance_observability_router
 from finance.routers import statutory as finance_statutory_router
 from finance.routers import compensation_plans as finance_compensation_plans_router
 from finance.routers import imports as finance_imports_router
+from analytics import router as analytics_router
+
 
 
 # Re-exported here so existing code/tests that reach into main.py for
@@ -188,6 +190,8 @@ app.include_router(finance_observability_router.router)
 app.include_router(finance_statutory_router.router)
 app.include_router(finance_compensation_plans_router.router)
 app.include_router(finance_imports_router.router)
+app.include_router(analytics_router.router)
+
 
 
 
