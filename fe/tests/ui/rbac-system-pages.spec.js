@@ -202,7 +202,7 @@ test.describe('RBAC Slice 7b: Roles and Users Management Pages', () => {
     const marcusRow = tbody.locator('tr:has-text("Marcus Vance")');
     await marcusRow.locator('.btn-archive-user').click();
     await confirmDialog(page);
-    await expect(marcusRow.locator('.badge:has-text("Archived")')).toBeVisible();
+    await expect(marcusRow.locator('.badge-pill:has-text("Archived")')).toBeVisible();
     await expect(marcusRow.locator('.btn-assign-roles')).toHaveCount(0);
     await expect(marcusRow.locator('.btn-archive-user')).toHaveCount(0);
     await expect(marcusRow.locator('.btn-unarchive-user')).toHaveCount(0);

@@ -75,14 +75,6 @@
 .emp-summary-card .esc-row.wrap{align-items:flex-start}
 .emp-summary-card .esc-row.wrap .esc-v{white-space:normal;line-height:1.45;text-align:right}
 
-.emp-summary-card .esc-pill{
-  padding:5px 12px;border-radius:var(--radius-full);font-size:var(--fs-sm);font-weight:700;
-  display:inline-flex;align-items:center;gap:6px;white-space:nowrap;
-}
-.emp-summary-card .esc-pill-active{background:var(--success-soft);color:var(--success)}
-.emp-summary-card .esc-pill-neutral{background:var(--surface2);color:var(--text2)}
-.emp-summary-card .esc-pill i{font-size:var(--fs-xs)}
-
 .emp-summary-card .esc-edit-btn{
   width:36px;height:36px;border-radius:var(--radius-sm);border:1px solid var(--border);
   background:var(--surface);color:var(--text2);display:flex;align-items:center;justify-content:center;
@@ -167,35 +159,6 @@
   padding:12px 20px;
   border-bottom:1px solid var(--border);
 }
-.employee-bank-card .iban-row{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding:9px 0;
-  border-bottom:1px solid var(--border);
-  font-size:var(--fs-md);
-}
-.employee-bank-card .iban-row:last-child{
-  border-bottom:none;
-}
-.employee-bank-card .iban-row .k{
-  color:var(--text2);
-  font-weight:500;
-}
-.employee-bank-card .iban-row .v{
-  font-weight:600;
-  font-family:inherit;
-  letter-spacing:normal;
-  color:var(--text);
-}
-.employee-bank-card .helper{
-  font-size:var(--fs-sm);
-  color:var(--text2);
-  line-height:1.5;
-  padding-top:10px;
-  margin:0;
-}
-
 .insurance-chip{
   background:var(--surface2);
   border:1px solid var(--border);

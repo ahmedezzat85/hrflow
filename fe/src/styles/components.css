@@ -1916,3 +1916,51 @@ tbody tr[hidden] {
     padding-right: 22px;
   }
 }
+
+/*
+ * Themed dropdown (dropdown.js). The native <select> stays in the DOM, visually hidden;
+ * the trigger and popup use theme tokens only, so light and dark follow the app.
+ */
+.hv-dd { position: relative; display: inline-block; min-width: 0; }
+.form-field .hv-dd, .form-group .hv-dd { display: block; width: 100%; }
+.hv-dd__native {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  opacity: 0; pointer-events: none; margin: 0;
+}
+.hv-dd__btn {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; min-width: 150px; height: 36px; padding: 0 12px;
+  border: 1px solid var(--fv-input-border, var(--border)); border-radius: 9px;
+  background: var(--fv-surface, var(--surface)); color: var(--ink-strong, var(--text));
+  font: inherit; font-size: 14px; text-align: left; cursor: pointer;
+}
+.hv-dd--sm .hv-dd__btn { height: 32px; padding: 0 10px; border-radius: 8px; font-size: 13px; }
+.modal-v2 .form-field .hv-dd__btn { height: 40px; }
+.hv-dd__btn:hover { border-color: var(--accent); }
+.hv-dd__btn:focus-visible, .hv-dd__btn[aria-expanded="true"] {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.hv-dd__btn:disabled { opacity: .55; cursor: not-allowed; }
+.hv-dd__label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hv-dd__chev { flex: none; color: var(--ink-muted, var(--text3)); transition: transform .15s; }
+.hv-dd__btn[aria-expanded="true"] .hv-dd__chev { transform: rotate(180deg); }
+.hv-dd__list {
+  position: fixed; z-index: 10000; overflow-y: auto; padding: 5px;
+  background: var(--fv-surface, var(--surface)); color: var(--ink-strong, var(--text));
+  border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-lg);
+  font-size: 13.5px;
+}
+.hv-dd__item {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  padding: 7px 10px; border-radius: 8px; cursor: pointer; white-space: nowrap;
+}
+.hv-dd__item.is-active { background: var(--brand-wash, var(--accent-soft)); }
+.hv-dd__item[aria-selected="true"] { color: var(--brand-text, var(--accent-text)); font-weight: 600; }
+.hv-dd__item[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
+.hv-dd__check { flex: none; }
+
+/* Phone layouts: every tap target is at least 44px (matches the other controls in hr-v3.css) */
+@media (max-width: 768px) {
+  .hv-dd__btn, .hv-dd--sm .hv-dd__btn, .modal-v2 .form-field .hv-dd__btn { min-height: 44px; }
+  .hv-dd__item { min-height: 44px; }
+}

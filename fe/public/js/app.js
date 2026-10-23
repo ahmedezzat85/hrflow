@@ -333,8 +333,7 @@ function renderEmployeePortal() {
       timeline.innerHTML = entries.map(x => {
         const isApp = x.status === 'Approved';
         const isWait = x.status === 'Pending' || x.status === 'Waiting';
-        const pillBg = isApp ? '#e3f5ec' : isWait ? '#fdf0e1' : 'var(--fv-surface-soft)';
-        const pillColor = isApp ? '#06703f' : isWait ? '#9c5000' : 'var(--ink-muted)';
+        const pillTone = isApp ? 'pill-success' : isWait ? 'pill-warning' : 'pill-neutral';
         const label = isWait ? 'Waiting' : escapeHtml(x.status);
         const iconSvg = x.type === 'insurance'
           ? '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-8-5.2-8-10.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5C20 14.8 12 20 12 20z"></path></svg>'
@@ -346,7 +345,7 @@ function renderEmployeePortal() {
               <span style="display: block; font-weight: 600; color: var(--ink-strong); font-size: 13.5px;">${x.title}</span>
               <span style="font-size: 12px; color: var(--ink-muted);">${x.sub}</span>
             </span>
-            <span style="padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; color: ${pillColor}; background: ${pillBg};">${label}</span>
+            <span class="badge-pill ${pillTone}">${label}</span>
           </div>
         `;
       }).join('');
@@ -382,8 +381,8 @@ function renderEmployeePortal() {
       const prevExternal = older ? older.newExternal : (s.prevExternal || 0);
       const d = computeRowDeltas(prevInternal, prevExternal, s.newInternal, s.newExternal);
       const changePill = d.totalAmt > 0
-        ? `<span style="display:inline-flex; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #06703f; background: #e3f5ec; white-space: nowrap;">+${fmtUSD(d.totalAmt)} · ${fmtDelta(0, d.totalPct)}</span>`
-        : `<span style="display:inline-flex; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #4b5c92; background: #eef1f8; white-space: nowrap;">Starting pay</span>`;
+        ? `<span class="badge-pill pill-success">+${fmtUSD(d.totalAmt)} · ${fmtDelta(0, d.totalPct)}</span>`
+        : `<span class="badge-pill pill-neutral">Starting pay</span>`;
       return `
         <tr>
           <td data-label="Effective" style="padding: 9px 16px; border-bottom: 1px solid var(--fv-line); font-weight: 600; color: var(--ink-strong);">${s.date}</td>
@@ -403,8 +402,7 @@ function renderEmployeePortal() {
       const isWfh = v.type === 'Work from home' || v.type === 'Work From Home' || v.type === 'WFH';
       const dotBg = isWfh ? '#3f98d0' : '#1f9d8e';
       const isApp = v.status === 'Approved';
-      const pillBg = isApp ? '#e3f5ec' : 'var(--fv-surface-soft)';
-      const pillColor = isApp ? '#06703f' : 'var(--ink-muted)';
+      const pillTone = isApp ? 'pill-success' : 'pill-neutral';
       return `
         <tr>
           <td data-label="Type" style="padding: 10px 16px; border-bottom: 1px solid var(--fv-line);">
@@ -416,7 +414,7 @@ function renderEmployeePortal() {
           <td data-label="Dates" style="padding: 10px 12px; border-bottom: 1px solid var(--fv-line); white-space: nowrap; color: var(--ink-body);">${datesStr}</td>
           <td data-label="Days" style="padding: 10px 12px; border-bottom: 1px solid var(--fv-line); text-align: right; color: var(--ink-strong);">${v.days}</td>
           <td data-label="Status" style="padding: 10px 16px; border-bottom: 1px solid var(--fv-line);">
-            <span class="badge" style="display: inline-flex; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: ${pillColor}; background: ${pillBg};">${escapeHtml(v.status)}</span>
+            <span class="badge-pill ${pillTone}">${escapeHtml(v.status)}</span>
           </td>
         </tr>
       `;

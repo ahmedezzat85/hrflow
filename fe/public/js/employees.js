@@ -43,11 +43,11 @@ function renderEmployeesTable(filter = '') {
     list = list.filter(e => (e.status || '').toLowerCase() === currentEmpStatusFilter.toLowerCase());
   }
   body.innerHTML = list.map(e => `<tr>
-    <td data-label="Employee" class="tname"><div class="avatar">${initials(e.name)}</div><div><div><a href="#" onclick="viewProfile('${e.id}'); return false;" style="display:block;font-weight:600;font-size:14px;color:var(--ink-strong);line-height:1.45;text-decoration:none;">${escapeHtml(e.name)}</a></div><div style="font-size:12px;color:var(--ink-muted);font-weight:400;line-height:1.45;margin-top:2px;">${e.id ? `${/^\d+$/.test(String(e.id)) ? 'EMP' + String(e.id).padStart(3, '0') : escapeHtml(String(e.id))} · ` : ''}${escapeHtml(e.email)}</div></div></td>
-    <td data-label="Role"><div style="color:var(--ink-strong);line-height:1.45;">${escapeHtml(e.role)}</div>${(e.dept || e.department) ? `<div style="font-size:12px;color:var(--ink-muted);line-height:1.45;margin-top:2px;">${escapeHtml(e.dept || e.department)}</div>` : ''}</td>
+    <td data-label="Employee" class="tname"><div class="avatar">${initials(e.name)}</div><div><div><a href="#" class="hv-name-link" onclick="viewProfile('${e.id}'); return false;">${escapeHtml(e.name)}</a></div><div class="hv-sub-line">${e.id ? `${/^\d+$/.test(String(e.id)) ? 'EMP' + String(e.id).padStart(3, '0') : escapeHtml(String(e.id))} · ` : ''}${escapeHtml(e.email)}</div></div></td>
+    <td data-label="Role"><div class="hv-role-line">${escapeHtml(e.role)}</div>${(e.dept || e.department) ? `<div class="hv-sub-line">${escapeHtml(e.dept || e.department)}</div>` : ''}</td>
     <td data-label="Employment">${e.employment_state || 'Full-time'}</td>
     <td style="display:none;">${fmtUSD(e.salary)}</td>
-    <td data-label="Next Raise">${(e.nextRaise && e.nextRaise !== 'undefined' && e.nextRaise !== '—') ? escapeHtml(fmtDateShort(e.nextRaise) || e.nextRaise) : '<span style="color:var(--ink-muted);">Not scheduled</span>'}</td>
+    <td data-label="Next Raise">${(e.nextRaise && e.nextRaise !== 'undefined' && e.nextRaise !== '—') ? escapeHtml(fmtDateShort(e.nextRaise) || e.nextRaise) : '<span class="hv-muted">Not scheduled</span>'}</td>
     <td data-label="Status">${statusPill(e.status)}</td>
     <td data-label="Actions" class="col-actions hv-right" style="white-space:nowrap;">
       ${canWrite ? `<button class="icon-action" onclick="openEmployeeModal('${e.id}')" title="Edit" aria-label="Edit ${escapeHtml(e.name)}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"></path></svg></button>` : ''}
@@ -407,8 +407,8 @@ async function viewProfile(id, section) {
       <div class="esc-identity">
         <div class="ed-name">
           <h4>${escapeHtml(e.name)}</h4>
-          <span class="esc-pill ${e.status === 'Active' ? 'esc-pill-active' : 'esc-pill-neutral'}"><span class="hv-dot"></span>${e.status}</span>
-          <span class="esc-pill esc-pill-neutral">${escapeHtml(sentenceCase(e.employment_state || 'Full-Time'))}</span>
+          ${statusPill(e.status)}
+          <span class="badge-pill pill-neutral">${escapeHtml(sentenceCase(e.employment_state || 'Full-Time'))}</span>
         </div>
         <div class="esc-meta">
           ${empCodeLabel(e.id) ? `<span>${escapeHtml(empCodeLabel(e.id))}</span><span class="esc-dot"></span>` : ''}<span>${escapeHtml(e.role)}</span><span class="esc-dot"></span>
@@ -442,8 +442,8 @@ async function viewProfile(id, section) {
     <div id="detailPersonalRows"></div>`;
     loadPersonalRows(id);
     const consumption = insuranceConsumption.find(c => String(c.employee_id) === String(id));
-    document.getElementById('detailInsuranceGrid').innerHTML = consumption && consumption.categories.length ? consumption.categories.map(renderCategoryChip).join('') : '<p style="color:var(--text2);font-size:13px;">No insurance consumption data available.</p>';
-    document.getElementById('detailInsuranceTotal').innerHTML = consumption ? `${fmtMoney(consumption.total_consumed)} <span style="font-size:12px;color:var(--text2);font-weight:500">of ${fmtMoney(consumption.total_limit)}</span>` : '—';
+    document.getElementById('detailInsuranceGrid').innerHTML = consumption && consumption.categories.length ? consumption.categories.map(renderCategoryChip).join('') : '<p class="ed-empty-note">No insurance consumption data available.</p>';
+    document.getElementById('detailInsuranceTotal').innerHTML = consumption ? `${fmtMoney(consumption.total_consumed)} <span class="ed-total-of">of ${fmtMoney(consumption.total_limit)}</span>` : '—';
     showTableSkeleton('detailVacationBody', 2, 3);
     showTableSkeleton('detailClaimsBody', 2, 3);
     showTableSkeleton('detailDocumentsBody', 2, 2);
@@ -483,8 +483,8 @@ async function viewProfile(id, section) {
           insuranceConsumption = freshConsumption;
           const empConsumption = freshConsumption.find(c => String(c.employee_id) === String(id) || (e.name && (c.employee_name || '').toLowerCase() === e.name.toLowerCase())) || (freshConsumption.length === 1 ? freshConsumption[0] : null);
           if (empConsumption) {
-            document.getElementById('detailInsuranceGrid').innerHTML = empConsumption.categories && empConsumption.categories.length ? empConsumption.categories.map(renderCategoryChip).join('') : '<p style="color:var(--text2);font-size:13px;">No insurance consumption data available.</p>';
-            document.getElementById('detailInsuranceTotal').innerHTML = `${fmtMoney(empConsumption.total_consumed)} <span style="font-size:12px;color:var(--text2);font-weight:500">of ${fmtMoney(empConsumption.total_limit)}</span>`;
+            document.getElementById('detailInsuranceGrid').innerHTML = empConsumption.categories && empConsumption.categories.length ? empConsumption.categories.map(renderCategoryChip).join('') : '<p class="ed-empty-note">No insurance consumption data available.</p>';
+            document.getElementById('detailInsuranceTotal').innerHTML = `${fmtMoney(empConsumption.total_consumed)} <span class="ed-total-of">of ${fmtMoney(empConsumption.total_limit)}</span>`;
           }
         }
       }
@@ -519,7 +519,7 @@ function renderNotesList(notes) {
   const catColors = { General: 'accent', Performance: 'success', Incident: 'danger', Achievement: 'success', Attendance: 'info', Warning: 'warning' };
   list.innerHTML = notes.map(n => {
     const color = catColors[n.category] || 'accent';
-    return `<li><div class="ic" style="background:var(--${color}-soft, var(--accent-soft));color:var(--${color});"><i class="${catIcons[n.category] || 'fa-solid fa-note-sticky'}"></i></div><div class="txt" style="flex:1;"><strong>${escapeHtml(n.category)} • ${n.date}</strong><p>${escapeHtml(n.note)}</p><p style="font-size:11px;color:var(--text3);margin-top:2px;">By ${escapeHtml(n.created_by)}</p></div><button class="icon-action" onclick="deleteEmployeeNote(${n.id})"><i class="fa-solid fa-trash"></i></button></li>`;
+    return `<li><div class="ic ic--${color}"><i class="${catIcons[n.category] || 'fa-solid fa-note-sticky'}"></i></div><div class="txt"><strong>${escapeHtml(n.category)} • ${n.date}</strong><p>${escapeHtml(n.note)}</p><p class="ed-note-by">By ${escapeHtml(n.created_by)}</p></div><button class="icon-action" onclick="deleteEmployeeNote(${n.id})"><i class="fa-solid fa-trash"></i></button></li>`;
   }).join('') || `<li>${getEmptyStateHtml('No notes recorded yet.', 'fa-solid fa-note-sticky')}</li>`;
 }
 
@@ -946,6 +946,12 @@ async function loadPayrollPaymentsCard(empId) {
   body.innerHTML = sections.join('');
 }
 
+// Tone for a card status pill; the shared .pill-* classes carry the light and dark colours.
+function setPillTone(pill, tone) {
+  pill.classList.remove('pill-success', 'pill-warning', 'pill-danger', 'pill-info', 'pill-neutral');
+  pill.classList.add('pill-' + tone);
+}
+
 // Status-line action ("Set up" / "Try again") shown beside a card's status pill; pass no label to hide it.
 function setCardStatusAction(btnId, label, onClick) {
   const b = document.getElementById(btnId);
@@ -973,7 +979,7 @@ async function loadBankAccountStatus(empId) {
   if (detailsBody) detailsBody.hidden = false;
   if (!pill) return;
   pill.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading...';
-  pill.style.cssText = 'background:var(--surface2);color:var(--text2);';
+  setPillTone(pill, 'neutral');
   if (nameEl) nameEl.textContent = '—';
   if (ibanEl) ibanEl.textContent = '—';
   if (swiftEl) swiftEl.textContent = '—';
@@ -982,7 +988,7 @@ async function loadBankAccountStatus(empId) {
     _bankAccountHasDetails = !!data.has_details;
     if (_bankAccountHasDetails) {
       pill.innerHTML = '<i class="fa-solid fa-circle-check"></i> On file';
-      pill.style.cssText = 'background:var(--success-soft);color:var(--success);';
+      setPillTone(pill, 'success');
       if (btn) {
         btn.textContent = 'Edit';
         btn.title = 'Edit bank details';
@@ -993,7 +999,7 @@ async function loadBankAccountStatus(empId) {
     } else {
       // Missing bank details are a visible flag only; payroll is never blocked (payroll policy R4)
       pill.innerHTML = '<span class="hv-dot"></span> Missing';
-      pill.style.cssText = 'background:var(--warning-soft);color:var(--warning);';
+      setPillTone(pill, 'warning');
       setCardStatusAction('bankAccountStatusActionBtn', 'Add bank details', () => openBankAccountModal());
       if (statusText) statusText.hidden = false;
       if (statusLine) statusLine.classList.add('is-missing');
@@ -1010,7 +1016,7 @@ async function loadBankAccountStatus(empId) {
     }
   } catch (err) {
     pill.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Could not load';
-    pill.style.cssText = 'background:var(--surface2);color:var(--text2);';
+    setPillTone(pill, 'neutral');
     setCardStatusAction('bankAccountStatusActionBtn', 'Try again', () => loadBankAccountStatus(empId));
   }
 }
@@ -1104,7 +1110,7 @@ async function loadSocialInsuranceStatus(empId) {
   const effEl = document.getElementById('socialInsEffectiveDate');
   if (!pill) return;
   pill.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading...';
-  pill.style.cssText = 'background:var(--surface2);color:var(--text2);';
+  setPillTone(pill, 'neutral');
   if (covEl) covEl.textContent = '—';
   if (baseEl) baseEl.textContent = '—';
   if (effEl) effEl.textContent = '—';
@@ -1115,7 +1121,7 @@ async function loadSocialInsuranceStatus(empId) {
     if (!data) {
       // The request succeeded and there is no record yet: not an error.
       pill.innerHTML = '<i class="fa-solid fa-circle-minus"></i> Not set up';
-      pill.style.cssText = 'background:var(--surface2);color:var(--text2);';
+      setPillTone(pill, 'neutral');
       if (covEl) covEl.textContent = 'Not set up';
       setCardStatusAction('socialInsuranceStatusActionBtn', 'Set up', () => openSocialInsuranceModal());
       return;
@@ -1133,33 +1139,33 @@ async function loadSocialInsuranceStatus(empId) {
 
     if (isLegacyUSD) {
       pill.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Legacy USD Config';
-      pill.style.cssText = 'background:var(--danger-soft);color:var(--danger);';
+      setPillTone(pill, 'danger');
       if (covEl) covEl.textContent = 'Covered (Update Required)';
       if (baseEl) baseEl.textContent = `${baseAmt !== null ? '$' + Number(baseAmt).toLocaleString() : '—'} USD (Needs EGP conversion)`;
       if (effEl) effEl.textContent = effDate;
     } else if (isCovered) {
       if (baseAmt === null || baseAmt <= 0) {
         pill.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Missing Base';
-        pill.style.cssText = 'background:var(--warning-soft);color:var(--warning);';
+        setPillTone(pill, 'warning');
         if (covEl) covEl.textContent = 'Covered (Action Required)';
         if (baseEl) baseEl.textContent = 'Not set (blocking)';
       } else {
         pill.innerHTML = '<i class="fa-solid fa-circle-check"></i> Covered';
-        pill.style.cssText = 'background:var(--success-soft);color:var(--success);';
+        setPillTone(pill, 'success');
         if (covEl) covEl.textContent = 'Covered';
         if (baseEl) baseEl.textContent = `${Number(baseAmt).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} EGP (Internal Estimate)`;
       }
       if (effEl) effEl.textContent = effDate;
     } else {
       pill.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Not Covered';
-      pill.style.cssText = 'background:var(--surface2);color:var(--text2);';
+      setPillTone(pill, 'neutral');
       if (covEl) covEl.textContent = 'Not Covered';
       if (baseEl) baseEl.textContent = '—';
       if (effEl) effEl.textContent = effDate !== '—' ? effDate : '—';
     }
   } catch (err) {
     pill.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Could not load';
-    pill.style.cssText = 'background:var(--surface2);color:var(--text2);';
+    setPillTone(pill, 'neutral');
     setCardStatusAction('socialInsuranceStatusActionBtn', 'Try again', () => loadSocialInsuranceStatus(empId));
   }
 }
