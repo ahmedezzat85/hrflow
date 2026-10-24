@@ -4,6 +4,12 @@
             <div id="detailInfoGrid"></div>
           </div>
 
+          <div class="ed-tabs" id="employeeDetailTabs" role="tablist" aria-label="Employee detail views" hidden>
+            <button type="button" class="ed-tab is-active" id="employeeOverviewTab" role="tab" aria-selected="true" aria-controls="employeeOverviewPanel" tabindex="0">Overview</button>
+            <button type="button" class="ed-tab" id="employeePayTab" role="tab" aria-selected="false" aria-controls="employeePayPanel" tabindex="-1">Pay analytics</button>
+          </div>
+
+          <div id="employeeOverviewPanel" role="tabpanel" aria-labelledby="employeeOverviewTab">
           <div class="employee-detail-workspace ed-grid">
             <main class="employee-detail-main ed-main">
               <div class="card employee-compensation-card" id="employeeCompensationCard" hidden>
@@ -153,6 +159,7 @@
               <div class="card employee-bank-card payroll-payments-card" id="payrollPaymentsCard">
                 <div class="card-head">
                   <h3>Payroll and payments</h3>
+                  <button type="button" class="ed-link-btn" id="payrollPaymentsAnalyticsLink" hidden>Pay analytics &rarr;</button>
                 </div>
                 <div class="card-body" id="payrollPaymentsBody">
                   <p class="helper">Loading…</p>
@@ -160,4 +167,7 @@
               </div>
             </aside>
           </div>
+          </div>
+
+          <div id="employeePayPanel" role="tabpanel" aria-labelledby="employeePayTab" hidden></div>
         </section>

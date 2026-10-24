@@ -1,0 +1,72 @@
+/* Employee detail tabs (Overview / Pay analytics) */
+#a-employee-detail .ed-tabs { display: flex; gap: 22px; margin: 0 0 14px; border-bottom: 1px solid var(--fv-line); }
+#a-employee-detail .ed-tabs[hidden] { display: none; }
+#a-employee-detail .ed-tab {
+  appearance: none; background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  padding: 8px 2px 10px; font: inherit; font-size: 14px; font-weight: 600; color: var(--ink-muted); cursor: pointer;
+}
+#a-employee-detail .ed-tab:hover { color: var(--ink-strong); }
+#a-employee-detail .ed-tab.is-active { color: var(--brand-text); border-bottom-color: var(--brand); }
+#a-employee-detail .ed-tab:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 4px; }
+
+/* Pay analytics panel. Series colours: base external, base internal (lighter, so it differs in lightness), commission, bonus. */
+#employeePayPanel {
+  --pay-ext: var(--id-blue);
+  --pay-int: color-mix(in srgb, var(--id-blue) 45%, white);
+  --pay-com: var(--id-orange);
+  --pay-bon: var(--id-violet);
+  display: flex; flex-direction: column; gap: 14px;
+}
+#employeePayPanel[hidden] { display: none; }
+#employeePayPanel .pay-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+#employeePayPanel .pay-field[hidden] { display: none; }
+#employeePayPanel .pay-field > label, #employeePayPanel .pay-label { display: block; margin: 0 0 4px; font-size: 12px; font-weight: 600; color: var(--ink-label); }
+#employeePayPanel .pay-field input[type="date"] { height: 36px; padding: 0 10px; border: 1px solid var(--fv-line-strong); border-radius: 8px; background: var(--surface); color: var(--ink-strong); font: inherit; font-size: 13px; }
+#employeePayPanel .pay-spacer { flex: 1; }
+#employeePayPanel .pay-seg { display: inline-flex; border: 1px solid var(--fv-line-strong); border-radius: 8px; overflow: hidden; background: var(--surface); }
+#employeePayPanel .pay-seg button { appearance: none; border: 0; background: none; padding: 0 14px; height: 34px; font: inherit; font-size: 13px; font-weight: 600; color: var(--ink-muted); cursor: pointer; }
+#employeePayPanel .pay-seg button + button { border-left: 1px solid var(--fv-line-strong); }
+#employeePayPanel .pay-seg button[aria-pressed="true"] { background: var(--brand-tint); color: var(--brand-ink); }
+#employeePayPanel button:focus-visible, #employeePayPanel input:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+#a-employee-detail #employeePayPanel .pay-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 0; }
+#a-employee-detail #employeePayPanel .pay-kpis--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#employeePayPanel .ed-kpi-k { display: flex; align-items: center; gap: 6px; }
+#employeePayPanel .pay-sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; flex: none; }
+#employeePayPanel .pay-sw--base, #employeePayPanel .pay-sw--ext { background: var(--pay-ext); }
+#employeePayPanel .pay-sw--int { background: var(--pay-int); }
+#employeePayPanel .pay-sw--commission { background: var(--pay-com); }
+#employeePayPanel .pay-sw--bonus { background: var(--pay-bon); }
+#employeePayPanel .pay-sw--raise { width: 0; height: 12px; border-radius: 0; border-left: 2px dashed var(--ink-strong); }
+
+#employeePayPanel .pay-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 12px 16px 0; font-size: 12px; color: var(--ink-muted); }
+#employeePayPanel .pay-legend span { display: inline-flex; align-items: center; gap: 6px; }
+#employeePayPanel .pay-legend-cur { margin-left: auto; font-weight: 600; color: var(--ink-label); }
+#employeePayPanel .pay-chart-wrap { position: relative; height: 320px; padding: 8px 16px 12px; }
+#employeePayPanel .pay-chart-meta { padding: 0 16px 14px; font-size: 12.5px; color: var(--ink-muted); }
+#employeePayPanel .pay-tip { position: absolute; z-index: 5; min-width: 180px; padding: 8px 10px; border-radius: 8px; background: var(--ink-strong); color: var(--surface); font-size: 12px; line-height: 1.5; pointer-events: none; box-shadow: var(--fv-shadow-card); }
+#employeePayPanel .pay-tip[hidden] { display: none; }
+#employeePayPanel .pay-tip strong { display: block; }
+#employeePayPanel .pay-empty { padding: 28px 16px; text-align: center; font-size: 14px; color: var(--ink-muted); }
+#employeePayPanel .pay-empty--error { color: var(--ink-strong); display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
+
+@media (max-width: 1100px) {
+  #a-employee-detail #employeePayPanel .pay-kpis, #a-employee-detail #employeePayPanel .pay-kpis--3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #employeePayPanel .pay-kpis .ed-kpi { border-bottom: 1px solid var(--fv-line); }
+}
+
+/* Monthly breakdown table and export menu */
+#employeePayPanel .pay-table-scroll { overflow-x: auto; }
+#employeePayPanel .pay-table { width: 100%; border-collapse: collapse; min-width: 640px; font-variant-numeric: tabular-nums; }
+#employeePayPanel .pay-table th, #employeePayPanel .pay-table td { padding: 10px 16px; text-align: left; font-size: 14px; color: var(--ink-body); border-bottom: 1px solid var(--fv-line-row); white-space: nowrap; }
+#employeePayPanel .pay-table thead th { font-size: 12px; font-weight: 600; color: var(--ink-label); background: transparent; text-transform: none; letter-spacing: 0; }
+#employeePayPanel .pay-table .pay-num { text-align: right; }
+#employeePayPanel .pay-table .pay-num--total { font-weight: 700; color: var(--ink-strong); }
+#employeePayPanel .pay-table tfoot th, #employeePayPanel .pay-table tfoot td { font-weight: 700; color: var(--ink-strong); border-top: 1px solid var(--fv-line-strong); border-bottom: 0; }
+#employeePayPanel .pay-table-more { padding: 10px 16px 14px; }
+#employeePayPanel .pay-export { position: relative; }
+#employeePayPanel .pay-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; min-width: 270px; padding: 6px; background: var(--surface); border: 1px solid var(--fv-line-strong); border-radius: 10px; box-shadow: var(--fv-shadow-card); }
+#employeePayPanel .pay-menu[hidden] { display: none; }
+#employeePayPanel .pay-menu button { display: block; width: 100%; text-align: left; padding: 8px 10px; border: 0; border-radius: 6px; background: none; font: inherit; font-size: 13px; color: var(--ink-body); cursor: pointer; }
+#employeePayPanel .pay-menu button:hover, #employeePayPanel .pay-menu button:focus-visible { background: var(--brand-wash); color: var(--ink-strong); }
+#employeePayPanel .pay-menu-note { margin: 4px 0 0; padding: 8px 10px 4px; border-top: 1px solid var(--fv-line); font-size: 12px; color: var(--ink-muted); }

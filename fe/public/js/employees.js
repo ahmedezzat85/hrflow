@@ -388,6 +388,7 @@ async function viewProfile(id, section) {
   currentDetailEmployeeId = !isNaN(numId) ? numId : id;
   showSection('a-employee-detail', 'admin', section ? [id, section] : [id]);
   loadPayrollPaymentsCard(id);
+  if (window.EmployeePayAnalytics) EmployeePayAnalytics.onEmployee(id);
   const e = employees.find(x => String(x.id) === String(id));
   if (!e) return;
   const titleEl = document.getElementById('adminPageTitle');
