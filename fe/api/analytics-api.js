@@ -45,8 +45,8 @@
     return rows;
   })();
   const PLAN_CHANGES = [
-    { date: '2025-01-15', previous_total: 11000, new_total: 12500, new_internal: 5000, new_external: 7500, pct_change: 13.6, reason: 'Annual performance raise' },
-    { date: '2026-06-01', previous_total: 12500, new_total: 13750, new_internal: 5500, new_external: 8250, pct_change: 10.0, reason: 'Promotion to Lead' },
+    { date: '2025-01-15', previous_total: 11000, new_total: 12500, new_internal: 5000, new_external: 7500, pct_change: '+13.6%', reason: 'Annual performance raise' },
+    { date: '2026-06-01', previous_total: 12500, new_total: 13750, new_internal: 5500, new_external: 8250, pct_change: '+10%', reason: 'Promotion to Lead' },
   ];
   const round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
 
@@ -108,7 +108,7 @@
     if (hasPerm('hr.salary.read')) {
       res.plan = hasHistory
         ? { current: { internal: 5500, external: 8250, total: 13750, effective_date: '2026-06-01' }, changes: PLAN_CHANGES.map((c) => ({ ...c })) }
-        : { current: null, changes: [] };
+        : { current: { internal: 0, external: 0, total: 0 }, changes: [] };
     }
     return res;
   }
@@ -130,11 +130,34 @@
     return { blob: new Blob([csv], { type }), filename: `pay-${empId}-${dataset}.${xlsx ? 'xlsx' : 'csv'}` };
   }
 
+
+  // ---- response normalisation -----------------------------------------------------------------
+  // The backend sends pct_change as text ("+16.7%", or "" when unknown), a date-time for paid_at, a zeroed
+  // plan.current when no plan exists, and (exclude_none) may omit period dates. The panel gets numbers and dates.
+  function pctNumber(change) {
+    const n = parseFloat(String(change.pct_change == null ? '' : change.pct_change).replace('%', ''));
+    if (Number.isFinite(n)) return n;
+    return change.previous_total > 0 ? Math.round((change.new_total / change.previous_total - 1) * 1000) / 10 : 0;
+  }
+  function normalizePay(data, f) {
+    const out = { ...data, period: { start_date: f.startDate, end_date: f.endDate, group_by: f.groupBy || 'month', currency: f.currency || 'USD', ...(data.period || {}) } };
+    if (data.payments) {
+      out.payments = { ...data.payments, series: (data.payments.series || []).map((b) => ({ ...b, paid_at: b.paid_at ? String(b.paid_at).slice(0, 10) : null })) };
+    }
+    if (data.plan) {
+      const changes = (data.plan.changes || []).map((c) => ({ ...c, date: String(c.date || '').slice(0, 10), pct_change: pctNumber(c) }));
+      const cur = data.plan.current;
+      const noPlan = !cur || (!Number(cur.total) && !changes.length);
+      out.plan = { current: noPlan ? null : { ...cur, effective_date: cur.effective_date ? String(cur.effective_date).slice(0, 10) : (changes.length ? changes[0].date : null) }, changes };
+    }
+    return out;
+  }
+
   // ---- client ---------------------------------------------------------------------------------
   const AnalyticsApi = {
     async getEmployeePay(empId, f) {
-      if (isMock()) return mockPay(empId, f);
-      return apiRequest('GET', `/api/analytics/employees/${encodeURIComponent(empId)}/pay?${query(filters(f))}`);
+      const raw = isMock() ? mockPay(empId, f) : await apiRequest('GET', `/api/analytics/employees/${encodeURIComponent(empId)}/pay?${query(filters(f))}`);
+      return normalizePay(raw, f);
     },
 
     async exportEmployeePay(empId, o) {

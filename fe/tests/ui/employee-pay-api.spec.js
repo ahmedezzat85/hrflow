@@ -12,6 +12,7 @@ test.describe('AnalyticsApi mock fixtures', () => {
   test('full access has plan and payments and sums agree', async ({ page }) => {
     const d = await pay(page, 'admin');
     expect(d.plan.changes).toHaveLength(2);
+    expect(d.plan.changes.map((c) => c.pct_change)).toEqual([13.6, 10]); // backend sends text ("+13.6%"); the client hands the panel numbers
     expect(d.currencies_available).toEqual(['USD']);
     const s = d.payments.series;
     expect(s.find((b) => b.bucket === '2026-02')).toBeUndefined(); // gap month is absent, not zero
