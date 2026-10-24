@@ -259,6 +259,20 @@ Plan: [../file-storage/26-file-storage-layout-plan.md](../file-storage/26-file-s
 
 ---
 
+## 3I. Employee Pay Analytics (Draft — pending owner review)
+
+Decisions D-037 (draft), related Q-022 (Open). Branch `feat/employee-pay-analytics-backend`. No migration.
+
+| Slice | Scope | Size | Depends on |
+| :--- | :--- | :--- | :--- |
+| BE-0 | **Done** (October 23, 2026): Verification test asserting payroll line persistence for adjustments (commission & bonus stored in `base_salary`) | S | — |
+| BE-1 | **Done** (October 23, 2026): Extracted `PayrollReadService.get_employee_pay_lines` while preserving byte-identical compensation report output | S | BE-0 |
+| BE-2 | **Done** (October 23, 2026): Read-only composer package `be/analytics/`, `require_any_permission` guard, and pay view endpoint | M | BE-1 |
+| BE-3 | **Done** (October 23, 2026): Excel/CSV exporters with formula injection neutralization and HR audit logging | M | BE-2 |
+| BE-4 | **Done** (October 23, 2026): Documentation updates (D-037 draft, Q-022, roadmap slice 3I) | S | BE-3 |
+
+---
+
 ## 4. Deferred Until Decision
 
 The following initiatives remain on hold until formally decided in [04-decision-log.md](04-decision-log.md):
@@ -271,6 +285,7 @@ The following initiatives remain on hold until formally decided in [04-decision-
 | **Q-004** (Automated FX-Rate Source) | External exchange-rate API integration; automated currency conversion pipelines in transfers and ledger. | **Blocked** pending owner choice between manual rate entry and automated market feeds. |
 | **Q-006** (Restoring Archived Users) | Restore flow for archived users; email reuse for returning people. | **Open** — restore is not built until decided. |
 | **Q-005** (Sheets Export Retention) | Permanent deletion of `be/sheets_client.py`, removal of `gspread` dependency, and revocation of Sheets service scopes. | **Blocked** pending business stakeholder review of live spreadsheet export usage. |
+| **Central Analytics Area** | Company-wide cross-domain analytics dashboard and aggregated reporting. | **Deferred** until employee-level pay analytics slice is reviewed and accepted. |
 
 ---
 

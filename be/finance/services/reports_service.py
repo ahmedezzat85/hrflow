@@ -49,6 +49,7 @@ from finance.services.excel_exporter import (
     export_flat_xlsx,
     FLAT_REPORTS,
 )
+from finance.services.payroll_read_service import PayrollReadService
 
 
 ACCRUAL_PARTIAL_NOTE = "Partial: excludes payroll, statutory and bank fees"
@@ -57,6 +58,7 @@ ACCRUAL_PARTIAL_NOTE = "Partial: excludes payroll, statutory and bank fees"
 class ReportsService:
     def __init__(self, db: Session):
         self.db = db
+        self.payroll_read_service = PayrollReadService(db)
 
     # ------------------------------------------------------------------
     # Book views (D-028). book omitted = legacy behaviour (all accounts)
@@ -2534,21 +2536,12 @@ class ReportsService:
                 detail=f"Employee #{employee_id} not found"
             )
 
-        query = (
-            self.db.query(PayrollLineDB, PayrollRunDB)
-            .join(PayrollRunDB, PayrollLineDB.payroll_run_id == PayrollRunDB.id)
-            .filter(PayrollLineDB.employee_id == employee_id)
-            .filter(PayrollRunDB.status != "cancelled")
+        results = self.payroll_read_service.get_employee_pay_lines(
+            employee_id=employee_id,
+            start=start_date,
+            end=end_date,
+            currency=currency,
         )
-
-        if start_date:
-            query = query.filter(PayrollRunDB.period_end >= start_date)
-        if end_date:
-            query = query.filter(PayrollRunDB.period_start <= end_date)
-        if currency and currency.upper() != "ALL":
-            query = query.filter(PayrollRunDB.currency == currency.upper())
-
-        results = query.order_by(PayrollRunDB.period_start.asc(), PayrollLineDB.id.asc()).all()
 
         by_type: Dict[str, float] = {}
         total_ext = 0.0

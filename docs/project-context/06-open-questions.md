@@ -250,7 +250,24 @@ This register tracks unresolved product, accounting, and technical architecture 
 ### Q-021 — Historical Documents Already Paid
 - **Status:** Resolved — D-033 (October 20, 2026): option A, imported historical documents are unpaid Drafts; the owner records payments through the normal workflow and approves/pays/issues an imported document only when the ledger does not already hold that movement. Option B (link to an existing ledger transaction) stays a possible future slice.  
 
+### Q-022 — Historical Payroll Import Line Typing and Adjustment Amount Fields
+- **Status:** Open  
+- **Decider:** Owner  
+- **Question:**  
+  How will imported historical payroll lines be typed, and which field holds the amount for commission and bonus lines?  
+- **Why It Matters:**  
+  When importing historical payroll records prior to HRFlow's native run creation, consistent typing of compensation components (`external_usd`, `internal_usd_cash`, `commission_*`, `bonus`) and amount persistence (`base_salary` vs `net_pay`) is required to ensure analytics aggregations and spend reports accurately reconstruct historical compensation trends.  
+- **Known Current Context:**  
+  - In HRFlow's native payroll service, preview adjustments and ad-hoc lines populate `base_salary` as well as `net_pay` with the adjustment amount, typing commissions as `commission_sales` or `commission_support`, and bonuses as `bonus`.  
+  - Verified in BE-0 verification test (`test_be0_payroll_run_with_commission_and_bonus_lines`).  
+- **Decision Needed from Owner:**  
+  Determine the canonical schema typing and field storage rules for imported historical payroll data when bulk import is extended to historical payroll runs.  
+- **Related References:**  
+  - [04-decision-log.md](04-decision-log.md) (`D-037`)  
+  - [05-roadmap-and-next-slices.md](05-roadmap-and-next-slices.md) (`3I`)  
+
 ---
+
 
 ## Resolved-Question Procedure
 
