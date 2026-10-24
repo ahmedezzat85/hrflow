@@ -2,8 +2,8 @@
 
 **Status:** Draft — needs owner decisions  
 **Last verified against:** `feature/rbac` at `c236b00cb6fea09cb3474cb8d5fbda66eb23135e` (equal to `main`)  
-**Last updated:** October 18, 2026  
-**Branch note:** Q-006 to Q-013 were added on `feature/rbac` and are not part of `main` until the branch is merged. On October 1, 2026 the owner approved the interim treatments for Q-006 to Q-009, Q-011 and Q-012 and resolved Q-010 as recommended; Q-013 was raised afterwards and approved on October 2, 2026.  
+**Last updated:** October 24, 2026 (status text refreshed; no question was resolved or reworded)  
+**Branch note:** Q-006 to Q-013 were added on `feature/rbac`, which is now merged into `main` (verified October 24, 2026). On October 1, 2026 the owner approved the interim treatments for Q-006 to Q-009, Q-011 and Q-012 and resolved Q-010 as recommended; Q-013 was raised afterwards and approved on October 2, 2026.  
 **Authority:** Repository baseline and unreconciled owner-level questions  
 
 ---
@@ -127,7 +127,7 @@ This register tracks unresolved product, accounting, and technical architecture 
   - [04-decision-log.md](04-decision-log.md) (`D-011`, `D-012`, `D-013`)  
 
 ### Q-007 — Payroll-Maker Access to Funding Accounts
-- **Status:** Open — interim treatment approved October 1, 2026  
+- **Status:** Resolved — D-039 (October 24, 2026): no `finance.account.read` for Payroll-Maker. Follow-up (not done): check the run creation screen for Payroll-Maker.  
 - **Question:**  
   Payroll-Maker data access. Creating a run takes company funding-account IDs; listing them needs `finance.account.read`, which the role lacks. Owner chose to keep as is for now.  
 - **Why It Matters:**  
@@ -141,7 +141,7 @@ This register tracks unresolved product, accounting, and technical architecture 
   - [04-decision-log.md](04-decision-log.md) (`D-011`, `D-012`, `D-013`)  
 
 ### Q-008 — Ownership of Employee Compensation Plans
-- **Status:** Open — interim treatment approved October 1, 2026  
+- **Status:** Resolved — D-038 (October 24, 2026): plan routes accept either the finance payroll key or the matching HR salary key (`hr.salary.read` / `hr.salary.write`). Code change is a separate, not yet started slice.  
 - **Question:**  
   Who maintains employee compensation plans? The endpoints sit under `finance.payroll.*` but HR-Admin has no finance access.  
 - **Why It Matters:**  
@@ -156,7 +156,7 @@ This register tracks unresolved product, accounting, and technical architecture 
   - [04-decision-log.md](04-decision-log.md) (`D-011`, `D-012`, `D-013`)  
 
 ### Q-009 — Splitting `finance.account` Permissions
-- **Status:** Open — interim treatment approved October 1, 2026  
+- **Status:** Resolved — D-039 (October 24, 2026): keep one read/write pair.  
 - **Question:**  
   Split `finance.account.*` (bank accounts, ledger, transfers, cheques, statements, rules, categories, payment types)?  
 - **Why It Matters:**  
@@ -179,7 +179,7 @@ This register tracks unresolved product, accounting, and technical architecture 
   - [04-decision-log.md](04-decision-log.md) (`D-011`)  
 
 ### Q-011 — Employee Self-Service Writes
-- **Status:** Open — interim treatment approved October 1, 2026  
+- **Status:** Resolved — D-039 (October 24, 2026): own-document upload/delete stays; own bank-detail edits are not added.  
 - **Question:**  
   Employee self-service writes: confirm own-document upload/delete stays (current behavior) and whether own bank-detail edits are wanted (not included).  
 - **Why It Matters:**  
@@ -193,7 +193,7 @@ This register tracks unresolved product, accounting, and technical architecture 
   - [04-decision-log.md](04-decision-log.md) (`D-011`, `D-012`, `D-013`)  
 
 ### Q-012 — Post-Journal Permission for Payroll
-- **Status:** Open — interim treatment approved October 1, 2026  
+- **Status:** Resolved — D-039 (October 24, 2026): `post-journal` requires `finance.payroll.pay`.  
 - **Question:**  
   `post-journal` assigned to `finance.payroll.pay` — confirm.  
 - **Why It Matters:**  
