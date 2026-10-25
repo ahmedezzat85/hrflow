@@ -2077,9 +2077,11 @@
       const siDateInput = document.getElementById('p6SiPaymentDate');
       const taxDateInput = document.getElementById('p6TaxPaymentDate');
 
-      const bankOptionsHtml = (this.banks || []).map(b => `<option value="${b.id}" ${String(b.id) === String(this.selectedExternalAccountId) ? 'selected' : ''}>${this.fundingAccountLabel(b)}</option>`).join('');
-      if (siAccountSelect) siAccountSelect.innerHTML = bankOptionsHtml;
-      if (taxAccountSelect) taxAccountSelect.innerHTML = bankOptionsHtml;
+      // Statutory payments follow the funding account set in Payroll settings: shown read-only, no other choice
+      const bankOptionsHtml = this.fundingOptionHtml(this.selectedExternalAccountId, this.fundingSummary.external);
+      if (siAccountSelect) { siAccountSelect.innerHTML = bankOptionsHtml; siAccountSelect.disabled = true; }
+      if (taxAccountSelect) { taxAccountSelect.innerHTML = bankOptionsHtml; taxAccountSelect.disabled = true; }
+      this.applyStatutoryFundingState();
 
       const defaultPayDate = this.payDate || new Date().toISOString().slice(0, 10);
       if (siDateInput && !siDateInput.value) siDateInput.value = defaultPayDate;
@@ -2227,6 +2229,7 @@
 
             const resolved = this.resolvePayrollRunState(this.currentRun, linked);
             this.renderStatutoryBadge(resolved.badge, resolved.badgeClass);
+            this.applyStatutoryFundingState();
             return;
           }
         }
@@ -2292,16 +2295,28 @@
       }
     },
 
+    // Settling a statutory payment needs the funding account from Payroll settings; without it the buttons stay off.
+    applyStatutoryFundingState() {
+      if (this.selectedExternalAccountId) return;
+      ['btnP6SettleSocialIns', 'btnP6SettleTax'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) { btn.disabled = true; btn.title = 'Set the funding account in Payroll settings first.'; }
+      });
+    },
+
     async settleStatutory(type) {
       const isSi = type === 'si';
       const btn = document.getElementById(isSi ? 'btnP6SettleSocialIns' : 'btnP6SettleTax');
       const oblId = btn ? btn.getAttribute('data-obl-id') : null;
       if (!oblId) return;
 
-      const accountSelect = document.getElementById(isSi ? 'p6SiDebitAccount' : 'p6TaxDebitAccount');
       const dateInput = document.getElementById(isSi ? 'p6SiPaymentDate' : 'p6TaxPaymentDate');
 
-      const bankAccountId = (accountSelect && accountSelect.value) ? Number(accountSelect.value) : Number(this.selectedExternalAccountId || 1);
+      if (!this.selectedExternalAccountId) {
+        this.showBanner('Statutory payments cannot be recorded until the funding account is set in Payroll settings.', 'red');
+        return;
+      }
+      const bankAccountId = Number(this.selectedExternalAccountId);
       const paymentDate = (dateInput && dateInput.value) ? dateInput.value : new Date().toISOString().slice(0, 10);
 
       try {

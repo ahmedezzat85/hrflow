@@ -2618,7 +2618,8 @@ class StatutoryObligationConfirmAdjust(BaseModel):
 class StatutoryObligationSettle(BaseModel):
     amount: float
     payment_date: str
-    bank_account_id: int
+    # Payroll-sourced obligations always pay from the Payroll Settings funding account (omit it); other sources require it.
+    bank_account_id: Optional[int] = None
     currency: str = "EGP"  # accepted for compatibility; the obligation's currency is used
     reference: str = ""
     method: Optional[str] = None

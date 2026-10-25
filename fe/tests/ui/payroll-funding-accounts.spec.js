@@ -86,4 +86,22 @@ test.describe('Payroll funding accounts in Payroll settings', () => {
     await openPayroll(page, 'payroll');
     expect(await page.evaluate(() => PayrollApp.canSetFundingAccounts())).toBe(false);
   });
+
+  test('statutory payments never fall back: settle is blocked while the funding account is unset', async ({ page }) => {
+    await openPayroll(page, 'admin', { unset: true });
+    await page.click('#btnOpenCurrentCycle');
+    await page.evaluate(() => {
+      window._settled = [];
+      window.FinanceApi.settleStatutoryObligation = async (id, payload) => { window._settled.push(payload); return {}; };
+      window.FinanceApi.getStatutoryObligation = async () => ({ amount_accrued: 100 });
+      window.PayrollApp.setStep(5);
+    });
+    await expect(page.locator('#payrollScreen6')).toBeVisible();
+    await expect(page.locator('#p6SiDebitAccount')).toBeDisabled();
+    await expect(page.locator('#p6SiDebitAccount option:checked')).toHaveText('Not set');
+    await page.evaluate(() => { const b = document.getElementById('btnP6SettleSocialIns'); b.disabled = false; b.setAttribute('data-obl-id', '1'); });
+    await page.evaluate(() => PayrollApp.settleStatutory('si'));
+    expect(await page.evaluate(() => window._settled.length)).toBe(0);
+    await expect(page.locator('#payrollActionBanner')).toContainText('funding account is set in Payroll settings');
+  });
 });

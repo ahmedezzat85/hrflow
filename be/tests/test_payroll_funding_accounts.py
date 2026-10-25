@@ -188,3 +188,43 @@ def test_runs_follow_settings_until_finalize_then_freeze(app_client, admin_cooki
     assert pay.status_code == 200, pay.text
     assert {r["account_id"] for r in _payroll_rows("2027-08")} == {second}
     assert account_balance(app_client, admin_cookies, first) == 20000.0
+
+
+def _payroll_obligation(client, cookies):
+    resp = client.post(
+        "/api/finance/statutory-obligations",
+        json={"obligation_type": "withholding_tax", "period": "2027-09", "amount_accrued": 1000.0,
+              "due_date": "2027-10-10", "currency": "USD", "notes": "payroll statutory"},
+        cookies=cookies,
+    )
+    assert resp.status_code == 201, resp.text
+    obl_id = resp.json()["id"]
+    with get_db_context() as db:
+        from finance.models import StatutoryObligationDB
+        obl = db.query(StatutoryObligationDB).filter(StatutoryObligationDB.id == obl_id).first()
+        obl.source_type = "payroll_run"
+        db.commit()
+    return obl_id
+
+
+def test_payroll_statutory_payment_follows_settings_with_no_fallback(app_client, admin_cookies):
+    configured = _account("FA Statutory", opening=50000.0)
+    other = _account("FA Other", opening=50000.0)
+    obl_id = _payroll_obligation(app_client, admin_cookies)
+    url = f"/api/finance/statutory-obligations/{obl_id}/settle"
+    body = {"amount": 400.0, "payment_date": "2027-09-16", "currency": "USD", "reference": "SI-1", "method": "bank_transfer"}
+
+    # Settings unset: blocked, even when the client names an account
+    blocked = app_client.post(url, json={**body, "bank_account_id": other}, cookies=admin_cookies)
+    assert blocked.status_code == 409 and blocked.json()["detail"]["code"] == "funding_accounts_not_set"
+
+    set_funding_accounts(configured)
+    # A different account is refused
+    wrong = app_client.post(url, json={**body, "bank_account_id": other}, cookies=admin_cookies)
+    assert wrong.status_code == 400 and wrong.json()["detail"]["code"] == "funding_accounts_come_from_settings"
+    assert account_balance(app_client, admin_cookies, other) == 50000.0
+
+    # Omitting the account pays from the configured one
+    ok = app_client.post(url, json=body, cookies=admin_cookies)
+    assert ok.status_code == 200, ok.text
+    assert account_balance(app_client, admin_cookies, configured) == 49600.0
