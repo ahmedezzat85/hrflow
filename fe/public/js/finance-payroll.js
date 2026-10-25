@@ -2398,6 +2398,25 @@
       return false;
     },
 
+    // Dated social insurance rates: newest first, with the "Effective from" month defaulting to this month
+    async loadRateHistory() {
+      const body = document.getElementById('payrollRatesHistoryBody');
+      const wrap = document.getElementById('payrollRatesHistoryWrap');
+      const fromEl = document.getElementById('payrollRatesEffectiveFrom');
+      if (fromEl && !fromEl.value) fromEl.value = new Date().toISOString().slice(0, 7);
+      if (!body || typeof FinanceApi === 'undefined' || typeof FinanceApi.getPayrollRateSettings !== 'function') return;
+      try {
+        const rows = await FinanceApi.getPayrollRateSettings();
+        const pct = (v) => `${(Number(v) * 100).toFixed(2)}%`;
+        const inForceFrom = new Date().toISOString().slice(0, 7) + '-01';
+        const current = (rows || []).find(r => r.effective_from <= inForceFrom);
+        body.innerHTML = (rows || []).map(r => `<tr${current && r.id === current.id ? ' class="is-current"' : ''}><td data-label="From">${escapeHtml(String(r.effective_from).slice(0, 7))}${current && r.id === current.id ? ' (current)' : ''}</td><td class="num" data-label="Employee">${pct(r.employee_rate)}</td><td class="num" data-label="Employer">${pct(r.employer_rate)}</td></tr>`).join('');
+        if (wrap) wrap.hidden = !(rows && rows.length);
+      } catch (err) {
+        console.warn('[PayrollApp] Could not load SI rate history:', err);
+      }
+    },
+
     async loadSettingsFromDb() {
       try {
         if (typeof FinanceApi !== 'undefined' && FinanceApi.getPayrollSettings) {
@@ -2660,16 +2679,22 @@
       // Save Social Insurance rates if present
       const empRateEl = document.getElementById('payrollEmployeeInsuranceRate');
       const emprRateEl = document.getElementById('payrollEmployerInsuranceRate');
-      if (empRateEl && emprRateEl && typeof FinanceApi !== 'undefined' && typeof FinanceApi.updatePayrollSettings === 'function') {
-        const empRate = parseFloat(empRateEl.value) / 100.0;
-        const emprRate = parseFloat(emprRateEl.value) / 100.0;
-        if (!isNaN(empRate) && !isNaN(emprRate)) {
+      if (empRateEl && emprRateEl && typeof FinanceApi !== 'undefined' && typeof FinanceApi.savePayrollRateSettings === 'function') {
+        const empRate = Math.round(parseFloat(empRateEl.value) * 100) / 10000;
+        const emprRate = Math.round(parseFloat(emprRateEl.value) * 100) / 10000;
+        const fromEl = document.getElementById('payrollRatesEffectiveFrom');
+        const fromMonth = (fromEl && fromEl.value) ? fromEl.value : new Date().toISOString().slice(0, 7);
+        const loaded = this._ratesLoaded || {};
+        // Only save a dated rate when it differs from what is in force, so an unrelated Save adds no row
+        const changed = loaded.emp === undefined || Math.abs(empRate - loaded.emp) > 1e-9 || Math.abs(emprRate - loaded.empr) > 1e-9 || fromMonth !== loaded.month;
+        if (!isNaN(empRate) && !isNaN(emprRate) && changed) {
           try {
-            await FinanceApi.updatePayrollSettings({ employee_rate: empRate, employer_rate: emprRate });
+            await FinanceApi.savePayrollRateSettings({ effective_from: `${fromMonth}-01`, employee_rate: empRate, employer_rate: emprRate });
             this.employeeInsuranceRate = empRate;
             this.employerInsuranceRate = emprRate;
+            await this.loadRateHistory();
           } catch (err) {
-            console.warn('[PayrollApp] Could not update SI settings:', err);
+            this.showBanner(err.message || 'Could not save the social insurance rates.', 'red');
           }
         }
       }
@@ -2765,8 +2790,12 @@
               const emprEl = document.getElementById('payrollEmployerInsuranceRate');
               if (empEl && st.employee_rate !== undefined) empEl.value = (st.employee_rate * 100).toFixed(2);
               if (emprEl && st.employer_rate !== undefined) emprEl.value = (st.employer_rate * 100).toFixed(2);
+              this._ratesLoaded = {
+                emp: Number(st.employee_rate), empr: Number(st.employer_rate), month: new Date().toISOString().slice(0, 7)
+              };
             }
           }).catch(e => console.warn('[PayrollApp] Could not load SI settings:', e));
+          this.loadRateHistory();
         }
 
         // Populate Income Tax Settings & Tax_limit_P

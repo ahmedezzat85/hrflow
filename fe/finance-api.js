@@ -6955,6 +6955,64 @@ async getEntityActivity(entityType, entityId) {
 
   const FinanceMockState = root.FinanceMockState || (root.FinanceMockState = {});
 
+  // Mock dated social insurance rates, seeded from the global rates like the migration.
+  function _mockRateRows() {
+    if (!FinanceMockState.payrollRateSettings) {
+      FinanceMockState.payrollRateSettings = [{ id: 1, effective_from: "2000-01-01", employee_rate: 0.11, employer_rate: 0.18, created_by: "system" }];
+    }
+    return FinanceMockState.payrollRateSettings;
+  }
+
+  function _mockRateInForce(periodStart) {
+    const rows = _mockRateRows().filter((r) => r.effective_from <= periodStart)
+      .sort((a, b) => (b.effective_from + String(b.id)).localeCompare(a.effective_from + String(a.id)));
+    return rows[0] || { employee_rate: 0.11, employer_rate: 0.18 };
+  }
+
+  function _mockSaveRate(effectiveFrom, employeeRate, employerRate) {
+    if (!/^\d{4}-\d{2}-01$/.test(effectiveFrom || "")) {
+      throw new Error(`effective_from '${effectiveFrom}' must be the first day of a calendar month (format: YYYY-MM-01)`);
+    }
+    [["Employee", employeeRate], ["Employer", employerRate]].forEach(([label, v]) => {
+      if (v == null || Number(v) < 0 || Number(v) > 1) throw new Error(`${label} contribution rate must be between 0.0 and 1.0 (0% to 100%)`);
+    });
+    const rows = _mockRateRows();
+    const same = rows.find((r) => r.effective_from === effectiveFrom);
+    if (same) {
+      same.employee_rate = Number(employeeRate);
+      same.employer_rate = Number(employerRate);
+    } else {
+      rows.push({ id: rows.length + 1, effective_from: effectiveFrom, employee_rate: Number(employeeRate), employer_rate: Number(employerRate), created_by: "admin@voyance.health" });
+    }
+    const now = _mockRateInForce(new Date().toISOString().slice(0, 7) + "-01");
+    const st = _mockPayrollSettings();
+    st.employee_rate = now.employee_rate;
+    st.employer_rate = now.employer_rate;
+    return { ...(same || rows[rows.length - 1]) };
+  }
+
+  // Mock Payroll Settings own the funding accounts. Tests clear the ids to reproduce the unset state.
+  function _mockPayrollSettings() {
+    if (!FinanceMockState.payrollSettings) {
+      FinanceMockState.payrollSettings = {
+        id: 1,
+        employee_rate: 0.11,
+        employer_rate: 0.18,
+        external_funding_account_id: 1,
+        internal_funding_account_id: 2,
+        updated_at: new Date().toISOString(),
+        updated_by: "admin@voyance.health",
+      };
+    }
+    const st = FinanceMockState.payrollSettings;
+    const summary = (id) => {
+      if (!id) return null;
+      const acc = (FinanceMockState.accounts || []).find((a) => a.id === id);
+      return { id, name: acc ? acc.account_name : `Account #${id}`, currency: acc ? acc.currency : "USD", type: acc ? acc.account_type : "bank" };
+    };
+    return { ...st, external_funding_account: summary(st.external_funding_account_id), internal_funding_account: summary(st.internal_funding_account_id) };
+  }
+
   if (!FinanceMockState.payrollRuns) {
     FinanceMockState.payrollRuns = [
       {
@@ -7390,12 +7448,12 @@ async getEntityActivity(entityType, entityId) {
           period_start: payload.period_start || `${periodLabel}-01`,
           period_end: payload.period_end || `${periodLabel}-30`,
           payment_date: payload.payment_date || payload.period_end || `${periodLabel}-30`,
-          bank_account_id: payload.bank_account_id || 1,
-          bank_account_name: "Voyance Operating USD",
-          external_funding_account_id: payload.external_funding_account_id || 1,
-          external_funding_account_name: "Voyance Operating USD",
-          internal_funding_account_id: payload.internal_funding_account_id || 2,
-          internal_funding_account_name: "Voyance Cash USD Account",
+          bank_account_id: _mockPayrollSettings().external_funding_account_id,
+          bank_account_name: (_mockPayrollSettings().external_funding_account || {}).name || null,
+          external_funding_account_id: _mockPayrollSettings().external_funding_account_id,
+          external_funding_account_name: (_mockPayrollSettings().external_funding_account || {}).name || null,
+          internal_funding_account_id: _mockPayrollSettings().internal_funding_account_id,
+          internal_funding_account_name: (_mockPayrollSettings().internal_funding_account || {}).name || null,
           fx_rate_source: fxRateSource,
           fx_rate_value: fxRateValue,
           headcount: 2,
@@ -7610,12 +7668,12 @@ async getEntityActivity(entityType, entityId) {
           recipient_count: prev.recipient_count,
           payment_line_count: prev.payment_line_count,
           currency: payload.currency || "USD",
-          bank_account_id: payload.bank_account_id || prev.bank_account_id,
-          bank_account_name: prev.bank_account_name,
-          external_funding_account_id: payload.external_funding_account_id || prev.external_funding_account_id,
-          external_funding_account_name: prev.external_funding_account_name,
-          internal_funding_account_id: payload.internal_funding_account_id || prev.internal_funding_account_id,
-          internal_funding_account_name: prev.internal_funding_account_name,
+          bank_account_id: _mockPayrollSettings().external_funding_account_id,
+          bank_account_name: (_mockPayrollSettings().external_funding_account || {}).name || null,
+          external_funding_account_id: _mockPayrollSettings().external_funding_account_id,
+          external_funding_account_name: (_mockPayrollSettings().external_funding_account || {}).name || null,
+          internal_funding_account_id: _mockPayrollSettings().internal_funding_account_id,
+          internal_funding_account_name: (_mockPayrollSettings().internal_funding_account || {}).name || null,
           preview_id: payload.preview_id || prev.preview_id,
           preview_version: payload.preview_version || prev.preview_version,
           source_version: payload.source_version || prev.source_version,
@@ -7708,6 +7766,10 @@ async getEntityActivity(entityType, entityId) {
         if (run.status !== "approved") {
           throw new Error(`Payroll run #${runId} must be approved before finalization. Current status: '${run.status}'.`);
         }
+        // Funding accounts follow Payroll Settings until finalize, then freeze (a leg Settings does not set keeps the run's own)
+        const fundingNow = _mockPayrollSettings();
+        if (fundingNow.external_funding_account_id) { run.external_funding_account_id = fundingNow.external_funding_account_id; run.bank_account_id = fundingNow.external_funding_account_id; }
+        if (fundingNow.internal_funding_account_id) run.internal_funding_account_id = fundingNow.internal_funding_account_id;
         run.status = "finalized";
         run.finalized_at = new Date().toISOString();
         run.finalized_by = "cfo@voyance.health";
@@ -7722,6 +7784,17 @@ async getEntityActivity(entityType, entityId) {
         if (!run) throw new Error(`Payroll run #${runId} not found`);
         const lines = run.lines || [];
         const now = new Date().toISOString();
+        // A leg left unset at finalize takes the Settings account when paid; a frozen leg never changes
+        const fundingNow = _mockPayrollSettings();
+        if (!run.external_funding_account_id && fundingNow.external_funding_account_id) { run.external_funding_account_id = fundingNow.external_funding_account_id; run.bank_account_id = fundingNow.external_funding_account_id; }
+        if (!run.internal_funding_account_id && fundingNow.internal_funding_account_id) run.internal_funding_account_id = fundingNow.internal_funding_account_id;
+        const legNet = (ext) => lines.filter((l) => (l.compensation_type === "external_usd") === ext).reduce((t, l) => t + Number(l.net_pay || 0), 0);
+        const unset = [];
+        if (legNet(true) > 0 && !run.external_funding_account_id) unset.push("external");
+        if (legNet(false) > 0 && !run.internal_funding_account_id) unset.push("internal");
+        if (unset.length) {
+          throw new Error(`funding_accounts_not_set: Payroll run #${runId} cannot be paid until the ${unset.join(" and ")} funding account${unset.length > 1 ? "s are" : " is"} set in Payroll settings.`);
+        }
 
         lines.forEach((l) => {
           if (retryFailedOnly && l.payment_status !== "failed") return;
@@ -8140,30 +8213,51 @@ async getEntityActivity(entityType, entityId) {
 
     async getPayrollSettings() {
       if (_isMock()) {
-        if (!FinanceMockState.payrollSettings) {
-          FinanceMockState.payrollSettings = {
-            id: 1,
-            employee_rate: 0.11,
-            employer_rate: 0.18,
-            updated_at: new Date().toISOString(),
-            updated_by: "admin@voyance.health"
-          };
-        }
-        return FinanceMockState.payrollSettings;
+        const now = _mockRateInForce(new Date().toISOString().slice(0, 7) + "-01");
+        return { ..._mockPayrollSettings(), employee_rate: now.employee_rate, employer_rate: now.employer_rate };
       }
       return apiRequest("GET", "/api/finance/payroll/settings");
     },
 
+    // Effective-dated social insurance rates (SI-1). Mock mirrors the backend rules.
+    async getPayrollRateSettings() {
+      if (_isMock()) {
+        return _mockRateRows().slice().sort((a, b) => (b.effective_from + String(b.id)).localeCompare(a.effective_from + String(a.id)));
+      }
+      return apiRequest("GET", "/api/finance/payroll/settings/rates");
+    },
+
+    async savePayrollRateSettings(payload) {
+      if (_isMock()) return _mockSaveRate(payload.effective_from, payload.employee_rate, payload.employer_rate);
+      return apiRequest("POST", "/api/finance/payroll/settings/rates", payload);
+    },
+
     async updatePayrollSettings(payload) {
       if (_isMock()) {
+        if (payload.employee_rate != null || payload.employer_rate != null) {
+          const inForce = _mockRateInForce(new Date().toISOString().slice(0, 7) + "-01");
+          _mockSaveRate(
+            new Date().toISOString().slice(0, 7) + "-01",
+            payload.employee_rate != null ? payload.employee_rate : inForce.employee_rate,
+            payload.employer_rate != null ? payload.employer_rate : inForce.employer_rate
+          );
+        }
+        const cur = _mockPayrollSettings();
+        const known = (id) => (FinanceMockState.accounts || []).some((a) => a.id === Number(id));
+        ["external_funding_account_id", "internal_funding_account_id"].forEach((k) => {
+          if (payload[k] != null && !known(payload[k])) throw new Error(`The ${k.split("_")[0]} funding account #${payload[k]} does not exist or is not active.`);
+        });
         FinanceMockState.payrollSettings = {
           id: 1,
-          employee_rate: Number(payload.employee_rate),
-          employer_rate: Number(payload.employer_rate),
+          employee_rate: payload.employee_rate != null ? Number(payload.employee_rate) : cur.employee_rate,
+          employer_rate: payload.employer_rate != null ? Number(payload.employer_rate) : cur.employer_rate,
+          // replace only: null or omitted never clears
+          external_funding_account_id: payload.external_funding_account_id != null ? Number(payload.external_funding_account_id) : cur.external_funding_account_id,
+          internal_funding_account_id: payload.internal_funding_account_id != null ? Number(payload.internal_funding_account_id) : cur.internal_funding_account_id,
           updated_at: new Date().toISOString(),
           updated_by: "admin@voyance.health"
         };
-        return FinanceMockState.payrollSettings;
+        return _mockPayrollSettings();
       }
       return apiRequest("PUT", "/api/finance/payroll/settings", payload);
     },

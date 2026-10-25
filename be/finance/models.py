@@ -1017,6 +1017,25 @@ class PayrollSettingsDB(Base):
 FinancePayrollSettingsDB = PayrollSettingsDB
 
 
+class PayrollRateSettingsDB(Base):
+    """Effective-dated employee and employer social insurance rates (SI-1, D-040). Newest row with
+    effective_from <= the period start applies, like PayrollTaxSettingsDB. The global PayrollSettingsDB rates are
+    kept as a readable fallback and mirror the rates in force for the current month."""
+    __tablename__ = "finance_payroll_rate_settings"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    effective_from = Column(String(20), nullable=False, index=True)  # YYYY-MM-01
+    employee_rate = Column(Float, nullable=False)
+    employer_rate = Column(Float, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(String(255), nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_by = Column(String(255), nullable=True)
+
+
+FinancePayrollRateSettingsDB = PayrollRateSettingsDB
+
+
 class PayrollTaxSettingsDB(Base):
     __tablename__ = "finance_payroll_tax_settings"
 

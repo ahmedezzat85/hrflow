@@ -2,7 +2,7 @@
 
 **Status:** Draft — needs owner decisions  
 **Last verified against:** `feature/rbac` at `c236b00cb6fea09cb3474cb8d5fbda66eb23135e` (equal to `main`)  
-**Last updated:** October 24, 2026 (Q-007, Q-008, Q-009, Q-011, Q-012 resolved by D-038/D-039; Q-002 narrowed; Q-003 deferred; register reorganised: open and deferred questions first, resolved questions in an archive section)  
+**Last updated:** October 25, 2026 (Q-023 resolved by D-041; Q-007, Q-008, Q-009, Q-011, Q-012 resolved by D-038/D-039; Q-002 narrowed; Q-003 deferred; register reorganised: open and deferred questions first, resolved questions in an archive section)  
 **Branch note:** Q-006 to Q-013 were added on `feature/rbac`, which is now merged into `main` (verified October 24, 2026). On October 1, 2026 the owner approved the interim treatments for Q-006 to Q-009, Q-011 and Q-012 and resolved Q-010 as recommended; Q-013 was raised afterwards and approved on October 2, 2026.  
 **Authority:** Repository baseline and unreconciled owner-level questions  
 
@@ -31,7 +31,6 @@ This register tracks unresolved product, accounting, and technical architecture 
 | Q-005 | Legacy Google Sheets Export Retention | Open |
 | Q-006 | Restoring Archived Users | Open |
 | Q-022 | Historical Payroll Import Line Typing and Adjustment Amount Fields | Open (narrowed October 25, 2026: 2023-2024 payroll history deferred by D-040) |
-| Q-023 | Effective Date for Social Insurance Rates | Open |
 
 Everything else is resolved and kept in the archive section below.
 
@@ -144,25 +143,6 @@ Everything else is resolved and kept in the archive section below.
 - **Related References:**  
   - [04-decision-log.md](04-decision-log.md) (`D-037`)  
   - [05-roadmap-and-next-slices.md](05-roadmap-and-next-slices.md) (`3I`)  
-
-
-
-### Q-023 — Effective Date for Social Insurance Rates
-- **Status:** Open (raised October 25, 2026)  
-- **Decider:** Owner  
-- **Question:**  
-  Should the employee and employer social insurance rates become effective-dated, so a rate change affects only later periods?  
-- **Why It Matters:**  
-  The rates are one global setting with no date (`finance_payroll_settings`, employee 11%, employer 18% by default). The owner's 2023 workbook used 18.75% for the employer share. Finalized runs keep the rate in each line snapshot, but a draft that is refreshed re-reads the current setting.  
-- **Known Current Context:**  
-  - Verified in code on October 25, 2026: `PayrollSettingsDB` has no effective date; income tax settings and the employee insured base are effective-dated.  
-  - Workaround: set the rate before the first run and change it between months, never while a draft is open.  
-- **Decision Needed from Owner:**  
-  Whether to build slice SI-1 (effective-dated rates) before the 2025-2026 runs, or to use the manual workaround.  
-- **Related References:**  
-  - [04-decision-log.md](04-decision-log.md) (`D-040`)  
-  - [05-roadmap-and-next-slices.md](05-roadmap-and-next-slices.md) (`3K`)  
-
 
 ---
 
@@ -337,3 +317,6 @@ When an open question reaches an owner decision, follow this three-step procedur
 1. **Record Decision:** The repository owner records the agreed outcome in [04-decision-log.md](04-decision-log.md) as a new decision entry (or an explicit update/supersession of an existing entry).  
 2. **Update Register:** This register updates the question status to `Resolved`, referencing the decision ID (e.g., `D-008`), completion date, and a one-line summary of the chosen path.  
 3. **Scoped Implementation:** Architecture, roadmap, schema, test, and operational documentation are updated only as part of the subsequent scoped task that implements the decision.
+
+### Q-023 — Effective Date for Social Insurance Rates
+- **Status:** Resolved — D-041 (October 25, 2026): the rates are effective-dated (`finance_payroll_rate_settings`, SI-1); no 2023 rate is pre-seeded.  

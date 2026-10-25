@@ -1,6 +1,6 @@
 # Effective-dated social insurance rates (SI-1): design note
 
-Status: DESIGN NOTE, awaiting owner approval. Nothing below is implemented. Branch: `feat/payroll-si-rates-effective-dated` (from `main` at `0107a73`).
+Status: APPROVED by the owner on October 25, 2026 (decision A option 1, no 2023 pre-seed, seed date 2000-01-01); implemented. Decision D-041. Branch: `feat/payroll-si-rates-effective-dated` (from `main` at `0107a73`).
 Risk class: high (payroll calculation input, schema, migration). Origin: Q-023, D-040, roadmap 3K.
 
 ## 1. Problem (verified in code on main)

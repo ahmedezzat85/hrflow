@@ -2875,6 +2875,26 @@ class PayrollSettingsUpdate(BaseModel):
     internal_funding_account_id: Optional[int] = Field(None, ge=1)
 
 
+class PayrollRateSettingsCreate(BaseModel):
+    """A dated social insurance rate: applies to payroll periods starting on or after effective_from."""
+    effective_from: str = Field(..., pattern=r"^\d{4}-\d{2}-01$")
+    employee_rate: float = Field(..., ge=0.0, le=1.0)
+    employer_rate: float = Field(..., ge=0.0, le=1.0)
+
+
+class PayrollRateSettingsResponse(BaseModel):
+    id: int
+    effective_from: str
+    employee_rate: float
+    employer_rate: float
+    created_by: Optional[str] = None
+    updated_at: Optional[Union[str, datetime]] = None
+    updated_by: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
 class PayrollFundingAccountSummary(BaseModel):
     """Safe display summary of a funding account: no account number, IBAN or reveal data."""
     id: int
