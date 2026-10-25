@@ -13,6 +13,14 @@ Covers:
 """
 import json
 import pytest
+from fx_test_helpers import seed_usd_egp_rate
+
+
+@pytest.fixture(autouse=True)
+def usd_egp_rate(app_client):
+    """FX-1: payroll has no silent 50.0 fallback, so these tests start with one explicit USD-EGP transfer."""
+    seed_usd_egp_rate(50.0)
+
 from datetime import datetime
 from db import get_db_context
 from payroll_test_helpers import set_funding_accounts

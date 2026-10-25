@@ -4,6 +4,14 @@ Targeted unit tests for extensible payroll adjustments (Commissions and Bonuses)
 recalculation of recipient and payroll totals, validation rules, and immutability.
 """
 import pytest
+from fx_test_helpers import seed_usd_egp_rate
+
+
+@pytest.fixture(autouse=True)
+def usd_egp_rate(app_client):
+    """FX-1: payroll has no silent 50.0 fallback, so these tests start with one explicit USD-EGP transfer."""
+    seed_usd_egp_rate(50.0)
+
 from db import get_db_context
 from payroll_test_helpers import set_funding_accounts_in
 from models_db import EmployeeDB, EmployeeBankAccountDB

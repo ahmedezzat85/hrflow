@@ -1134,6 +1134,8 @@ def test_slice4_payroll_split_maker_vs_financial_admin_vs_super_admin(app_client
         "payment_date": "2026-10-31",
         "currency": "USD",
         "preview_id": preview_id,
+        "fx_rate_source": "manual",
+        "fx_rate_value": 50.0,
     }
     resp_fin_run = app_client.post("/api/finance/payroll/runs", json=create_run_payload, cookies=fin_cookies)
     assert resp_fin_run.status_code == 403

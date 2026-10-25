@@ -5,6 +5,14 @@ Readiness exceptions, maker-checker approval, finalization lock,
 partial payment failure recovery, GL journal posting, and employee payslips.
 """
 import pytest
+from fx_test_helpers import seed_usd_egp_rate
+
+
+@pytest.fixture(autouse=True)
+def usd_egp_rate(app_client):
+    """FX-1: payroll has no silent 50.0 fallback, so these tests start with one explicit USD-EGP transfer."""
+    seed_usd_egp_rate(50.0)
+
 from datetime import datetime
 from fastapi.testclient import TestClient
 
