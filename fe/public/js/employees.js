@@ -1266,7 +1266,7 @@ function renderTaxMethodHistory(history) {
   const wrap = document.getElementById('taxMethodHistory');
   const body = document.getElementById('taxMethodHistoryBody');
   if (!wrap || !body) return;
-  const rows = (history || []).slice().sort((a, b) => String(a.effective_start_date).localeCompare(String(b.effective_start_date)) || a.id - b.id);
+  const rows = (history || []).slice().sort((a, b) => String(b.effective_start_date).localeCompare(String(a.effective_start_date)) || b.id - a.id);
   wrap.hidden = rows.length === 0;
   body.innerHTML = rows.map(r => `<tr><td data-label="From">${escapeHtml(String(r.effective_start_date).slice(0, 10))}</td><td data-label="To">${r.effective_end_date ? escapeHtml(String(r.effective_end_date).slice(0, 10)) : 'Present'}</td><td data-label="Method">${escapeHtml(taxMethodLabel(r))}</td></tr>`).join('');
 }

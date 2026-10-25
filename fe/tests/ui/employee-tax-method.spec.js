@@ -29,7 +29,7 @@ test.describe('FT-1: Employee tax method', () => {
     await expect(page.locator('#taxMethodHistory')).toBeHidden();
   });
 
-  test('sets a flat rate, then switches back to normal, with history oldest to newest', async ({ page }) => {
+  test('sets a flat rate, then switches back to normal, with history newest first', async ({ page }) => {
     await openFirstEmployee(page);
     await page.locator('#taxMethodActionBtn').click();
     const modal = page.locator('#taxMethodModal');
@@ -79,12 +79,13 @@ test.describe('FT-1: Employee tax method', () => {
 
     const rows = card.locator('#taxMethodHistoryBody tr');
     await expect(rows).toHaveCount(2);
-    await expect(rows.nth(0)).toContainText('2025-01-01');
-    await expect(rows.nth(0)).toContainText('2025-06-30');
-    await expect(rows.nth(0)).toContainText('Flat 10%');
-    await expect(rows.nth(1)).toContainText('2025-07-01');
-    await expect(rows.nth(1)).toContainText('Present');
-    await expect(rows.nth(1)).toContainText('Normal (progressive)');
+    // newest first
+    await expect(rows.nth(0)).toContainText('2025-07-01');
+    await expect(rows.nth(0)).toContainText('Present');
+    await expect(rows.nth(0)).toContainText('Normal (progressive)');
+    await expect(rows.nth(1)).toContainText('2025-01-01');
+    await expect(rows.nth(1)).toContainText('2025-06-30');
+    await expect(rows.nth(1)).toContainText('Flat 10%');
   });
 
   test('editing needs hr.salary.write; viewing does not', async ({ page }) => {
