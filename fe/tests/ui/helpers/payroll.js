@@ -20,12 +20,10 @@ export async function confirmPayment(page) {
   await confirmDialog(page);
 }
 
-/** Screen 1: select a USD internal funding account to match USD payroll runs when disbursement is tested. */
+/** Funding accounts are owned by Payroll Settings: set a USD internal account there to match USD payroll runs. */
 export async function selectUsdInternalAccount(page) {
-  const intSelect = page.locator('#p1IntAccount');
-  const intUsd = intSelect.locator('option:has-text("USD")').first();
-  if (await intUsd.count() > 0) {
-    const val = await intUsd.getAttribute('value');
-    if (val) await intSelect.selectOption(val);
-  }
+  await page.evaluate(async () => {
+    const usd = (PayrollApp.banks || []).find((b) => String(b.currency).toUpperCase() === 'USD');
+    if (usd) { await PayrollApp.setFundingAccount('internal', usd.id); PayrollApp.drawScreen1(); }
+  });
 }

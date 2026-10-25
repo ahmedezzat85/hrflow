@@ -15,6 +15,7 @@ import json
 import pytest
 from datetime import datetime
 from db import get_db_context
+from payroll_test_helpers import set_funding_accounts
 from models_db import EmployeeDB, EmployeeBankAccountDB
 from finance.models import (
     PayrollRunDB,
@@ -302,6 +303,7 @@ def test_dual_funding_accounts_split_journal_posting(app_client, admin_cookies):
         db.refresh(acc_cash)
         us_id = acc_us.id
         cash_id = acc_cash.id
+    set_funding_accounts(us_id, cash_id)
 
     # Setup employee with split: $3,500 external and $1,500 internal
     _setup_employee_with_plan("Dual Funded", "dual.funded@hrflow.test", ext_amount=3500.0, int_amount=1500.0)

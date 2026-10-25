@@ -10,12 +10,7 @@ async function toPaidStep5(page, { missingBankEmployee = true } = {}) {
   await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 15000 });
   await openAdminPage(page, 'a-finance-payroll');
   await page.click('#btnOpenCurrentCycle');
-  const intSelect = page.locator('#p1IntAccount');
-  const intUsd = intSelect.locator('option:has-text("USD")').first();
-  if (await intUsd.count() > 0) {
-    const val = await intUsd.getAttribute('value');
-    if (val) await intSelect.selectOption(val);
-  }
+  // Funding accounts come from Payroll Settings now; the set-up step only shows them.
   await page.click('#btnP1Proceed');
   await submitAndApprove(page);
   await page.click('#btnP3Next');

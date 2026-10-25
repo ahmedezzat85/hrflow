@@ -78,11 +78,21 @@ class PayrollService:
         employee_rate: Optional[float] = None,
         employer_rate: Optional[float] = None,
         user_email: Optional[str] = None,
+        external_funding_account_id: Optional[int] = None,
+        internal_funding_account_id: Optional[int] = None,
     ) -> PayrollSettingsDB:
-        """Update organization-wide social insurance contribution rates."""
+        """Update organization-wide social insurance rates and the default payroll funding accounts."""
         settings = self.get_payroll_settings()
         old_emp_rate = settings.employee_rate
         old_org_rate = settings.employer_rate
+        old_ext_id = settings.external_funding_account_id
+        old_int_id = settings.internal_funding_account_id
+
+        # Funding accounts can be replaced but never cleared (omitted or null keeps the stored value).
+        if external_funding_account_id is not None:
+            settings.external_funding_account_id = self._active_account_or_400(external_funding_account_id, "external").id
+        if internal_funding_account_id is not None:
+            settings.internal_funding_account_id = self._active_account_or_400(internal_funding_account_id, "internal").id
 
         if employee_rate is not None:
             if not (0.0 <= float(employee_rate) <= 1.0):
@@ -115,6 +125,10 @@ class PayrollService:
                     "new_employee_rate": settings.employee_rate,
                     "old_employer_rate": old_org_rate,
                     "new_employer_rate": settings.employer_rate,
+                    "old_external_funding_account_id": old_ext_id,
+                    "new_external_funding_account_id": settings.external_funding_account_id,
+                    "old_internal_funding_account_id": old_int_id,
+                    "new_internal_funding_account_id": settings.internal_funding_account_id,
                 }),
             )
             self.db.add(audit)
@@ -124,6 +138,91 @@ class PayrollService:
         self.db.commit()
         self.db.refresh(settings)
         return settings
+
+    def _settings_funding_accounts(self):
+        settings = self.get_payroll_settings()
+        return settings.external_funding_account, settings.internal_funding_account
+
+    def _active_account_or_400(self, account_id: int, leg: str) -> FinanceBankAccountDB:
+        account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == account_id).first()
+        if not account or not account.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"code": "funding_account_invalid", "message": f"The {leg} funding account #{account_id} does not exist or is not active."},
+            )
+        return account
+
+    def _resolve_funding_accounts(
+        self,
+        bank_account_id: Optional[int] = None,
+        external_funding_account_id: Optional[int] = None,
+        internal_funding_account_id: Optional[int] = None,
+    ):
+        """
+        Funding accounts come from Payroll Settings only. A client-supplied id that differs from Settings is
+        rejected; a missing one is fine. Returns (external_account, internal_account); either may be None when
+        Settings has no account for that leg (payment is then blocked, see _require_funding_accounts).
+        """
+        ext, internal = self._settings_funding_accounts()
+        for given, configured in (
+            (external_funding_account_id, ext),
+            (internal_funding_account_id, internal),
+            (bank_account_id, ext),
+        ):
+            if given and (configured is None or configured.id != given):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "code": "funding_accounts_come_from_settings",
+                        "message": "Payroll funding accounts are set in Payroll settings and cannot be chosen per run.",
+                    },
+                )
+        return ext, internal
+
+    def _adopt_settings_for_unset_legs(self, run: PayrollRunDB) -> None:
+        """
+        A run finalized while Payroll Settings had no account for a leg takes the Settings account when it is
+        paid (this is how setting the accounts at the Pay step unblocks the run). A leg that is already frozen
+        on the run never changes.
+        """
+        ext_account, int_account = self._settings_funding_accounts()
+        if not run.external_funding_account_id and ext_account:
+            run.external_funding_account_id = ext_account.id
+            run.bank_account_id = ext_account.id
+        if not run.internal_funding_account_id and int_account:
+            run.internal_funding_account_id = int_account.id
+        self.db.flush()
+
+    def _require_funding_accounts(self, run: PayrollRunDB) -> None:
+        """Stops payment and journal posting until each funding leg that carries net pay has an active account."""
+        lines = self.db.query(PayrollLineDB).filter(PayrollLineDB.payroll_run_id == run.id).all()
+        ext_net = sum(float(l.net_pay or 0.0) for l in lines if l.compensation_type == "external_usd")
+        int_net = sum(float(l.net_pay or 0.0) for l in lines if l.compensation_type != "external_usd")
+        needed = []
+        if ext_net > 0:
+            needed.append(("external", run.external_funding_account_id))
+        if int_net > 0:
+            needed.append(("internal", run.internal_funding_account_id))
+        if not needed and float(run.total_net or 0.0) > 0:
+            needed.append(("external", run.external_funding_account_id))
+        missing = []
+        for leg, account_id in needed:
+            account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == account_id).first() if account_id else None
+            if not account or not account.is_active:
+                missing.append(leg)
+        if missing:
+            plural = len(missing) > 1
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "funding_accounts_not_set",
+                    "message": (
+                        f"Payroll run #{run.id} cannot be paid until the {' and '.join(missing)} funding "
+                        f"account{'s are' if plural else ' is'} set in Payroll settings."
+                    ),
+                    "missing": missing,
+                },
+            )
 
     def get_effective_tax_settings(self, period_start: str) -> Optional[PayrollTaxSettingsDB]:
         """
@@ -570,20 +669,11 @@ class PayrollService:
         Evaluates active employee records and active compensation plans to preview net payments,
         detect route-specific readiness exceptions, and compare net variance vs prior period.
         """
-        # 1. Resolve Bank Accounts
-        bank_account = None
-        if bank_account_id:
-            bank_account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == bank_account_id).first()
-        if not bank_account:
-            bank_account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.is_active == True).first()
-
-        ext_account = None
-        if external_funding_account_id:
-            ext_account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == external_funding_account_id).first()
-
-        int_account = None
-        if internal_funding_account_id:
-            int_account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == internal_funding_account_id).first()
+        # 1. Resolve funding accounts from Payroll Settings (never defaulted to the first active account)
+        ext_account, int_account = self._resolve_funding_accounts(
+            bank_account_id, external_funding_account_id, internal_funding_account_id
+        )
+        bank_account = ext_account
 
         # Resolve FX rate
         resolved_fx = self._resolve_fx_rate(fx_rate_source, fx_rate_value, period_start, period_end)
@@ -667,11 +757,11 @@ class PayrollService:
             "period_end": period_end,
             "payment_date": pay_date,
             "bank_account_id": bank_account.id if bank_account else None,
-            "bank_account_name": bank_account.account_name if bank_account else "Operating Account",
-            "external_funding_account_id": ext_account.id if ext_account else (bank_account.id if bank_account else None),
-            "external_funding_account_name": ext_account.account_name if ext_account else (bank_account.account_name if bank_account else "Operating Account"),
-            "internal_funding_account_id": int_account.id if int_account else (bank_account.id if bank_account else None),
-            "internal_funding_account_name": int_account.account_name if int_account else (bank_account.account_name if bank_account else "Operating Account"),
+            "bank_account_name": bank_account.account_name if bank_account else None,
+            "external_funding_account_id": ext_account.id if ext_account else None,
+            "external_funding_account_name": ext_account.account_name if ext_account else None,
+            "internal_funding_account_id": int_account.id if int_account else None,
+            "internal_funding_account_name": int_account.account_name if int_account else None,
             "fx_rate_source": fx_rate_source or "first_of_month",
             "fx_rate_value": resolved_fx,
             "headcount": len(employees),
@@ -977,14 +1067,12 @@ class PayrollService:
             self.db.add(run)
             self.db.flush()
 
-        bank_account = None
-        if bank_account_id:
-            bank_account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == bank_account_id).first()
-        if not bank_account:
-            bank_account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.is_active == True).first()
-        run.bank_account_id = bank_account.id if bank_account else None
-        run.external_funding_account_id = external_funding_account_id or run.bank_account_id
-        run.internal_funding_account_id = internal_funding_account_id or run.bank_account_id
+        ext_account, int_account = self._resolve_funding_accounts(
+            bank_account_id, external_funding_account_id, internal_funding_account_id
+        )
+        run.bank_account_id = ext_account.id if ext_account else None
+        run.external_funding_account_id = ext_account.id if ext_account else None
+        run.internal_funding_account_id = int_account.id if int_account else None
 
         resolved_fx = self._resolve_fx_rate(fx_rate_source, fx_rate_value, period_start, period_end)
         run.fx_rate_source = fx_rate_source or "first_of_month"
@@ -1169,8 +1257,11 @@ class PayrollService:
             )
 
         resolved_fx = self._resolve_fx_rate(fx_rate_source, fx_rate_value, period_start, period_end)
-        resolved_ext_id = external_funding_account_id or preview.get("external_funding_account_id") or preview["bank_account_id"]
-        resolved_int_id = internal_funding_account_id or preview.get("internal_funding_account_id") or preview["bank_account_id"]
+        ext_account, int_account = self._resolve_funding_accounts(
+            bank_account_id, external_funding_account_id, internal_funding_account_id
+        )
+        resolved_ext_id = ext_account.id if ext_account else None
+        resolved_int_id = int_account.id if int_account else None
         pay_date = payment_date or preview.get("payment_date") or period_end
         run_status = "submitted" if submit_for_approval else "draft"
 
@@ -1189,7 +1280,7 @@ class PayrollService:
             total_social_insurance_egp=preview.get("total_social_insurance_egp", 0.0),
             headcount=preview["headcount"],
             currency=currency or "USD",
-            bank_account_id=preview["bank_account_id"],
+            bank_account_id=resolved_ext_id,
             external_funding_account_id=resolved_ext_id,
             internal_funding_account_id=resolved_int_id,
             fx_rate_source=fx_rate_source or "first_of_month",
@@ -1616,6 +1707,15 @@ class PayrollService:
                 detail=f"Payroll run #{run_id} must be approved before finalization. Current status: '{run.status}'."
             )
 
+        # Funding accounts follow Payroll Settings until finalize, then freeze on the run. A leg that Settings
+        # does not set keeps what the run already stores (runs created before accounts moved to Settings).
+        ext_account, int_account = self._settings_funding_accounts()
+        if ext_account:
+            run.external_funding_account_id = ext_account.id
+            run.bank_account_id = ext_account.id
+        if int_account:
+            run.internal_funding_account_id = int_account.id
+
         run.status = "finalized"
         run.finalized_at = datetime.utcnow()
         run.finalized_by = user_email or "admin@hrflow.test"
@@ -1748,6 +1848,14 @@ class PayrollService:
                 detail=f"Only finalized or partially paid payroll runs can be funded. Current status: '{run.status}'."
             )
 
+        self._adopt_settings_for_unset_legs(run)
+        if bank_account_id and bank_account_id != run.external_funding_account_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"code": "funding_accounts_come_from_settings", "message": "The paying account cannot be changed at payment; set it in Payroll settings."},
+            )
+        self._require_funding_accounts(run)
+
         lines = self.db.query(PayrollLineDB).filter(PayrollLineDB.payroll_run_id == run_id).all()
         now = datetime.utcnow()
 
@@ -1782,9 +1890,6 @@ class PayrollService:
             run.paid_at = now
             run.paid_by = user_email or "payroll@hrflow.test"
 
-        if bank_account_id:
-            run.bank_account_id = bank_account_id
-
         # D-025: marking a run paid moves net pay at once. The ledger rows and balances are posted in the
         # same transaction; a refusal (missing funding account, currency mismatch) leaves the run unpaid.
         if run.status == "paid" and not run.journal_transaction_id:
@@ -1817,13 +1922,13 @@ class PayrollService:
 
         legs = []  # (suffix, label, amount, account_id, counterparty)
         if ext_net > 0:
-            legs.append(("-EXT", "External Bank Wire", ext_net, run.external_funding_account_id or run.bank_account_id,
+            legs.append(("-EXT", "External Bank Wire", ext_net, run.external_funding_account_id,
                          f"Voyance Staff Payroll - External USD ({run.headcount} employees)"))
         if int_net > 0:
-            legs.append(("-INT", "Internal Cash/Commissions", int_net, run.internal_funding_account_id or run.bank_account_id,
+            legs.append(("-INT", "Internal Cash/Commissions", int_net, run.internal_funding_account_id,
                          f"Voyance Staff Payroll - Internal Cash ({run.headcount} employees)"))
         if not legs:
-            legs.append(("", "", round(float(run.total_net or 0.0), 2), run.bank_account_id,
+            legs.append(("", "", round(float(run.total_net or 0.0), 2), run.external_funding_account_id,
                          f"Voyance Staff Payroll ({run.headcount} employees)"))
 
         # Validate every leg before writing anything
@@ -1907,6 +2012,9 @@ class PayrollService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Payroll run #{run_id} must be finalized or paid before journal posting."
             )
+        if not run.journal_transaction_id:
+            self._adopt_settings_for_unset_legs(run)
+            self._require_funding_accounts(run)
 
         if run.journal_transaction_id:
             tx = self.db.query(LedgerTransactionDB).filter(LedgerTransactionDB.id == run.journal_transaction_id).first()
@@ -2035,9 +2143,14 @@ class PayrollService:
     def _format_run_summary(self, run: PayrollRunDB) -> Dict[str, Any]:
         exceptions = json.loads(run.exceptions_json or "[]")
         has_blocking = any(e.get("severity") == "blocking" and not e.get("is_resolved") for e in exceptions)
-        bank_name = run.bank_account.account_name if run.bank_account else "Operating Account"
-        ext_bank_name = run.external_funding_account.account_name if run.external_funding_account else bank_name
-        int_bank_name = run.internal_funding_account.account_name if run.internal_funding_account else bank_name
+        # Until finalize a run follows Payroll Settings; after that it shows the frozen accounts.
+        ext_acc, int_acc = run.external_funding_account, run.internal_funding_account
+        if run.status in ("draft", "submitted", "approved"):
+            s_ext, s_int = self._settings_funding_accounts()
+            ext_acc, int_acc = s_ext or ext_acc, s_int or int_acc
+        bank_name = ext_acc.account_name if ext_acc else None
+        ext_bank_name = ext_acc.account_name if ext_acc else None
+        int_bank_name = int_acc.account_name if int_acc else None
 
         return {
             "id": run.id,
@@ -2058,11 +2171,11 @@ class PayrollService:
             "headcount": run.headcount,
             "recipient_count": run.headcount,
             "currency": run.currency or "USD",
-            "bank_account_id": run.bank_account_id,
+            "bank_account_id": ext_acc.id if ext_acc else None,
             "bank_account_name": bank_name,
-            "external_funding_account_id": run.external_funding_account_id,
+            "external_funding_account_id": ext_acc.id if ext_acc else None,
             "external_funding_account_name": ext_bank_name,
-            "internal_funding_account_id": run.internal_funding_account_id,
+            "internal_funding_account_id": int_acc.id if int_acc else None,
             "internal_funding_account_name": int_bank_name,
             "preview_id": run.preview_id,
             "preview_version": run.preview_version,

@@ -2865,12 +2865,27 @@ class PayableStatusReportResponse(BaseModel):
 class PayrollSettingsUpdate(BaseModel):
     employee_rate: Optional[float] = Field(None, ge=0.0, le=1.0)
     employer_rate: Optional[float] = Field(None, ge=0.0, le=1.0)
+    # Funding accounts can be replaced but never cleared: omitted or null leaves the stored value.
+    external_funding_account_id: Optional[int] = Field(None, ge=1)
+    internal_funding_account_id: Optional[int] = Field(None, ge=1)
+
+
+class PayrollFundingAccountSummary(BaseModel):
+    """Safe display summary of a funding account: no account number, IBAN or reveal data."""
+    id: int
+    name: str
+    currency: str
+    type: Optional[str] = None
 
 
 class PayrollSettingsResponse(BaseModel):
     id: int
     employee_rate: float
     employer_rate: float
+    external_funding_account_id: Optional[int] = None
+    internal_funding_account_id: Optional[int] = None
+    external_funding_account: Optional[PayrollFundingAccountSummary] = None
+    internal_funding_account: Optional[PayrollFundingAccountSummary] = None
     updated_at: Optional[Union[str, datetime]] = None
     updated_by: Optional[str] = None
 

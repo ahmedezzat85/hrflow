@@ -14,6 +14,7 @@ from alembic.operations import Operations
 from db import get_db_context
 from finance.models import FinanceBankAccountDB, LedgerTransactionDB, PayrollRunDB
 from invoice_test_helpers import account_balance
+from payroll_test_helpers import set_funding_accounts
 from test_finance_payroll_split_fx import _cleanup_test_payroll_data, _setup_employee_with_plan
 
 BE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -42,6 +43,8 @@ def _finalized_run(client, cookies, label, ext_id=None, int_id=None, bank_id=Non
         body["internal_funding_account_id"] = int_id
     if bank_id:
         body["bank_account_id"] = bank_id
+    if ext_id:
+        set_funding_accounts(ext_id, int_id or ext_id)
     resp = client.post(f"{RUNS}/generate", json=body, cookies=cookies)
     assert resp.status_code == 201, resp.text
     run_id = resp.json()["id"]
@@ -111,14 +114,14 @@ def test_posting_without_funding_accounts_is_refused_never_to_account_1(app_clie
         db.commit()
 
     pay = app_client.post(f"{RUNS}/{run_id}/pay", json={}, cookies=admin_cookies)
-    assert pay.status_code == 400 and pay.json()["detail"]["code"] == "funding_account_required"
+    assert pay.status_code == 409 and pay.json()["detail"]["code"] == "funding_accounts_not_set"
     assert _payroll_rows("2027-03") == []
     assert account_balance(app_client, admin_cookies, decoy) == 777.0
     with get_db_context() as db:
         assert db.query(PayrollRunDB).filter(PayrollRunDB.id == run_id).first().status == "finalized"
 
     journal = app_client.post(f"{RUNS}/{run_id}/post-journal", cookies=admin_cookies)
-    assert journal.status_code == 400 and journal.json()["detail"]["code"] == "funding_account_required"
+    assert journal.status_code == 409 and journal.json()["detail"]["code"] == "funding_accounts_not_set"
 
 
 def test_usd_run_cannot_post_to_egp_funding_account(app_client, admin_cookies):

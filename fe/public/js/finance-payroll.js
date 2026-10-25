@@ -37,8 +37,10 @@
     banks: (typeof window !== 'undefined' && window.location && window.location.search.includes('mock=')) ? JSON.parse(JSON.stringify(seedBanks)) : [],
     serverRuns: [],
     runsLoadError: null,
-    selectedExternalAccountId: 2,
-    selectedInternalAccountId: 1,
+    selectedExternalAccountId: null,
+    selectedInternalAccountId: null,
+    fundingSummary: { external: null, internal: null },
+    accountsDenied: false,
     month: '2026-09',
     payDate: '2026-09-30',
     start: '2026-09-01',
@@ -193,26 +195,6 @@
             currency: acc.currency || 'USD',
             number: acc.account_number || '****'
           }));
-
-          let savedCfg = {};
-          try {
-            const rawSaved = localStorage.getItem('hrflow_payroll_funding_accounts');
-            if (rawSaved) savedCfg = JSON.parse(rawSaved);
-          } catch (_) {}
-
-          if (savedCfg.externalId && this.banks.some(b => String(b.id) === String(savedCfg.externalId))) {
-            this.selectedExternalAccountId = savedCfg.externalId;
-          } else {
-            const firstUsd = this.banks.find(b => (b.currency || '').toUpperCase() === 'USD') || this.banks[0];
-            this.selectedExternalAccountId = firstUsd ? firstUsd.id : null;
-          }
-
-          if (savedCfg.internalId && this.banks.some(b => String(b.id) === String(savedCfg.internalId))) {
-            this.selectedInternalAccountId = savedCfg.internalId;
-          } else {
-            const firstInt = this.banks.find(b => b.name.toLowerCase().includes('cash') || (b.currency || '').toUpperCase() === 'EGP') || this.banks[1] || this.banks[0];
-            this.selectedInternalAccountId = firstInt ? firstInt.id : null;
-          }
         } else if (!isMockMode) {
           this.banks = [];
           this.showBanner('Failed to load company funding accounts from server.', 'red');
@@ -220,9 +202,12 @@
       } catch (err) {
         console.warn('[PayrollApp] Could not load bank accounts from database:', err);
         const isMockMode = typeof window !== 'undefined' && window.location && window.location.search.includes('mock=');
+        // A role without finance.account.read (Payroll-Maker) cannot list accounts. That is expected: the
+        // run uses the accounts set in Payroll settings, which are shown from the settings response.
+        this.accountsDenied = /permission denied|forbidden/i.test((err && err.message) || '');
         if (!isMockMode) {
           this.banks = [];
-          this.showBanner('Failed to load company funding accounts from server.', 'red');
+          if (!this.accountsDenied) this.showBanner('Failed to load company funding accounts from server.', 'red');
         }
       }
     },
@@ -253,13 +238,25 @@
       }
     },
 
-    persistFundingAccounts() {
-      try {
-        localStorage.setItem('hrflow_payroll_funding_accounts', JSON.stringify({
-          externalId: this.selectedExternalAccountId,
-          internalId: this.selectedInternalAccountId
-        }));
-      } catch (_) {}
+    // Funding accounts are owned by Payroll Settings: runs read them, they are not chosen per run.
+    applyFundingFromSettings(settings) {
+      this.selectedExternalAccountId = settings.external_funding_account_id || null;
+      this.selectedInternalAccountId = settings.internal_funding_account_id || null;
+      this.fundingSummary = {
+        external: settings.external_funding_account || null,
+        internal: settings.internal_funding_account || null,
+      };
+    },
+
+    canSetFundingAccounts() {
+      return this.canPermission('finance.settings.write') && this.canPermission('finance.account.read') && (this.banks || []).length > 0;
+    },
+
+    fundingOptionHtml(selectedId, summary) {
+      if (!selectedId) return '<option value="" selected disabled>Not set</option>';
+      const bank = (this.banks || []).find(b => String(b.id) === String(selectedId));
+      const label = bank ? this.fundingAccountLabel(bank) : escapeHtml((summary && summary.name) || `Account #${selectedId}`);
+      return `<option value="${selectedId}" selected>${label}</option>`;
     },
 
     money(v) {
@@ -667,7 +664,7 @@
         if (el) el.hidden = locked;
       });
       // Step 1 of a finalized run is read-only: disable the period, account and FX fields and hide their actions.
-      ['p1Month', 'p1PayDate', 'p1Start', 'p1End', 'p1ExtAccount', 'p1IntAccount', 'p1FxRateInput'].forEach(id => {
+      ['p1Month', 'p1PayDate', 'p1Start', 'p1End', 'p1FxRateInput'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = locked;
       });
@@ -790,10 +787,18 @@
       const extSelect = document.getElementById('p1ExtAccount');
       const intSelect = document.getElementById('p1IntAccount');
       if (extSelect) {
-        extSelect.innerHTML = (this.banks || []).map(b => `<option value="${b.id}" ${String(b.id) === String(this.selectedExternalAccountId) ? 'selected' : ''}>${this.fundingAccountLabel(b)}</option>`).join('');
+        extSelect.innerHTML = this.fundingOptionHtml(this.selectedExternalAccountId, this.fundingSummary.external);
+        extSelect.disabled = true;
       }
       if (intSelect) {
-        intSelect.innerHTML = (this.banks || []).map(b => `<option value="${b.id}" ${String(b.id) === String(this.selectedInternalAccountId) ? 'selected' : ''}>${this.fundingAccountLabel(b)}</option>`).join('');
+        intSelect.innerHTML = this.fundingOptionHtml(this.selectedInternalAccountId, this.fundingSummary.internal);
+        intSelect.disabled = true;
+      }
+      const fundingNotice = document.getElementById('p1FundingNotice');
+      if (fundingNotice) {
+        const unset = !this.selectedExternalAccountId || !this.selectedInternalAccountId;
+        fundingNotice.hidden = !unset;
+        fundingNotice.textContent = unset ? 'Funding accounts are not set. You can prepare this run. Payment is blocked until they are set in Payroll settings.' : '';
       }
 
       this.drawFxRate();
@@ -855,14 +860,6 @@
       this.drawPeriodLabel();
     },
 
-    onScreen1AccountChange() {
-      const ext = document.getElementById('p1ExtAccount');
-      const intAcc = document.getElementById('p1IntAccount');
-      if (ext) this.selectedExternalAccountId = ext.value;
-      if (intAcc) this.selectedInternalAccountId = intAcc.value;
-      this.persistFundingAccounts();
-    },
-
     async applyScreen1Fx() {
       const input = document.getElementById('p1FxRateInput') || document.getElementById('payrollFxRateInput');
       const val = input ? parseFloat(input.value) : null;
@@ -889,7 +886,6 @@
 
     async proceedFromScreen1() {
       this.onScreen1PeriodChange();
-      this.onScreen1AccountChange();
       await this.fetchPreview();
       this.setStep(1);
     },
@@ -1306,9 +1302,6 @@
             period_start: this.start,
             period_end: this.end,
             payment_date: this.payDate,
-            bank_account_id: Number(this.selectedExternalAccountId || 1),
-            external_funding_account_id: Number(this.selectedExternalAccountId || 1),
-            internal_funding_account_id: Number(this.selectedInternalAccountId || 2),
             fx_rate_source: this.fxRateValue ? 'manual' : (this.fxRateSource || 'first_of_month'),
             fx_rate_value: this.fxRateValue ? Number(this.fxRateValue) : this.resolvedFxRate,
             submit_for_approval: false
@@ -1349,9 +1342,6 @@
               period_start: this.start,
               period_end: this.end,
               payment_date: this.payDate,
-              bank_account_id: Number(this.selectedExternalAccountId || 1),
-              external_funding_account_id: Number(this.selectedExternalAccountId || 1),
-              internal_funding_account_id: Number(this.selectedInternalAccountId || 2),
               fx_rate_source: this.fxRateValue ? 'manual' : (this.fxRateSource || 'first_of_month'),
               fx_rate_value: this.fxRateValue ? Number(this.fxRateValue) : this.resolvedFxRate,
               submit_for_approval: true
@@ -1945,9 +1935,14 @@
       if (nextBtn) nextBtn.hidden = !(paid || status === 'partially_paid');
       if (paid || status === 'partially_paid') this.showRecordedAsPaid(btn);
       else btn.disabled = !ready;
+      const unsetLegs = ready && !paid ? this.unsetFundingLegs() : [];
+      if (unsetLegs.length) btn.disabled = true;
+      this.drawFundingBlock(unsetLegs);
       if (hint) {
         hint.hidden = false;
-        hint.textContent = ready || paid ? 'Records the payment in HRFlow. No money is sent from here.' : 'Payment can be recorded once the run is approved and finalized.';
+        hint.textContent = unsetLegs.length
+          ? 'Payment is blocked until the funding accounts are set.'
+          : (ready || paid ? 'Records the payment in HRFlow. No money is sent from here.' : 'Payment can be recorded once the run is approved and finalized.');
       }
     },
 
@@ -2337,9 +2332,6 @@
             period_start: this.start,
             period_end: this.end,
             payment_date: this.payDate,
-            bank_account_id: this.selectedExternalAccountId || 1,
-            external_funding_account_id: this.selectedExternalAccountId || 1,
-            internal_funding_account_id: this.selectedInternalAccountId || 2,
             fx_rate_source: this.fxRateValue ? 'manual' : (this.fxRateSource || 'first_of_month'),
             fx_rate_value: this.fxRateValue ? Number(this.fxRateValue) : null
           });
@@ -2377,6 +2369,7 @@
           if (settings) {
             if (settings.employee_rate !== undefined) this.employeeInsuranceRate = Number(settings.employee_rate);
             if (settings.employer_rate !== undefined) this.employerInsuranceRate = Number(settings.employer_rate);
+            this.applyFundingFromSettings(settings);
           }
         }
       } catch (err) {
@@ -2530,19 +2523,86 @@
         const isSel = String(b.id) === String(selectedId) ? 'selected' : '';
         return `<option value="${b.id}" ${isSel}>${this.fundingAccountLabel(b)}</option>`;
       };
+      const placeholder = '<option value="" selected disabled>Not set</option>';
+      const canSet = this.canSetFundingAccounts();
       if (selExt) {
-        selExt.innerHTML = this.banks.map(b => formatOpt(b, this.selectedExternalAccountId)).join('');
+        selExt.innerHTML = (this.selectedExternalAccountId ? '' : placeholder) + this.banks.map(b => formatOpt(b, this.selectedExternalAccountId)).join('');
+        selExt.disabled = !canSet;
       }
       if (selInt) {
-        selInt.innerHTML = this.banks.map(b => formatOpt(b, this.selectedInternalAccountId)).join('');
+        selInt.innerHTML = (this.selectedInternalAccountId ? '' : placeholder) + this.banks.map(b => formatOpt(b, this.selectedInternalAccountId)).join('');
+        selInt.disabled = !canSet;
+      }
+      const note = document.getElementById('payrollFundingNote');
+      if (note) {
+        const unset = !this.selectedExternalAccountId || !this.selectedInternalAccountId;
+        note.textContent = unset
+          ? 'Not set. Payment stays blocked until both accounts are set.'
+          : (canSet ? 'Runs use these accounts. Changing them applies to runs that are not finalized yet.' : 'Only a Financial-Admin can change these accounts.');
       }
     },
 
-    setFundingAccount(type, id) {
-      if (type === 'external') this.selectedExternalAccountId = id;
-      else if (type === 'internal') this.selectedInternalAccountId = id;
-      this.persistFundingAccounts();
+    async setFundingAccount(type, id) {
+      if (!id || typeof FinanceApi === 'undefined' || typeof FinanceApi.updatePayrollSettings !== 'function') return;
+      try {
+        const saved = await FinanceApi.updatePayrollSettings(type === 'internal'
+          ? { internal_funding_account_id: Number(id) }
+          : { external_funding_account_id: Number(id) });
+        this.applyFundingFromSettings(saved);
+        this.showBanner('Funding account saved in Payroll settings.', 'green');
+      } catch (err) {
+        this.showBanner(err.message || 'Could not save the funding account.', 'red');
+      }
+      this.drawFundingAccounts();
       this.drawPeriodLabel();
+    },
+
+    // Pay step: when Payroll Settings has no account for a leg that carries net pay, payment stops here.
+    unsetFundingLegs() {
+      const run = this.currentRun || {};
+      let ext = 0, int = 0;
+      try {
+        this.paymentValues().forEach(v => { ext += v.ext; int += v.int; });
+      } catch (_) { ext = 1; int = 1; }
+      const legs = [];
+      if (ext > 0 && !(run.external_funding_account_id || this.selectedExternalAccountId)) legs.push('external');
+      if (int > 0 && !(run.internal_funding_account_id || this.selectedInternalAccountId)) legs.push('internal');
+      return legs;
+    },
+
+    drawFundingBlock(unset) {
+      const box = document.getElementById('p5FundingBlock');
+      if (!box) return;
+      box.hidden = !unset.length;
+      if (!unset.length) { box.innerHTML = ''; return; }
+      const names = unset.join(' and ');
+      if (!this.canSetFundingAccounts()) {
+        box.textContent = `Payment is blocked: the ${names} funding account${unset.length > 1 ? 's are' : ' is'} not set. Ask a Financial-Admin to set the funding accounts in Payroll settings.`;
+        return;
+      }
+      const opts = (id) => (this.banks || []).map(b => `<option value="${b.id}" ${String(b.id) === String(id) ? 'selected' : ''}>${this.fundingAccountLabel(b)}</option>`).join('');
+      const pick = (leg, id) => `<label>${leg === 'external' ? 'External salaries' : 'Internal salaries'}<select id="p5Fund${leg === 'external' ? 'Ext' : 'Int'}">${id ? '' : '<option value="" selected disabled>Choose an account</option>'}${opts(id)}</select></label>`;
+      box.innerHTML = `<strong>Payment is blocked: funding accounts are not set.</strong>
+        <div class="pv-subhint">Saving sets them as the default in Payroll settings for every run.</div>
+        ${pick('external', this.selectedExternalAccountId)}${pick('internal', this.selectedInternalAccountId)}
+        <button type="button" class="btn btn-fill" id="p5SaveFundingBtn" onclick="PayrollApp.saveFundingFromPayStep()">Save as default</button>`;
+    },
+
+    async saveFundingFromPayStep() {
+      const ext = document.getElementById('p5FundExt');
+      const int = document.getElementById('p5FundInt');
+      const payload = {};
+      if (ext && ext.value) payload.external_funding_account_id = Number(ext.value);
+      if (int && int.value) payload.internal_funding_account_id = Number(int.value);
+      if (!Object.keys(payload).length) { this.showBanner('Choose the funding accounts first.', 'red'); return; }
+      try {
+        const saved = await FinanceApi.updatePayrollSettings(payload);
+        this.applyFundingFromSettings(saved);
+        this.showBanner('Funding accounts saved in Payroll settings.', 'green');
+      } catch (err) {
+        this.showBanner(err.message || 'Could not save the funding accounts.', 'red');
+      }
+      this.applyConfirmState();
     },
 
     async saveSettings() {
@@ -2606,7 +2666,6 @@
       }
 
       await this.fetchPreview();
-      this.persistFundingAccounts();
       this.drawPeriodLabel();
       this.addAudit('Payroll settings updated.');
       this.showPage('list');
@@ -2653,8 +2712,8 @@
       } else if (page === 'run') {
         this.redraw();
       } else if (page === 'settings') {
-        this.loadBankAccountsFromDb();
         this.drawFundingAccounts();
+        this.loadBankAccountsFromDb().then(() => this.loadSettingsFromDb()).then(() => this.drawFundingAccounts());
         const setFxInput = document.getElementById('payrollSetFxRate');
         if (setFxInput) setFxInput.value = this.fxRateValue || '';
         const monthBadge = document.getElementById('payrollSettingsMonthBadge');
