@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, Path
 from sqlalchemy.orm import Session
 
 from db import get_db
-from core.permissions import require_permission
+from core.permissions import require_any_permission
 from finance.schemas import (
     EmployeeCompensationPlanResponse,
     CompensationComponentResponse,
@@ -35,7 +35,7 @@ def get_compensation_plan_service(
 def get_active_compensation_plan(
     employee_id: int = Path(..., description="Employee ID"),
     service: CompensationPlanService = Depends(get_compensation_plan_service),
-    current_user: dict = Depends(require_permission("finance.payroll.read")),
+    current_user: dict = Depends(require_any_permission("finance.payroll.read", "hr.salary.read")),
 ):
     """Retrieve the current active compensation plan components and total monthly USD for an employee."""
     return service.get_active_plan(employee_id)
@@ -45,7 +45,7 @@ def get_active_compensation_plan(
 def get_compensation_plan_history(
     employee_id: int = Path(..., description="Employee ID"),
     service: CompensationPlanService = Depends(get_compensation_plan_service),
-    current_user: dict = Depends(require_permission("finance.payroll.read")),
+    current_user: dict = Depends(require_any_permission("finance.payroll.read", "hr.salary.read")),
 ):
     """Retrieve full effective-dated history of all compensation plan rows for an employee."""
     return service.get_history(employee_id)
@@ -55,7 +55,7 @@ def get_compensation_plan_history(
 def get_pay_history(
     employee_id: int = Path(..., description="Employee ID"),
     service: CompensationPlanService = Depends(get_compensation_plan_service),
-    current_user: dict = Depends(require_permission("finance.payroll.read")),
+    current_user: dict = Depends(require_any_permission("finance.payroll.read", "hr.salary.read")),
 ):
     """Pay history as one row per change, with internal and external as columns (D-036)."""
     return service.get_pay_history(employee_id)
@@ -66,7 +66,7 @@ def set_compensation_plan(
     payload: CompensationPlanSetRequest,
     employee_id: int = Path(..., description="Employee ID"),
     service: CompensationPlanService = Depends(get_compensation_plan_service),
-    current_user: dict = Depends(require_permission("finance.payroll.prepare")),
+    current_user: dict = Depends(require_any_permission("finance.payroll.prepare", "hr.salary.write")),
 ):
     """
     Set both pay components in one atomic call (D-034). A component set to 0 is ended the day
@@ -95,7 +95,7 @@ def set_compensation_component(
         ..., description="Component type: external_usd or internal_usd_cash"
     ),
     service: CompensationPlanService = Depends(get_compensation_plan_service),
-    current_user: dict = Depends(require_permission("finance.payroll.prepare")),
+    current_user: dict = Depends(require_any_permission("finance.payroll.prepare", "hr.salary.write")),
 ):
     """
     Set or update an employee's compensation component.
