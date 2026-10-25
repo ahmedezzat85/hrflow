@@ -460,6 +460,7 @@ async function viewProfile(id, section) {
       // Documents and bank status have mock data, so the mock view shows their real states (Preview buttons, Missing bank card)
       await loadEmployeeDocuments(id);
       await loadBankAccountStatus(id);
+      await loadTaxMethodStatus(id);
       return;
     }
     try {
@@ -517,6 +518,7 @@ async function viewProfile(id, section) {
       await loadEmployeeDocuments(id);
       await loadBankAccountStatus(id);
       await loadSocialInsuranceStatus(id);
+      await loadTaxMethodStatus(id);
     } catch (err) { toast(err.message, 'fa-solid fa-triangle-exclamation'); }
 }
 
@@ -1241,6 +1243,157 @@ async function saveSocialInsurance(evt) {
     toast('Social insurance configuration saved.');
     closeModal('socialInsuranceModal');
     await loadSocialInsuranceStatus(currentDetailEmployeeId);
+  } catch (err) {
+    toast(err.message, 'fa-solid fa-triangle-exclamation');
+  } finally {
+    setButtonLoading(btn, false);
+  }
+}
+
+let _taxMethodConfig = null;
+
+function fmtTaxRate(rate) {
+  const pct = Math.round(Number(rate) * 10000) / 100;
+  return `${pct}%`;
+}
+
+function taxMethodLabel(row) {
+  if (!row) return 'Normal (progressive)';
+  return row.method === 'flat' ? `Flat ${fmtTaxRate(row.flat_rate)}` : 'Normal (progressive)';
+}
+
+function renderTaxMethodHistory(history) {
+  const wrap = document.getElementById('taxMethodHistory');
+  const body = document.getElementById('taxMethodHistoryBody');
+  if (!wrap || !body) return;
+  const rows = (history || []).slice().sort((a, b) => String(a.effective_start_date).localeCompare(String(b.effective_start_date)) || a.id - b.id);
+  wrap.hidden = rows.length === 0;
+  body.innerHTML = rows.map(r => `<tr><td data-label="From">${escapeHtml(String(r.effective_start_date).slice(0, 10))}</td><td data-label="To">${r.effective_end_date ? escapeHtml(String(r.effective_end_date).slice(0, 10)) : 'Present'}</td><td data-label="Method">${escapeHtml(taxMethodLabel(r))}</td></tr>`).join('');
+}
+
+async function loadTaxMethodStatus(empId) {
+  setCardStatusAction('taxMethodStatusActionBtn', null);
+  const pill = document.getElementById('taxMethodPill');
+  const btn = document.getElementById('taxMethodActionBtn');
+  const nameEl = document.getElementById('taxMethodName');
+  const rateEl = document.getElementById('taxMethodRate');
+  const effEl = document.getElementById('taxMethodEffectiveDate');
+  if (!pill) return;
+  const canEdit = canWriteSalary();
+  if (btn) btn.hidden = !canEdit;
+  pill.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading...';
+  setPillTone(pill, 'neutral');
+  if (nameEl) nameEl.textContent = '—';
+  if (rateEl) rateEl.textContent = '—';
+  if (effEl) effEl.textContent = '—';
+  renderTaxMethodHistory([]);
+
+  try {
+    const [data, history] = await Promise.all([Api.getTaxMethod(empId), Api.getTaxMethodHistory(empId)]);
+    _taxMethodConfig = data;
+    renderTaxMethodHistory(history);
+    if (!data) {
+      pill.innerHTML = '<i class="fa-solid fa-circle-minus"></i> Normal (default)';
+      setPillTone(pill, 'neutral');
+      if (nameEl) nameEl.textContent = 'Normal (progressive)';
+      if (rateEl) rateEl.textContent = 'Brackets from payroll settings';
+      if (canEdit) setCardStatusAction('taxMethodStatusActionBtn', 'Set up', () => openTaxMethodModal());
+      return;
+    }
+    const effDate = data.effective_start_date ? String(data.effective_start_date).slice(0, 10) : '—';
+    if (data.method === 'flat') {
+      pill.innerHTML = `<i class="fa-solid fa-percent"></i> Flat ${escapeHtml(fmtTaxRate(data.flat_rate))}`;
+      setPillTone(pill, 'warning');
+      if (nameEl) nameEl.textContent = 'Flat rate';
+      if (rateEl) rateEl.textContent = `${fmtTaxRate(data.flat_rate)} of taxable gross, no exemption`;
+    } else {
+      pill.innerHTML = '<i class="fa-solid fa-circle-check"></i> Normal';
+      setPillTone(pill, 'success');
+      if (nameEl) nameEl.textContent = 'Normal (progressive)';
+      if (rateEl) rateEl.textContent = 'Brackets from payroll settings';
+    }
+    if (effEl) effEl.textContent = effDate;
+  } catch (err) {
+    pill.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Could not load';
+    setPillTone(pill, 'neutral');
+    setCardStatusAction('taxMethodStatusActionBtn', 'Try again', () => loadTaxMethodStatus(empId));
+  }
+}
+
+function syncTaxMethodRateField() {
+  const flat = document.getElementById('fTaxMethodFlat');
+  const box = document.getElementById('fTaxRateContainer');
+  if (box) box.hidden = !(flat && flat.checked);
+}
+
+async function openTaxMethodModal() {
+  if (!canWriteSalary()) return;
+  const flatRadio = document.getElementById('fTaxMethodFlat');
+  const progRadio = document.getElementById('fTaxMethodProgressive');
+  const rateInput = document.getElementById('fTaxMethodRate');
+  const effInput = document.getElementById('fTaxMethodEffectiveDate');
+  const notesInput = document.getElementById('fTaxMethodNotes');
+
+  const emp = (typeof employees !== 'undefined' ? employees : []).find(x => String(x.id) === String(currentDetailEmployeeId));
+  const title = document.getElementById('taxMethodModalTitle');
+  if (title) title.textContent = emp && emp.name ? `Tax method · ${emp.name}` : 'Tax method';
+
+  progRadio.checked = true;
+  flatRadio.checked = false;
+  rateInput.value = '';
+  notesInput.value = '';
+  effInput.value = new Date().toISOString().slice(0, 10);
+
+  if (_taxMethodConfig) {
+    const isFlat = _taxMethodConfig.method === 'flat';
+    flatRadio.checked = isFlat;
+    progRadio.checked = !isFlat;
+    if (isFlat && _taxMethodConfig.flat_rate !== null && _taxMethodConfig.flat_rate !== undefined) {
+      rateInput.value = Math.round(Number(_taxMethodConfig.flat_rate) * 10000) / 100;
+    }
+    if (_taxMethodConfig.effective_start_date) effInput.value = String(_taxMethodConfig.effective_start_date).slice(0, 10);
+    notesInput.value = _taxMethodConfig.notes || '';
+  }
+  syncTaxMethodRateField();
+  openModal('taxMethodModal');
+}
+
+async function saveTaxMethod(evt) {
+  const btn = (evt && evt.currentTarget) || document.getElementById('taxMethodSaveBtn');
+  const isFlat = document.getElementById('fTaxMethodFlat').checked;
+  const rateVal = document.getElementById('fTaxMethodRate').value.trim();
+  const effDate = document.getElementById('fTaxMethodEffectiveDate').value.trim();
+  const notes = document.getElementById('fTaxMethodNotes').value.trim();
+
+  if (!effDate) {
+    toast('Effective Date is required.', 'fa-solid fa-triangle-exclamation');
+    return;
+  }
+  if (effDate > new Date().toISOString().slice(0, 10)) {
+    toast('Future pre-staging is not permitted. Effective date must be on or before today.', 'fa-solid fa-triangle-exclamation');
+    return;
+  }
+  let flatRate = null;
+  if (isFlat) {
+    const pct = Number(rateVal);
+    if (!rateVal || !(pct > 0 && pct <= 100)) {
+      toast('Enter a flat rate above 0% and up to 100%.', 'fa-solid fa-triangle-exclamation');
+      return;
+    }
+    flatRate = Math.round(pct * 100) / 10000; // percent in the form, fraction stored
+  }
+
+  setButtonLoading(btn, true, 'Saving…');
+  try {
+    await Api.upsertTaxMethod(currentDetailEmployeeId, {
+      method: isFlat ? 'flat' : 'progressive',
+      flat_rate: flatRate,
+      effective_start_date: effDate,
+      notes
+    });
+    toast('Tax method saved.');
+    closeModal('taxMethodModal');
+    await loadTaxMethodStatus(currentDetailEmployeeId);
   } catch (err) {
     toast(err.message, 'fa-solid fa-triangle-exclamation');
   } finally {

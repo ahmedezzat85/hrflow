@@ -591,6 +591,62 @@ const Api = {
     }
     return apiRequest("PUT", `/api/employees/${encodeURIComponent(empId)}/social-insurance`, payload);
   },
+  // Tax method (progressive | flat rate), effective-dated. Mock mode mirrors the backend guards.
+  getTaxMethod(empId) {
+    if (typeof _isMock === "function" && _isMock()) {
+      const rows = (window._mockTaxMethod && window._mockTaxMethod[empId]) || [];
+      return Promise.resolve(rows.find(r => !r.effective_end_date) || null);
+    }
+    return apiRequest("GET", `/api/employees/${encodeURIComponent(empId)}/tax-method`);
+  },
+  getTaxMethodHistory(empId) {
+    if (typeof _isMock === "function" && _isMock()) {
+      const rows = (window._mockTaxMethod && window._mockTaxMethod[empId]) || [];
+      return Promise.resolve(rows.slice().sort((a, b) => (b.effective_start_date + b.id).localeCompare(a.effective_start_date + a.id)));
+    }
+    return apiRequest("GET", `/api/employees/${encodeURIComponent(empId)}/tax-method/history`);
+  },
+  upsertTaxMethod(empId, payload) {
+    if (typeof _isMock === "function" && _isMock()) {
+      window._mockTaxMethod = window._mockTaxMethod || {};
+      const rows = window._mockTaxMethod[empId] = window._mockTaxMethod[empId] || [];
+      const fail = (msg) => Promise.reject(new Error(msg));
+      const start = payload.effective_start_date;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(start || "")) return fail("effective_start_date must be in YYYY-MM-DD format");
+      if (payload.method !== "progressive" && payload.method !== "flat") return fail("method must be one of: progressive, flat");
+      let rate = null;
+      if (payload.method === "flat") {
+        if (payload.flat_rate === null || payload.flat_rate === undefined) return fail("flat_rate is required when the tax method is flat");
+        rate = Number(payload.flat_rate);
+        if (!(rate > 0 && rate <= 1)) return fail("flat_rate must be greater than 0 and at most 1 (for example 0.10 for 10%)");
+      }
+      const today = new Date().toISOString().slice(0, 10);
+      if (start > today) return fail(`effective_start_date (${start}) cannot be in the future (today is ${today}). Future pre-staging is not permitted.`);
+      const active = rows.find(r => !r.effective_end_date);
+      if (active && start === active.effective_start_date) {
+        active.method = payload.method;
+        active.flat_rate = rate;
+        active.notes = payload.notes || "";
+        return Promise.resolve({ ...active });
+      }
+      if (active && start < active.effective_start_date) {
+        return fail(`New effective_start_date (${start}) must be strictly after the current record start date (${active.effective_start_date})`);
+      }
+      if (active) {
+        const d = new Date(start + "T00:00:00Z");
+        d.setUTCDate(d.getUTCDate() - 1);
+        active.effective_end_date = d.toISOString().slice(0, 10);
+      }
+      const rec = {
+        id: rows.length + 1, employee_id: empId, method: payload.method, flat_rate: rate,
+        effective_start_date: start, effective_end_date: null, notes: payload.notes || "",
+        created_by: "mock", created_at: new Date().toISOString()
+      };
+      rows.push(rec);
+      return Promise.resolve({ ...rec });
+    }
+    return apiRequest("PUT", `/api/employees/${encodeURIComponent(empId)}/tax-method`, payload);
+  },
   getExportStatus() {
     return apiRequest("GET", "/api/export/status");
   },

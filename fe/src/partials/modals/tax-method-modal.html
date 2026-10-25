@@ -1,0 +1,50 @@
+<div class="modal-overlay fv fv-dialog fv-dialog--w520 fv-area-teal" id="taxMethodModal">
+  <div class="modal modal-v2">
+    <div class="modal-head">
+      <span class="modal-head-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 5 5 19"></path><circle cx="7" cy="7" r="2.5"></circle><circle cx="17" cy="17" r="2.5"></circle></svg></span>
+      <div class="modal-head-text">
+        <h3 id="taxMethodModalTitle">Tax method</h3>
+        <p>How income tax is calculated, with effective dates</p>
+      </div>
+      <button class="modal-close" onclick="closeModal('taxMethodModal')" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-section">
+        <div class="form-grid">
+          <div class="form-field full">
+            <label class="fv-dialog-check fv-dialog-check--bar" for="fTaxMethodProgressive">
+              <strong>Normal (progressive)</strong>
+              <input type="radio" name="fTaxMethod" id="fTaxMethodProgressive" value="progressive" checked onchange="syncTaxMethodRateField()">
+            </label>
+          </div>
+          <div class="form-field full">
+            <label class="fv-dialog-check fv-dialog-check--bar" for="fTaxMethodFlat">
+              <strong>Flat rate</strong>
+              <input type="radio" name="fTaxMethod" id="fTaxMethodFlat" value="flat" onchange="syncTaxMethodRateField()">
+            </label>
+          </div>
+          <div class="form-field" id="fTaxRateContainer" hidden>
+            <label for="fTaxMethodRate">Rate</label>
+            <div class="input-group">
+              <span class="input-addon">%</span>
+              <input type="number" step="0.01" min="0" max="100" id="fTaxMethodRate" placeholder="e.g. 10" style="text-align: right;">
+            </div>
+          </div>
+          <div class="form-field">
+            <label for="fTaxMethodEffectiveDate">Effective from</label>
+            <input type="date" id="fTaxMethodEffectiveDate">
+          </div>
+          <div class="form-field full">
+            <label for="fTaxMethodNotes">Notes</label>
+            <input type="text" id="fTaxMethodNotes" placeholder="Optional">
+          </div>
+          <p class="helper full" id="taxMethodDateHint">Dated on the 1st of a month; a change applies to the whole month. Flat rate is charged on the full taxable gross, with no exemption.</p>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="taxMethodCancelBtn" onclick="closeModal('taxMethodModal')">Cancel</button>
+      <button class="btn btn-fill" id="taxMethodSaveBtn" onclick="saveTaxMethod(event)">Save</button>
+    </div>
+  </div>
+</div>

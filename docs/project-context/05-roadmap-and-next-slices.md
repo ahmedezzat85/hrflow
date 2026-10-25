@@ -297,7 +297,7 @@ Handoff for Claude Code written October 25, 2026 (Project: `claude/claude-code-h
 
 | Slice | Scope | Size | Depends on |
 | :--- | :--- | :--- | :--- |
-| FT-1 | **Required before the 2025-2026 runs.** Employee-level tax method setting with dated history, like the insured base (`progressive` by default when no row exists, or `flat` with the rate stored on the row; 10% of gross incl. bonus and commission, no exemption, remitted with payroll tax on its own line; social insurance stays its own separate setting): table and migration, calculation incl. net-to-gross, line snapshot, employee form, tax payable totals and exports, tests. **Not started** | M | — |
+| FT-1 | **Required before the 2025-2026 runs.** Employee-level tax method setting with dated history, like the insured base (`progressive` by default when no row exists, or `flat` with the rate stored on the row; 10% of gross incl. bonus and commission, no exemption, remitted with payroll tax on its own line; social insurance stays its own separate setting): table and migration, calculation incl. net-to-gross, line snapshot, employee form, tax payable totals and exports, tests. **Built on `feat/employee-tax-method` (backend and frontend), awaiting review and merge** | M | — |
 | FX-1 | Refuse or warn when a run would use the silent 50.0 fallback rate. Optional, recommended. **Not started** | S | — |
 | SI-1 | Effective-dated social insurance rates (Q-023). Needed only if the rate changes inside 2025-2026. **Not started** | S-M | Q-023 |
 | FY-1 | Fiscal year reporting: start-month setting (January default), year selector, yearly summary per account and per category (opening, in, out, spend, closing). No year lock. **Not started** | S-M | — |
@@ -340,7 +340,7 @@ The following initiatives remain on hold until formally decided in [04-decision-
 | Employee Pay Analytics review fixes (FE-6) | In progress with Claude Code on `fix/pay-analytics-plan-order`; real-backend smoke test still to be done | Section 3I; handoff `claude-code-handoff-pay-analytics-fix-and-hr-plan-access.md` |
 | Q-022: typing and amount field of imported historical payroll lines | Open (owner) | `06`; gates historical payroll import |
 | HR access to compensation plans (HP-1 to HP-3) | Accepted, not started | Section 3J, D-038 |
-| Payroll cutover prerequisites: flat 10% tax method (FT-1, required before 2025-2026 runs), fiscal year reporting (FY-1), FX fallback warning (FX-1), effective-dated social insurance rate (SI-1) | Accepted, not started | Section 3K, D-040, Q-023 |
+| Payroll cutover prerequisites: flat 10% tax method (FT-1, required before 2025-2026 runs), fiscal year reporting (FY-1), FX fallback warning (FX-1), effective-dated social insurance rate (SI-1) | Accepted; FT-1 built on branch `feat/employee-tax-method` (awaiting merge), FX-1, SI-1, FY-1 not started | Section 3K, D-040, Q-023 |
 | Payroll-Maker run-creation screen check (403 on account list) | Not done | D-039, Q-007 |
 
 ### Planned earlier, not done
