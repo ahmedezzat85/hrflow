@@ -11,6 +11,7 @@ import pytest
 from fastapi import HTTPException
 
 from db import get_session_factory
+from payroll_test_helpers import set_funding_accounts_in
 from models_db import EmployeeDB
 from finance.models import (
     AccountTransferDB,
@@ -113,6 +114,7 @@ def test_refresh_keeps_working_from_the_rate_stored_on_the_run(no_transfers):
                      internal_salary_usd=0.0, external_salary_usd=1500.0, salary=1500.0)
     db.add_all([bank, emp])
     db.flush()
+    set_funding_accounts_in(db, bank.id)  # funding accounts come from Payroll Settings
     db.query(EmployeeDB).filter(EmployeeDB.id != emp.id).update({"status": "Inactive"})
     db.add(EmployeeCompensationPlanDB(employee_id=emp.id, component_type="external_usd", amount=1500.0,
                                       salary_basis="NET", effective_start_date="2026-01-01"))

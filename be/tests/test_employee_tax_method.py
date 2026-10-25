@@ -19,6 +19,7 @@ from finance.models import (
     PayrollTaxSettingsDB,
 )
 from db import get_session_factory
+from payroll_test_helpers import set_funding_accounts_in
 from finance.services.payroll_service import PayrollService
 from finance.services.payroll_calculation_helper import validate_and_calculate_internal_statutory
 
@@ -250,6 +251,8 @@ def payroll_env(db_session):
     bank = FinanceBankAccountDB(account_name="Tax Method USD", bank_name="Test Bank", account_number=f"TM-{uuid.uuid4().hex[:8]}",
                                 currency="USD", opening_balance=500000.0, current_balance=500000.0, is_active=True)
     db_session.add(bank)
+    db_session.flush()
+    set_funding_accounts_in(db_session, bank.id)  # funding accounts come from Payroll Settings
     db_session.query(PayrollTaxSettingsDB).filter_by(effective_from="2020-01-01").delete()
     db_session.add(PayrollTaxSettingsDB(
         effective_from="2020-01-01",
