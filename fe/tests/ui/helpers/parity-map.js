@@ -254,7 +254,7 @@ export const PARITY_MAP = {
       // Issue 9 (owner decision 2026-10-19): Notes and Medical insurance cards are kept features; 'Payroll runs' link is not in the app
       // D-036: the personal details rows (HR-admin only) add height to the details card and a Reveal button for the ID
       // Pay analytics: the Overview / Pay analytics tab strip and the Payroll and payments card link are not in the mock
-      keptLabels: ['Medical insurance consumption', 'Notes and performance tracking', 'Date', 'Category', 'Note', 'Add Note', 'Payroll runs', 'Reveal', 'Overview', 'Pay analytics', 'Pay analytics →'],
+      keptLabels: ['Medical insurance consumption', 'Notes and performance tracking', 'Date', 'Category', 'Note', 'Add Note', 'Payroll runs', 'Reveal', 'Overview', 'Pay analytics', 'Pay analytics →', 'Tax method', 'Set up'],
       setup: async (page) => {
         await page.waitForFunction(() => window.Router && typeof viewProfile === 'function' && typeof employees !== 'undefined' && employees.length > 0);
         const empId = await page.evaluate(() => String(employees[0].id));
