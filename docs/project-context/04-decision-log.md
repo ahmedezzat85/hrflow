@@ -513,6 +513,13 @@ This document records durable product and architectural decisions approved by th
 - **Verified in code on October 25, 2026:** a run can stay finalized without being paid and then posts nothing to the ledger; payroll reports include every non-cancelled run; the run FX rate is one value per run and falls back silently to 50.0 when no manual rate and no earlier USD-to-EGP transfer exist; tax is calculated only for the internal USD part; point-in-time balances exist but no fiscal-year concept exists apart from the cheque field.
 - **Related References:** [06-open-questions.md](06-open-questions.md) (`Q-022`, `Q-023`); [05-roadmap-and-next-slices.md](05-roadmap-and-next-slices.md) (`3K`); D-025, D-033, D-036, D-037.
 
+### D-042 — Fiscal Year Reporting (FY-1)
+
+- **Status:** Accepted by owner, October 25, 2026. Implemented on `feat/fiscal-year-reporting`.
+- **Decision:** (1) The fiscal year is always the calendar year, January to December; there is no start-month setting and no new settings store. (2) `GET /api/finance/reports/fiscal-year-summary?year=` (permission `finance.report.read`, optional xlsx) returns, per account and in its own currency, opening (balance on 31 December of the year before), money in, money out and closing, plus totals per currency (never added across currencies) and company spend per category and currency. (3) Account figures include every ledger movement, transfers between own accounts included, so they match the system and each account reconciles (opening + in - out = closing). (4) Company spend excludes movements between own accounts in the same country; a movement to an account in another country stays in spend as "Transfers to another country". (5) A year that ends before an account's opening date shows "no data"; transactions dated before the opening date are counted as a warning. (6) Inactive accounts appear for a year only when they had activity or a balance. (7) Reports only: no year lock.
+- **Not changed (reported):** `get_point_in_time_balances` ignores `opening_balance_date` (pinned by tests); the Cash Flow statement counts the first day of its range twice and always reports `is_reconciled = true`; the Category Summary adds currencies together unless filtered and counts own-account movements as spend. The owner left the cash flow as is.
+- **Related References:** [05-roadmap-and-next-slices.md](05-roadmap-and-next-slices.md) (`3K`, `FY-1`); `docs/finance-module/fiscal-year-reporting-discovery.md`; D-040.
+
 ## Related but Not Decisions
 
 The following items are established architectural baseline rules or future roadmaps rather than standalone decision entries:

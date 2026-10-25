@@ -6,7 +6,7 @@ category spend rollups, and period matrices.
 import json
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, and_, or_
 
 from fastapi import HTTPException, status
@@ -35,6 +35,7 @@ from finance.models import (
 )
 from models_db import EmployeeDB
 from finance.services.excel_exporter import (
+    export_fiscal_year_summary_xlsx,
     export_transactions_xlsx,
     export_category_summary_xlsx,
     export_category_matrix_xlsx,
@@ -824,13 +825,16 @@ class ReportsService:
     # ------------------------------------------------------------------
     # 4. Point-in-Time Balances Report
     # ------------------------------------------------------------------
-    def get_point_in_time_balances(self, as_of_date: str, book: Optional[str] = None) -> Dict[str, Any]:
+    def get_point_in_time_balances(self, as_of_date: str, book: Optional[str] = None, include_inactive: bool = False) -> Dict[str, Any]:
         """
         Computes the balance of each bank/cash account as of a given date (inclusive).
-        Transactions after as_of_date are excluded.
+        Transactions after as_of_date are excluded. Inactive accounts are left out unless include_inactive.
+        Note: opening_balance_date is not used; see tests/test_reports_balances_opening_date.py.
         """
         scope = self._scope(book)
-        acc_q = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.is_active == True)
+        acc_q = self.db.query(FinanceBankAccountDB)
+        if not include_inactive:
+            acc_q = acc_q.filter(FinanceBankAccountDB.is_active == True)
         accounts = scope.filter(acc_q, FinanceBankAccountDB.id).all()
 
         accounts_list = []
@@ -880,6 +884,8 @@ class ReportsService:
                 "account_type": acc.account_type,
                 "country": country,
                 "opening_balance": opening,
+                "opening_balance_date": acc.opening_balance_date,
+                "is_active": bool(acc.is_active),
                 "balance_as_of_date": balance,
                 "book_code": scope.book_of(acc.id),
                 "visibility": acc.visibility or "full",
@@ -892,6 +898,130 @@ class ReportsService:
             "accounts": accounts_list,
             "currency_totals": currency_totals,
             "country_totals": country_totals,
+        }
+
+    # ------------------------------------------------------------------
+    # 4b. Fiscal year summary (FY-1): calendar year, per account and per category
+    # ------------------------------------------------------------------
+    OTHER_COUNTRY_TRANSFERS = "Transfers to another country"
+
+    def get_fiscal_year_summary(self, year: int, book: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Yearly summary for the calendar year (January to December).
+        Per account, in its own currency: opening (balance as of 31 December of the year before), money in and
+        money out (every ledger movement, transfers between own accounts included, so the statement matches the
+        system), closing (balance as of 31 December). Per currency totals only: nothing is added across currencies.
+        Company spend per category excludes movements between own accounts in the same country; a movement to an
+        account in another country stays in spend as "Transfers to another country".
+        """
+        start, end, prev_end = f"{year}-01-01", f"{year}-12-31", f"{year - 1}-12-31"
+        scope = self._scope(book)
+
+        opening = {a["account_id"]: a for a in self.get_point_in_time_balances(prev_end, book=book, include_inactive=True)["accounts"]}
+        closing = self.get_point_in_time_balances(end, book=book, include_inactive=True)["accounts"]
+
+        flow_q = (
+            self.db.query(LedgerTransactionDB.account_id, LedgerTransactionDB.direction, func.sum(LedgerTransactionDB.amount))
+            .filter(LedgerTransactionDB.date >= start, LedgerTransactionDB.date <= end)
+            .group_by(LedgerTransactionDB.account_id, LedgerTransactionDB.direction)
+        )
+        flows: Dict[int, Dict[str, float]] = {}
+        for aid, direction, total in scope.filter(flow_q, LedgerTransactionDB.account_id).all():
+            flows.setdefault(aid, {"in": 0.0, "out": 0.0})[direction] = float(total or 0.0)
+
+        pre_open_q = (
+            self.db.query(LedgerTransactionDB.account_id, FinanceBankAccountDB.opening_balance_date, func.count(LedgerTransactionDB.id))
+            .join(FinanceBankAccountDB, FinanceBankAccountDB.id == LedgerTransactionDB.account_id)
+            .filter(FinanceBankAccountDB.opening_balance_date.isnot(None),
+                    LedgerTransactionDB.date < FinanceBankAccountDB.opening_balance_date)
+            .group_by(LedgerTransactionDB.account_id, FinanceBankAccountDB.opening_balance_date)
+        )
+        pre_open = {aid: int(n) for aid, _d, n in scope.filter(pre_open_q, LedgerTransactionDB.account_id).all()}
+
+        rows: List[Dict[str, Any]] = []
+        totals: Dict[str, Dict[str, float]] = {}
+        for acc in closing:
+            aid = acc["account_id"]
+            fl = flows.get(aid, {"in": 0.0, "out": 0.0})
+            op = float(opening.get(aid, {}).get("balance_as_of_date", 0.0))
+            cl = float(acc["balance_as_of_date"])
+            od = acc.get("opening_balance_date")
+            # a year that ends before the account's opening date has no data yet
+            no_data = bool(od) and end < od
+            if not acc["is_active"] and not (fl["in"] or fl["out"] or op or cl):
+                continue
+            row = {
+                "account_id": aid,
+                "account_name": acc["account_name"],
+                "bank_name": acc.get("bank_name") or "",
+                "account_type": acc.get("account_type"),
+                "country": acc.get("country"),
+                "currency": acc["currency"],
+                "book_code": acc.get("book_code"),
+                "is_active": acc["is_active"],
+                "opening_balance_date": od,
+                "no_data": no_data,
+                "opening": None if no_data else round(op, 2),
+                "money_in": None if no_data else round(fl["in"], 2),
+                "money_out": None if no_data else round(fl["out"], 2),
+                "closing": None if no_data else round(cl, 2),
+                "transactions_before_opening_date": pre_open.get(aid, 0),
+            }
+            rows.append(row)
+            if not no_data:
+                t = totals.setdefault(acc["currency"], {"opening": 0.0, "money_in": 0.0, "money_out": 0.0, "closing": 0.0})
+                t["opening"] += op
+                t["money_in"] += fl["in"]
+                t["money_out"] += fl["out"]
+                t["closing"] += cl
+        rows.sort(key=lambda r: (r["currency"], r["account_name"]))
+
+        # ---- company spend per category, per currency
+        country_of = {a.id: (a.country or "Egypt") for a in self.db.query(FinanceBankAccountDB).all()}
+        spend_q = (
+            self.db.query(LedgerTransactionDB, TransactionCategoryDB.kind, TransactionCategoryDB.name)
+            .options(joinedload(LedgerTransactionDB.payment_type), joinedload(LedgerTransactionDB.linked_transfer))
+            .outerjoin(TransactionCategoryDB, LedgerTransactionDB.category_id == TransactionCategoryDB.id)
+            .filter(LedgerTransactionDB.direction == "out", LedgerTransactionDB.date >= start, LedgerTransactionDB.date <= end)
+        )
+        spend: Dict[str, Dict[str, Any]] = {}
+        for tx, kind, cname in scope.filter(spend_q, LedgerTransactionDB.account_id).all():
+            cur = tx.currency or "USD"
+            bucket = spend.setdefault(cur, {"categories": {}, "total": 0.0, "excluded_own_account_same_country": 0.0})
+            amount = float(tx.amount or 0.0)
+            cat_id, cat_name, cat_kind = tx.category_id, cname or "Uncategorized", kind or "cost"
+            if cash_basis.is_own_account_movement(tx, kind):
+                counter = scope.counter_account_id(tx) or tx.destination_cash_account_id
+                if counter is None or country_of.get(counter) == country_of.get(tx.account_id):
+                    bucket["excluded_own_account_same_country"] += amount
+                    continue
+                cat_id, cat_name, cat_kind = None, self.OTHER_COUNTRY_TRANSFERS, "transfer"
+            c = bucket["categories"].setdefault((cat_id, cat_name), {"category_id": cat_id, "category_name": cat_name, "kind": cat_kind, "transaction_count": 0, "total_amount": 0.0})
+            c["transaction_count"] += 1
+            c["total_amount"] += amount
+            bucket["total"] += amount
+
+        spend_out: Dict[str, Any] = {}
+        for cur, b in spend.items():
+            cats = sorted(b["categories"].values(), key=lambda c: -c["total_amount"])
+            for c in cats:
+                c["total_amount"] = round(c["total_amount"], 2)
+                c["percentage"] = round(c["total_amount"] / b["total"] * 100.0, 2) if b["total"] > 0 else 0.0
+            spend_out[cur] = {
+                "total": round(b["total"], 2),
+                "excluded_own_account_same_country": round(b["excluded_own_account_same_country"], 2),
+                "categories": cats,
+            }
+
+        return {
+            "year": year,
+            "date_from": start,
+            "date_to": end,
+            "opening_as_of": prev_end,
+            "closing_as_of": end,
+            "accounts": rows,
+            "currency_totals": {cur: {k: round(v, 2) for k, v in t.items()} for cur, t in sorted(totals.items())},
+            "spend": spend_out,
         }
 
     # ------------------------------------------------------------------
@@ -1015,6 +1145,18 @@ class ReportsService:
                 "supported_formats": ["json", "xlsx"],
                 "required_permission": "finance.report.read",
                 "badge": "Liquidity",
+            },
+            {
+                "key": "fiscal-year-summary",
+                "title": "Yearly Summary",
+                "category": "Cash & Banking",
+                "business_question": "For each calendar year, what did every account open and close with, how much came in and went out, and what did the company spend?",
+                "description": "January to December summary per account (opening, money in, money out, closing) and company spend per category, per currency.",
+                "icon": "fa-solid fa-calendar-days",
+                "supported_basis": ["cash"],
+                "supported_formats": ["json", "xlsx"],
+                "required_permission": "finance.report.read",
+                "badge": "Year End",
             },
             {
                 "key": "cash-forecast",
@@ -2336,6 +2478,12 @@ class ReportsService:
                 as_of_date=filters.get("as_of_date") or filters.get("date_to")
             )
             row_count = len(data.get("accounts", []))
+        elif report_key == "fiscal-year-summary":
+            data = self.get_fiscal_year_summary(
+                year=int(filters.get("year") or datetime.utcnow().year),
+                book=filters.get("book"),
+            )
+            row_count = len(data.get("accounts", []))
         elif report_key == "transactions":
             acc_id = int(filters["account_id"]) if filters.get("account_id") else None
             cat_id = int(filters["category_id"]) if filters.get("category_id") else None
@@ -2412,6 +2560,8 @@ class ReportsService:
                 file_bytes = export_category_matrix_xlsx(data)
             elif report_key == "balances":
                 file_bytes = export_balances_xlsx(data)
+            elif report_key == "fiscal-year-summary":
+                file_bytes = export_fiscal_year_summary_xlsx(data)
             elif report_key == "transactions":
                 file_bytes = export_transactions_xlsx(data)
             elif report_key in FLAT_REPORTS:

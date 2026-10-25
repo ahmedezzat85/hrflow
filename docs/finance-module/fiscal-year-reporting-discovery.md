@@ -1,6 +1,6 @@
 # Fiscal year reporting (FY-1): discovery note
 
-Status: DISCOVERY NOTE, awaiting owner approval. Nothing below is implemented except one test file that pins current behaviour (`be/tests/test_reports_balances_opening_date.py`, 4 tests, all pass). Branch: `feat/fiscal-year-reporting` (from `main` at `0107a73`).
+Status: APPROVED by the owner on October 25, 2026 (answers in section 5); implemented. Decision D-042. Branch: `feat/fiscal-year-reporting` (from `main` at `0107a73`).
 Scope (owner, D-040): reports only, no year lock. Fiscal year = January to December, start month as a setting (default 1). For every single year: opening balance, closing balance, money in, money out, spend.
 
 ## 1. Verified facts (code on main)
@@ -42,8 +42,8 @@ Recommended: option 2, because you asked for a setting you can see and change.
 
 ## 4. Proposed design
 
-**Endpoint** `GET /api/finance/reports/fiscal-year-summary?year=YYYY[&book=][&format=xlsx]`, permission `finance.report.read` (no new key; route-guard inventory updated).
-- Year bounds from the start month `m`: start = first day of month `m`, end = last day of the month before `m` one year later (January start: 1 January to 31 December).
+**Endpoint (as built)** `GET /api/finance/reports/fiscal-year-summary?year=YYYY[&book=][&format=xlsx]`, permission `finance.report.read` (no new key; route-guard inventory updated).
+- Year bounds: 1 January to 31 December of `year` (no start-month setting).
 - Per account (all currencies, never added together): `opening` = point-in-time balance as of the day before the year starts; `money_in`, `money_out` = sum of ledger inflows and outflows dated inside the year; `closing` = point-in-time balance as of the year end; `currency`, `account_name`, `book`. Identity checked per row: `opening + in - out = closing`.
 - Per currency totals only.
 - Per category: spend for the year, grouped by currency, from the existing category summary logic so the numbers agree with the Category Summary report.
@@ -54,14 +54,13 @@ Recommended: option 2, because you asked for a setting you can see and change.
 
 **Tests:** opening of year N equals closing of year N-1 for every account; a year with no activity (opening = closing); a negative closing balance; multi-currency (no cross-currency totals); boundary dates equal `/balances`; category spend equals the category summary for the year; the F1 warning; non-January start month; RBAC and route-guard inventory green; one Playwright spec in mock mode.
 
-## 5. Decisions needed from the owner
+## 5. Owner answers (October 25, 2026) and what was built
 
-- **D1. Setting store:** Config variable or a small `finance_report_settings` table (recommended).
-- **D2. Name of a non-January fiscal year.** If the start month is July, is "2026" the year that starts in July 2026 or the one that ends in June 2026? Not needed while the start month is 1. Recommended: the year it ends in? Your call; I will use the year it starts in unless you say otherwise.
-- **D3. Definition of money in, money out and spend.** (a) Raw ledger movement per account, which reconciles opening to closing and includes transfers and exchange between your own accounts (recommended for the account table), with spend per category as in the existing Category Summary; or (b) spend excluding own-account movements, as on the dashboard and profit and loss. I propose showing (a) per account, plus a per-currency line "of which own-account transfers" so the operating figure can be read off.
-- **D4. Years before an account's opening date and transactions before it (F1):** show "no data" for years that end before the opening date and flag pre-opening transactions with a warning (recommended), or leave as is.
-- **D5. Inactive accounts (F2):** include accounts that have transactions or an opening balance in the chosen year even if inactive (recommended), or keep the active-only list.
-- **D6. Cash flow first-day double count (F4):** fix separately, or leave.
+- **D1 and D2:** January always, nothing configurable. No start-month setting, no settings table, no migration. Section 3 (storage options) is therefore not used.
+- **D3:** account figures keep every movement (so statements match the system); company spend excludes own-account transfers within the same country. Transfers to an account in another country stay in spend, shown as "Transfers to another country".
+- **D4:** years that end before an account's opening date show "no data"; transactions before the opening date are flagged.
+- **D5:** inactive accounts appear only when they had activity or a balance in the year.
+- **D6** (cash flow first-day double count): left as is. Plain words: the Cash Flow statement takes its beginning cash from the balance on its first day, including that day's transactions, and then adds the same day's transactions again, so its numbers are off by that day's net movement and it still says "reconciled". The yearly summary avoids this by taking the opening from the day before the year starts.
 
 ## 6. Rollback
-Revert the PR (and the migration if D1 option 2). Nothing existing changes: the new endpoint and tab are additions.
+Revert the PR. Nothing existing changes: the new endpoint and tab are additions (the balances report only gains two extra fields and an optional inactive-accounts switch).

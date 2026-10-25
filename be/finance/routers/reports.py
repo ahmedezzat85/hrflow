@@ -42,6 +42,7 @@ from finance.services.excel_exporter import (
     export_category_matrix_xlsx,
     export_balances_xlsx,
     export_cheques_xlsx,
+    export_fiscal_year_summary_xlsx,
 )
 
 router = APIRouter(prefix="/api/finance/reports", tags=["Finance - Reports"])
@@ -320,6 +321,29 @@ def get_point_in_time_balances(
             content=xlsx_bytes,
             media_type=XLSX_MIME,
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+    return data
+
+
+@router.get("/fiscal-year-summary")
+def get_fiscal_year_summary(
+    year: int = Query(..., ge=1990, le=2100, description="Calendar year (January to December)"),
+    format: str = Query("json", pattern="^(json|xlsx)$"),
+    book: Optional[str] = Query(None, description="Book view: local | overseas | consolidated. Omitted = every account (legacy)."),
+    service: ReportsService = Depends(get_reports_service),
+    current_user: dict = Depends(require_permission("finance.report.read")),
+):
+    """
+    Yearly summary: per account opening, money in, money out and closing; company spend per category and currency.
+    """
+    data = service.get_fiscal_year_summary(year=year, book=book)
+
+    if format == "xlsx":
+        return Response(
+            content=export_fiscal_year_summary_xlsx(data),
+            media_type=XLSX_MIME,
+            headers={"Content-Disposition": f'attachment; filename="fiscal_year_{year}_summary.xlsx"'},
         )
 
     return data

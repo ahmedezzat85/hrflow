@@ -148,6 +148,7 @@ async function openReportFromLibrary(reportKey) {
     "category-summary",
     "matrix",
     "balances",
+    "fiscal-year-summary",
     "profit-and-loss",
     "balance-sheet",
     "trial-balance",
@@ -179,6 +180,7 @@ async function openReportFromLibrary(reportKey) {
           "category-summary": "reportPaneCategorySummary",
           matrix: "reportPaneMatrix",
           balances: "reportPaneBalances",
+          "fiscal-year-summary": "reportPaneFiscalYear",
           "profit-and-loss": "reportPaneProfitAndLoss",
           "balance-sheet": "reportPaneBalanceSheet",
           "trial-balance": "reportPaneTrialBalance",
@@ -240,6 +242,7 @@ function switchFinanceReportsTab(tabName, btn) {
     "category-summary": "reportPaneCategorySummary",
     matrix: "reportPaneMatrix",
     balances: "reportPaneBalances",
+    "fiscal-year-summary": "reportPaneFiscalYear",
     "profit-and-loss": "reportPaneProfitAndLoss",
     "balance-sheet": "reportPaneBalanceSheet",
     "trial-balance": "reportPaneTrialBalance",
@@ -292,6 +295,8 @@ function switchFinanceReportsTab(tabName, btn) {
     loadReportMatrix();
   } else if (tabName === "balances") {
     loadReportBalances();
+  } else if (tabName === "fiscal-year-summary") {
+    loadReportFiscalYear();
   } else if (tabName === "profit-and-loss") {
     loadReportProfitAndLoss();
   } else if (tabName === "balance-sheet") {
@@ -780,6 +785,7 @@ function getActiveReportFilters() {
     comparison: document.getElementById("reportShellComparison")?.value || "none",
     entity: document.getElementById("reportShellEntity")?.value || "all",
     book: typeof FinanceBookView !== "undefined" ? FinanceBookView.get("reports") : "",
+    year: document.getElementById("reportFiscalYear")?.value || "",
   };
 }
 
@@ -1292,6 +1298,89 @@ async function loadReportBalances() {
   } finally {
     if (loading) loading.style.display = "none";
   }
+}
+
+// Yearly Summary (FY-1): calendar year, per account and per category
+function _fillFiscalYearSelect() {
+  const sel = document.getElementById("reportFiscalYear");
+  if (!sel || sel.options.length) return sel;
+  const current = new Date().getFullYear();
+  for (let y = current; y >= current - 6; y--) {
+    const opt = document.createElement("option");
+    opt.value = String(y);
+    opt.textContent = String(y);
+    sel.appendChild(opt);
+  }
+  return sel;
+}
+
+async function loadReportFiscalYear() {
+  const loading = document.getElementById("reportFiscalYearLoadingBar");
+  if (loading) loading.style.display = "block";
+  const sel = _fillFiscalYearSelect();
+  const year = sel ? sel.value : String(new Date().getFullYear());
+  const fmt = (v, c) => (v === null || v === undefined ? "—" : FinanceFormat.formatMoney(Number(v), c));
+
+  try {
+    const report = await FinanceApi.getFiscalYearSummaryReport({ year });
+    const tbody = document.getElementById("reportFiscalYearTableBody");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+    (report.accounts || []).forEach((a) => {
+      const tr = document.createElement("tr");
+      const notes = [];
+      if (a.no_data) notes.push(`No data: account opens ${_escapeHtmlText(String(a.opening_balance_date || ""))}`);
+      if (a.transactions_before_opening_date) notes.push(`${a.transactions_before_opening_date} transaction(s) dated before the opening date`);
+      tr.innerHTML = `
+        <td data-label="Account">${_escapeHtmlText(a.account_name)}${a.is_active === false ? ' <span class="badge">closed</span>' : ""}${notes.length ? `<div class="helper">${notes.join(" · ")}</div>` : ""}</td>
+        <td data-label="Country">${_escapeHtmlText(a.country || "—")}</td>
+        <td data-label="Currency">${_escapeHtmlText(a.currency)}</td>
+        <td class="cell-money" data-label="Opening">${fmt(a.opening, a.currency)}</td>
+        <td class="cell-money" data-label="Money in">${fmt(a.money_in, a.currency)}</td>
+        <td class="cell-money" data-label="Money out">${fmt(a.money_out, a.currency)}</td>
+        <td class="cell-money" data-label="Closing">${fmt(a.closing, a.currency)}</td>`;
+      tbody.appendChild(tr);
+    });
+
+    const tfoot = document.getElementById("reportFiscalYearTotals");
+    if (tfoot) {
+      tfoot.innerHTML = Object.entries(report.currency_totals || {}).map(([cur, t]) => `
+        <tr class="fy-total-row" data-currency="${_escapeHtmlText(cur)}">
+          <td colspan="3"><strong>Total ${_escapeHtmlText(cur)}</strong></td>
+          <td class="cell-money">${fmt(t.opening, cur)}</td>
+          <td class="cell-money">${fmt(t.money_in, cur)}</td>
+          <td class="cell-money">${fmt(t.money_out, cur)}</td>
+          <td class="cell-money">${fmt(t.closing, cur)}</td>
+        </tr>`).join("");
+    }
+
+    const sBody = document.getElementById("reportFiscalYearSpendBody");
+    if (sBody) {
+      sBody.innerHTML = Object.entries(report.spend || {}).map(([cur, block]) => {
+        const cats = (block.categories || []).map((c) => `
+          <tr><td data-label="Currency">${_escapeHtmlText(cur)}</td><td data-label="Category">${_escapeHtmlText(c.category_name)}</td>
+          <td class="cell-money" data-label="Transactions">${c.transaction_count}</td>
+          <td class="cell-money" data-label="Spend">${fmt(c.total_amount, cur)}</td>
+          <td class="cell-money" data-label="% of spend">${Number(c.percentage || 0).toFixed(2)}%</td></tr>`).join("");
+        return `${cats}
+          <tr class="fy-spend-total" data-currency="${_escapeHtmlText(cur)}"><td>${_escapeHtmlText(cur)}</td><td><strong>Total spend</strong></td><td></td>
+          <td class="cell-money">${fmt(block.total, cur)}</td><td></td></tr>
+          <tr class="fy-spend-excluded"><td></td><td class="helper">Not counted: transfers between own accounts, same country</td><td></td>
+          <td class="cell-money helper">${fmt(block.excluded_own_account_same_country, cur)}</td><td></td></tr>`;
+      }).join("") || '<tr><td colspan="5" class="helper">No spend recorded for this year.</td></tr>';
+    }
+  } catch (err) {
+    console.error("Failed to load yearly summary:", err);
+    showToast(describeLoadFailure("yearly summary", err), "error");
+  } finally {
+    if (loading) loading.style.display = "none";
+  }
+}
+
+function exportFiscalYearExcel() {
+  const year = document.getElementById("reportFiscalYear")?.value || String(new Date().getFullYear());
+  const url = FinanceApi.downloadExcelUrl("/api/finance/reports/fiscal-year-summary", { year });
+  triggerExcelDownload(url, `fiscal_year_${year}_summary.xlsx`);
 }
 
 function exportBalancesExcel() {

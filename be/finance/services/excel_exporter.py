@@ -436,6 +436,78 @@ def export_balances_xlsx(report: Dict[str, Any]) -> bytes:
     return _save_workbook_to_bytes(wb)
 
 
+def export_fiscal_year_summary_xlsx(report: Dict[str, Any]) -> bytes:
+    """Yearly summary: one sheet for accounts (opening, in, out, closing) and one for spend per category."""
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Accounts"
+    ws.cell(row=1, column=1, value=f"HRFlow — Fiscal Year {report.get('year')} Summary").font = TITLE_FONT
+    ws.cell(row=2, column=1, value=(
+        f"{report.get('date_from')} to {report.get('date_to')} · opening as of {report.get('opening_as_of')}, "
+        f"closing as of {report.get('closing_as_of')}. Money in and out include transfers between own accounts."
+    )).font = SUBTITLE_FONT
+
+    def header(sheet, row, labels):
+        for col, h in enumerate(labels, start=1):
+            c = sheet.cell(row=row, column=col, value=h)
+            c.fill, c.font, c.alignment, c.border = HEADER_FILL, HEADER_FONT, HEADER_ALIGN, THIN_BORDER
+
+    def money(sheet, row, col, value):
+        c = sheet.cell(row=row, column=col, value=value)
+        c.font, c.border, c.alignment, c.number_format = CELL_FONT, THIN_BORDER, Alignment(horizontal="right"), NUM_FORMAT_CURRENCY
+
+    header(ws, 4, ["Account", "Country", "Currency", "Opening", "Money in", "Money out", "Closing", "Note"])
+    r = 5
+    for a in report.get("accounts", []):
+        ws.cell(row=r, column=1, value=a.get("account_name")).font = CELL_FONT
+        ws.cell(row=r, column=2, value=a.get("country") or "—").font = CELL_FONT
+        ws.cell(row=r, column=3, value=a.get("currency")).font = CELL_FONT
+        if a.get("no_data"):
+            note = f"No data: account opens {a.get('opening_balance_date')}"
+            for col in (4, 5, 6, 7):
+                ws.cell(row=r, column=col, value="—").font = CELL_FONT
+        else:
+            for col, key in ((4, "opening"), (5, "money_in"), (6, "money_out"), (7, "closing")):
+                money(ws, r, col, float(a.get(key) or 0.0))
+            n = a.get("transactions_before_opening_date") or 0
+            note = f"{n} transaction(s) dated before the opening date" if n else ""
+        ws.cell(row=r, column=8, value=note).font = CELL_FONT
+        r += 1
+    r += 1
+    ws.cell(row=r, column=1, value="Totals per currency").font = TOTAL_FONT
+    r += 1
+    header(ws, r, ["Currency", "", "", "Opening", "Money in", "Money out", "Closing"])
+    r += 1
+    for cur, t in (report.get("currency_totals") or {}).items():
+        ws.cell(row=r, column=1, value=cur).font = CELL_FONT
+        for col, key in ((4, "opening"), (5, "money_in"), (6, "money_out"), (7, "closing")):
+            money(ws, r, col, float(t.get(key) or 0.0))
+        r += 1
+    _auto_fit_columns(ws)
+
+    sp = wb.create_sheet("Spend by category")
+    sp.cell(row=1, column=1, value=f"Company spend {report.get('year')} (own-account transfers within the same country excluded)").font = TITLE_FONT
+    header(sp, 3, ["Currency", "Category", "Transactions", "Spend", "% of spend"])
+    r = 4
+    for cur, block in (report.get("spend") or {}).items():
+        for c in block.get("categories", []):
+            sp.cell(row=r, column=1, value=cur).font = CELL_FONT
+            sp.cell(row=r, column=2, value=c.get("category_name")).font = CELL_FONT
+            sp.cell(row=r, column=3, value=c.get("transaction_count")).font = CELL_FONT
+            money(sp, r, 4, float(c.get("total_amount") or 0.0))
+            sp.cell(row=r, column=5, value=c.get("percentage")).font = CELL_FONT
+            r += 1
+        sp.cell(row=r, column=1, value=cur).font = TOTAL_FONT
+        sp.cell(row=r, column=2, value="Total spend").font = TOTAL_FONT
+        money(sp, r, 4, float(block.get("total") or 0.0))
+        r += 1
+        sp.cell(row=r, column=2, value="Excluded: own-account transfers, same country").font = SUBTITLE_FONT
+        money(sp, r, 4, float(block.get("excluded_own_account_same_country") or 0.0))
+        r += 2
+    _auto_fit_columns(sp)
+    return _save_workbook_to_bytes(wb)
+
+
 # ----------------------------------------------------------------------
 # 5. Cheque Register Report
 # ----------------------------------------------------------------------
