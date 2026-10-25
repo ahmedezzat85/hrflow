@@ -209,14 +209,46 @@ def fake_drive_client():
     return FakeDriveClient()
 
 
+@pytest.fixture(scope="session")
+def seeded_db_template(tmp_path_factory):
+    """Fully seeded SQLite database, built once per xdist worker. app_client copies it
+    per test, so each test still gets its own database file."""
+    from config import Config
+    from db import Base, reset_engine_for_testing
+
+    if Config.STORAGE_ENGINE != "sql":
+        yield None
+        return
+
+    from scripts.backfill_sheets_to_sql import backfill_all
+
+    template_file = tmp_path_factory.mktemp("db_template") / "template.db"
+    template_url = f"sqlite:///{template_file}"
+    saved = (Config.DATABASE_URL, Config.DB_TYPE)
+    Config.DATABASE_URL, Config.DB_TYPE = template_url, "sqlite"
+    reset_engine_for_testing(template_url)
+    try:
+        from sqlalchemy import create_engine
+        engine = create_engine(template_url, connect_args={"check_same_thread": False})
+        Base.metadata.create_all(bind=engine)
+        engine.dispose()
+        backfill_all(client=FakeSheetsClient(seed=SEED_DATA))
+    finally:
+        from db import get_engine
+        get_engine().dispose()
+        reset_engine_for_testing(None)
+        Config.DATABASE_URL, Config.DB_TYPE = saved
+    yield template_file
+
+
 @pytest.fixture
-def app_client(monkeypatch, fake_sheets_client, fake_drive_client, tmp_path):
+def app_client(monkeypatch, fake_sheets_client, fake_drive_client, tmp_path, seeded_db_template):
+    import shutil
     import sheets_client
     import drive_client
     import auth as auth_module
     from config import Config
-    from db import Base, reset_engine_for_testing
-    from scripts.backfill_sheets_to_sql import backfill_all
+    from db import reset_engine_for_testing
 
     monkeypatch.setattr(sheets_client, "get_client", lambda: fake_sheets_client)
     monkeypatch.setattr(drive_client, "get_drive_client", lambda: fake_drive_client)
@@ -224,15 +256,11 @@ def app_client(monkeypatch, fake_sheets_client, fake_drive_client, tmp_path):
 
     if Config.STORAGE_ENGINE == "sql":
         test_db_file = tmp_path / "test_app_sql.db"
+        shutil.copyfile(seeded_db_template, test_db_file)
         test_db_url = f"sqlite:///{test_db_file}"
         monkeypatch.setattr(Config, "DATABASE_URL", test_db_url)
         monkeypatch.setattr(Config, "DB_TYPE", "sqlite")
         reset_engine_for_testing(test_db_url)
-        from sqlalchemy import create_engine
-        engine = create_engine(test_db_url, connect_args={"check_same_thread": False})
-        Base.metadata.create_all(bind=engine)
-        stats = backfill_all(client=fake_sheets_client)
-        print("BACKFILL STATS:", stats)
 
     import main as main_module
     from fastapi.testclient import TestClient
