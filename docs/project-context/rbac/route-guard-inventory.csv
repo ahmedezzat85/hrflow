@@ -136,6 +136,8 @@ finance/routers/payroll.py,GET,/api/finance/payroll/payslips/my,list_my_payslips
 finance/routers/payroll.py,GET,/api/finance/payroll/runs/{run_id}/payslips/{employee_id},get_employee_payslip,finance.payroll.read,finance.payroll.read,unchanged
 finance/routers/payroll.py,GET,/api/finance/payroll/settings,get_payroll_settings,finance.payroll.read,finance.payroll.read,unchanged
 finance/routers/payroll.py,PUT,/api/finance/payroll/settings,update_payroll_settings,finance.settings.write,finance.settings.write,unchanged
+finance/routers/payroll.py,GET,/api/finance/payroll/settings/rates,list_payroll_rate_settings,finance.payroll.read,finance.payroll.read,new-route
+finance/routers/payroll.py,POST,/api/finance/payroll/settings/rates,save_payroll_rate_settings,finance.settings.write,finance.settings.write,new-route
 finance/routers/payroll.py,GET,/api/finance/payroll/tax-settings/template,get_tax_brackets_template,finance.payroll_tax.read,finance.payroll_tax.read,unchanged
 finance/routers/payroll.py,GET,/api/finance/payroll/tax-settings/effective,get_effective_tax_settings,finance.payroll_tax.read,finance.payroll_tax.read,unchanged
 finance/routers/payroll.py,GET,/api/finance/payroll/tax-settings,list_tax_settings,finance.payroll_tax.read,finance.payroll_tax.read,unchanged

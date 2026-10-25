@@ -23,6 +23,8 @@ from finance.schemas import (
     PayrollAdjustmentUpdate,
     PayrollAdjustmentResponse,
     PayrollSettingsUpdate,
+    PayrollRateSettingsCreate,
+    PayrollRateSettingsResponse,
     PayrollSettingsResponse,
     PayrollTaxSettingsCreate,
     PayrollTaxSettingsResponse,
@@ -363,8 +365,10 @@ def get_payroll_settings(
     service: PayrollService = Depends(get_payroll_service),
     current_user: dict = Depends(require_permission("finance.payroll.read")),
 ):
-    """Get social insurance rates and the default funding accounts (name and currency only, no account numbers)."""
-    return _settings_view(service.get_payroll_settings())
+    """Get the social insurance rates in force this month and the default funding accounts (name and currency only)."""
+    view = _settings_view(service.get_payroll_settings())
+    view["employee_rate"], view["employer_rate"] = service.current_rates()
+    return view
 
 
 @router.put("/settings", response_model=PayrollSettingsResponse)
@@ -382,7 +386,34 @@ def update_payroll_settings(
         external_funding_account_id=payload.external_funding_account_id,
         internal_funding_account_id=payload.internal_funding_account_id,
     )
-    return _settings_view(settings)
+    view = _settings_view(settings)
+    view["employee_rate"], view["employer_rate"] = service.current_rates()
+    return view
+
+
+@router.get("/settings/rates", response_model=List[PayrollRateSettingsResponse])
+def list_payroll_rate_settings(
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.payroll.read")),
+):
+    """Effective-dated social insurance rates, newest first."""
+    return service.list_rate_settings()
+
+
+@router.post("/settings/rates", response_model=PayrollRateSettingsResponse)
+def save_payroll_rate_settings(
+    payload: PayrollRateSettingsCreate,
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.settings.write")),
+):
+    """Add a dated social insurance rate (or edit the row with the same date). Never overwrites another date."""
+    user_email = current_user.get("email") if isinstance(current_user, dict) else None
+    return service.set_rate_settings(
+        effective_from=payload.effective_from,
+        employee_rate=payload.employee_rate,
+        employer_rate=payload.employer_rate,
+        user_email=user_email,
+    )
 
 
 # -----------------------------------------------------------------------------

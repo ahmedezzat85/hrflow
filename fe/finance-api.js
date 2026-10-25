@@ -7019,6 +7019,42 @@ async getEntityActivity(entityType, entityId) {
 
   const FinanceMockState = root.FinanceMockState || (root.FinanceMockState = {});
 
+  // Mock dated social insurance rates, seeded from the global rates like the migration.
+  function _mockRateRows() {
+    if (!FinanceMockState.payrollRateSettings) {
+      FinanceMockState.payrollRateSettings = [{ id: 1, effective_from: "2000-01-01", employee_rate: 0.11, employer_rate: 0.18, created_by: "system" }];
+    }
+    return FinanceMockState.payrollRateSettings;
+  }
+
+  function _mockRateInForce(periodStart) {
+    const rows = _mockRateRows().filter((r) => r.effective_from <= periodStart)
+      .sort((a, b) => (b.effective_from + String(b.id)).localeCompare(a.effective_from + String(a.id)));
+    return rows[0] || { employee_rate: 0.11, employer_rate: 0.18 };
+  }
+
+  function _mockSaveRate(effectiveFrom, employeeRate, employerRate) {
+    if (!/^\d{4}-\d{2}-01$/.test(effectiveFrom || "")) {
+      throw new Error(`effective_from '${effectiveFrom}' must be the first day of a calendar month (format: YYYY-MM-01)`);
+    }
+    [["Employee", employeeRate], ["Employer", employerRate]].forEach(([label, v]) => {
+      if (v == null || Number(v) < 0 || Number(v) > 1) throw new Error(`${label} contribution rate must be between 0.0 and 1.0 (0% to 100%)`);
+    });
+    const rows = _mockRateRows();
+    const same = rows.find((r) => r.effective_from === effectiveFrom);
+    if (same) {
+      same.employee_rate = Number(employeeRate);
+      same.employer_rate = Number(employerRate);
+    } else {
+      rows.push({ id: rows.length + 1, effective_from: effectiveFrom, employee_rate: Number(employeeRate), employer_rate: Number(employerRate), created_by: "admin@voyance.health" });
+    }
+    const now = _mockRateInForce(new Date().toISOString().slice(0, 7) + "-01");
+    const st = _mockPayrollSettings();
+    st.employee_rate = now.employee_rate;
+    st.employer_rate = now.employer_rate;
+    return { ...(same || rows[rows.length - 1]) };
+  }
+
   // Mock Payroll Settings own the funding accounts. Tests clear the ids to reproduce the unset state.
   function _mockPayrollSettings() {
     if (!FinanceMockState.payrollSettings) {
@@ -8241,13 +8277,35 @@ async getEntityActivity(entityType, entityId) {
 
     async getPayrollSettings() {
       if (_isMock()) {
-        return _mockPayrollSettings();
+        const now = _mockRateInForce(new Date().toISOString().slice(0, 7) + "-01");
+        return { ..._mockPayrollSettings(), employee_rate: now.employee_rate, employer_rate: now.employer_rate };
       }
       return apiRequest("GET", "/api/finance/payroll/settings");
     },
 
+    // Effective-dated social insurance rates (SI-1). Mock mirrors the backend rules.
+    async getPayrollRateSettings() {
+      if (_isMock()) {
+        return _mockRateRows().slice().sort((a, b) => (b.effective_from + String(b.id)).localeCompare(a.effective_from + String(a.id)));
+      }
+      return apiRequest("GET", "/api/finance/payroll/settings/rates");
+    },
+
+    async savePayrollRateSettings(payload) {
+      if (_isMock()) return _mockSaveRate(payload.effective_from, payload.employee_rate, payload.employer_rate);
+      return apiRequest("POST", "/api/finance/payroll/settings/rates", payload);
+    },
+
     async updatePayrollSettings(payload) {
       if (_isMock()) {
+        if (payload.employee_rate != null || payload.employer_rate != null) {
+          const inForce = _mockRateInForce(new Date().toISOString().slice(0, 7) + "-01");
+          _mockSaveRate(
+            new Date().toISOString().slice(0, 7) + "-01",
+            payload.employee_rate != null ? payload.employee_rate : inForce.employee_rate,
+            payload.employer_rate != null ? payload.employer_rate : inForce.employer_rate
+          );
+        }
         const cur = _mockPayrollSettings();
         const known = (id) => (FinanceMockState.accounts || []).some((a) => a.id === Number(id));
         ["external_funding_account_id", "internal_funding_account_id"].forEach((k) => {

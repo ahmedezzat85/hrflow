@@ -513,6 +513,14 @@ This document records durable product and architectural decisions approved by th
 - **Verified in code on October 25, 2026:** a run can stay finalized without being paid and then posts nothing to the ledger; payroll reports include every non-cancelled run; the run FX rate is one value per run and falls back silently to 50.0 when no manual rate and no earlier USD-to-EGP transfer exist; tax is calculated only for the internal USD part; point-in-time balances exist but no fiscal-year concept exists apart from the cheque field.
 - **Related References:** [06-open-questions.md](06-open-questions.md) (`Q-022`, `Q-023`); [05-roadmap-and-next-slices.md](05-roadmap-and-next-slices.md) (`3K`); D-025, D-033, D-036, D-037.
 
+### D-041 — Effective-Dated Social Insurance Rates (resolves Q-023)
+
+- **Status:** Accepted by owner, October 25, 2026. Implemented on `feat/payroll-si-rates-effective-dated` (SI-1).
+- **Decision:** The employee and employer social insurance rates are effective-dated. New table `finance_payroll_rate_settings` (`effective_from` = first day of a month, `employee_rate`, `employer_rate`); the newest row with `effective_from` on or before the payroll period start applies, like the income tax settings. The migration (`0046`) seeds one row from the current global rates dated `2000-01-01`, so existing results do not change. A rate is added with `POST /api/finance/payroll/settings/rates` (a row with the same date is edited in place, another date is never overwritten) and is rejected when dated in or before the latest finalized, paid or partially paid period. `PUT /api/finance/payroll/settings` with rates and no date creates or edits the row for the first day of the current month. The global `finance_payroll_settings` rates stay as the readable fallback and mirror the rates in force for the current month; the funding accounts stay on that row.
+- **Rationale:** A rate change must affect only later periods; a refreshed draft used to re-read the current global setting. The owner's 2023 workbook used 18.75% for the employer share.
+- **Owner choices:** no pre-seeded 2023 rate (2023 payroll is deferred by D-040; it can be added later as a dated row); seed date `2000-01-01`; undated `PUT /settings` rates default to the first day of the current month.
+- **Related References:** [06-open-questions.md](06-open-questions.md) (`Q-023`); [05-roadmap-and-next-slices.md](05-roadmap-and-next-slices.md) (`3K`, `SI-1`); `docs/finance-module/payroll-si-rates-effective-dated-plan.md`; D-040.
+
 ### D-042 — Fiscal Year Reporting (FY-1)
 
 - **Status:** Accepted by owner, October 25, 2026. Implemented on `feat/fiscal-year-reporting`.

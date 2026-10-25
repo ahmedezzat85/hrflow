@@ -706,6 +706,17 @@
                       <span class="pv-subhint">Default 18.00%</span>
                     </label>
                   </div>
+                  <label for="payrollRatesEffectiveFrom" style="display:block; margin-top:12px;">
+                    Effective from
+                    <input type="month" id="payrollRatesEffectiveFrom">
+                    <span class="pv-subhint" id="payrollRatesEffectiveHint">A new rate applies to payroll months from this month on. Earlier months keep their rate.</span>
+                  </label>
+                  <div id="payrollRatesHistoryWrap" hidden style="margin-top:12px;">
+                    <table class="table" id="payrollRatesHistoryTable">
+                      <thead><tr><th scope="col">From</th><th scope="col" class="num">Employee</th><th scope="col" class="num">Employer</th></tr></thead>
+                      <tbody id="payrollRatesHistoryBody"></tbody>
+                    </table>
+                  </div>
                   <div class="pv-callout">Applied up to the monthly insured wage caps.</div>
                 </section>
 
