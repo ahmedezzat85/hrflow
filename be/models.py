@@ -287,6 +287,32 @@ class EmployeeSocialInsuranceUpsert(BaseModel):
     notes: Optional[str] = ""
 
 
+class EmployeeTaxMethodUpsert(BaseModel):
+    """
+    Configure an employee's tax method: progressive (default) or a flat rate (fraction, e.g. 0.10).
+    """
+    method: str = "progressive"
+    flat_rate: Optional[float] = None
+    effective_start_date: str
+    notes: Optional[str] = ""
+
+
+class EmployeeTaxMethodResponse(BaseModel):
+    id: int
+    employee_id: int
+    method: str
+    flat_rate: Optional[float] = None
+    effective_start_date: str
+    effective_end_date: Optional[str] = None
+    notes: str = ""
+    created_by: Optional[str] = None
+    created_at: Optional[Union[str, datetime]] = None
+    updated_at: Optional[Union[str, datetime]] = None
+
+    class Config:
+        from_attributes = True
+
+
 class EmployeeSocialInsuranceResponse(BaseModel):
     id: int
     employee_id: int
