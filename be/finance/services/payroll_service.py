@@ -27,6 +27,7 @@ from finance.models import (
     StatutoryObligationDB,
     AccountTransferDB,
     PayrollSettingsDB,
+    PayrollRateSettingsDB,
     PayrollTaxSettingsDB,
 )
 from finance.schemas import PayrollAdjustmentCreate, PayrollAdjustmentUpdate
@@ -75,6 +76,125 @@ class PayrollService:
             self.db.refresh(settings)
         return settings
 
+    RATE_SEED_DATE = "2000-01-01"
+
+    def _ensure_rate_seed(self) -> None:
+        """First use: seed the dated rates from the global row so every earlier period resolves as before."""
+        if self.db.query(PayrollRateSettingsDB).count() == 0:
+            g = self.get_payroll_settings()
+            self.db.add(PayrollRateSettingsDB(
+                effective_from=self.RATE_SEED_DATE,
+                employee_rate=g.employee_rate,
+                employer_rate=g.employer_rate,
+                created_by="system",
+                updated_by="system",
+            ))
+            self.db.commit()
+
+    def get_effective_rate_settings(self, period_start: str) -> tuple:
+        """Social insurance (employee_rate, employer_rate) for a payroll period.
+        Rule: newest row where effective_from <= the period start; the global row is the fallback."""
+        self._ensure_rate_seed()
+        row = (
+            self.db.query(PayrollRateSettingsDB)
+            .filter(PayrollRateSettingsDB.effective_from <= period_start)
+            .order_by(desc(PayrollRateSettingsDB.effective_from), desc(PayrollRateSettingsDB.id))
+            .first()
+        )
+        if row:
+            return float(row.employee_rate), float(row.employer_rate)
+        g = self.get_payroll_settings()
+        return float(g.employee_rate), float(g.employer_rate)
+
+    def current_rates(self) -> tuple:
+        """Rates in force for the current calendar month."""
+        return self.get_effective_rate_settings(datetime.utcnow().strftime("%Y-%m-01"))
+
+    def list_rate_settings(self) -> List[PayrollRateSettingsDB]:
+        """Dated rate history, newest first."""
+        self._ensure_rate_seed()
+        return (
+            self.db.query(PayrollRateSettingsDB)
+            .order_by(desc(PayrollRateSettingsDB.effective_from), desc(PayrollRateSettingsDB.id))
+            .all()
+        )
+
+    def set_rate_settings(
+        self,
+        effective_from: str,
+        employee_rate: float,
+        employer_rate: float,
+        user_email: Optional[str] = None,
+    ) -> PayrollRateSettingsDB:
+        """Adds a dated rate row, or edits the row with the same effective_from in place.
+        Rejected: not the 1st of a month, a rate outside 0..1, or a date in or before the latest finalized period."""
+        import re
+        if not re.match(r"^\d{4}-\d{2}-01$", effective_from or ""):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"effective_from '{effective_from}' must be the first day of a calendar month (format: YYYY-MM-01)",
+            )
+        for label, value in (("Employee", employee_rate), ("Employer", employer_rate)):
+            if value is None or not (0.0 <= float(value) <= 1.0):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"{label} contribution rate must be between 0.0 and 1.0 (0% to 100%)",
+                )
+        finalized = (
+            self.db.query(PayrollRunDB)
+            .filter(PayrollRunDB.status.in_(["finalized", "paid", "partially_paid"]))
+            .all()
+        )
+        if finalized:
+            max_period_end = max(r.period_end for r in finalized)
+            if effective_from <= max_period_end:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=(
+                        f"effective_from ({effective_from}) cannot be in or before an already finalized payroll "
+                        f"period (latest finalized period ends {max_period_end})"
+                    ),
+                )
+
+        self._ensure_rate_seed()
+        emp = round(float(employee_rate), 4)
+        org = round(float(employer_rate), 4)
+        row = (
+            self.db.query(PayrollRateSettingsDB)
+            .filter(PayrollRateSettingsDB.effective_from == effective_from)
+            .order_by(desc(PayrollRateSettingsDB.id))
+            .first()
+        )
+        old = {"employee_rate": row.employee_rate, "employer_rate": row.employer_rate} if row else None
+        if row:
+            row.employee_rate = emp
+            row.employer_rate = org
+            row.updated_by = user_email or "system"
+        else:
+            row = PayrollRateSettingsDB(
+                effective_from=effective_from, employee_rate=emp, employer_rate=org,
+                created_by=user_email or "system", updated_by=user_email or "system",
+            )
+            self.db.add(row)
+        self.db.flush()
+
+        # Keep the global row readable: it mirrors the rates in force for the current month
+        g = self.get_payroll_settings()
+        g.employee_rate, g.employer_rate = self.current_rates()
+        g.updated_at = datetime.utcnow()
+        g.updated_by = user_email or "system"
+
+        self._log_audit(
+            action="payroll.rate_settings.saved",
+            target_type="payroll_rate_settings",
+            target_id=str(row.id),
+            actor_email=user_email,
+            details={"effective_from": effective_from, "employee_rate": emp, "employer_rate": org, "previous": old},
+        )
+        self.db.commit()
+        self.db.refresh(row)
+        return row
+
     def update_payroll_settings(
         self,
         employee_rate: Optional[float] = None,
@@ -102,7 +222,6 @@ class PayrollService:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Employee contribution rate must be between 0.0 and 1.0 (0% to 100%)",
                 )
-            settings.employee_rate = round(float(employee_rate), 4)
 
         if employer_rate is not None:
             if not (0.0 <= float(employer_rate) <= 1.0):
@@ -110,7 +229,15 @@ class PayrollService:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Employer contribution rate must be between 0.0 and 1.0 (0% to 100%)",
                 )
-            settings.employer_rate = round(float(employer_rate), 4)
+
+        if employee_rate is not None or employer_rate is not None:
+            cur_emp, cur_org = self.current_rates()
+            self.set_rate_settings(
+                effective_from=datetime.utcnow().strftime("%Y-%m-01"),
+                employee_rate=employee_rate if employee_rate is not None else cur_emp,
+                employer_rate=employer_rate if employer_rate is not None else cur_org,
+                user_email=user_email,
+            )
 
         settings.updated_at = datetime.utcnow()
         settings.updated_by = user_email or "system"
@@ -414,9 +541,8 @@ class PayrollService:
                     detail=f"Cannot generate payroll run: Active employee(s) without active compensation plan: {emp_names}. Please configure compensation plans before generating run."
                 )
 
-        settings = self.get_payroll_settings()
-        emp_rate = float(settings.employee_rate)
-        org_rate = float(settings.employer_rate)
+        # Social insurance rates in force for this period (not the current global setting)
+        emp_rate, org_rate = self.get_effective_rate_settings(period_start)
 
         tax_settings_db = self.get_effective_tax_settings(period_start)
         tax_settings_dict = None
