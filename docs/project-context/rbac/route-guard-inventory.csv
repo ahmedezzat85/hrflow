@@ -150,6 +150,7 @@ finance/routers/reports.py,GET,/api/finance/reports/transactions,get_transaction
 finance/routers/reports.py,GET,/api/finance/reports/category-summary,get_category_summary_report,finance.report.read,finance.report.read,unchanged
 finance/routers/reports.py,GET,/api/finance/reports/category-by-period-matrix,get_category_by_period_matrix,finance.report.read,finance.report.read,unchanged
 finance/routers/reports.py,GET,/api/finance/reports/balances,get_point_in_time_balances,finance.report.read,finance.report.read,unchanged
+finance/routers/reports.py,GET,/api/finance/reports/fiscal-year-summary,get_fiscal_year_summary,finance.report.read,finance.report.read,new-route
 finance/routers/reports.py,GET,/api/finance/reports/cheques,get_cheques_report,finance.report.read,finance.report.read,unchanged
 finance/routers/reports.py,GET,/api/finance/reports/library,get_report_library,finance.report.read,finance.report.read,unchanged
 finance/routers/reports.py,GET,/api/finance/reports/saved-views,list_saved_report_views,finance.report.read,finance.report.read,unchanged

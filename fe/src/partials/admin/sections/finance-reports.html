@@ -187,6 +187,7 @@
                 <button class="filter-tab active" role="tab" aria-selected="true" tabindex="0" data-report-tab="category-summary" onclick="switchFinanceReportsTab('category-summary', this)"><i class="fa-solid fa-chart-pie"></i> Category Spend Rollup</button>
                 <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="matrix" onclick="switchFinanceReportsTab('matrix', this)"><i class="fa-solid fa-table-cells"></i> Annual Spend Matrix</button>
                 <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="balances" onclick="switchFinanceReportsTab('balances', this)"><i class="fa-solid fa-scale-balanced"></i> Point-in-Time Balances</button>
+                <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="fiscal-year-summary" onclick="switchFinanceReportsTab('fiscal-year-summary', this)"><i class="fa-solid fa-calendar-days"></i> Yearly Summary</button>
                 <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="profit-and-loss" onclick="switchFinanceReportsTab('profit-and-loss', this)"><i class="fa-solid fa-file-invoice-dollar"></i> Profit & Loss</button>
                 <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="balance-sheet" onclick="switchFinanceReportsTab('balance-sheet', this)"><i class="fa-solid fa-building-columns"></i> Balance Sheet</button>
                 <button class="filter-tab" role="tab" aria-selected="false" tabindex="-1" data-report-tab="trial-balance" onclick="switchFinanceReportsTab('trial-balance', this)"><i class="fa-solid fa-scale-unbalanced"></i> Trial Balance</button>
@@ -380,6 +381,48 @@
                     </tr>
                   </thead>
                   <tbody id="reportBalancesTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- PANE: Yearly Summary (FY-1) -->
+            <div class="fr-u8" id="reportPaneFiscalYear">
+              <div class="toolbar fr-u56">
+                <div class="fr-u57">
+                  <div class="fr-u58">
+                    <label class="fr-u59" for="reportFiscalYear">Year:</label>
+                    <select id="reportFiscalYear" class="form-input filter-select fr-u63" onchange="loadReportFiscalYear()"></select>
+                    <button type="button" class="btn" id="reportFiscalYearExport" onclick="exportFiscalYearExcel()"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
+                  </div>
+                </div>
+              </div>
+              <p class="helper" id="reportFiscalYearNote">January to December. Opening is the balance on 31 December of the year before. Money in and out include transfers between your own accounts, so each account matches the system.</p>
+              <div class="card">
+                <div class="section-loading-bar fr-u8" id="reportFiscalYearLoadingBar"><span></span></div>
+                <table class="responsive-card-table" id="reportFiscalYearTable">
+                  <thead>
+                    <tr>
+                      <th>Account</th>
+                      <th>Country</th>
+                      <th>Currency</th>
+                      <th class="cell-money fr-u54">Opening</th>
+                      <th class="cell-money fr-u54">Money in</th>
+                      <th class="cell-money fr-u54">Money out</th>
+                      <th class="cell-money fr-u54">Closing</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reportFiscalYearTableBody"></tbody>
+                  <tfoot id="reportFiscalYearTotals"></tfoot>
+                </table>
+              </div>
+              <div class="card hv-mt-16">
+                <h3 class="fr-u59">Company spend by category</h3>
+                <p class="helper" id="reportFiscalYearSpendNote">Transfers between your own accounts in the same country are not spend. Transfers to another country are.</p>
+                <table class="responsive-card-table" id="reportFiscalYearSpendTable">
+                  <thead>
+                    <tr><th>Currency</th><th>Category</th><th class="cell-money fr-u54">Transactions</th><th class="cell-money fr-u54">Spend</th><th class="cell-money fr-u54">% of spend</th></tr>
+                  </thead>
+                  <tbody id="reportFiscalYearSpendBody"></tbody>
                 </table>
               </div>
             </div>

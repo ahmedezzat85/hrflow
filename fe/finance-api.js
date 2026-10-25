@@ -4775,6 +4775,59 @@ if (typeof window !== "undefined") window._withBook = _withBook;
     return apiRequest("GET", `/api/finance/reports/balances${qs ? "?" + qs : ""}`);
   },
 
+  async getFiscalYearSummaryReport(params = {}) {
+    params = _withBook(params, "reports");
+    if (_isMock()) {
+      const year = Number(params.year) || new Date().getFullYear();
+      const accounts = (FinanceMockState.accounts || []).map((a) => {
+        const opening = Number(a.opening_balance || 0);
+        const closing = Number(a.current_balance || 0);
+        return {
+          account_id: a.id,
+          account_name: a.account_name,
+          bank_name: a.bank_name || "",
+          account_type: a.account_type,
+          country: a.country || "Egypt",
+          currency: a.currency,
+          is_active: true,
+          opening_balance_date: null,
+          no_data: false,
+          opening,
+          money_in: Math.max(closing - opening, 0),
+          money_out: Math.max(opening - closing, 0),
+          closing,
+          transactions_before_opening_date: 0,
+        };
+      });
+      const currency_totals = {};
+      accounts.forEach((a) => {
+        const t = currency_totals[a.currency] || (currency_totals[a.currency] = { opening: 0, money_in: 0, money_out: 0, closing: 0 });
+        t.opening += a.opening; t.money_in += a.money_in; t.money_out += a.money_out; t.closing += a.closing;
+      });
+      return {
+        year,
+        date_from: `${year}-01-01`,
+        date_to: `${year}-12-31`,
+        opening_as_of: `${year - 1}-12-31`,
+        closing_as_of: `${year}-12-31`,
+        accounts,
+        currency_totals,
+        spend: {
+          USD: {
+            total: 3000.0,
+            excluded_own_account_same_country: 1200.0,
+            categories: [
+              { category_id: 1, category_name: "Payroll", kind: "cost", transaction_count: 12, total_amount: 2000.0, percentage: 66.67 },
+              { category_id: 2, category_name: "Software", kind: "cost", transaction_count: 4, total_amount: 1000.0, percentage: 33.33 },
+            ],
+          },
+        },
+      };
+    }
+    const qs = new URLSearchParams(params).toString();
+    return apiRequest("GET", `/api/finance/reports/fiscal-year-summary${qs ? "?" + qs : ""}`);
+  },
+
   async getTransactionsReport(params = {}) {
     params = _withBook(params, "reports");
     if (_isMock()) {
@@ -4911,6 +4964,17 @@ if (typeof window !== "undefined") window._withBook = _withBook;
             supported_basis: ["cash", "accrual"],
             supported_formats: ["json", "xlsx"],
             badge: "Trend Analysis",
+          },
+          {
+            key: "fiscal-year-summary",
+            title: "Yearly Summary",
+            category: "Cash & Banking",
+            business_question: "For each calendar year, what did every account open and close with, how much came in and went out, and what did the company spend?",
+            description: "January to December summary per account (opening, money in, money out, closing) and company spend per category, per currency.",
+            icon: "fa-solid fa-calendar-days",
+            supported_basis: ["cash"],
+            supported_formats: ["json", "xlsx"],
+            badge: "Year End",
           },
           {
             key: "balances",
