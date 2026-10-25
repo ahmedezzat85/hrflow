@@ -757,6 +757,7 @@ class PayrollRunDB(Base):
     variance_summary_json = Column(Text, default="{}")
     total_employee_tax_egp = Column(Float, default=0.0, nullable=True)
     total_social_insurance_egp = Column(Float, default=0.0, nullable=True)
+    total_flat_tax_egp = Column(Float, default=0.0, nullable=True)  # breakdown of total_employee_tax_egp, not an addition
     tax_settings_version_id = Column(Integer, ForeignKey("finance_payroll_tax_settings.id", ondelete="SET NULL"), nullable=True)
 
     lines = relationship("PayrollLineDB", back_populates="payroll_run", cascade="all, delete-orphan")
@@ -831,6 +832,8 @@ class PayrollLineDB(Base):
     annual_taxed_salary_egp = Column(Float, default=0.0, nullable=True)
     annual_tax_egp = Column(Float, default=0.0, nullable=True)
     tax_settings_version_id = Column(Integer, nullable=True)
+    tax_method_snapshot = Column(String(20), nullable=True)  # NULL = progressive (legacy rows)
+    tax_rate_snapshot = Column(Float, nullable=True)
     bank_name = Column(String(100), nullable=True)
     bank_account_masked = Column(String(50), nullable=True)
     payment_status = Column(String(30), default="pending")  # pending / paid / failed

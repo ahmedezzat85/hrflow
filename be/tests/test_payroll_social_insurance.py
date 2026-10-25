@@ -581,7 +581,7 @@ def test_payroll_csv_export_one_row_per_employee(app_client, admin_cookies, db_s
 
     header = lines[0]
     assert "Employee ID,Employee Name,Department,Base INT,Base EXT,Commissions,Bonuses,Other Additions,Final INT,Final EXT,Final Payment,Payment Status,Payment Reference" in header
-    assert "Salary Basis,Insured Base EGP,Employee SI EGP,Employer SI EGP,Total SI EGP,Employee Tax EGP,Employee SI USD Eq,Employee Tax USD Eq,FX Rate" in header
+    assert "Salary Basis,Insured Base EGP,Employee SI EGP,Employer SI EGP,Total SI EGP,Employee Tax EGP,Employee SI USD Eq,Employee Tax USD Eq,FX Rate,Tax Method,Tax Rate" in header
 
     # Employee 1 line
     emp1_row = next(l for l in lines[1:] if "Emp One" in l)

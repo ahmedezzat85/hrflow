@@ -2,8 +2,8 @@
 
 **Status:** Draft — needs owner decisions  
 **Last verified against:** `feature/rbac` at `c236b00cb6fea09cb3474cb8d5fbda66eb23135e` (equal to `main`)  
-**Last updated:** October 18, 2026  
-**Branch note:** Q-006 to Q-013 were added on `feature/rbac` and are not part of `main` until the branch is merged. On October 1, 2026 the owner approved the interim treatments for Q-006 to Q-009, Q-011 and Q-012 and resolved Q-010 as recommended; Q-013 was raised afterwards and approved on October 2, 2026.  
+**Last updated:** October 24, 2026 (Q-007, Q-008, Q-009, Q-011, Q-012 resolved by D-038/D-039; Q-002 narrowed; Q-003 deferred; register reorganised: open and deferred questions first, resolved questions in an archive section)  
+**Branch note:** Q-006 to Q-013 were added on `feature/rbac`, which is now merged into `main` (verified October 24, 2026). On October 1, 2026 the owner approved the interim treatments for Q-006 to Q-009, Q-011 and Q-012 and resolved Q-010 as recommended; Q-013 was raised afterwards and approved on October 2, 2026.  
 **Authority:** Repository baseline and unreconciled owner-level questions  
 
 ---
@@ -21,28 +21,26 @@ This register tracks unresolved product, accounting, and technical architecture 
 
 ## Questions
 
-### Q-001 — Payroll Paid-State Funding Scope
-- **Status:** Resolved — D-025 (October 10, 2026): Option A, net pay only; employer tax and social insurance are paid as statutory obligations.  
-- **Question:**  
-  When a payroll run is marked `Paid`, should company bank balances and payment settlement records reflect:  
-  A. Net employee pay only, with employer tax and social-insurance obligations settled separately; or  
-  B. The full employer cost, including employer-side statutory contributions?  
-- **Why It Matters:**  
-  This decision dictates cash balance accuracy, liability timing, expense presentation, and statutory reconciliation in general ledger reporting.  
-- **Known Current Context:**  
-  - Baseline analysis in [01-repository-baseline.md](01-repository-baseline.md) confirms that current code records net-pay disbursements against selected funding accounts.  
-  - Decisions `D-001` and `D-002` in [04-decision-log.md](04-decision-log.md) require explicit separation between internal estimates, portal-confirmed liabilities, actual paid amounts, and variance.  
-  - Neither option is formally approved as the durable product rule. Code reconciliation (October 1, 2026): `payroll_service.post_journal` posts only net-disbursement entries (never deduction, tax, employer-cost, or liability lines), which matches Option A in behavior.  
-- **Decision Needed from Owner:**  
-  Select Option A or B, and define whether the non-disbursed portion is accrued as an independent statutory obligation.  
-- **Related References:**  
-  - [01-repository-baseline.md](01-repository-baseline.md)  
-  - [04-decision-log.md](04-decision-log.md) (`D-001`, `D-002`)  
+### At a glance (open and deferred)
+
+| ID | Question | Status |
+| :--- | :--- | :--- |
+| Q-002 | Creation Model for Non-Payroll Statutory Obligations | Open (narrowed October 24, 2026) |
+| Q-003 | Production Document-Storage Direction | Deferred (October 24, 2026); the local scope was resolved by D-035 (October 21, 2026) |
+| Q-004 | Automated Foreign-Exchange-Rate Source | Open |
+| Q-005 | Legacy Google Sheets Export Retention | Open |
+| Q-006 | Restoring Archived Users | Open |
+| Q-022 | Historical Payroll Import Line Typing and Adjustment Amount Fields | Open (narrowed October 25, 2026: 2023-2024 payroll history deferred by D-040) |
+| Q-023 | Effective Date for Social Insurance Rates | Open |
+
+Everything else is resolved and kept in the archive section below.
+
+## Open and Deferred Questions
 
 ### Q-002 — Creation Model for Non-Payroll Statutory Obligations
-- **Status:** Partly resolved — D-023 (October 10, 2026): VAT estimates are created on demand by the user from invoices (no scheduler). Annual corporate income tax remains open.  
+- **Status:** Open (narrowed October 24, 2026): only the annual corporate income-tax obligation remains. VAT was resolved by D-023 (October 10, 2026): estimates are created on demand by the user from invoices; no scheduler.  
 - **Question:**  
-  For VAT and annual corporate income-tax obligations, should HRFlow:  
+  For the annual corporate income-tax obligation (VAT is settled by D-023), should HRFlow:  
   A. Create recurring obligation records automatically on a defined schedule; or  
   B. Require authorized users to create them manually?  
 - **Why It Matters:**  
@@ -55,10 +53,11 @@ This register tracks unresolved product, accounting, and technical architecture 
   Select Option A or B. If Option A is chosen, define the recurrence schedule, approval requirements, and whether introducing a background scheduler is a prerequisite.  
 - **Related References:**  
   - [02-architecture-and-domain-boundaries.md](02-architecture-and-domain-boundaries.md)  
-  - [04-decision-log.md](04-decision-log.md) (`D-001`, `D-002`)  
+  - [04-decision-log.md](04-decision-log.md) (`D-001`, `D-002`)
+
 
 ### Q-003 — Production Document-Storage Direction
-- **Status:** Partly resolved — D-035 (October 21, 2026): Local unified files root (`HRFLOW_FILES_ROOT`) with human-readable directory layout is primary for all production deployments; Google Drive is an unencrypted additive backup clone (F6) and encrypted tar.gz destination, not a runtime API backend. Scoped strictly to cloud primary storage if HRFlow moves off local host.  
+- **Status:** Deferred (October 24, 2026); the local scope was resolved by D-035 (October 21, 2026): Local unified files root (`HRFLOW_FILES_ROOT`) with human-readable directory layout is primary for all production deployments; Google Drive is an unencrypted additive backup clone (F6) and encrypted tar.gz destination, not a runtime API backend. Scoped strictly to cloud primary storage if HRFlow moves off local host.  
 - **Question:**  
   If HRFlow moves off a single-host deployment to horizontal cloud hosting in the future, what primary cloud object store should be adopted?  
 - **Why It Matters:**  
@@ -73,7 +72,8 @@ This register tracks unresolved product, accounting, and technical architecture 
   - [01-repository-baseline.md](01-repository-baseline.md)  
   - [02-architecture-and-domain-boundaries.md](02-architecture-and-domain-boundaries.md)  
   - [04-decision-log.md](04-decision-log.md) (`D-035`)  
-  - [../file-storage/26-file-storage-layout-plan.md](../file-storage/26-file-storage-layout-plan.md)  
+  - [../file-storage/26-file-storage-layout-plan.md](../file-storage/26-file-storage-layout-plan.md)
+
 
 ### Q-004 — Automated Foreign-Exchange-Rate Source
 - **Status:** Open — affects multi-currency finance behavior  
@@ -91,7 +91,8 @@ This register tracks unresolved product, accounting, and technical architecture 
   B. Integrate an external automated market rate feed; or  
   C. Use an external feed with mandatory manual override capabilities.  
 - **Related References:**  
-  - [01-repository-baseline.md](01-repository-baseline.md)  
+  - [01-repository-baseline.md](01-repository-baseline.md)
+
 
 ### Q-005 — Legacy Google Sheets Export Retention
 - **Status:** Open — affects technical-debt cleanup and integrations  
@@ -110,7 +111,8 @@ This register tracks unresolved product, accounting, and technical architecture 
   C. Retain temporarily with a defined review date and assigned business owner.  
 - **Related References:**  
   - [01-repository-baseline.md](01-repository-baseline.md)  
-  - [02-architecture-and-domain-boundaries.md](02-architecture-and-domain-boundaries.md)  
+  - [02-architecture-and-domain-boundaries.md](02-architecture-and-domain-boundaries.md)
+
 
 ### Q-006 — Restoring Archived Users
 - **Status:** Open — interim treatment approved October 1, 2026  
@@ -124,134 +126,11 @@ This register tracks unresolved product, accounting, and technical architecture 
 - **Decision Needed from Owner:**  
   Choose an option or confirm the interim treatment, then record it in [04-decision-log.md](04-decision-log.md).  
 - **Related References:**  
-  - [04-decision-log.md](04-decision-log.md) (`D-011`, `D-012`, `D-013`)  
+  - [04-decision-log.md](04-decision-log.md) (`D-011`, `D-012`, `D-013`)
 
-### Q-007 — Payroll-Maker Access to Funding Accounts
-- **Status:** Open — interim treatment approved October 1, 2026  
-- **Question:**  
-  Payroll-Maker data access. Creating a run takes company funding-account IDs; listing them needs `finance.account.read`, which the role lacks. Owner chose to keep as is for now.  
-- **Why It Matters:**  
-  Part of the RBAC initiative (D-011 to D-013, accepted October 1, 2026); the answer changes the permission catalog, role grants, or lifecycle rules.  
-- **Known Current Context:**  
-  - Interim treatment until decided: No grant; verify during implementation.  
-  - Details: [rbac/technical-spec.md](rbac/technical-spec.md) and [rbac/implementation-plan.md](rbac/implementation-plan.md).  
-- **Decision Needed from Owner:**  
-  Choose an option or confirm the interim treatment, then record it in [04-decision-log.md](04-decision-log.md).  
-- **Related References:**  
-  - [04-decision-log.md](04-decision-log.md) (`D-011`, `D-012`, `D-013`)  
-
-### Q-008 — Ownership of Employee Compensation Plans
-- **Status:** Open — interim treatment approved October 1, 2026  
-- **Question:**  
-  Who maintains employee compensation plans? The endpoints sit under `finance.payroll.*` but HR-Admin has no finance access.  
-- **Why It Matters:**  
-  Part of the RBAC initiative (D-011 to D-013, accepted October 1, 2026); the answer changes the permission catalog, role grants, or lifecycle rules.  
-- **Known Current Context:**  
-  - Interim treatment until decided: Mapped to `finance.payroll.prepare`.  
-  - October 21, 2026 (D-034): the interim treatment is extended so that raises update the compensation plan through the service under `hr.salary.write`, as employee create/update already do under `hr.employee.write`. The question itself remains Open.  
-  - Details: [rbac/technical-spec.md](rbac/technical-spec.md) and [rbac/implementation-plan.md](rbac/implementation-plan.md).  
-- **Decision Needed from Owner:**  
-  Choose an option or confirm the interim treatment, then record it in [04-decision-log.md](04-decision-log.md).  
-- **Related References:**  
-  - [04-decision-log.md](04-decision-log.md) (`D-011`, `D-012`, `D-013`)  
-
-### Q-009 — Splitting `finance.account` Permissions
-- **Status:** Open — interim treatment approved October 1, 2026  
-- **Question:**  
-  Split `finance.account.*` (bank accounts, ledger, transfers, cheques, statements, rules, categories, payment types)?  
-- **Why It Matters:**  
-  Part of the RBAC initiative (D-011 to D-013, accepted October 1, 2026); the answer changes the permission catalog, role grants, or lifecycle rules.  
-- **Known Current Context:**  
-  - Interim treatment until decided: Keep one pair; revisit if a role needs a subset.  
-  - Details: [rbac/technical-spec.md](rbac/technical-spec.md) and [rbac/implementation-plan.md](rbac/implementation-plan.md).  
-- **Decision Needed from Owner:**  
-  Choose an option or confirm the interim treatment, then record it in [04-decision-log.md](04-decision-log.md).  
-- **Related References:**  
-  - [04-decision-log.md](04-decision-log.md) (`D-011`, `D-012`, `D-013`)  
-
-### Q-010 — Permission-Catalog Sync Strategy
-- **Status:** Resolved — D-011 (October 1, 2026): sync permission rows and Super-Admin at application start through the existing `init_db()` path; grant new keys to editable roles only through migrations.  
-- **Question:**  
-  When does the catalog sync run: at application start, in migrations only, or by an explicit command?  
-- **Known Current Context:**  
-  - Correction to the original draft: a startup path already exists. `be/main.py` calls `init_db()` at import, which runs `seed_rbac` on every start (and re-links users to roles from the legacy `users.role`; that re-link is removed by D-011).  
-- **Related References:**  
-  - [04-decision-log.md](04-decision-log.md) (`D-011`)  
-
-### Q-011 — Employee Self-Service Writes
-- **Status:** Open — interim treatment approved October 1, 2026  
-- **Question:**  
-  Employee self-service writes: confirm own-document upload/delete stays (current behavior) and whether own bank-detail edits are wanted (not included).  
-- **Why It Matters:**  
-  Part of the RBAC initiative (D-011 to D-013, accepted October 1, 2026); the answer changes the permission catalog, role grants, or lifecycle rules.  
-- **Known Current Context:**  
-  - Interim treatment until decided: As stated.  
-  - Details: [rbac/technical-spec.md](rbac/technical-spec.md) and [rbac/implementation-plan.md](rbac/implementation-plan.md).  
-- **Decision Needed from Owner:**  
-  Choose an option or confirm the interim treatment, then record it in [04-decision-log.md](04-decision-log.md).  
-- **Related References:**  
-  - [04-decision-log.md](04-decision-log.md) (`D-011`, `D-012`, `D-013`)  
-
-### Q-012 — Post-Journal Permission for Payroll
-- **Status:** Open — interim treatment approved October 1, 2026  
-- **Question:**  
-  `post-journal` assigned to `finance.payroll.pay` — confirm.  
-- **Why It Matters:**  
-  Part of the RBAC initiative (D-011 to D-013, accepted October 1, 2026); the answer changes the permission catalog, role grants, or lifecycle rules.  
-- **Known Current Context:**  
-  - Interim treatment until decided: As stated.  
-  - Details: [rbac/technical-spec.md](rbac/technical-spec.md) and [rbac/implementation-plan.md](rbac/implementation-plan.md).  
-- **Decision Needed from Owner:**  
-  Choose an option or confirm the interim treatment, then record it in [04-decision-log.md](04-decision-log.md).  
-- **Related References:**  
-  - [04-decision-log.md](04-decision-log.md) (`D-011`, `D-012`, `D-013`)  
-
-### Q-013 — Self-Approval Bypass After the Payroll Split
-- **Status:** Resolved — D-011 (October 2, 2026): the `allow_self_approval` bypass is honored only for a caller who holds both `finance.payroll.prepare` and `finance.payroll.approve` (by default only Super-Admin).  
-- **Question:**  
-  `approve_run` blocks approval by the user who submitted a run, but any `finance.payroll.write` holder can bypass it with the `allow_self_approval=true` query parameter (and the env var `ENFORCE_MAKER_CHECKER=false` disables it globally). After the prepare/approve/pay split, should the bypass be honored only for a caller who holds both `finance.payroll.prepare` and `finance.payroll.approve` (by default only Super-Admin)?  
-- **Why It Matters:**  
-  Without this, Payroll-Maker would still be able to approve their own run by passing the parameter if they ever held an approve key, and Super-Admin could not do both steps as the owner intends.  
-- **Known Current Context:**  
-  - Code: `be/finance/services/payroll_service.py` (`approve_run`) and `be/finance/routers/payroll.py` (`allow_self_approval` query parameter).  
-  - Current behavior is unchanged until RBAC slice 4 implements the decision.  
-- **Decision Needed from Owner:**  
-  None; approved by the owner on October 2, 2026.  
-- **Related References:**  
-  - [04-decision-log.md](04-decision-log.md) (`D-011`)  
-  - [rbac/implementation-plan.md](rbac/implementation-plan.md)  
-
-### Q-014 — Finance Bills Restyle: Direction, FUX-414 Layout, Density Default, Button Icons
-- **Status:** Resolved — D-021 (October 9, 2026): direction A "Clean Table"; FUX-414 pill and Change view replaced by an always-visible status row (owner override); FUX-415 density setting kept with Regular as default; no icons on in-page tabs and text buttons.  
-- **Question:**  
-  Which visual direction for the shared Finance components, may it replace the FUX-414 layout, should the density default change, and should in-page tabs and text buttons keep icons?  
-- **Related References:**  
-  - [04-decision-log.md](04-decision-log.md) (`D-021`)  
-  - [../finance-module/19-finance-ui-restyle-direction-a.md](../finance-module/19-finance-ui-restyle-direction-a.md)  
-
-### Q-015 — Cheque Extraction Engine
-- **Status:** Resolved — D-032 (October 18, 2026): no external OCR/AI and no extraction; scans plus manual entry with shortcuts.  
-
-### Q-016 — Scheduler and Email Reminders
-- **Status:** Resolved — D-031 (October 18, 2026): in-app reminders and on-demand generation only; email and scheduler are a future standalone feature.  
-
-### Q-017 — Overseas Entity Treatment
-- **Status:** Resolved — D-028 (October 18, 2026): separate Overseas book; inter-book transfers are Local income, Overseas outflow, eliminated in Consolidated. Legal treatment out of scope.  
-
-### Q-018 — Overseas Salary Transfers
-- **Status:** Resolved — D-028 (October 18, 2026): through HRFlow payroll runs using the existing external funding account.  
-
-### Q-019 — Stripe Granularity
-- **Status:** Resolved — D-029 (October 18, 2026): no Stripe account now; revenue receipts tagged by source; future service integration matches payouts.  
-
-### Q-020 — Default Report View
-- **Status:** Resolved — D-028 (October 18, 2026): default per page (Local for dashboard/P&L; Consolidated for revenue and spend analytics), remembered per user.  
-
-### Q-021 — Historical Documents Already Paid
-- **Status:** Resolved — D-033 (October 20, 2026): option A, imported historical documents are unpaid Drafts; the owner records payments through the normal workflow and approves/pays/issues an imported document only when the ledger does not already hold that movement. Option B (link to an existing ledger transaction) stays a possible future slice.  
 
 ### Q-022 — Historical Payroll Import Line Typing and Adjustment Amount Fields
-- **Status:** Open  
+- **Status:** Open. Narrowed October 25, 2026: D-040 defers 2023-2024 payroll history, so this question only matters if a historical payroll import is revived. 2025-2026 are entered through native runs.  
 - **Decider:** Owner  
 - **Question:**  
   How will imported historical payroll lines be typed, and which field holds the amount for commission and bonus lines?  
@@ -266,8 +145,190 @@ This register tracks unresolved product, accounting, and technical architecture 
   - [04-decision-log.md](04-decision-log.md) (`D-037`)  
   - [05-roadmap-and-next-slices.md](05-roadmap-and-next-slices.md) (`3I`)  
 
+
+
+### Q-023 — Effective Date for Social Insurance Rates
+- **Status:** Open (raised October 25, 2026)  
+- **Decider:** Owner  
+- **Question:**  
+  Should the employee and employer social insurance rates become effective-dated, so a rate change affects only later periods?  
+- **Why It Matters:**  
+  The rates are one global setting with no date (`finance_payroll_settings`, employee 11%, employer 18% by default). The owner's 2023 workbook used 18.75% for the employer share. Finalized runs keep the rate in each line snapshot, but a draft that is refreshed re-reads the current setting.  
+- **Known Current Context:**  
+  - Verified in code on October 25, 2026: `PayrollSettingsDB` has no effective date; income tax settings and the employee insured base are effective-dated.  
+  - Workaround: set the rate before the first run and change it between months, never while a draft is open.  
+- **Decision Needed from Owner:**  
+  Whether to build slice SI-1 (effective-dated rates) before the 2025-2026 runs, or to use the manual workaround.  
+- **Related References:**  
+  - [04-decision-log.md](04-decision-log.md) (`D-040`)  
+  - [05-roadmap-and-next-slices.md](05-roadmap-and-next-slices.md) (`3K`)  
+
+
 ---
 
+## Resolved Questions (Archive)
+
+Kept for traceability. Each entry names the decision that resolved it; the decision log and the code are authoritative.
+
+### Q-001 — Payroll Paid-State Funding Scope
+- **Status:** Resolved — D-025 (October 10, 2026): Option A, net pay only; employer tax and social insurance are paid as statutory obligations.  
+- **Question:**  
+  When a payroll run is marked `Paid`, should company bank balances and payment settlement records reflect:  
+  A. Net employee pay only, with employer tax and social-insurance obligations settled separately; or  
+  B. The full employer cost, including employer-side statutory contributions?  
+- **Why It Matters:**  
+  This decision dictates cash balance accuracy, liability timing, expense presentation, and statutory reconciliation in general ledger reporting.  
+- **Known Current Context:**  
+  - Baseline analysis in [01-repository-baseline.md](01-repository-baseline.md) confirms that current code records net-pay disbursements against selected funding accounts.  
+  - Decisions `D-001` and `D-002` in [04-decision-log.md](04-decision-log.md) require explicit separation between internal estimates, portal-confirmed liabilities, actual paid amounts, and variance.  
+  - Neither option is formally approved as the durable product rule. Code reconciliation (October 1, 2026): `payroll_service.post_journal` posts only net-disbursement entries (never deduction, tax, employer-cost, or liability lines), which matches Option A in behavior.  
+- **Decision Needed from Owner:**  
+  Select Option A or B, and define whether the non-disbursed portion is accrued as an independent statutory obligation.  
+- **Related References:**  
+  - [01-repository-baseline.md](01-repository-baseline.md)  
+  - [04-decision-log.md](04-decision-log.md) (`D-001`, `D-002`)
+
+
+### Q-007 — Payroll-Maker Access to Funding Accounts
+- **Status:** Resolved — D-039 (October 24, 2026): no `finance.account.read` for Payroll-Maker. Follow-up (not done): check the run creation screen for Payroll-Maker.  
+- **Question:**  
+  Payroll-Maker data access. Creating a run takes company funding-account IDs; listing them needs `finance.account.read`, which the role lacks. Owner chose to keep as is for now.  
+- **Why It Matters:**  
+  Part of the RBAC initiative (D-011 to D-013, accepted October 1, 2026); the answer changes the permission catalog, role grants, or lifecycle rules.  
+- **Known Current Context:**  
+  - Interim treatment until decided: No grant; verify during implementation.  
+  - Details: [rbac/technical-spec.md](rbac/technical-spec.md) and [rbac/implementation-plan.md](rbac/implementation-plan.md).  
+- **Decision Needed from Owner:**  
+  Choose an option or confirm the interim treatment, then record it in [04-decision-log.md](04-decision-log.md).  
+- **Related References:**  
+  - [04-decision-log.md](04-decision-log.md) (`D-011`, `D-012`, `D-013`)
+
+
+### Q-008 — Ownership of Employee Compensation Plans
+- **Status:** Resolved — D-038 (October 24, 2026): plan routes accept either the finance payroll key or the matching HR salary key (`hr.salary.read` / `hr.salary.write`). Code change is a separate, not yet started slice.  
+- **Question:**  
+  Who maintains employee compensation plans? The endpoints sit under `finance.payroll.*` but HR-Admin has no finance access.  
+- **Why It Matters:**  
+  Part of the RBAC initiative (D-011 to D-013, accepted October 1, 2026); the answer changes the permission catalog, role grants, or lifecycle rules.  
+- **Known Current Context:**  
+  - Interim treatment until decided: Mapped to `finance.payroll.prepare`.  
+  - October 21, 2026 (D-034): the interim treatment is extended so that raises update the compensation plan through the service under `hr.salary.write`, as employee create/update already do under `hr.employee.write`. The question itself remains Open.  
+  - Details: [rbac/technical-spec.md](rbac/technical-spec.md) and [rbac/implementation-plan.md](rbac/implementation-plan.md).  
+- **Decision Needed from Owner:**  
+  Choose an option or confirm the interim treatment, then record it in [04-decision-log.md](04-decision-log.md).  
+- **Related References:**  
+  - [04-decision-log.md](04-decision-log.md) (`D-011`, `D-012`, `D-013`)
+
+
+### Q-009 — Splitting `finance.account` Permissions
+- **Status:** Resolved — D-039 (October 24, 2026): keep one read/write pair.  
+- **Question:**  
+  Split `finance.account.*` (bank accounts, ledger, transfers, cheques, statements, rules, categories, payment types)?  
+- **Why It Matters:**  
+  Part of the RBAC initiative (D-011 to D-013, accepted October 1, 2026); the answer changes the permission catalog, role grants, or lifecycle rules.  
+- **Known Current Context:**  
+  - Interim treatment until decided: Keep one pair; revisit if a role needs a subset.  
+  - Details: [rbac/technical-spec.md](rbac/technical-spec.md) and [rbac/implementation-plan.md](rbac/implementation-plan.md).  
+- **Decision Needed from Owner:**  
+  Choose an option or confirm the interim treatment, then record it in [04-decision-log.md](04-decision-log.md).  
+- **Related References:**  
+  - [04-decision-log.md](04-decision-log.md) (`D-011`, `D-012`, `D-013`)
+
+
+### Q-010 — Permission-Catalog Sync Strategy
+- **Status:** Resolved — D-011 (October 1, 2026): sync permission rows and Super-Admin at application start through the existing `init_db()` path; grant new keys to editable roles only through migrations.  
+- **Question:**  
+  When does the catalog sync run: at application start, in migrations only, or by an explicit command?  
+- **Known Current Context:**  
+  - Correction to the original draft: a startup path already exists. `be/main.py` calls `init_db()` at import, which runs `seed_rbac` on every start (and re-links users to roles from the legacy `users.role`; that re-link is removed by D-011).  
+- **Related References:**  
+  - [04-decision-log.md](04-decision-log.md) (`D-011`)
+
+
+### Q-011 — Employee Self-Service Writes
+- **Status:** Resolved — D-039 (October 24, 2026): own-document upload/delete stays; own bank-detail edits are not added.  
+- **Question:**  
+  Employee self-service writes: confirm own-document upload/delete stays (current behavior) and whether own bank-detail edits are wanted (not included).  
+- **Why It Matters:**  
+  Part of the RBAC initiative (D-011 to D-013, accepted October 1, 2026); the answer changes the permission catalog, role grants, or lifecycle rules.  
+- **Known Current Context:**  
+  - Interim treatment until decided: As stated.  
+  - Details: [rbac/technical-spec.md](rbac/technical-spec.md) and [rbac/implementation-plan.md](rbac/implementation-plan.md).  
+- **Decision Needed from Owner:**  
+  Choose an option or confirm the interim treatment, then record it in [04-decision-log.md](04-decision-log.md).  
+- **Related References:**  
+  - [04-decision-log.md](04-decision-log.md) (`D-011`, `D-012`, `D-013`)
+
+
+### Q-012 — Post-Journal Permission for Payroll
+- **Status:** Resolved — D-039 (October 24, 2026): `post-journal` requires `finance.payroll.pay`.  
+- **Question:**  
+  `post-journal` assigned to `finance.payroll.pay` — confirm.  
+- **Why It Matters:**  
+  Part of the RBAC initiative (D-011 to D-013, accepted October 1, 2026); the answer changes the permission catalog, role grants, or lifecycle rules.  
+- **Known Current Context:**  
+  - Interim treatment until decided: As stated.  
+  - Details: [rbac/technical-spec.md](rbac/technical-spec.md) and [rbac/implementation-plan.md](rbac/implementation-plan.md).  
+- **Decision Needed from Owner:**  
+  Choose an option or confirm the interim treatment, then record it in [04-decision-log.md](04-decision-log.md).  
+- **Related References:**  
+  - [04-decision-log.md](04-decision-log.md) (`D-011`, `D-012`, `D-013`)
+
+
+### Q-013 — Self-Approval Bypass After the Payroll Split
+- **Status:** Resolved — D-011 (October 2, 2026): the `allow_self_approval` bypass is honored only for a caller who holds both `finance.payroll.prepare` and `finance.payroll.approve` (by default only Super-Admin).  
+- **Question:**  
+  `approve_run` blocks approval by the user who submitted a run, but any `finance.payroll.write` holder can bypass it with the `allow_self_approval=true` query parameter (and the env var `ENFORCE_MAKER_CHECKER=false` disables it globally). After the prepare/approve/pay split, should the bypass be honored only for a caller who holds both `finance.payroll.prepare` and `finance.payroll.approve` (by default only Super-Admin)?  
+- **Why It Matters:**  
+  Without this, Payroll-Maker would still be able to approve their own run by passing the parameter if they ever held an approve key, and Super-Admin could not do both steps as the owner intends.  
+- **Known Current Context:**  
+  - Code: `be/finance/services/payroll_service.py` (`approve_run`) and `be/finance/routers/payroll.py` (`allow_self_approval` query parameter).  
+  - Current behavior is unchanged until RBAC slice 4 implements the decision.  
+- **Decision Needed from Owner:**  
+  None; approved by the owner on October 2, 2026.  
+- **Related References:**  
+  - [04-decision-log.md](04-decision-log.md) (`D-011`)  
+  - [rbac/implementation-plan.md](rbac/implementation-plan.md)
+
+
+### Q-014 — Finance Bills Restyle: Direction, FUX-414 Layout, Density Default, Button Icons
+- **Status:** Resolved — D-021 (October 9, 2026): direction A "Clean Table"; FUX-414 pill and Change view replaced by an always-visible status row (owner override); FUX-415 density setting kept with Regular as default; no icons on in-page tabs and text buttons.  
+- **Question:**  
+  Which visual direction for the shared Finance components, may it replace the FUX-414 layout, should the density default change, and should in-page tabs and text buttons keep icons?  
+- **Related References:**  
+  - [04-decision-log.md](04-decision-log.md) (`D-021`)  
+  - [../finance-module/19-finance-ui-restyle-direction-a.md](../finance-module/19-finance-ui-restyle-direction-a.md)
+
+
+### Q-015 — Cheque Extraction Engine
+- **Status:** Resolved — D-032 (October 18, 2026): no external OCR/AI and no extraction; scans plus manual entry with shortcuts.
+
+
+### Q-016 — Scheduler and Email Reminders
+- **Status:** Resolved — D-031 (October 18, 2026): in-app reminders and on-demand generation only; email and scheduler are a future standalone feature.
+
+
+### Q-017 — Overseas Entity Treatment
+- **Status:** Resolved — D-028 (October 18, 2026): separate Overseas book; inter-book transfers are Local income, Overseas outflow, eliminated in Consolidated. Legal treatment out of scope.
+
+
+### Q-018 — Overseas Salary Transfers
+- **Status:** Resolved — D-028 (October 18, 2026): through HRFlow payroll runs using the existing external funding account.
+
+
+### Q-019 — Stripe Granularity
+- **Status:** Resolved — D-029 (October 18, 2026): no Stripe account now; revenue receipts tagged by source; future service integration matches payouts.
+
+
+### Q-020 — Default Report View
+- **Status:** Resolved — D-028 (October 18, 2026): default per page (Local for dashboard/P&L; Consolidated for revenue and spend analytics), remembered per user.
+
+
+### Q-021 — Historical Documents Already Paid
+- **Status:** Resolved — D-033 (October 20, 2026): option A, imported historical documents are unpaid Drafts; the owner records payments through the normal workflow and approves/pays/issues an imported document only when the ledger does not already hold that movement. Option B (link to an existing ledger transaction) stays a possible future slice.
+
+
+---
 
 ## Resolved-Question Procedure
 

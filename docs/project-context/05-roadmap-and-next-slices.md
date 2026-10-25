@@ -3,7 +3,7 @@
 **Status:** Draft — planning baseline  
 **Last verified against:** `feature/rbac` after the review-fix run (October 3, 2026); `main` is at `c236b00cb6fea09cb3474cb8d5fbda66eb23135e`  
 **Last updated:** October 3, 2026  
-**Branch note:** Sections 3A and 4A were added on `feature/rbac` (accepted by the owner on October 1, 2026); the RBAC work they describe is implemented on that branch and is not part of `main` until the branch is merged.  
+**Branch note:** Sections 3A and 4A were added on `feature/rbac` (accepted by the owner on October 1, 2026); that branch is now merged into `main` (verified October 24, 2026).  
 **Authority:** Main-branch repository evidence and project-context documents  
 
 ---
@@ -24,11 +24,11 @@ This roadmap defines a sequenced series of delivery slices for HRFlow:
 
 Verified main-branch evidence establishes the delivery position:
 
-- **Relational SQL Foundation:** SQL migration via SQLAlchemy and Alembic is complete (23 migrations up to `0023_payroll_income_tax_settings.py` on `main`; 27 up to `0027_single_assigned_role` on `feature/rbac`). Google Sheets is an export destination only.
+- **Relational SQL Foundation:** SQL migration via SQLAlchemy and Alembic is complete (Alembic head on `main` is `0043_employee_personal_details`, verified October 24, 2026). Google Sheets is an export destination only.
 - **Core Platform Monolith:** Core HR and foundational Finance modules (Accounts, Ledger, Bills, Invoices, Cheques, Statements, Reconciliation) are functional.
-- **Authorization:** on `main`, finance is gated by fine-grained RBAC except three routes, while HR still uses legacy `require_admin`. On `feature/rbac` every route is guarded by a catalog permission (section 3A); this is closed once the branch is merged.
-- **Specialist Roles:** on `main` only `system_admin` and `employee` are seeded. On `feature/rbac` the five-role model of D-011 is implemented (section 3A) and replaces the Phase 7 plan.
-- **Incomplete Payslip UI:** Backend payslip endpoints exist, but the employee self-service view (`fe/src/partials/employee/sections/payslips.html`) calls `refreshMyPayslips()`, which is not defined.
+- **Authorization:** RBAC (section 3A) is merged into `main`. No `require_admin` guard remains in `be/routers/` (searched October 24, 2026); route-guard coverage was last audited on October 3, 2026.
+- **Specialist Roles:** the five-role model of D-011 is implemented and merged (section 3A) and replaces the Phase 7 plan.
+- **Incomplete Payslip UI:** the backend endpoint `GET /api/finance/payroll/payslips/my` exists, but the employee self-service view (`fe/src/partials/employee/sections/payslips.html`) is a "Payslips are coming soon" placeholder (verified October 24, 2026). The earlier undefined `refreshMyPayslips()` call is no longer in the frontend.
 - **Legacy Code & Drift:** Dormant repositories (`be/repositories/sheets/`, `dual/`) remain (`routers/insurance.py` still imports from `sheets/insurance.py`), and the `be/main.py` docstring still describes Google Sheets as a database (`AGENTS.md` was corrected on October 1, 2026).
 - **Synchronous Constraint:** High-latency tasks (PDF OCR parsing, statement imports, Excel exports) run synchronously in request threads; no background queue exists.
 - **Branch Work Isolation:** Feature-branch enhancements (payroll runner iterations, deduction prototypes) are not part of `main` until explicitly reconciled.
@@ -140,7 +140,7 @@ Replaces Slices 2 and 3 above with a permission-based RBAC (decisions D-011 to D
 | R7b | Frontend Roles and Users pages | L | R5, R7a |
 | R8 | Cleanup and documentation | M | all |
 
-- **Status (October 3, 2026):** slices R1–R8 and the review-fix slices F0–F7 are implemented on `feature/rbac` and logged in [rbac/run-log.md](rbac/run-log.md); the review fixes are specified in [rbac/review-fix-handoff.md](rbac/review-fix-handoff.md). Remaining before merge or deployment: the pre-migration data check on a copy of the production database (G3), PostgreSQL runs of migrations `0024`–`0027`, an owner decision on the older integer Boolean `server_default` literals (`0005`, `0018`, `0021`), and owner review of the branch. Q-006 (restore of archived users) stays open; restore is not built.
+- **Status (October 3, 2026; branch since merged to `main`):** slices R1–R8 and the review-fix slices F0–F7 were implemented on `feature/rbac` and logged in [rbac/run-log.md](rbac/run-log.md); the review fixes are specified in [rbac/review-fix-handoff.md](rbac/review-fix-handoff.md). Listed as remaining before merge or deployment (whether they were completed is not recorded in the repository as of October 24, 2026): the pre-migration data check on a copy of the production database (G3), PostgreSQL runs of migrations `0024`–`0027`, an owner decision on the older integer Boolean `server_default` literals (`0005`, `0018`, `0021`), and owner review of the branch. Q-006 (restore of archived users) stays open; restore is not built.
 - **Gates:** Q-010 and Q-013 are resolved (D-011). Q-006 to Q-009, Q-011 and Q-012 carry approved interim treatments in the register.
 - **Caution:** Do not assign HR-Admin, Financial-Admin or Payroll-Maker to real users until the data check and the PostgreSQL migration runs are done.
 - **Note:** The slice labels R0–R8 in this section correspond to slices 0–8 in the implementation plan.
@@ -160,7 +160,7 @@ Plan: [../finance-module/18-bill-workflow-v2.md](../finance-module/18-bill-workf
 | B5 | Bill screens behaviour in the current visual style (**done**: `feature/bills-b1-status-model`) | L | B2, B3, B4 |
 | B6 | Banking rules: same-currency entries and withdrawals, cheque reversals, spend as bills (D-020) (**done**: `feature/bills-b1-status-model`) | M | B3 |
 | Later | Balance check for other outflows | S | B3 |
-| Later | Bill screens visual restyle, direction A (D-021; implemented on branch feature/finance-ui-restyle-a, pending merge: [19](../finance-module/19-finance-ui-restyle-direction-a.md)) | — | B5 |
+| Later | Bill screens visual restyle, direction A (D-021; implemented and merged to `main` from branch feature/finance-ui-restyle-a: [19](../finance-module/19-finance-ui-restyle-direction-a.md)) | — | B5 |
 | Later | Bulk and historical import: see section 3F (D-033). Then in-app AI assistant | — | B4 |
 
 Prerequisite before B3 reaches production: run the cashbook 2026 import so account balances are accurate.
@@ -259,9 +259,9 @@ Plan: [../file-storage/26-file-storage-layout-plan.md](../file-storage/26-file-s
 
 ---
 
-## 3I. Employee Pay Analytics (Draft — pending owner review)
+## 3I. Employee Pay Analytics (D-037 accepted October 24, 2026; review fixes pending)
 
-Decisions D-037 (draft), related Q-022 (Open). Branch `feat/employee-pay-analytics-backend`. No migration.
+Decisions D-037 (accepted), related Q-022 (Open). Backend merged to `main` (PR #48). Frontend merged to `main` (PR #49, `fbd3456`). Review fixes on branch `fix/pay-analytics-plan-order` (not merged). No migration.
 
 | Slice | Scope | Size | Depends on |
 | :--- | :--- | :--- | :--- |
@@ -270,6 +270,40 @@ Decisions D-037 (draft), related Q-022 (Open). Branch `feat/employee-pay-analyti
 | BE-2 | **Done** (October 23, 2026): Read-only composer package `be/analytics/`, `require_any_permission` guard, and pay view endpoint | M | BE-1 |
 | BE-3 | **Done** (October 23, 2026): Excel/CSV exporters with formula injection neutralization and HR audit logging | M | BE-2 |
 | BE-4 | **Done** (October 23, 2026): Documentation updates (D-037 draft, Q-022, roadmap slice 3I) | S | BE-3 |
+| FE-1 | **Done, merged** (PR #49): employee detail Overview and Pay analytics tab shell | S | — |
+| FE-2 | **Done, merged** (PR #49): analytics API client and permission-aware mock fixtures | S | BE-2 |
+| FE-3 | **Done, merged** (PR #49): summary, stacked chart with raise markers, plan history | M | FE-2 |
+| FE-4 | **Done, merged** (PR #49): monthly breakdown table and export menu | M | FE-3 |
+| FE-5 | Polish, dark mode, copy review, docs: merged in part (PR #49); review fixes FE-6 below | S | FE-4 |
+| FE-6 | Review fixes: sort `plan.changes` ascending (backend returns newest first), guard null effective date, HR-only "See raise history" link and detailed tooltips, regression tests. **In progress with Claude Code, not merged** | S | FE-4 |
+
+## 3J. HR Access to Compensation Plans (accepted October 24, 2026; not started)
+
+Decision D-038 (resolves Q-008). Needs its own approval and a branch before work starts. No migration, no new permission key.
+
+| Slice | Scope | Size | Depends on |
+| :--- | :--- | :--- | :--- |
+| HP-1 | Backend: plan write routes accept `finance.payroll.prepare` or `hr.salary.write`; plan read routes accept `finance.payroll.read` or `hr.salary.read` (reuse `require_any_permission`). **Not started** | S | — |
+| HP-2 | Frontend: gate the Pay plan modal and its entry points by the same either-or rule. **Not started** | S | HP-1 |
+| HP-3 | Tests and docs. **Not started** | S | HP-1 |
+
+Acceptance criteria: (1) HR-Admin can read and save a compensation plan and sees the Pay plan modal; (2) Payroll-Maker and Financial-Admin behave as before; (3) Super-Admin unchanged; (4) a user with neither key gets 403 on every plan route; (5) the router permission matrix and the route-guard inventory test pass; (6) no change to plan calculation, `salary_history` or raise behaviour (D-034, D-036).
+
+---
+
+## 3K. Payroll Cutover Prerequisites (D-040, October 25, 2026; not started)
+
+Handoff for Claude Code written October 25, 2026 (Project: `claude/claude-code-handoff-payroll-cutover-prerequisites.md`; order A FT-1, B FX-1, C SI-1, D FY-1; FT-1 branch `feat/employee-tax-method`). Each slice needs its own approval and a branch from updated `main`. The cutover guide (Project: `claude/hrflow-historical-data-cutover-guide-2026-10-25.md`) is the operating procedure and is a draft.
+
+| Slice | Scope | Size | Depends on |
+| :--- | :--- | :--- | :--- |
+| FT-1 | **Required before the 2025-2026 runs.** Employee-level tax method setting with dated history, like the insured base (`progressive` by default when no row exists, or `flat` with the rate stored on the row; 10% of gross incl. bonus and commission, no exemption, remitted with payroll tax on its own line; social insurance stays its own separate setting): table and migration, calculation incl. net-to-gross, line snapshot, employee form, tax payable totals and exports, tests. **Built on `feat/employee-tax-method` (backend and frontend), awaiting review and merge** | M | — |
+| FX-1 | Refuse or warn when a run would use the silent 50.0 fallback rate. Optional, recommended. **Not started** | S | — |
+| SI-1 | Effective-dated social insurance rates (Q-023). Needed only if the rate changes inside 2025-2026. **Not started** | S-M | Q-023 |
+| FY-1 | Fiscal year reporting: start-month setting (January default), year selector, yearly summary per account and per category (opening, in, out, spend, closing). No year lock. **Not started** | S-M | — |
+| LJ-1 | Hire and leave dates used by the run generator, or an exclude-employee action that survives refresh. Optional. **Not started** | M | — |
+
+Acceptance criteria (FT-1): (1) an employee with flat 10% shows 10% tax and zero social insurance in preview and in the generated line; (2) bonus and commission are included in the taxed amount; (3) net-basis salary solves gross as net / 0.90; (4) the method has dated history per employee (a new row starts after the current one, the previous row is closed the day before) and a change dated in or before a finalized period is rejected; an employee can move from flat to progressive and the run for each period uses the row in force; (5) progressive-tax employees are unchanged; (6) the tax payable totals show the flat-tax amount on its own line.
 
 ---
 
@@ -280,8 +314,8 @@ The following initiatives remain on hold until formally decided in [04-decision-
 | Open Question | Gated Architecture & Implementation Work | Status & Prerequisite |
 | :--- | :--- | :--- |
 | **Q-001** (Payroll Paid Funding Scope) | Redesigning `mark_paid()` accounting entries; bank balance deduction scope (net pay vs full employer cost); ledger accruals. | **Resolved** by D-025 (October 10, 2026): net pay only; delivered in slice F5 (section 3C). |
-| **Q-002** (Non-Payroll Statutory Creation) | Automated scheduling for recurring VAT and corporate tax obligations; background queue implementation. | **Blocked** pending owner choice between Option A (scheduled recurring) and Option B (manual entry). |
-| **Q-003** (Production Document Storage) | S3-compatible storage adapter development; migration of Google Drive archives; storage credential redesign. | **Partly resolved** by D-035 (October 21, 2026): local unified files root `HRFLOW_FILES_ROOT` with relative POSIX paths; Drive is an additive backup clone. Cloud object storage deferred until multi-host deployment. |
+| **Q-002** (Annual Corporate Income Tax obligation) | Automated scheduling for the recurring corporate income-tax obligation; background queue implementation. VAT is resolved (D-023: on-demand estimates). | **Blocked** pending owner choice between Option A (scheduled recurring) and Option B (manual entry). |
+| **Q-003** (Production Document Storage) | S3-compatible storage adapter development; migration of Google Drive archives; storage credential redesign. | **Deferred** (local scope resolved by D-035, October 21, 2026): local unified files root `HRFLOW_FILES_ROOT` with relative POSIX paths; Drive is an additive backup clone. Cloud object storage deferred until multi-host deployment. |
 | **Q-004** (Automated FX-Rate Source) | External exchange-rate API integration; automated currency conversion pipelines in transfers and ledger. | **Blocked** pending owner choice between manual rate entry and automated market feeds. |
 | **Q-006** (Restoring Archived Users) | Restore flow for archived users; email reuse for returning people. | **Open** — restore is not built until decided. |
 | **Q-005** (Sheets Export Retention) | Permanent deletion of `be/sheets_client.py`, removal of `gspread` dependency, and revocation of Sheets service scopes. | **Blocked** pending business stakeholder review of live spreadsheet export usage. |
@@ -292,6 +326,59 @@ The following initiatives remain on hold until formally decided in [04-decision-
 ## 4A. Future Intake (not scheduled)
 
 - **Archived employees:** an Archived state for employees (history kept, access never restored), recorded as a note in [rbac/archived-employees-future-intake.md](rbac/archived-employees-future-intake.md). Design deferred until the RBAC initiative lands.
+
+---
+
+## 4B. Planned and Not Implemented Register
+
+**Purpose:** one place to see what is planned, deferred or unfinished. It points to the authoritative entry and does not replace it. **Last reviewed:** October 24, 2026 against `main` at `fbd3456`. Update a row's status when the work ships or the decision changes.
+
+### Active, in flight or ready
+
+| Item | Status | Source / gate |
+| :--- | :--- | :--- |
+| Employee Pay Analytics review fixes (FE-6) | In progress with Claude Code on `fix/pay-analytics-plan-order`; real-backend smoke test still to be done | Section 3I; handoff `claude-code-handoff-pay-analytics-fix-and-hr-plan-access.md` |
+| Q-022: typing and amount field of imported historical payroll lines | Open (owner) | `06`; gates historical payroll import |
+| HR access to compensation plans (HP-1 to HP-3) | Accepted, not started | Section 3J, D-038 |
+| Payroll cutover prerequisites: flat 10% tax method (FT-1, required before 2025-2026 runs), fiscal year reporting (FY-1), FX fallback warning (FX-1), effective-dated social insurance rate (SI-1) | Accepted; FT-1 built on branch `feat/employee-tax-method` (awaiting merge), FX-1, SI-1, FY-1 not started | Section 3K, D-040, Q-023 |
+| Payroll-Maker run-creation screen check (403 on account list) | Not done | D-039, Q-007 |
+
+### Planned earlier, not done
+
+| Item | Status | Source / gate |
+| :--- | :--- | :--- |
+| Payroll scope audit for D-003 to D-007 (`payroll-scope-audit.md`) | Not produced | Slice 1 |
+| Employee self-service payslips (page is a "coming soon" placeholder; `GET /payslips/my` exists) | Not done | Slice 4 |
+| Documentation and legacy cleanup (dormant `repositories/sheets/`, `dual/`; `compute_consumption` must move before `sheets/insurance.py` goes) | Not done | Slice 5; the Sheets retirement part is gated by Q-005 |
+| RBAC leftovers: pre-migration data check on a production copy (G3), PostgreSQL runs of migrations 0024 to 0027, decision on old integer Boolean defaults (0005, 0018, 0021) | Completion not recorded in the repository | Section 3A |
+| Historical payroll import (bulk import covers bills, cheques and sales invoices only); 2023-2024 payroll history deferred | Not built; deferred | D-033, D-040, Q-022 |
+| Central Analytics rail (board A4) | Deferred; no plan written | Section 4 |
+| Re-verify bodies of `00`, `01`, `02`; describe `be/analytics/` in `02` | Not done | Status notes added October 24, 2026 |
+
+### Deferred by decision or open question
+
+| Item | Status | Source / gate |
+| :--- | :--- | :--- |
+| Scheduler and email reminders | Deferred ("future standalone feature") | D-031 |
+| Scheduled VAT and annual corporate income tax obligations | Open (corporate income tax part) | Q-002 |
+| Automated FX-rate feed | Open | Q-004 |
+| Retire Google Sheets export, `gspread`, service scopes | Open | Q-005 |
+| Restore of archived users | Open; not built | Q-006 |
+| Archived state for employees | Not scheduled | Section 4A |
+| Cloud object storage | Deferred until multi-host hosting | Q-003, D-035 |
+| Stripe payout matching | Deferred; no Stripe account | D-029 |
+| Complete accrual P&L; VAT on bills | Later | Section 3C |
+| Balance check for other outflows | Later | Section 3B |
+| Import option B (link to existing ledger transaction); offline pre-check CLI (I2b) | Later / optional | Section 3F |
+| In-app AI assistant | Later | Section 3B |
+
+### Housekeeping awaiting the owner
+
+| Item | Status |
+| :--- | :--- |
+| Reword Q-002, mark Q-003 Deferred, archive resolved questions in `06` | Done October 24, 2026 (uncommitted in the local folder; commits with the next dev branch) |
+| Three unmerged old branches (`google-signin-fix-and-config-isolation`, `salary-advanced`, `fix/finance-ui-styling`) and about 55 fully merged remote branches | Not reviewed or pruned |
+| `fe/finance-api.js` uncommitted diff (8,499 lines in and out, probably line endings) in the local folder | Not investigated |
 
 ---
 
@@ -308,6 +395,8 @@ The following areas are explicitly non-active for near-term planning:
 
 ## 6. Recommended Immediate Next Action
 
+> **Stale (flagged October 24, 2026):** the RBAC merge below has happened. The owner sets the current next action; the paragraph is kept as history until then.
+
 Run the read-only pre-migration data check on a **copy** of the production database (users without a linked employee and without roles, duplicate emails) and the RBAC migrations (`0024`–`0027`) on PostgreSQL, then review and merge `feature/rbac` (see [rbac/run-log.md](rbac/run-log.md) for the final report). The payroll scope audit (Slice 1) remains available as a parallel read-only task.
 
 ---
@@ -316,7 +405,7 @@ Run the read-only pre-migration data check on a **copy** of the production datab
 
 - [01-repository-baseline.md](01-repository-baseline.md) — Repository baseline audit and technical debt assessment.
 - [02-architecture-and-domain-boundaries.md](02-architecture-and-domain-boundaries.md) — Canonical modular monolith architecture and domain boundaries.
-- [04-decision-log.md](04-decision-log.md) — Authoritative owner decision register (`D-001` through `D-013`).
-- [06-open-questions.md](06-open-questions.md) — Register of unresolved product and architectural questions (`Q-001` through `Q-012`).
+- [04-decision-log.md](04-decision-log.md) — Authoritative owner decision register (`D-001` through `D-037`).
+- [06-open-questions.md](06-open-questions.md) — Register of unresolved product and architectural questions (`Q-001` through `Q-022`).
 - [rbac/implementation-plan.md](rbac/implementation-plan.md) — Accepted RBAC delivery plan (October 1, 2026).
 - [../finance-module/01-implementation-plan.md](../finance-module/01-implementation-plan.md) — Historical phased delivery plan for the Finance domain.

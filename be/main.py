@@ -34,6 +34,7 @@ from routers import system as system_router
 from routers import salary_payment_docs as salary_payment_docs_router
 from routers import employee_bank_accounts as employee_bank_accounts_router
 from routers import social_insurance as social_insurance_router
+from routers import tax_method as tax_method_router
 from routers import export as export_router
 from routers import access as access_router
 
@@ -164,6 +165,7 @@ app.include_router(salary_payment_docs_router.router)
 app.include_router(salary_payment_docs_router.compat_router)
 app.include_router(employee_bank_accounts_router.router)
 app.include_router(social_insurance_router.router)
+app.include_router(tax_method_router.router)
 app.include_router(export_router.router)
 app.include_router(access_router.router)
 

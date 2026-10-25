@@ -189,7 +189,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-011 — RBAC Role Model: Permission-Based Roles, Code-Defined Catalog, Seeded Roles
 
-- **Status:** Accepted (owner approval, October 1, 2026; implemented on branch `feature/rbac`)
+- **Status:** Accepted (owner approval, October 1, 2026; implemented; merged to `main` from branch `feature/rbac`)
 - **Decision:**
   - **Single authority. [Agreed]** RBAC (`roles`, `role_permissions`, `user_roles`) is the sole authorization authority. The legacy `users.role` string, the `role` claim in the session token, and the `*` wildcard are retired. This is a long-term direction delivered in slices; legacy paths stay until each consumer is migrated.
   - **Permissions are code. [Agreed]** Permission keys are defined in a code catalog with the format `<module>.<resource>.<action>`. Roles are database rows composed from catalog keys. There are no prefix wildcards.
@@ -231,7 +231,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-012 — Identity Lifecycle: Users Page, External Users, Archiving, Self-Protection
 
-- **Status:** Accepted (owner approval, October 1, 2026; implemented on branch `feature/rbac`)
+- **Status:** Accepted (owner approval, October 1, 2026; implemented; merged to `main` from branch `feature/rbac`)
 - **Decision:**
   - **Users page. [Agreed]** A Super-Admin-only Users page (Core domain), alongside a Roles page, in a new Super-Admin-only System area of the admin navigation. Roles are not assigned from the Employees page.
   - **One creation path. [Agreed]** An employee is created only on the Employees page; a user is provisioned for them automatically. No second creation step.
@@ -258,7 +258,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-013 — Sign-In Policy: Provisioned Google Accounts of Any Domain
 
-- **Status:** Accepted (owner approval, October 1, 2026; implemented on branch `feature/rbac`)
+- **Status:** Accepted (owner approval, October 1, 2026; implemented; merged to `main` from branch `feature/rbac`)
 - **Decision:**
   - **Google-only. [Agreed]** Sign-in remains Google Sign-In only. No passwords or other providers.
   - **Any domain. [Agreed]** Accounts outside the company Workspace domain are allowed, so external users can sign in.
@@ -270,7 +270,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-014 — Top-Bar Account Menu, Title-Only Header and Visible Bell
 
-- **Status:** Accepted by owner 2026-10-05; pending merge of `fix/review-ui-fixes`.
+- **Status:** Accepted by owner 2026-10-05; merged to `main` (branch `fix/review-ui-fixes`).
 - **Decision (OD-1…OD-10):**
   - **Account menu top-right (OD-1).** Identity, the Light/Dark control and Sign out live in a top-bar account menu in both the Admin and Employee portals. The admin rail avatar and logout, the admin panel user card, and the employee sidebar user card and logout button are removed.
   - **Theme control in the menu (OD-2).** A two-option Light/Dark segmented control replaces the top-bar theme icon buttons. The login screen keeps its own toggle.
@@ -289,7 +289,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-015 — Admin Rail Clicks Navigate to a Landing Page
 
-- **Status:** Accepted by owner 2026-10-05; pending merge of `fix/review-ui-fixes`.
+- **Status:** Accepted by owner 2026-10-05; merged to `main` (branch `fix/review-ui-fixes`).
 - **Decision:** Clicking an admin module rail button opens a page instead of only swapping the side panel. The landing page is the last sidebar page visited in that module during the current session, otherwise the module default: HR `a-dashboard`, Finance `a-finance-dashboard`, Payroll `a-finance-payroll-runs`, System `a-system-roles`. Clicking the current module's button leaves the page unchanged. With the mobile drawer open, the rail still only swaps the panel, because navigating closes the drawer.
 - **Details:** Remembered pages are kept in memory only (never persisted) and cleared on sign-out, session expiry and session change. Pages not listed in the sidebar are remembered as their parent sidebar page (for example employee detail as Employees). Module visibility rules (`AdminNav.canSeeModule`) are unchanged.
 - **Amends:** the "rail click only switches the panel" behaviour in `docs/ui-design/dual-rail-navigation-plan-v2.md`; D-010 is otherwise unchanged.
@@ -297,7 +297,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-016 — Vendor Bill Status Model
 
-- **Status:** Accepted by owner, October 8, 2026. Implemented on `feature/bills-b1-status-model` (slice B1); plan in [../finance-module/18-bill-workflow-v2.md](../finance-module/18-bill-workflow-v2.md).
+- **Status:** Accepted by owner, October 8, 2026. Implemented and merged to `main` (branch `feature/bills-b1-status-model`) (slice B1); plan in [../finance-module/18-bill-workflow-v2.md](../finance-module/18-bill-workflow-v2.md).
 - **Decision:**
   - Eight bill statuses: Draft, Pending approval, Rejected, Approved, Scheduled, Partially paid, Paid, Void. `inbox`, `needs_coding`, `unpaid`, `ready_to_pay` and `exceptions` are removed; the `is_reviewed` flag is no longer used.
   - Overdue is a flag derived from the due date, not a status.
@@ -309,7 +309,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-017 — Bill Approval and Bill Permissions
 
-- **Status:** Accepted by owner, October 8, 2026. Implemented on `feature/bills-b1-status-model` (slice B2).
+- **Status:** Accepted by owner, October 8, 2026. Implemented and merged to `main` (branch `feature/bills-b1-status-model`) (slice B2).
 - **Decision:**
   - New permissions `finance.bill.approve` and `finance.bill.pay`. Super admin holds them; no seeded role is granted them for now, so Financial-Admin keeps create/edit but loses approve and pay until granted.
   - Bills saved by a holder of `finance.bill.approve` are Approved immediately, marked auto-approved. Others submit for approval; the super admin approves or rejects (reason required).
@@ -322,7 +322,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-018 — Bill Payment Fields, Currency and Balance Rules
 
-- **Status:** Accepted by owner, October 8, 2026. Implemented on `feature/bills-b1-status-model` (slice B3).
+- **Status:** Accepted by owner, October 8, 2026. Implemented and merged to `main` (branch `feature/bills-b1-status-model`) (slice B3).
 - **Decision:**
   - No exchange rate on bills or bill payments. The paying account must be in the bill's currency; a mismatch is an error. Currency exchange happens only through account transfers.
   - A bill payment the account balance cannot cover is an error, for every account (no overdraft). Extending the check to other outflows is a later slice.
@@ -334,7 +334,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-019 — Bill Drafts and PDF Upload
 
-- **Status:** Accepted by owner, October 8, 2026. Implemented on `feature/bills-b1-status-model` (slice B4).
+- **Status:** Accepted by owner, October 8, 2026. Implemented and merged to `main` (branch `feature/bills-b1-status-model`) (slice B4).
 - **Decision:**
   - Draft holds unfinished bills; it needs a vendor or an attachment. Leaving Draft runs full validation.
   - Every PDF or photo upload creates a Draft; several files can be uploaded at once from different vendors, each becoming its own Draft with its own vendor match. Weak matches are flagged "vendor to confirm"; new vendors are suggested, never auto-created.
@@ -344,7 +344,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-020 — Banking Rules: Same-Currency Entries, Spend as Bills, Cheque Reversals
 
-- **Status:** Accepted by owner, October 9, 2026. Implemented on `feature/bills-b1-status-model` (slice B6).
+- **Status:** Accepted by owner, October 9, 2026. Implemented and merged to `main` (branch `feature/bills-b1-status-model`) (slice B6).
 - **Decision:**
   - A ledger transaction is always in its account's currency. Manual entries lose the exchange-rate path; exchange happens only through FX transfers. Cash withdrawals (teller or cheque) require the cash account to have the bank account's currency.
   - Spend with a vendor or shop is recorded as a bill (one-step "Already paid" where it is already paid). Plain transactions are for bank fees, transfers, exchange, withdrawals and money in.
@@ -355,7 +355,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-021 — Finance Bills Visual Restyle: Direction A "Clean Table"
 
-- **Status:** Accepted by owner, October 9, 2026. Not implemented; plan in [../finance-module/19-finance-ui-restyle-direction-a.md](../finance-module/19-finance-ui-restyle-direction-a.md).
+- **Status:** Accepted by owner, October 9, 2026. Implemented and merged to `main` (branch `feature/finance-ui-restyle-a`); plan in [../finance-module/19-finance-ui-restyle-direction-a.md](../finance-module/19-finance-ui-restyle-direction-a.md).
 - **Decision:**
   - Restyle the shared Finance components (data table, status pills and flags, status filter, page header and toolbar, summary cards, dialog) with direction A "Clean Table", starting with the Bills page. Sales invoices are not restyled in this work; they get a regression check only. Three other directions (Compact Ledger, Soft Cards, Structured Workbench) were explored and not chosen.
   - FUX-414's status pill with a "Change view" panel is replaced by an always-visible status row with counts and an Overdue only control. The row wraps to a second line when narrow. This is an explicit owner override of FUX-414's "exact and only approved layout".
@@ -367,38 +367,38 @@ This document records durable product and architectural decisions approved by th
 
 ### D-022 — Sales Invoice Status and Safety Rules
 
-- **Status:** Accepted by owner, October 10, 2026. Invoice rules implemented on `feature/fin-f1-invoice-rules` (slice F1, migration `0031_invoice_status_model`); the statutory-payment currency rule was delivered in slice F4 (no migration). Plan: [../finance-module/20-finance-review-round-2.md](../finance-module/20-finance-review-round-2.md).
+- **Status:** Accepted by owner, October 10, 2026. Invoice rules implemented and merged to `main` (branch `feature/fin-f1-invoice-rules`) (slice F1, migration `0031_invoice_status_model`); the statutory-payment currency rule was delivered in slice F4 (no migration). Plan: [../finance-module/20-finance-review-round-2.md](../finance-module/20-finance-review-round-2.md).
 - **Decision:** Invoice statuses are Draft, Sent, Partially paid, Paid, Void; overdue is a flag. Status changes only through actions. A sent invoice's customer, currency, lines, amounts, VAT and withholding rate are locked (void and reissue to correct). Void is refused while unreversed receipts exist. Receipts must use an account in the invoice's currency, with no exchange rate, and go through the settlement service. Statutory payments follow the same currency rule (F4).
   - Owner clarifications (October 10, 2026): issue date is also locked once issued; receipts use Cash payment for cash accounts and Incoming transfer for bank accounts; refusals use 409 (`invoice_locked`, `invoice_void`, `invalid_transition`, `has_unreversed_receipts`) and 400 `currency_mismatch` / `payment_type_not_allowed`.
 - **Rationale:** Mirrors D-016, D-018 and D-020 for receivables; the review found partly paid invoices voidable, sent invoices editable and receipts accepted in another currency.
 
 ### D-023 — VAT on Sales Invoices
 
-- **Status:** Accepted by owner, October 10, 2026. Implemented on `feature/fin-f1-invoice-rules` (slice F2, migration `0032_invoice_vat_rate`). A confirmed or remitted monthly obligation is never overwritten by regenerating the estimate (409 `obligation_confirmed`).
+- **Status:** Accepted by owner, October 10, 2026. Implemented and merged to `main` (branch `feature/fin-f1-invoice-rules`) (slice F2, migration `0032_invoice_vat_rate`). A confirmed or remitted monthly obligation is never overwritten by regenerating the estimate (409 `obligation_confirmed`).
 - **Decision:** Each invoice carries a VAT rate (default 14% for EGP, 0% otherwise). Revenue is the net amount. A user-triggered "Generate VAT estimate" creates or updates one monthly sales-tax obligation (estimated, EGP) from invoices issued that month; the portal-confirmed figure is entered through the existing confirm/adjust step (D-001, D-002). No scheduler.
 - **Rationale:** The owner's EGP invoices include 14% VAT (cashbook REVENUE sheet), while HRFlow hard-codes invoice tax to 0 and reports VAT-inclusive totals as revenue.
 
 ### D-024 — Customer Withholding Tax at Invoice Preparation
 
-- **Status:** Accepted by owner, October 10, 2026 (owner delegated the design). Implemented on `feature/fin-f1-invoice-rules` (slice F3, migration `0033_customer_withholding_tax`). Withheld tax on a receipt cannot exceed the invoice's expected withholding.
+- **Status:** Accepted by owner, October 10, 2026 (owner delegated the design). Implemented and merged to `main` (branch `feature/fin-f1-invoice-rules`) (slice F3, migration `0033_customer_withholding_tax`). Withheld tax on a receipt cannot exceed the invoice's expected withholding.
 - **Decision:** Optional withholding rate per customer (default 0) copied to the invoice and editable while Draft. The invoice shows the amount expected to be received; a receipt plus the withheld amount settles it. Withheld amounts are recorded on the payment without a bank movement and listed in a withholding-credits report.
 - **Rationale:** Customers withheld tax last year but not currently; the feature must stay invisible at rate 0.
 
 ### D-025 — Payroll Paid Moves Net Pay Only; Payroll Posting Fixes
 
-- **Status:** Accepted by owner, October 10, 2026. Resolves Q-001 (Option A). Implemented on `feature/fin-f1-invoice-rules` (slice F5, migration `0034_payroll_ledger_source`). Marking a run fully paid posts the net-pay rows immediately; the migration recalculates affected account balances, which lowers them by the historical net pay that was never deducted.
+- **Status:** Accepted by owner, October 10, 2026. Resolves Q-001 (Option A). Implemented and merged to `main` (branch `feature/fin-f1-invoice-rules`) (slice F5, migration `0034_payroll_ledger_source`). Marking a run fully paid posts the net-pay rows immediately; the migration recalculates affected account balances, which lowers them by the historical net pay that was never deducted.
 - **Decision:** Marking a payroll run paid moves net pay only; employer tax and social insurance are paid as statutory obligations. Payroll ledger rows are `source="payroll"` (not editable as manual entries), follow the funding account's currency and kind, update balances immediately, and are refused when funding accounts are missing (no hard-coded fallback IDs).
 - **Rationale:** Matches current behaviour and the cashbook; the review found payroll rows saved as manual, balances not recalculated and fallbacks to account 1.
 
 ### D-026 — Cash Basis Is the Main P&L View
 
-- **Status:** Accepted by owner, October 10, 2026. Implemented on `feature/fin-f1-invoice-rules` (slice F6, no migration). Scope: the cash/accrual summary KPIs and the cash/accrual P&L statement; other cash-basis reports (cash flow, category rollups) keep their own logic.
+- **Status:** Accepted by owner, October 10, 2026. Implemented and merged to `main` (branch `feature/fin-f1-invoice-rules`) (slice F6, no migration). Scope: the cash/accrual summary KPIs and the cash/accrual P&L statement; other cash-basis reports (cash flow, category rollups) keep their own logic.
 - **Decision:** The cash-basis P&L is the primary view. Reversals reduce the side they reverse; movements between own accounts (transfers, exchange, withdrawals) are excluded; payroll and statutory payments count as spend. "All currencies" shows one column per currency with no converted total. The accrual view is labelled partial until completed later.
 - **Rationale:** The owner runs the business on a cashbook; the review found reversals counted as revenue, withdrawals counted on both sides, and USD and EGP summed under a USD label.
 
 ### D-027 — Finance UI Restyle v2: Colour Direction on Every Finance Page
 
-- **Status:** Accepted by owner, October 10, 2026. Implemented on `feature/finance-ui-restyle-v2` (UI only, not merged); UI plan in [../finance-module/21-finance-ui-restyle-v2.md](../finance-module/21-finance-ui-restyle-v2.md), backend support in [../finance-module/22-finance-restyle-v2-backend.md](../finance-module/22-finance-restyle-v2-backend.md). Approved references: `docs/finance-module/mocks/restyle-v2/`.
+- **Status:** Accepted by owner, October 10, 2026. Implemented and merged to `main` (branch `feature/finance-ui-restyle-v2`, UI only); UI plan in [../finance-module/21-finance-ui-restyle-v2.md](../finance-module/21-finance-ui-restyle-v2.md), backend support in [../finance-module/22-finance-restyle-v2-backend.md](../finance-module/22-finance-restyle-v2-backend.md). Approved references: `docs/finance-module/mocks/restyle-v2/`.
 - **Decision:**
   - Every Finance page in the six Finance sidebar items (Overview, Sales, Spend, Banking, Reports & Export, Finance Settings), their dialogs and drawers move to the colour direction: navy ink instead of black, brand blue for anything clickable or identifying, eight identity colours (fixed order, colour-blind validated in light and dark) for avatars, category dots and future charts, one colour per Finance area, white table header rows, direction C soft summary cards.
   - Bills keeps its approved UX (D-021, doc 19 §12); only colours and sizes change. Every table follows the Bills row-action pattern: at most one text button plus up to three icon buttons, no "⋯" menus.
@@ -410,7 +410,7 @@ This document records durable product and architectural decisions approved by th
 
 ### D-028 — Books: Local and Overseas, Three Report Views
 
-- **Status:** Accepted by owner, October 18, 2026. Resolves Q-017 and Q-020. Implemented on `feature/finance-expansion` (slice X2, migration 0038); plan in [../finance-module/23-finance-expansion-plan.md](../finance-module/23-finance-expansion-plan.md) (slice X2).
+- **Status:** Accepted by owner, October 18, 2026. Resolves Q-017 and Q-020. Implemented and merged to `main` (branch `feature/finance-expansion`) (slice X2, migration 0038); plan in [../finance-module/23-finance-expansion-plan.md](../finance-module/23-finance-expansion-plan.md) (slice X2).
 - **Decision:**
   - New `finance_books`: `Local` (Egyptian entity, default; every existing account migrates here) and `Overseas` (overseas entity). Every company account has a required book and a visibility of `full` or `partial`.
   - A `partial` account (the overseas bank account) shows its balance as known movements plus owner-entered balance checkpoints; the gap is shown as "Unrecorded difference" and is never auto-adjusted.
@@ -422,41 +422,41 @@ This document records durable product and architectural decisions approved by th
 
 ### D-029 — External Revenue: Receipts Tagged by Source, No Stripe Account Yet
 
-- **Status:** Accepted by owner, October 18, 2026. Resolves Q-019. Implemented on `feature/finance-expansion` (slice X4, migration 0039).
+- **Status:** Accepted by owner, October 18, 2026. Resolves Q-019. Implemented and merged to `main` (branch `feature/finance-expansion`) (slice X4, migration 0039).
 - **Decision:** Stripe is not modelled as an account now. Money reaching a company account without an HRFlow invoice is recorded as a **revenue receipt** (a `money_in` ledger row) with `revenue_source` from an editable list (`Invoice`, `Stripe payout`, `Direct transfer`, `Cash`, `Other`), optional product and customer, period covered, and optional memo-only gross and fee amounts. When the planned revenue-service integration arrives, imported service revenue becomes the revenue record and bank payouts are matched to it; earlier payout receipts stay as historical records.
 - **Rationale:** Stripe money mostly originates from other services the owner plans to integrate directly; a Stripe account now would be replaced later.
 
 ### D-030 — Product Catalog and Revenue Tagging
 
-- **Status:** Accepted by owner, October 18, 2026. Implemented on `feature/finance-expansion` (slices X3, migration 0037, and X4, migration 0039 for `product_id` on revenue receipts). Permissions `finance.product.read` / `finance.product.write` (write granted to Financial-Admin).
+- **Status:** Accepted by owner, October 18, 2026. Implemented and merged to `main` (branch `feature/finance-expansion`) (slices X3, migration 0037, and X4, migration 0039 for `product_id` on revenue receipts). Permissions `finance.product.read` / `finance.product.write` (write granted to Financial-Admin).
 - **Decision:** New Finance-owned `finance_products` (name, code, type `saas_subscription | license | implementation_service | support | other`, default currency/price, default receiving account, active). Optional `product_id` on sales invoice lines and revenue receipts; untagged revenue stays visible in reports. Invoice book is derived from its expected receiving account; `revenue_channel` is kept for history and mapped to book + source.
 - **Rationale:** The owner wants revenue by product across local and overseas accounts.
 
 ### D-031 — Subscriptions: Expected Charges, Proof Tracking, In-App Reminders Only
 
-- **Status:** Accepted by owner, October 18, 2026. Resolves Q-016 (no email, no scheduler for now). Implemented on `feature/finance-expansion` (slice X5, migration 0040).
+- **Status:** Accepted by owner, October 18, 2026. Resolves Q-016 (no email, no scheduler for now). Implemented and merged to `main` (branch `feature/finance-expansion`) (slice X5, migration 0040).
 - **Decision:** Subscriptions gain `billing_email`, `proof_source` (`email_inbox | vendor_portal | bank_only | none`), paid-from account (any book) and `proof_expected`. Expected charges are generated on demand and idempotently (button and on page open), status `expected → settled | skipped` with variance. Settle links an existing ledger/statement row or creates an "Already paid" bill through the settlement service (D-020) and advances the renewal date. Proof per charge is `attached | pending | unavailable` with reason, never blocks settlement, and feeds a "proofs missing" list. Reminders are in-app attention items only. Email and a background scheduler are a future standalone feature.
 - **Rationale:** Some proofs cannot be obtained; recurring charges must be visible and settled monthly without new infrastructure.
 
 ### D-032 — Cheque Scans and Manual Entry; No Extraction
 
-- **Status:** Accepted by owner, October 18, 2026. Resolves Q-015. Implemented on `feature/finance-expansion` (slice X1, migration 0036). Scans use the finance-attachment local store (same as subscription charges); read/write use `finance.account.read` / `finance.account.write`, the existing cheque-register permissions.
+- **Status:** Accepted by owner, October 18, 2026. Resolves Q-015. Implemented and merged to `main` (branch `feature/finance-expansion`) (slice X1, migration 0036). Scans use the finance-attachment local store (same as subscription charges); read/write use `finance.account.read` / `finance.account.write`, the existing cheque-register permissions.
 - **Decision:** No external OCR or AI service and no extraction. Cheques get one or more stored scans (front, back, bank stamp) through `finance_attachments` (`cheque_id`), with a "scan missing" flag and filter; existing `attachment_url` values are migrated and the column deprecated. Entry shortcuts: next cheque number suggested per account; payee, amount and currency prefilled from a linked bill.
 - **Rationale:** The owner will not subscribe to an external service; free local OCR cannot read handwritten cheques reliably.
 
 ### D-033 — Bulk Import via Manifest + ZIP Upload; Drafts Only
 
-- **Status:** Accepted by owner, October 20, 2026. Resolves Q-021. Plan: [../finance-module/25-bulk-historical-import-plan.md](../finance-module/25-bulk-historical-import-plan.md). Implemented on `feature/bulk-import` (slices I0–I4).
+- **Status:** Accepted by owner, October 20, 2026. Resolves Q-021. Plan: [../finance-module/25-bulk-historical-import-plan.md](../finance-module/25-bulk-historical-import-plan.md). Implemented and merged to `main` (branch `feature/bulk-import`) (slices I0–I4).
 - **Decision:** Import is an authenticated upload of a manifest (CSV/XLSX) and a ZIP of PDFs/images through the HRFlow UI; HRFlow never reads caller-supplied filesystem paths. It creates only Draft bills, draft cheques and Draft sales invoices: it never approves, sends, issues, pays, posts ledger rows, or creates vendors/customers/categories/accounts. Provenance is recorded on every record (`capture_source = import`, batch id, source file, confidence, review flags); imported bills start `is_reviewed = false`. Permissions mirror the target entity (`finance.bill.write`, `finance.account.write`, `finance.invoice.write`); no new permission. HRFlow calls no external OCR/AI service: documents are read outside the app and the owner reviews the manifest (consistent with D-032). The 25 MB nginx limit stays; the ZIP carries compressed copies.
 - **Rationale:** One-time backlog of old documents; an MCP/public endpoint was disproportionate. Dry run then commit keeps the owner in control, and Drafts keep the ledger untouched.
 
 ### D-034 — Pay Plan Sync: Raises Reach the Plan, Zero Closes a Component, One-Form Pay Plan Modal
 
-- **Status:** Accepted by owner, October 21, 2026. Plan: [../finance-module/27-pay-plan-sync-and-modal-plan.md](../finance-module/27-pay-plan-sync-and-modal-plan.md). Not implemented yet (slices P1–P3 on `feature/pay-plan-sync`). Extends the Q-008 interim treatment; Q-008 stays Open.
+- **Status:** Accepted by owner, October 21, 2026. Plan: [../finance-module/27-pay-plan-sync-and-modal-plan.md](../finance-module/27-pay-plan-sync-and-modal-plan.md). Implemented and merged to `main` (slices P1–P3 on `feature/pay-plan-sync`). Extends the Q-008 interim treatment; Q-008 stays Open. Decision 6 (pay in the create/edit modals) is superseded by D-036.
 - **Decision:** (1) Either pay component (internal USD cash, external USD) may be 0, never both; a 0 closes the active plan row the day before the effective date and keeps history. (2) The Pay plan modal writes plan rows only; the Raise modal remains the raise event (plan + raise history + next-raise date). (3) A raise dated today or earlier applies to the plan if the plan guards pass; future dates and guard failures are rejected and nothing is written. (4) Raises update the plan through the service under `hr.salary.write` (as employee create/update already do under `hr.employee.write`). (5) The Pay plan modal becomes one form saved through one atomic endpoint (`PUT /api/finance/employees/{id}/compensation-plan`), single transaction, single audit entry. (6) The employee create modal gains "Pay effective from"; the edit modal shows pay read-only with an "Edit pay plan" button.
 ### D-035 — Unified File Storage Root and Folder Layout
 
-- **Status:** Accepted by owner, October 21, 2026. Resolves local scope of Q-003. Plan: [../file-storage/26-file-storage-layout-plan.md](../file-storage/26-file-storage-layout-plan.md). Implemented on `feature/file-storage-layout` (slices F0–F6).
+- **Status:** Accepted by owner, October 21, 2026. Resolves local scope of Q-003. Plan: [../file-storage/26-file-storage-layout-plan.md](../file-storage/26-file-storage-layout-plan.md). Implemented and merged to `main` (branch `feature/file-storage-layout`) (slices F0–F6).
 - **Decision:**
   - HRFlow unifies all stored files (Finance and HR) under a single environment-configured root `HRFLOW_FILES_ROOT` (defaults to `/data/documents` in container, `${HRFLOW_DATA_DIR}/documents` on host).
   - Database records store root-relative POSIX paths only (e.g., `finance/2026/bills/2026-04/12-vendor.pdf`), never absolute host filesystem paths.
@@ -470,13 +470,13 @@ This document records durable product and architectural decisions approved by th
 
 ### D-036 — Personal Details Behind a Dedicated Permission, One-Row Pay History, Pay Only in the Pay Plan Modal
 
-- **Status:** Accepted by owner, October 21, 2026. Plan: [../finance-module/29-personal-details-and-pay-history-plan.md](../finance-module/29-personal-details-and-pay-history-plan.md). Implemented (slices S1–S3 on `feature/personal-details-pay-history`). Supersedes decision 6 of D-034 (the create/edit modals no longer carry pay).
+- **Status:** Accepted by owner, October 21, 2026. Plan: [../finance-module/29-personal-details-and-pay-history-plan.md](../finance-module/29-personal-details-and-pay-history-plan.md). Implemented and merged to `main` (slices S1–S3 on `feature/personal-details-pay-history`). Supersedes decision 6 of D-034 (the create/edit modals no longer carry pay).
 - **Decision:** (1) Every pay change writes exactly one `salary_history` record, and every screen, including the Pay plan modal, shows that table as one row per change with Internal and External as columns. (2) The Add/Edit employee modal has no pay fields; after creating an employee the Pay plan modal opens and may be skipped (an employee may have no plan, shown as "Not set"). (3) `name` stays the short display name used everywhere; new `legal_name` is the full legal name used only on the employee page, contracts and rendered payment documents. (4) New personal fields `legal_name`, `phone`, `id_type`, `id_number` join the existing address lines; the ID is optional, validated per type and stored as text. (5) Personal details are HR-admin only through new permissions `hr.employee_personal.read|write|reveal`, served only by a dedicated endpoint, audited, and excluded from lists, self-service and the Sheets export. (6) Payment-doc generation is blocked when the legal name or address line 1 is missing and never falls back to the display name; generated documents are not rewritten when details change.
 - **Rationale:** Two pay surfaces and two history shapes kept disagreeing (D-034 findings); the payment documents need a legal name and address that the system's short names and open employee reads should not expose. Production is empty, so the schema and permission changes need no data migration beyond local test data.
 
 ### D-037 — Employee Pay Analytics: Composer Architecture, Scoped Permissions, and Export Audit
 
-- **Status:** Draft — pending owner review, October 23, 2026. Implemented backend on `feat/employee-pay-analytics-backend`.
+- **Status:** Accepted by owner, October 24, 2026. Backend implemented and merged to `main` (PR #48). Frontend implemented and merged to `main` (PR #49, merge `fbd3456`); review fixes (plan-change ordering, null effective date, HR-only link and tooltips) are handed to Claude Code on branch `fix/pay-analytics-plan-order`, not yet merged.
 - **Decision:**
   1. New read-only composer package `be/analytics/`. It depends on HR and Finance service interfaces only; no domain depends on it.
   2. No new permission. Payments section requires `finance.report.read`. Plan/raises section requires `hr.salary.read`. The endpoint requires at least one of them, otherwise 403.
@@ -491,6 +491,27 @@ This document records durable product and architectural decisions approved by th
 
 ---
 
+
+### D-038 — Compensation Plan Access for HR (Resolves Q-008)
+
+- **Status:** Accepted by owner, October 24, 2026. Resolves Q-008. Not implemented: the code change is a separate slice that needs its own approval. Extends the Q-008 interim treatment recorded with D-011 and D-034.
+- **Decision:** (1) Compensation-plan routes accept either the finance key or the matching HR salary key. Write routes (`PUT /api/finance/employees/{id}/compensation-plan` and `PUT .../compensation-plan/{component_type}`) accept `finance.payroll.prepare` or `hr.salary.write`. Read routes (`GET .../compensation-plan`, `.../history`, `.../pay-history`) accept `finance.payroll.read` or `hr.salary.read`. (2) No new permission key and no change to role grants: HR-Admin already holds `hr.salary.read` and `hr.salary.write`, Payroll-Maker and Financial-Admin keep their finance keys. (3) Frontend gating of the Pay plan modal and its entry points follows the same either-or rule. (4) The existing `require_any_permission` guard is reused; nothing else about plan behaviour (D-034, D-036) changes.
+- **Rationale:** HR-Admin could record raises through `hr.salary.write` (D-034) but could not open or save the Pay plan modal, so it could not set an employee's starting pay after D-036 removed pay from the create and edit modals. Both paths change the same data, so they should be reachable by the same holders of the HR salary permission. This also avoids granting HR-Admin any finance key.
+
+### D-039 — RBAC Interim Treatments Confirmed as Final (Resolves Q-007, Q-009, Q-011, Q-012)
+
+- **Status:** Accepted by owner, October 24, 2026. Resolves Q-007, Q-009, Q-011 and Q-012. Records the current behaviour; no code change except the verification follow-up in decision 1.
+- **Decision:** (1) **Q-007:** Payroll-Maker is not granted `finance.account.read`. The API lets it create a run without that key (the service defaults to the first active company account when none is given). Follow-up, not yet done: check that the payroll run creation screen degrades gracefully for Payroll-Maker (the account list call returns 403) and report; any change to how the funding account is chosen is a separate decision. (2) **Q-009:** `finance.account.*` stays one read/write pair; revisit only if a role needs a subset (for example an auditor who reads the ledger but must not edit accounts). (3) **Q-011:** employees keep upload and delete of their own documents (`self.document.write`) and can view their own bank details (`self.bank_account.read`); they cannot edit their own bank details. Bank details are maintained by HR. (4) **Q-012:** `POST /runs/{run_id}/post-journal` requires `finance.payroll.pay`.
+- **Rationale:** The interim treatments from the RBAC initiative (D-011) have run since October 1, 2026 without a role needing a different rule. Keeping bank-detail edits with HR prevents an account swap by the employee; keeping post-journal with the pay permission keeps preparing payroll separate from posting it.
+
+### D-040 — Payroll Cutover Strategy for Historical Data (partly resolves Q-022)
+
+- **Status:** Accepted by owner, October 25, 2026 (recorded from the owner's answers in session). Implementation not started. The step-by-step guide is a draft in the Project: `claude/hrflow-historical-data-cutover-guide-2026-10-25.md`.
+- **Decision:** (1) Payroll history for **2023 and 2024 is deferred** (may never be done). Bills, invoices and cash payments for those years are imported as ordinary transactions; salary payments come in as plain transactions. (2) **2025 and 2026** payroll is entered **manually**, one native run per month, in calendar order, with the USD-EGP rate **typed in for each run**. Each month is finalized only after it is compared with the accountant's sheet. The runs stay **unpaid** in HRFlow. (3) **One home for salary cash:** for any month, salary cash exists either as an imported transaction or as a run payment, never both. Salary payments are not part of the bank import. (4) **Raise history first:** every employee's full pay and insured-base history (including 2023-2024 raises) is entered oldest to newest **before** the first 2025 run is finalized, because pay and insured-base changes dated in or before a finalized period are rejected. (5) Employees paid with **no social insurance and a fixed 10% tax** appear in 2025-2026: HRFlow gets an employee-level **tax method setting with its own dated history**, like the insured base (slice FT-1), before those runs: `progressive` (the default when no row exists) or `flat` with the rate stored on the row (10% for these employees); an employee can move from flat to progressive over time, and a move to fully external pay is a pay plan change, not a tax method change. Agreed definition: 10% deducted from gross; applies to salary, bonus and commission; no personal exemption; no social insurance; remitted with the regular payroll tax on its own line. (6) The **fiscal year is January to December**, with the start month as a setting. Reports only (opening balance, money in, money out, spend, closing balance per account and per category); **no year lock for now** (slice FY-1).
+- **Rationale:** Native runs read employees who are Active today, with no hire or leave date filter, and recalculate tax and social insurance, so they suit recent months and not history. Salary cash in two places would be counted twice. Locking rules make the order of data entry matter more than the data itself.
+- **Not decided:** the historical payroll import (PI-0 to PI-4) stays planned and unscheduled; whether the Social Insurance rate becomes effective-dated (Q-023); handling of employees who joined or left during 2025-2026.
+- **Verified in code on October 25, 2026:** a run can stay finalized without being paid and then posts nothing to the ledger; payroll reports include every non-cancelled run; the run FX rate is one value per run and falls back silently to 50.0 when no manual rate and no earlier USD-to-EGP transfer exist; tax is calculated only for the internal USD part; point-in-time balances exist but no fiscal-year concept exists apart from the cheque field.
+- **Related References:** [06-open-questions.md](06-open-questions.md) (`Q-022`, `Q-023`); [05-roadmap-and-next-slices.md](05-roadmap-and-next-slices.md) (`3K`); D-025, D-033, D-036, D-037.
 
 ## Related but Not Decisions
 

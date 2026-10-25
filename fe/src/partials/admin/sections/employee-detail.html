@@ -152,7 +152,38 @@
                   <div class="iban-row"><span class="k">Coverage</span><span class="v" id="socialInsCoverage">—</span></div>
                   <div class="iban-row"><span class="k">Insured base</span><span class="v" id="socialInsBase">—</span></div>
                   <div class="iban-row"><span class="k">Effective date</span><span class="v" id="socialInsEffectiveDate">—</span></div>
+                  <div id="socialInsHistory" class="hv-mt-16" hidden>
+                    <table class="table" id="socialInsHistoryTable">
+                      <thead><tr><th scope="col">From</th><th scope="col">To</th><th scope="col">Coverage</th></tr></thead>
+                      <tbody id="socialInsHistoryBody"></tbody>
+                    </table>
+                  </div>
                   <p class="helper">Internal estimate basis. Governs payroll deductions.</p>
+                </div>
+              </div>
+
+              <div class="card employee-bank-card hv-mt-16" id="taxMethodCard">
+                <div class="card-head">
+                  <h3>Tax method</h3>
+                  <span class="badge-pill pill-neutral" id="taxMethodPill">
+                    <i class="fa-solid fa-circle-question"></i> Not loaded
+                  </span>
+                  <button type="button" class="ed-link-btn" id="taxMethodActionBtn" onclick="openTaxMethodModal(event)" title="Edit tax method">Edit</button>
+                </div>
+                <div class="status-line" id="taxMethodStatusLine">
+                  <button type="button" class="btn btn-outline btn-sm" id="taxMethodStatusActionBtn" hidden></button>
+                </div>
+                <div class="card-body" id="taxMethodDetailsBody">
+                  <div class="iban-row"><span class="k">Method</span><span class="v" id="taxMethodName">—</span></div>
+                  <div class="iban-row"><span class="k">Rate</span><span class="v" id="taxMethodRate">—</span></div>
+                  <div class="iban-row"><span class="k">Effective date</span><span class="v" id="taxMethodEffectiveDate">—</span></div>
+                  <div id="taxMethodHistory" class="hv-mt-16" hidden>
+                    <table class="table" id="taxMethodHistoryTable">
+                      <thead><tr><th scope="col">From</th><th scope="col">To</th><th scope="col">Method</th></tr></thead>
+                      <tbody id="taxMethodHistoryBody"></tbody>
+                    </table>
+                  </div>
+                  <p class="helper">No setting means the normal (progressive) method. Governs payroll income tax.</p>
                 </div>
               </div>
 
