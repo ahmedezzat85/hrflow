@@ -5,6 +5,7 @@
 **Repository Branch:** `feature/payroll-deductions` (Commit: `1695cfc`, synced with `main`)  
 **Status:** Read-only baseline snapshot; reconciled with code on October 1, 2026  
 **Reconciliation:** Counts, lifecycle names, guard coverage, startup behavior, and legacy-code claims were rechecked against `feature/rbac` at `c236b00` (equal to `main`) on October 1, 2026. The RBAC sections (access control, migrations, guard coverage, startup) were updated on October 3, 2026 to describe `feature/rbac` after the RBAC slices and the review-fix run (Alembic head `0027_single_assigned_role`); they do not describe `main` until the branch is merged. Line numbers cited below are approximate. Test results were **not** re-run for the non-RBAC sections.  
+**Status note (October 24, 2026):** `feature/rbac` is now merged into `main` (at `e24eccf`) and the Alembic head is `0043_employee_personal_details`. The body of this document was not re-verified on that date.  
 
 ---
 
