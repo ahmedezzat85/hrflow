@@ -112,6 +112,7 @@ class EmployeeDB(Base):
     salary_payment_docs = relationship("SalaryPaymentDocDB", back_populates="employee", cascade="all, delete-orphan")
     compensation_plans = relationship("EmployeeCompensationPlanDB", back_populates="employee", cascade="all, delete-orphan")
     social_insurance = relationship("EmployeeSocialInsuranceDB", back_populates="employee", cascade="all, delete-orphan")
+    tax_methods = relationship("EmployeeTaxMethodDB", back_populates="employee", cascade="all, delete-orphan")
 
     @property
     def invoices(self):
@@ -319,5 +320,26 @@ class EmployeeSocialInsuranceDB(Base):
 
     __table_args__ = (
         Index("ix_emp_social_ins_lookup", "employee_id", "effective_end_date"),
+    )
+
+
+class EmployeeTaxMethodDB(Base):
+    __tablename__ = "employee_tax_method"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False, index=True)
+    method = Column(String(20), default="progressive", nullable=False)  # progressive / flat
+    flat_rate = Column(Float, nullable=True)  # fraction (0 < rate <= 1); only for flat
+    effective_start_date = Column(String(20), nullable=False, index=True)
+    effective_end_date = Column(String(20), nullable=True, index=True)  # NULL when active
+    notes = Column(Text, default="", nullable=False)
+    created_by = Column(String(255), default="")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    employee = relationship("EmployeeDB", back_populates="tax_methods")
+
+    __table_args__ = (
+        Index("ix_emp_tax_method_lookup", "employee_id", "effective_end_date"),
     )
 

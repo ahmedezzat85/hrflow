@@ -44,9 +44,10 @@
     }
     return rows;
   })();
+  // Newest first, as the backend returns plan.changes (D-036); normalizePay re-sorts for the panel.
   const PLAN_CHANGES = [
-    { date: '2025-01-15', previous_total: 11000, new_total: 12500, new_internal: 5000, new_external: 7500, pct_change: '+13.6%', reason: 'Annual performance raise' },
     { date: '2026-06-01', previous_total: 12500, new_total: 13750, new_internal: 5500, new_external: 8250, pct_change: '+10%', reason: 'Promotion to Lead' },
+    { date: '2025-01-15', previous_total: 11000, new_total: 12500, new_internal: 5000, new_external: 7500, pct_change: '+13.6%', reason: 'Annual performance raise' },
   ];
   const round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
 
@@ -106,7 +107,9 @@
       };
     }
     if (hasPerm('hr.salary.read')) {
-      res.plan = hasHistory
+      res.plan = scenario === 'no-effective-date'
+        ? { current: { internal: 5000, external: 7500, total: 12500, effective_date: null }, changes: [] }
+        : hasHistory
         ? { current: { internal: 5500, external: 8250, total: 13750, effective_date: '2026-06-01' }, changes: PLAN_CHANGES.map((c) => ({ ...c })) }
         : { current: { internal: 0, external: 0, total: 0 }, changes: [] };
     }
@@ -145,10 +148,13 @@
       out.payments = { ...data.payments, series: (data.payments.series || []).map((b) => ({ ...b, paid_at: b.paid_at ? String(b.paid_at).slice(0, 10) : null })) };
     }
     if (data.plan) {
-      const changes = (data.plan.changes || []).map((c) => ({ ...c, date: String(c.date || '').slice(0, 10), pct_change: pctNumber(c) }));
+      // The backend sends changes newest first (D-036); the panel reads them oldest first. Array.sort is stable,
+      // so equal dates keep input order and the later item counts as newer.
+      const changes = (data.plan.changes || []).map((c) => ({ ...c, date: String(c.date || '').slice(0, 10), pct_change: pctNumber(c) }))
+        .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
       const cur = data.plan.current;
       const noPlan = !cur || (!Number(cur.total) && !changes.length);
-      out.plan = { current: noPlan ? null : { ...cur, effective_date: cur.effective_date ? String(cur.effective_date).slice(0, 10) : (changes.length ? changes[0].date : null) }, changes };
+      out.plan = { current: noPlan ? null : { ...cur, effective_date: cur.effective_date ? String(cur.effective_date).slice(0, 10) : (changes.length ? changes[changes.length - 1].date : null) }, changes };
     }
     return out;
   }

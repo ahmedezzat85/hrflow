@@ -72,6 +72,79 @@ test.describe('Pay analytics: summary and chart', () => {
     for (const w of ['Total paid', 'Commission', 'Pay by month', 'Monthly breakdown', 'Payment']) expect(text).not.toContain(w);
   });
 
+  test('HR-only reads plan.changes newest-first: summary, bar order and change pills (A1)', async ({ page }) => {
+    await openPay(page, 'hr');
+    await page.click('#employeePayTab');
+    await expect(page.locator('#payChartCanvas')).toBeVisible();
+    const kpis = page.locator('#paySummary');
+    await expect(kpis).toContainText('Raises since joining');
+    await expect(kpis.locator('.ed-kpi', { hasText: 'Raises since joining' })).toContainText('2');
+    await expect(kpis.locator('.ed-kpi', { hasText: 'Raises since joining' })).toContainText('last on 1 Jun 2026');
+    await expect(kpis.locator('.ed-kpi', { hasText: 'Overall change' })).toContainText('+25%');
+    await expect(kpis.locator('.ed-kpi', { hasText: 'Overall change' })).toContainText('$11,000 → $13,750');
+    const chart = await page.evaluate(() => {
+      const ch = Chart.getChart(document.getElementById('payChartCanvas'));
+      return { labels: ch.data.labels.map((l) => l[0]), totals: ch.data.datasets[0].data.map((v, i) => v + ch.data.datasets[1].data[i]) };
+    });
+    expect(chart.labels).toEqual(['15 Jan 2025', '1 Jun 2026']);
+    expect(chart.totals).toEqual([12500, 13750]);
+    const pills = await page.evaluate(() => {
+      const ch = Chart.getChart(document.getElementById('payChartCanvas'));
+      const texts = [];
+      const orig = CanvasRenderingContext2D.prototype.fillText;
+      CanvasRenderingContext2D.prototype.fillText = function (t, ...a) { texts.push(String(t)); return orig.call(this, t, ...a); };
+      ch.draw();
+      CanvasRenderingContext2D.prototype.fillText = orig;
+      return texts.filter((t) => /^[+-][\d.]+%$/.test(t));
+    });
+    expect(pills).toEqual(['+10%']); // one pill sits between the two bars: the newer change
+  });
+
+  test('HR-only change pills follow the raise order (A1)', async ({ page }) => {
+    await openPay(page, 'hr');
+    await page.click('#employeePayTab');
+    await expect(page.locator('#payChartCanvas')).toBeVisible();
+    const pcts = await page.evaluate(async () => (await AnalyticsApi.getEmployeePay(1, { startDate: '2025-01-01', endDate: '2026-10-23', groupBy: 'month', currency: 'USD' })).plan.changes.map((c) => c.pct_change));
+    expect(pcts).toEqual([13.6, 10]);
+  });
+
+  test('Full-access raise markers render in date order (A1)', async ({ page }) => {
+    await openPay(page, 'admin');
+    await page.click('#employeePayTab');
+    await expect(page.locator('#payChartCanvas')).toBeVisible();
+    const dates = await page.evaluate(async () => (await AnalyticsApi.getEmployeePay(1, { startDate: '2025-01-01', endDate: '2026-10-23', groupBy: 'month', currency: 'USD' })).plan.changes.map((c) => c.date));
+    expect(dates).toEqual(['2025-01-15', '2026-06-01']);
+  });
+
+  test('A null effective date does not throw and shows a dash (A2)', async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(String(e)));
+    await openPay(page, 'hr', { scenario: 'no-effective-date' });
+    await page.click('#employeePayTab');
+    const k = page.locator('#paySummary .ed-kpi', { hasText: 'Time at current pay' });
+    await expect(k).toContainText('—');
+    await expect(k).toContainText('since —');
+    expect(errors).toEqual([]);
+  });
+
+  test('HR-only has See raise history and per-bar tooltip detail (A3)', async ({ page }) => {
+    await openPay(page, 'hr');
+    await page.click('#employeePayTab');
+    await expect(page.locator('#payChartCanvas')).toBeVisible();
+    const tip = await page.evaluate(() => {
+      const cb = Chart.getChart(document.getElementById('payChartCanvas')).options.plugins.tooltip.callbacks;
+      const item = (i) => [{ dataIndex: i }];
+      return { title: cb.title(item(1)), body: cb.afterBody(item(1)), first: cb.afterBody(item(0)) };
+    });
+    expect(tip.title).toBe('1 Jun 2026 · Promotion to Lead');
+    expect(tip.body).toEqual(['Total: $13,750', 'Previous total: $12,500', 'New total: $13,750', 'Change: +10%', 'Reason: Promotion to Lead']);
+    expect(tip.first).toContain('Previous total: $11,000');
+    await page.click('#paySeeRaisesBtn');
+    await expect(page.locator('#employeeOverviewTab')).toHaveAttribute('aria-selected', 'true');
+    // The card is hidden for HR-only until Part B (D-038) gates it on hr.salary.read; the handler still targets it.
+    await expect(page.locator('#employeeCompensationCard')).toHaveCount(1);
+  });
+
   test('Finance-only has payments sections and no raise link', async ({ page }) => {
     await openPay(page, 'finance');
     await page.click('#employeePayTab');

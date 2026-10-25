@@ -1455,6 +1455,10 @@
             if (l.employee_tax_egp && !existing.employee_tax_egp) {
               existing.employee_tax_egp = l.employee_tax_egp;
             }
+            if (l.tax_method_snapshot && !existing.tax_method_snapshot) {
+              existing.tax_method_snapshot = l.tax_method_snapshot;
+              existing.tax_rate_snapshot = l.tax_rate_snapshot;
+            }
             if (l.insured_base_egp_snapshot && !existing.insured_base_egp_snapshot) {
               existing.insured_base_egp_snapshot = l.insured_base_egp_snapshot;
             }
@@ -1474,6 +1478,9 @@
           const emprSi = Number(l.employer_social_insurance_egp || 0);
           const tSi = Number(l.total_social_insurance_egp || (empSi + emprSi));
           const tax = Number(l.employee_tax_egp || 0);
+          const flatLabel = l.tax_method_snapshot === 'flat' && l.tax_rate_snapshot
+            ? ` <span class="badge-pill pill-warning payroll-flat-tax-label">Flat ${Math.round(Number(l.tax_rate_snapshot) * 10000) / 100}%</span>`
+            : '';
           const netEgp = Number(l.final_internal_net_egp || 0);
           const netUsd = Number(l.net_pay || l.amount || (netEgp / rate));
 
@@ -1504,7 +1511,7 @@
               <td class="num payroll-num" data-label="Employee SI, EGP" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${empSi.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               <td class="num payroll-num" data-label="Employer SI, EGP" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${emprSi.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               <td class="num payroll-num" data-label="Total SI, EGP" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${tSi.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-              <td class="num payroll-num" data-label="Income tax, EGP" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${tax.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td class="num payroll-num" data-label="Income tax, EGP" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${tax.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${flatLabel}</td>
               <td class="num payroll-num strong accent" data-label="Internal net payment" style="padding:9px 16px; text-align:right; font-weight:700; color:var(--ink-strong); font-variant-numeric:tabular-nums;">${this.money(netUsd)}</td>
             </tr>
           `;

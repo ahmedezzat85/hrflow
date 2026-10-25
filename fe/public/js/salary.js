@@ -249,6 +249,7 @@ function compPlanDayBefore(iso) {
 }
 
 async function openCompPlanModal(empId) {
+  if (typeof canWritePayPlan === 'function' && !canWritePayPlan()) return;
   currentCompPlanEmpId = String(empId);
   const emp = employees.find(e => String(e.id) === currentCompPlanEmpId);
   if (!emp) return;

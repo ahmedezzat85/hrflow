@@ -32,6 +32,7 @@ from finance.models import (
 from finance.schemas import PayrollAdjustmentCreate, PayrollAdjustmentUpdate
 from finance.repositories.compensation_plan_repository import CompensationPlanRepository
 from repositories.social_insurance_repository import SocialInsuranceRepository
+from repositories.tax_method_repository import TaxMethodRepository
 from finance.services.payroll_calculation_helper import validate_and_calculate_internal_statutory
 
 # In-memory store for active previews and draft adjustments during runner execution
@@ -48,7 +49,7 @@ _REFRESH_LINE_FIELDS = (
     "employee_tax_egp", "employee_social_insurance_usd_equivalent", "employee_tax_usd_equivalent",
     "final_internal_net_egp", "final_internal_payment_usd", "taxable_gross_egp",
     "tax_employee_si_egp", "annual_taxed_salary_egp", "annual_tax_egp",
-    "tax_settings_version_id", "snapshot_notes",
+    "tax_settings_version_id", "tax_method_snapshot", "tax_rate_snapshot", "snapshot_notes",
 )
 
 
@@ -56,6 +57,7 @@ class PayrollService:
     def __init__(self, db: Session):
         self.db = db
         self.social_insurance_repo = SocialInsuranceRepository(db)
+        self.tax_method_repo = TaxMethodRepository(db)
 
     def get_payroll_settings(self) -> PayrollSettingsDB:
         """Fetch current organization-wide payroll rate settings, initializing defaults if needed."""
@@ -467,6 +469,11 @@ class PayrollService:
             insured_base = float(social_ins.insured_base) if (social_ins and social_ins.insured_base is not None) else None
             insured_currency = social_ins.currency if social_ins else None
 
+            # Tax method in force for the period (no row = progressive, as before)
+            tax_row = self.tax_method_repo.get_for_period(emp.id, period_start, period_end)
+            tax_method = tax_row.method if tax_row else "progressive"
+            tax_flat_rate = float(tax_row.flat_rate) if (tax_row and tax_row.flat_rate is not None) else None
+
             # Check internal salary presence & basis
             int_comp = next((c for c in comps if c.component_type != "external_usd"), None)
             internal_salary = float(int_comp.amount or 0.0) if int_comp else float(emp.internal_salary_usd or 0.0)
@@ -486,6 +493,8 @@ class PayrollService:
                 bonus_usd=0.0,
                 commission_usd=0.0,
                 tax_settings=tax_settings_dict,
+                tax_method=tax_method,
+                flat_rate=tax_flat_rate,
             )
             if stat_exceptions:
                 exceptions.extend(stat_exceptions)
@@ -525,6 +534,8 @@ class PayrollService:
                     ann_taxed_sal_egp_val = 0.0
                     ann_tax_egp_val = 0.0
                     tax_settings_ver_id = None
+                    tax_method_snap = None
+                    tax_rate_snap = None
                 else:
                     deduction = stat_res["deductions_total_usd"]
                     net = stat_res["net_pay_usd"]
@@ -553,6 +564,8 @@ class PayrollService:
                     ann_taxed_sal_egp_val = stat_res.get("annual_taxed_salary_egp", 0.0)
                     ann_tax_egp_val = stat_res.get("annual_tax_egp", 0.0)
                     tax_settings_ver_id = stat_res.get("tax_settings_version_id")
+                    tax_method_snap = stat_res.get("tax_method")
+                    tax_rate_snap = stat_res.get("tax_rate")
 
                     tot_emp_tax_egp += emp_tax_egp_val
                     tot_si_egp += tot_si_egp_val
@@ -600,6 +613,8 @@ class PayrollService:
                     "annual_taxed_salary_egp": ann_taxed_sal_egp_val,
                     "annual_tax_egp": ann_tax_egp_val,
                     "tax_settings_version_id": tax_settings_ver_id,
+                    "tax_method_snapshot": tax_method_snap,
+                    "tax_rate_snapshot": tax_rate_snap,
                     "currency": "USD",
                     "bank_name": bank_name or "Unassigned",
                     "bank_account_masked": masked_acc or "Not Provided",
@@ -649,6 +664,7 @@ class PayrollService:
             "tot_net": tot_net,
             "tot_employer_cost": tot_employer_cost,
             "tot_emp_tax_egp": tot_emp_tax_egp,
+            "tot_flat_tax_egp": self._sum_flat_tax(lines),
             "tot_si_egp": tot_si_egp,
             "tax_settings_version_id": tax_settings_dict["id"] if tax_settings_dict else None,
         }
@@ -778,6 +794,7 @@ class PayrollService:
             "final_int_total": final_int_total,
             "final_ext_total": final_ext_total,
             "total_employee_tax_egp": round(tot_emp_tax_egp, 2),
+            "total_flat_tax_egp": round(snapshot_data["tot_flat_tax_egp"], 2),
             "total_social_insurance_egp": round(tot_si_egp, 2),
             "tax_settings_version_id": snapshot_data.get("tax_settings_version_id"),
             "prior_period_total": round(prior_total, 2),
@@ -1133,6 +1150,8 @@ class PayrollService:
                 annual_taxed_salary_egp=line_data.get("annual_taxed_salary_egp", 0.0),
                 annual_tax_egp=line_data.get("annual_tax_egp", 0.0),
                 tax_settings_version_id=line_data.get("tax_settings_version_id"),
+                tax_method_snapshot=line_data.get("tax_method_snapshot"),
+                tax_rate_snapshot=line_data.get("tax_rate_snapshot"),
                 bank_name=line_data["bank_name"],
                 bank_account_masked=line_data["bank_account_masked"],
                 payment_status="pending",
@@ -1175,6 +1194,7 @@ class PayrollService:
         run.total_net = round(tot_net, 2)
         run.total_employer_cost = round(tot_net + tot_employer_cost, 2)
         run.total_employee_tax_egp = round(tot_emp_tax_egp, 2)
+        run.total_flat_tax_egp = round(snapshot_data["tot_flat_tax_egp"], 2)
         run.total_social_insurance_egp = round(tot_si_egp, 2)
         run.tax_settings_version_id = snapshot_data.get("tax_settings_version_id")
         run.headcount = len(employees)
@@ -1277,6 +1297,7 @@ class PayrollService:
             total_net=preview["total_net"],
             total_employer_cost=preview.get("total_employer_cost", preview["total_net"]),
             total_employee_tax_egp=preview.get("total_employee_tax_egp", 0.0),
+            total_flat_tax_egp=preview.get("total_flat_tax_egp", 0.0),
             total_social_insurance_egp=preview.get("total_social_insurance_egp", 0.0),
             headcount=preview["headcount"],
             currency=currency or "USD",
@@ -1347,6 +1368,8 @@ class PayrollService:
                 annual_taxed_salary_egp=pl.get("annual_taxed_salary_egp", 0.0),
                 annual_tax_egp=pl.get("annual_tax_egp", 0.0),
                 tax_settings_version_id=pl.get("tax_settings_version_id"),
+                tax_method_snapshot=pl.get("tax_method_snapshot"),
+                tax_rate_snapshot=pl.get("tax_rate_snapshot"),
                 bank_name=pl.get("bank_name", "Unassigned"),
                 bank_account_masked=pl.get("bank_account_masked", "Not Provided"),
                 payment_status="pending",
@@ -1390,6 +1413,16 @@ class PayrollService:
         )
         return self._format_run_detail(run)
 
+    @staticmethod
+    def _sum_flat_tax(lines) -> float:
+        """Sum of employee tax on flat-method lines (works on line dicts and PayrollLineDB rows)."""
+        total = 0.0
+        for l in lines:
+            get = l.get if isinstance(l, dict) else (lambda k, _l=l: getattr(_l, k, None))
+            if get("tax_method_snapshot") == "flat":
+                total += float(get("employee_tax_egp") or 0.0)
+        return round(total, 2)
+
     def _recalculate_run_aggregates(self, run: PayrollRunDB) -> None:
         """Recalculates net payment totals and headcount for a payroll run from its lines."""
         lines = self.db.query(PayrollLineDB).filter(PayrollLineDB.payroll_run_id == run.id).all()
@@ -1407,6 +1440,7 @@ class PayrollService:
         run.total_net = tot_net
         run.total_employer_cost = round(tot_net + tot_employer_extra, 2)
         run.total_employee_tax_egp = tot_emp_tax_egp
+        run.total_flat_tax_egp = self._sum_flat_tax(lines)
         run.total_social_insurance_egp = tot_si_egp
         run.headcount = distinct_headcount
         run.liabilities_summary_json = "{}"
@@ -1763,6 +1797,8 @@ class PayrollService:
             "Employee SI USD Eq",
             "Employee Tax USD Eq",
             "FX Rate",
+            "Tax Method",
+            "Tax Rate",
         ])
 
         emp_ids = sorted(list(set([l.employee_id for l in run.lines] + [a.employee_id for a in (run.adjustments or [])])))
@@ -1798,6 +1834,8 @@ class PayrollService:
             emp_si_usd = f"{(int_line.employee_social_insurance_usd_equivalent or 0.0):.2f}" if (int_line and int_line.employee_social_insurance_usd_equivalent) else "0.00"
             emp_tax_usd = f"{(int_line.employee_tax_usd_equivalent or 0.0):.2f}" if (int_line and int_line.employee_tax_usd_equivalent) else "0.00"
             fx_rate = f"{(int_line.fx_rate_snapshot or run.fx_rate_value or 0.0):.4f}" if int_line else f"{(run.fx_rate_value or 0.0):.4f}"
+            tax_method_csv = (int_line.tax_method_snapshot or "progressive") if int_line else ""
+            tax_rate_csv = f"{int_line.tax_rate_snapshot:.4f}" if (int_line and int_line.tax_rate_snapshot is not None) else ""
 
             writer.writerow([
                 eid,
@@ -1822,6 +1860,8 @@ class PayrollService:
                 emp_si_usd,
                 emp_tax_usd,
                 fx_rate,
+                tax_method_csv,
+                tax_rate_csv,
             ])
 
         return output.getvalue()
@@ -2166,6 +2206,7 @@ class PayrollService:
             "total_net": run.total_net,
             "total_employer_cost": run.total_employer_cost if run.total_employer_cost is not None else run.total_net,
             "total_employee_tax_egp": run.total_employee_tax_egp or 0.0,
+            "total_flat_tax_egp": run.total_flat_tax_egp or 0.0,
             "total_social_insurance_egp": run.total_social_insurance_egp or 0.0,
             "total_payment_amount": run.total_net,
             "headcount": run.headcount,
@@ -2229,6 +2270,8 @@ class PayrollService:
             "annual_taxed_salary_egp": l.annual_taxed_salary_egp or 0.0,
             "annual_tax_egp": l.annual_tax_egp or 0.0,
             "tax_settings_version_id": l.tax_settings_version_id,
+            "tax_method_snapshot": l.tax_method_snapshot,
+            "tax_rate_snapshot": l.tax_rate_snapshot,
             "net_pay": l.net_pay or 0.0,
             "amount": l.net_pay or 0.0,
             "currency": l.payroll_run.currency if l.payroll_run else "USD",

@@ -1,7 +1,7 @@
 # HRFlow Architecture and Domain Boundaries
 
 **Status:** Draft — needs owner review  
-**Last verified against:** `feature/rbac` at `c236b00cb6fea09cb3474cb8d5fbda66eb23135e` (equal to `main`)  
+**Last verified against:** `feature/rbac` at `c236b00cb6fea09cb3474cb8d5fbda66eb23135e` (equal to `main` then). Status note October 24, 2026: `feature/rbac` is merged; `main` is at `e24eccf`; the new read-only composer package `be/analytics/` (D-037) is not yet described in this document.  
 **Last updated:** October 1, 2026 (reconciled with code; link targets made relative)  
 **Authority:** Repository evidence, `01-repository-baseline.md`, and approved finance architecture documentation  
 
