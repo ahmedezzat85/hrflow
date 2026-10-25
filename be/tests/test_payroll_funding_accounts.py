@@ -40,8 +40,8 @@ def _run(client, cookies, label, **extra):
 
 
 def test_migration_adds_and_drops_funding_columns(tmp_path):
-    path = os.path.join(BE_DIR, "migrations", "versions", "0044_payroll_funding_accounts.py")
-    spec = importlib.util.spec_from_file_location("mig_0044", path)
+    path = os.path.join(BE_DIR, "migrations", "versions", "0045_payroll_funding_accounts.py")
+    spec = importlib.util.spec_from_file_location("mig_0045", path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
 

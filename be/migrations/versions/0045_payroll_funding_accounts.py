@@ -1,12 +1,12 @@
-"""0044_payroll_funding_accounts
+"""0045_payroll_funding_accounts
 
 Payroll Settings own the funding accounts (owner rule, docs/finance-module/payroll-funding-account-settings-plan.md):
 adds nullable external_funding_account_id and internal_funding_account_id to `finance_payroll_settings`
 (FK to finance_bank_accounts, ON DELETE SET NULL). No backfill: existing databases start with the accounts unset
 and a Financial-Admin sets them once. Idempotent; the downgrade drops both columns.
 
-Revision ID: 0044_payroll_funding_accounts
-Revises: 0043_employee_personal_details
+Revision ID: 0045_payroll_funding_accounts
+Revises: 0044_employee_tax_method
 Create Date: 2026-10-25 10:00:00.000000
 
 """
@@ -16,8 +16,8 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision: str = '0044_payroll_funding_accounts'
-down_revision: Union[str, None] = '0043_employee_personal_details'
+revision: str = '0045_payroll_funding_accounts'
+down_revision: Union[str, None] = '0044_employee_tax_method'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

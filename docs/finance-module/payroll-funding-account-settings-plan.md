@@ -26,7 +26,7 @@ Risk class: high (finance workflow, schema, migration, payment controls). Origin
 
 ## 3. Design
 
-### 3.1 Data (migration `0044_payroll_funding_accounts`)
+### 3.1 Data (migration `0045_payroll_funding_accounts`)
 
 - Add to `finance_payroll_settings`: `external_funding_account_id` and `internal_funding_account_id`, both nullable Integer, FK to `finance_bank_accounts.id` with `ON DELETE SET NULL` (same as the run columns).
 - Idempotent (inspect existing columns), like `0043`. Use `batch_alter_table` so SQLite can add the FK columns. Downgrade drops both columns.
@@ -104,7 +104,7 @@ Commands to report at the end: targeted pytest per file with `-q`, then the one 
 
 ## 7. Files expected to change
 
-Backend: `be/migrations/versions/0044_payroll_funding_accounts.py` (new), `be/finance/models.py`, `be/finance/schemas.py`, `be/finance/services/payroll_service.py`, `be/finance/routers/payroll.py`, `be/tests/` (new file plus fixture helper).
+Backend: `be/migrations/versions/0045_payroll_funding_accounts.py` (new), `be/finance/models.py`, `be/finance/schemas.py`, `be/finance/services/payroll_service.py`, `be/finance/routers/payroll.py`, `be/tests/` (new file plus fixture helper).
 Frontend: `fe/public/js/finance-payroll.js`, `fe/api/finance/payroll-api.js`, `fe/src/partials/admin/sections/finance-payroll.html`, `fe/tests/ui/` (new spec plus updates).
 Docs (listed, not edited here): decision log entry, open-question closure, RBAC technical spec note, route-guard inventory rows for the new route and the stale compensation-plan rows.
 
