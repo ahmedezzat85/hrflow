@@ -46,6 +46,7 @@
     fxRateValue: null,
     fxRateSource: null,
     resolvedFxRate: 50.0,
+    fxResolved: false, // true only once a preview returned a real rate (manual or from transfer history)
     resolvedFxSource: 'fallback',
     employeeInsuranceRate: 0.11,
     employerInsuranceRate: 0.18,
@@ -876,7 +877,7 @@
       await this.fetchPreview();
       this.drawScreen1();
       this.drawFxRate();
-      this.showBanner(`FX conversion rate updated: ${this.resolvedFxRate.toFixed(4)} USD/EGP.`, 'blue');
+      if (this.fxResolved) this.showBanner(`FX conversion rate updated: ${this.resolvedFxRate.toFixed(4)} USD/EGP.`, 'blue');
     },
 
     async resetScreen1Fx() {
@@ -1300,6 +1301,7 @@
 
     async saveDraftRun() {
       try {
+        if (!this.requireFxRate()) return;
         if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.createPayrollRun === 'function') {
           const run = await FinanceApi.createPayrollRun({
             period_label: this.month,
@@ -1343,6 +1345,7 @@
     async submitRun() {
       try {
         if (!this.currentRun) {
+          if (!this.requireFxRate()) return;
           if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.createPayrollRun === 'function') {
             this.currentRun = await FinanceApi.createPayrollRun({
               period_label: this.month,
@@ -2348,6 +2351,7 @@
         if (preview) {
           this.currentPreview = preview;
           if (preview.fx_rate_value !== undefined && preview.fx_rate_value !== null) {
+            this.fxResolved = true;
             this.resolvedFxRate = Number(preview.fx_rate_value);
             this.resolvedFxSource = preview.fx_rate_source || (this.fxRateValue ? 'manual' : 'fallback');
           }
@@ -2367,7 +2371,17 @@
         }
       } catch (err) {
         console.warn('[PayrollApp] Could not fetch payroll preview:', err);
+        // No silent default rate: say what is missing and block saving until a rate is typed in
+        this.fxResolved = false;
+        this.showBanner(err && err.message ? err.message : 'Could not calculate the payroll preview.', 'red');
       }
+    },
+
+    // Saving a run needs a real rate: the typed one, or one a preview resolved. Never the 50.0000 display default.
+    requireFxRate() {
+      if ((this.fxRateValue && Number(this.fxRateValue) > 0) || this.fxResolved) return true;
+      this.showBanner('No USD-EGP rate available for this period. Enter the rate manually.', 'red');
+      return false;
     },
 
     async loadSettingsFromDb() {
@@ -2406,14 +2420,14 @@
 
       const rateNum = Number(this.resolvedFxRate || 50.0);
       const isManual = this.fxRateValue !== null && this.fxRateValue !== undefined && Number(this.fxRateValue) > 0;
-      const isFallback = !isManual && (this.resolvedFxSource === 'fallback' || rateNum === 50.0);
+      const isMissing = !isManual && !this.fxResolved;
 
-      if (rateEl) rateEl.textContent = rateNum.toFixed(4);
+      if (rateEl) rateEl.textContent = isMissing ? '—' : rateNum.toFixed(4);
       if (srcEl) {
         if (isManual) {
           srcEl.textContent = 'manual override';
-        } else if (isFallback) {
-          srcEl.textContent = 'fallback rate';
+        } else if (isMissing) {
+          srcEl.textContent = 'rate needed: enter it manually';
         } else {
           srcEl.textContent = 'from transfer history';
         }

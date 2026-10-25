@@ -83,8 +83,9 @@
                         FX rate, USD to EGP
                         <span class="pv-addon-wrap">
                           <span class="pv-addon">1 USD =</span>
-                          <input type="number" step="0.0001" min="1" id="p1FxRateInput" aria-label="EGP per USD" placeholder="50.0000" />
+                          <input type="number" step="0.0001" min="1" id="p1FxRateInput" aria-label="EGP per USD" placeholder="e.g. 50.0000" />
                         </span>
+                        <span class="helper" id="p1FxRateHint">Type the rate the accountant used for this month</span>
                       </label>
                       <button type="button" class="btn btn-fill" id="btnP1ApplyFx" onclick="PayrollApp.applyScreen1Fx()">Apply</button>
                       <button type="button" class="btn btn-ghost" id="btnP1ResetFx" onclick="PayrollApp.resetScreen1Fx()">Reset</button>
@@ -667,7 +668,7 @@
                     FX rate override, USD to EGP
                     <span class="pv-input-affix">
                       <span class="pv-affix-prefix">1 USD =</span>
-                      <input type="number" step="0.0001" min="1" id="payrollSetFxRate" class="has-prefix" placeholder="Empty uses the fallback, 50.0000">
+                      <input type="number" step="0.0001" min="1" id="payrollSetFxRate" class="has-prefix" placeholder="Empty uses the latest USD-EGP transfer">
                     </span>
                   </label>
                 </section>

@@ -204,9 +204,23 @@ def validate_and_calculate_internal_statutory(
     dec_bonus_usd = Decimal(str(round(float(bonus_usd or 0.0), 2)))
     dec_commission_usd = Decimal(str(round(float(commission_usd or 0.0), 2)))
 
-    # Handle FX rate
+    # Handle FX rate: a missing or non-positive rate blocks the line instead of defaulting to a guess
     if locked_fx_rate is None or float(locked_fx_rate) <= 0:
-        dec_fx = Decimal("50.0")
+        dec_fx = Decimal("0")
+        exceptions.append({
+            "id": f"exc-fx-{employee_id}",
+            "employee_id": employee_id,
+            "employee_name": employee_name,
+            "severity": "blocking",
+            "code": "MISSING_FX_RATE",
+            "title": "Missing FX Rate",
+            "description": (
+                f"No USD-EGP rate is available for {employee_name}'s payroll line. "
+                "Enter the exchange rate on the run before calculating payroll."
+            ),
+            "correction_path": "/admin?section=finance-payroll",
+            "is_resolved": False,
+        })
     else:
         dec_fx = Decimal(str(float(locked_fx_rate)))
 

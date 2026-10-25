@@ -239,7 +239,11 @@ class PayrollService:
         period_start: str,
         period_end: str,
     ) -> float:
-        """Resolves the FX rate (USD to EGP) per policy or manual override, locked for the run."""
+        """Resolves the FX rate (USD to EGP) per policy or manual override, locked for the run.
+
+        A manual value always wins. Otherwise the rate comes from a USD-to-EGP transfer; when there is neither,
+        the request is rejected: a guessed rate would silently corrupt EGP tax, social insurance and net pay.
+        """
         if fx_rate_value is not None and fx_rate_value > 0:
             return round(float(fx_rate_value), 4)
 
@@ -257,7 +261,10 @@ class PayrollService:
         if transfer and transfer.from_amount and transfer.from_amount > 0:
             return round(transfer.to_amount / transfer.from_amount, 4)
 
-        return 50.0
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No USD-EGP rate available for this period. Enter the rate manually.",
+        )
 
     def _generate_source_version(self, lines: List[Dict[str, Any]], ext_id: Any, int_id: Any, fx: Any) -> str:
         """Generates an opaque cryptographic hash representing the authoritative source inputs for the preview."""
