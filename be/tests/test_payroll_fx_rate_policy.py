@@ -127,3 +127,15 @@ def test_refresh_keeps_working_from_the_rate_stored_on_the_run(no_transfers):
     # no transfers exist, yet refresh uses the stored 51.0 rather than failing or guessing
     refreshed = svc.refresh_run(run["id"])
     assert refreshed["fx_rate_value"] == 51.0
+
+
+def test_first_of_month_falls_back_to_the_latest_transfer_of_any_date(no_transfers):
+    """Documented behaviour: with no transfer on or before the period start, first_of_month uses the latest one,
+    even if it is dated after the period. payment_date has no such fallback and still needs a transfer on or
+    before the period end."""
+    _transfer(no_transfers, "2026-10-15", 1000.0, 52000.0)
+    svc = PayrollService(no_transfers)
+    assert svc._resolve_fx_rate("first_of_month", None, "2026-03-01", "2026-03-31") == 52.0
+    with pytest.raises(HTTPException) as exc:
+        svc._resolve_fx_rate("payment_date", None, "2026-03-01", "2026-03-31")
+    assert exc.value.detail == NO_RATE
