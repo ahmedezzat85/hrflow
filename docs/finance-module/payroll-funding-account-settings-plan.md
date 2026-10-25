@@ -1,6 +1,6 @@
 # Payroll funding accounts owned by Payroll Settings: implementation plan
 
-Status: PLAN FOR OWNER REVIEW. Nothing below is implemented. Branch: `feat/payroll-funding-account-settings` (from main `fbd3456`).
+Status: PLAN, owner answers to Q1 to Q5 recorded in section 8 (2026-10-25). Nothing below is implemented. Branch: `feat/payroll-funding-account-settings` (from main `fbd3456`).
 Risk class: high (finance workflow, schema, migration, payment controls). Origin: Part C finding (Q-007 follow-up, D-039) and the owner's rule below.
 
 ## 1. Owner rule (as given)
@@ -21,7 +21,7 @@ Risk class: high (finance workflow, schema, migration, payment controls). Origin
 | F5 | `POST /runs/{id}/pay` accepts a `bank_account_id` that overwrites `run.bank_account_id`. | `payroll_service.py` ~1785 |
 | F6 | The run screen sends hardcoded `|| 1` and `|| 2` when no account is selected, and remembers choices in `localStorage` (`hrflow_payroll_funding_accounts`). | `fe/public/js/finance-payroll.js` ~1309, ~1352, ~2340, ~258 |
 | F7 | A Payroll-Maker gets 403 on `GET /api/finance/accounts` (`finance.account.read`), so the dropdowns are empty for them. D-039: this stays. | `be/finance/routers/bank_accounts.py` |
-| F8 | No `require_all_permissions` helper exists, only `require_permission` and `require_any_permission`. | `be/core/permissions.py` |
+| F8 | No `require_all_permissions` helper exists. Not needed after Q1 (the Pay step reuses `PUT /settings`). | `be/core/permissions.py` |
 | F9 | Mock mode: `getPayrollSettings` and `updatePayrollSettings` exist in `fe/api/finance/payroll-api.js`; the mock pay path already throws `funding_account_required`. | `payroll-api.js` ~815, ~1201 |
 
 ## 3. Design
@@ -31,11 +31,11 @@ Risk class: high (finance workflow, schema, migration, payment controls). Origin
 - Add to `finance_payroll_settings`: `external_funding_account_id` and `internal_funding_account_id`, both nullable Integer, FK to `finance_bank_accounts.id` with `ON DELETE SET NULL` (same as the run columns).
 - Idempotent (inspect existing columns), like `0043`. Use `batch_alter_table` so SQLite can add the FK columns. Downgrade drops both columns.
 - No backfill. Existing databases start with accounts unset, which is the explicit-set rule. Existing runs keep the ids they already store.
-- Mirror the columns on `PayrollSettingsDB`, `PayrollSettingsResponse` and `PayrollSettingsUpdate` (ids optional, `None` leaves unchanged, explicit clear is a separate flag, see Q3). `init_db()` adds missing columns, but the Alembic migration is still required.
+- Mirror the columns on `PayrollSettingsDB`, `PayrollSettingsResponse` and `PayrollSettingsUpdate` (ids optional; omitted or `null` leaves the stored value unchanged; accounts can be replaced but never cleared, Q3). `init_db()` adds missing columns, but the Alembic migration is still required.
 
 ### 3.2 Settings API (no new permission key)
 
-- `PUT /api/finance/payroll/settings` (`finance.settings.write`, unchanged guard) accepts both ids. Each must exist, be active, and have the currency the run will use (USD for external; see Q4 for internal). 400 with a clear message otherwise. Audit the change (old and new ids), like the rate audit.
+- `PUT /api/finance/payroll/settings` (`finance.settings.write`, unchanged guard) accepts both ids. Each must exist, be active, and have the same currency as the runs it will fund (Q4). 400 with a clear message otherwise. Audit the change (old and new ids), like the rate audit.
 - `GET /api/finance/payroll/settings` (`finance.payroll.read`, unchanged guard) returns the ids plus a safe summary per account: `id`, `name`, `currency`, `type`. No account number, no IBAN, no reveal. This lets Payroll-Maker see which account is configured without `finance.account.read`.
 - The Settings page needs the accounts list to pick from, so choosing needs `finance.account.read` (Financial-Admin and Super-Admin have it).
 
@@ -43,7 +43,7 @@ Risk class: high (finance workflow, schema, migration, payment controls). Origin
 
 - The server resolves funding accounts from Settings. The first-active-account default is removed from create, preview and generate.
 - `PayrollRunCreate` and `PayrollRunGenerateRequest` keep their funding fields for compatibility, but a value that differs from Settings is rejected with 400 (`funding_accounts_come_from_settings`). A missing value is fine. If Settings has none, the run is stored with `null` funding ids. `bank_account_id` is set equal to the external funding account (or `null`) and kept only as a legacy column.
-- The run reads Settings live while it is draft, submitted or approved. At finalize the server freezes the resolved ids on the run (see Q2). Pay and post-journal then use the frozen ids.
+- The run reads Settings live while it is draft, submitted or approved. At finalize the server freezes the resolved ids on the run (Q2). Pay and post-journal then use the frozen ids. A finalized, unpaid run has a `POST /runs/{id}/funding-accounts/refresh` action (`finance.payroll.pay`) that re-reads Settings, for the case where the paying bank changed after finalize (Q6).
 
 ### 3.4 Payment guard (the stop)
 
@@ -54,16 +54,14 @@ Risk class: high (finance workflow, schema, migration, payment controls). Origin
 
 ### 3.5 Setting accounts at the Payment step (only when Settings has none)
 
-- New `PUT /api/finance/payroll/runs/{run_id}/funding-accounts` with `{external_funding_account_id, internal_funding_account_id}`.
-- Allowed only if the run is finalized or partially paid (not paid) and Settings has no account for that leg. If Settings already has the account, 409 `set_in_settings`.
-- Guard: the caller needs both `finance.payroll.pay` and `finance.account.read`. This needs a small `require_all_permissions(...)` in `core/permissions.py` (F8), with the same `hrflow_permission_all` marker the route-guard walker already knows. No new permission key.
-- Validates exists, active, currency. Audited. Writes to the run only, not to Settings (see Q1).
+- No new setting endpoint. The Pay step calls the same `PUT /api/finance/payroll/settings` (3.2), so the accounts become the Settings default (Q1). It is offered only when Settings has no account for a leg, and only to a user with `finance.settings.write` and `finance.account.read` (the latter is needed to list accounts). Once Settings has both accounts, the Pay step shows them read-only and offers no change.
+- The server is the authority: `PUT /settings` is already guarded, so hiding the control in the UI is convenience only.
 
 ### 3.6 Frontend (vanilla JS, existing tokens, preserve IDs)
 
 - Payroll Settings page: two selects, "External salaries funding account" and "Internal salaries funding account", editable only with `finance.settings.write` and `finance.account.read`. Read-only text otherwise.
 - Run set-up step (`#p1ExtAccount`, `#p1IntAccount`): show the accounts from Settings as read-only text (selects kept for IDs but disabled). Remove `localStorage` persistence and every `|| 1` and `|| 2` fallback. When unset, show a notice: "Funding accounts are not set. You can prepare this run. Payment is blocked until they are set in Payroll settings."
-- Pay step: when the server returns `funding_accounts_not_set`, show a blocked panel. With permission (and Settings empty), show the selects and a "Set funding accounts" button that calls 3.5. Without permission, name what is needed ("ask someone with Payroll payment and Accounts access, or set them in Payroll settings").
+- Pay step: when the server returns `funding_accounts_not_set`, show a blocked panel. With permission (and Settings empty), show the selects and a "Save as default" button that calls `PUT /settings`. Without permission, say who can set them ("ask a Financial-Admin to set the funding accounts in Payroll settings"). On a finalized unpaid run whose frozen accounts differ from Settings, show "Refresh from Settings".
 - Mock mode: extend `FinanceMockState.payrollSettings` with the two ids, add the new run endpoint, enforce the same guard in the mock pay and post-journal paths, and honour role fixtures.
 
 ## 4. Permissions and roles (no new keys, no role-grant change)
@@ -74,9 +72,10 @@ Risk class: high (finance workflow, schema, migration, payment controls). Origin
 | Set accounts in Settings | `finance.settings.write` (+ `finance.account.read` to pick) | yes | yes | no | no | no |
 | Create or prepare run | `finance.payroll.prepare` | yes | no | yes | no | no |
 | Pay, post-journal | `finance.payroll.pay` | yes | yes | no | no | no |
-| Set accounts at payment | `finance.payroll.pay` AND `finance.account.read` | yes | yes | no | no | no |
+| Set accounts from the Pay step (saves to Settings) | `finance.settings.write` + `finance.account.read` | yes | yes | no | no | no |
+| Refresh a finalized run's accounts from Settings | `finance.payroll.pay` | yes | yes | no | no | no |
 
-Result: Payroll-Maker prepares runs and sees which accounts apply but cannot change them. Financial-Admin can set them in Settings or, if Settings is empty, at payment.
+Result: Payroll-Maker prepares runs and sees which accounts apply but cannot change them. Financial-Admin sets them in Settings, or from the Pay step when Settings is empty.
 
 ## 5. Compatibility and rollout
 
@@ -95,9 +94,9 @@ Backend (`be/tests/`, new `test_payroll_funding_accounts.py` plus targeted updat
 4. Create run with Settings unset: succeeds with null ids, no first-active default. Create with a differing client id: 400.
 5. Pay and post-journal with Settings unset: 409 `funding_accounts_not_set`, no line marked paid, no ledger row.
 6. After Settings is set: pay succeeds and posts the legs to the configured accounts.
-7. Finalize freezes ids; a later Settings change does not alter a finalized run (per Q2).
-8. Payment-step endpoint: allowed only for pay AND account.read, only when Settings is empty, only before paid; otherwise 403 or 409. Matrix for all five roles and a no-key user.
-9. Route-guard walker and inventory stay green (new `all` guard recognised; update inventory only as the test requires).
+7. Finalize freezes ids; a later Settings change does not alter a finalized run (Q2); the refresh action re-reads Settings only for a finalized, unpaid run and needs `finance.payroll.pay`; Settings cannot be cleared (Q3).
+8. Permission matrix for Settings PUT, Settings GET and the refresh action across Super-Admin, Financial-Admin, Payroll-Maker, HR-Admin, Employee and a no-key user.
+9. Route-guard walker and inventory stay green (update inventory only as the test requires).
 10. Existing payroll suites green after the fixture helper.
 
 Frontend (`fe/tests/ui/`, mock mode, after `npm run build`): Settings selects by role; run screen shows read-only accounts and the unset notice; Pay step blocked panel with and without permission; no `1` or `2` in the create payload; no `localStorage` key written.
@@ -106,23 +105,24 @@ Commands to report at the end: targeted pytest per file with `-q`, then the one 
 
 ## 7. Files expected to change
 
-Backend: `be/migrations/versions/0044_payroll_funding_accounts.py` (new), `be/finance/models.py`, `be/finance/schemas.py`, `be/finance/services/payroll_service.py`, `be/finance/routers/payroll.py`, `be/core/permissions.py`, `be/tests/` (new file plus fixture helper).
+Backend: `be/migrations/versions/0044_payroll_funding_accounts.py` (new), `be/finance/models.py`, `be/finance/schemas.py`, `be/finance/services/payroll_service.py`, `be/finance/routers/payroll.py`, `be/tests/` (new file plus fixture helper).
 Frontend: `fe/public/js/finance-payroll.js`, `fe/api/finance/payroll-api.js`, `fe/src/partials/admin/sections/finance-payroll.html`, `fe/tests/ui/` (new spec plus updates).
 Docs (listed, not edited here): decision log entry, open-question closure, RBAC technical spec note, route-guard inventory rows for the new route and the stale compensation-plan rows.
 
-## 8. Open questions for the owner (answer before implementation)
+## 8. Owner decisions (2026-10-25)
 
-- **Q1.** At the Payment step, should setting the accounts apply to this run only (recommended; Settings stays the single place for defaults, but every run then needs the step until Settings is set), or also save them as the Settings default (needs `finance.settings.write` too)?
-- **Q2.** "Read the settings always": should a run follow Settings live until it is finalized and then freeze (recommended, so a later Settings change cannot redirect money on a finalized run), or follow Settings live until it is paid?
-- **Q3.** Can Settings accounts be cleared once set? Recommended: no clearing, only replacing, so payroll cannot be silently un-configured.
-- **Q4.** Currency rule: the run currency must equal each funding account's currency (the current ledger rule). Is that correct for the internal (cash) account too, or does the internal leg use a different currency?
-- **Q5.** Existing environments: confirm Settings will be configured by a Financial-Admin once after deploy, with no automatic backfill from the first active account.
+- **Q1 (settings default):** setting accounts at the Pay step saves them as the Settings default, through `PUT /settings`. Needs `finance.settings.write` and `finance.account.read`.
+- **Q2:** run follows Settings live until finalize, then freezes (adopted on the assistant's recommendation; owner asked what it was, see Q6 for the follow-on).
+- **Q3:** accounts can be replaced, not cleared.
+- **Q4:** yes, the run currency must equal each funding account's currency, internal leg included.
+- **Q5:** no automatic backfill. Settings starts empty on existing databases; a Financial-Admin sets the defaults once; they can be changed later (for example when the paying bank changes).
+- **Q6 (new, needs owner confirmation):** include the "refresh funding accounts from Settings" action on a finalized, unpaid run, so a bank change after finalize does not strand the run? Recommended: yes.
 
 ## 9. Delivery steps (after approval)
 
 1. Migration, model and schema, with the migration test.
 2. Settings API and audit, with tests.
 3. Resolution at run creation, removal of the first-active default, freeze at finalize.
-4. Payment guard and the payment-step endpoint, with the permission matrix test.
+4. Payment guard and the finalize freeze with the refresh action, plus the permission matrix test.
 5. Frontend Settings, run screen, Pay step, mock state, UI specs.
 6. Fix existing payroll tests via the fixture helper; run the full backend suite once; `npm run build` and the UI specs; commit with a story identifier; push.
