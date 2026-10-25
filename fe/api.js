@@ -587,9 +587,29 @@ const Api = {
         created_at: new Date().toISOString()
       };
       window._mockSocialInsurance[empId] = record;
+      window._mockSocialInsuranceHistory = window._mockSocialInsuranceHistory || {};
+      const hist = window._mockSocialInsuranceHistory[empId] = window._mockSocialInsuranceHistory[empId] || [];
+      const active = hist.find(r => !r.effective_end_date);
+      if (active && active.effective_start_date === record.effective_start_date) {
+        Object.assign(active, record, { id: active.id });
+      } else {
+        if (active) {
+          const d = new Date(record.effective_start_date + "T00:00:00Z");
+          d.setUTCDate(d.getUTCDate() - 1);
+          active.effective_end_date = d.toISOString().slice(0, 10);
+        }
+        hist.push({ ...record, id: hist.length + 1 });
+      }
       return Promise.resolve(record);
     }
     return apiRequest("PUT", `/api/employees/${encodeURIComponent(empId)}/social-insurance`, payload);
+  },
+  getSocialInsuranceHistory(empId) {
+    if (typeof _isMock === "function" && _isMock()) {
+      const rows = (window._mockSocialInsuranceHistory && window._mockSocialInsuranceHistory[empId]) || [];
+      return Promise.resolve(rows.slice());
+    }
+    return apiRequest("GET", `/api/employees/${encodeURIComponent(empId)}/social-insurance/history`);
   },
   // Tax method (progressive | flat rate), effective-dated. Mock mode mirrors the backend guards.
   getTaxMethod(empId) {

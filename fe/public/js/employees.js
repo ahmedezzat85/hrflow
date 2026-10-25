@@ -1110,6 +1110,21 @@ async function saveBankAccount(evt) {
 
 let _socialInsuranceConfig = null;
 
+function renderSocialInsuranceHistory(history) {
+  const wrap = document.getElementById('socialInsHistory');
+  const body = document.getElementById('socialInsHistoryBody');
+  if (!wrap || !body) return;
+  const rows = (history || []).slice().sort((a, b) => String(b.effective_start_date).localeCompare(String(a.effective_start_date)) || b.id - a.id);
+  wrap.hidden = rows.length === 0;
+  body.innerHTML = rows.map(r => {
+    const base = r.insured_base !== null && r.insured_base !== undefined ? Number(r.insured_base) : null;
+    const label = r.insured_flag
+      ? `Covered${base !== null ? ' \u00b7 ' + base.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' EGP' : ''}`
+      : 'Not covered';
+    return `<tr><td data-label="From">${escapeHtml(String(r.effective_start_date).slice(0, 10))}</td><td data-label="To">${r.effective_end_date ? escapeHtml(String(r.effective_end_date).slice(0, 10)) : 'Present'}</td><td data-label="Coverage">${escapeHtml(label)}</td></tr>`;
+  }).join('');
+}
+
 async function loadSocialInsuranceStatus(empId) {
   setCardStatusAction('socialInsuranceStatusActionBtn', null);
   const pill = document.getElementById('socialInsurancePill');
@@ -1123,10 +1138,12 @@ async function loadSocialInsuranceStatus(empId) {
   if (covEl) covEl.textContent = '—';
   if (baseEl) baseEl.textContent = '—';
   if (effEl) effEl.textContent = '—';
+  renderSocialInsuranceHistory([]);
 
   try {
-    const data = await Api.getSocialInsurance(empId);
+    const [data, history] = await Promise.all([Api.getSocialInsurance(empId), Api.getSocialInsuranceHistory(empId)]);
     _socialInsuranceConfig = data;
+    renderSocialInsuranceHistory(history);
     if (!data) {
       // The request succeeded and there is no record yet: not an error.
       pill.innerHTML = '<i class="fa-solid fa-circle-minus"></i> Not set up';
