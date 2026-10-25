@@ -1048,12 +1048,10 @@ for (const theme of ['light', 'dark']) {
       await openAdmin(page, theme);
       await page.evaluate(() => showSection('a-finance-payroll', 'admin'));
       await page.click('#btnOpenCurrentCycle');
-      const intSelect = page.locator('#p1IntAccount');
-      const intUsd = intSelect.locator('option:has-text("USD")').first();
-      if (await intUsd.count() > 0) {
-        const val = await intUsd.getAttribute('value');
-        if (val) await intSelect.selectOption(val);
-      }
+      await page.evaluate(async () => {
+        const usd = (PayrollApp.banks || []).find((b) => String(b.currency).toUpperCase() === 'USD');
+        if (usd) { await PayrollApp.setFundingAccount('internal', usd.id); PayrollApp.drawScreen1(); }
+      });
       await page.click('#btnP1Proceed');
       await submitAndApprove(page);
       await page.click('#btnP3Next');
@@ -1111,12 +1109,10 @@ for (const theme of ['light', 'dark']) {
       await openAdmin(page, theme);
       await page.evaluate(() => showSection('a-finance-payroll', 'admin'));
       await page.click('#btnOpenCurrentCycle');
-      const intSelect = page.locator('#p1IntAccount');
-      const intUsd = intSelect.locator('option:has-text("USD")').first();
-      if (await intUsd.count() > 0) {
-        const val = await intUsd.getAttribute('value');
-        if (val) await intSelect.selectOption(val);
-      }
+      await page.evaluate(async () => {
+        const usd = (PayrollApp.banks || []).find((b) => String(b.currency).toUpperCase() === 'USD');
+        if (usd) { await PayrollApp.setFundingAccount('internal', usd.id); PayrollApp.drawScreen1(); }
+      });
       await page.click('#btnP1Proceed');
       await submitAndApprove(page);
       await page.click('#btnP3Next');

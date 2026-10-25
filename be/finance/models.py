@@ -1005,8 +1005,13 @@ class PayrollSettingsDB(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     employee_rate = Column(Float, default=0.11, nullable=False)
     employer_rate = Column(Float, default=0.18, nullable=False)
+    external_funding_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True)
+    internal_funding_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     updated_by = Column(String(255), nullable=True)
+
+    external_funding_account = relationship("FinanceBankAccountDB", foreign_keys=[external_funding_account_id])
+    internal_funding_account = relationship("FinanceBankAccountDB", foreign_keys=[internal_funding_account_id])
 
 
 FinancePayrollSettingsDB = PayrollSettingsDB

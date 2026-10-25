@@ -573,6 +573,9 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
       window.PayrollApp.banks = [
         { id: 7, name: 'Custom Settling Account', currency: 'USD', number: '****9988' }
       ];
+      // Statutory payments follow the funding account from Payroll settings
+      window.PayrollApp.selectedExternalAccountId = 7;
+      window.PayrollApp.fundingSummary = { external: { id: 7, name: 'Custom Settling Account', currency: 'USD' }, internal: null };
       window.PayrollApp.setStep(5);
     });
 
@@ -581,7 +584,8 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     await expect(page.locator('#p6SiPaymentDate')).toBeVisible();
 
     // Fill inline fields
-    await page.selectOption('#p6SiDebitAccount', '7');
+    await expect(page.locator('#p6SiDebitAccount')).toBeDisabled();
+    await expect(page.locator('#p6SiDebitAccount option:checked')).toContainText('Custom Settling Account');
     await page.fill('#p6SiPaymentDate', '2026-09-25');
 
     // Settle obligation via inline action

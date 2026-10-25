@@ -28,6 +28,7 @@ from finance.models import (
     PayrollTaxSettingsDB,
 )
 from db import get_session_factory
+from payroll_test_helpers import set_funding_accounts_in
 
 
 @pytest.fixture
@@ -57,6 +58,7 @@ def seed_payroll_env(db_session):
         )
         db_session.add(bank)
         db_session.flush()
+    set_funding_accounts_in(db_session, bank.id)
 
     # Ensure transaction category
     cat = db_session.query(TransactionCategoryDB).filter_by(name="Salaries & Wages").first()

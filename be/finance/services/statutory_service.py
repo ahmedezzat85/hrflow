@@ -8,7 +8,7 @@ from typing import List, Dict, Any, Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from finance.models import StatutoryObligationDB
+from finance.models import StatutoryObligationDB, PayrollSettingsDB
 from finance.repositories.statutory_repository import StatutoryObligationsRepository
 from finance.services.settlement_service import SettlementService, StatutoryPaymentError
 
@@ -196,16 +196,49 @@ class StatutoryObligationsService:
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
+    def _resolve_paying_account(self, obligation_id: int, requested_id: Optional[int]) -> int:
+        obligation = self.db.query(StatutoryObligationDB).filter(StatutoryObligationDB.id == obligation_id).first()
+        if obligation is not None and obligation.source_type == "payroll_run":
+            settings = self.db.query(PayrollSettingsDB).filter(PayrollSettingsDB.id == 1).first()
+            configured = settings.external_funding_account_id if settings else None
+            if not configured:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail={
+                        "code": "funding_accounts_not_set",
+                        "message": "Statutory payments cannot be recorded until the funding account is set in Payroll settings.",
+                        "missing": ["external"],
+                    },
+                )
+            if requested_id and int(requested_id) != configured:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "code": "funding_accounts_come_from_settings",
+                        "message": "Payroll statutory payments use the funding account set in Payroll settings.",
+                    },
+                )
+            return configured
+        if not requested_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"code": "bank_account_required", "message": "Choose the paying account for this obligation."},
+            )
+        return int(requested_id)
+
     def settle_obligation(self, obligation_id: int, data: dict, user_email: Optional[str] = None) -> Dict[str, Any]:
         """
         Remit a statutory obligation via SettlementService.
+        Payroll-sourced obligations (social insurance, income tax) always pay from the funding account set in
+        Payroll Settings: no fallback, and a different account is refused. Other sources name their own account.
         """
+        bank_account_id = self._resolve_paying_account(obligation_id, data.get("bank_account_id"))
         try:
             obl, payment, ledger_tx = self.settlement_svc.settle_statutory_obligation(
                 obligation_id=obligation_id,
                 amount=float(data["amount"]),
                 payment_date=data["payment_date"],
-                bank_account_id=int(data["bank_account_id"]),
+                bank_account_id=bank_account_id,
                 payment_type_id=data.get("payment_type_id"),
                 reference=data.get("reference", ""),
                 method=data.get("method"),

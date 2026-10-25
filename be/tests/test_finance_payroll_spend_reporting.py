@@ -12,6 +12,7 @@ Covers:
 import pytest
 from datetime import datetime
 from db import get_db_context
+from payroll_test_helpers import set_funding_accounts
 from models_db import EmployeeDB, EmployeeBankAccountDB
 from finance.models import (
     PayrollRunDB,
@@ -235,6 +236,7 @@ def test_statutory_remitted_report_and_payable_status(app_client, admin_cookies)
         db.commit()
         db.refresh(funding)
         funding_id = funding.id
+    set_funding_accounts(funding_id)
 
     # 1. Generate & finalize run for 2026-09
     resp_gen = app_client.post(

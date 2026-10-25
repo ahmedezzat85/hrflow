@@ -27,6 +27,7 @@ from finance.models import (
 from db import get_session_factory
 from finance.services.payroll_service import PayrollService
 from services.social_insurance_service import SocialInsuranceService
+from payroll_test_helpers import set_funding_accounts_in
 
 
 @pytest.fixture
@@ -59,6 +60,7 @@ def setup_social_ins_env(db_session):
         )
         db_session.add(bank)
         db_session.flush()
+    set_funding_accounts_in(db_session, bank.id)
 
     # Ensure transaction category
     cat = db_session.query(TransactionCategoryDB).filter_by(name="Salaries & Wages").first()

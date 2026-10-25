@@ -1188,6 +1188,17 @@ def test_slice4_payroll_split_maker_vs_financial_admin_vs_super_admin(app_client
     resp_fin_fin = app_client.post(f"/api/finance/payroll/runs/{run_id}/finalize", cookies=fin_cookies)
     assert resp_fin_fin.status_code == 200
 
+    # Payment needs the funding accounts from Payroll Settings (owner rule); set them before paying
+    from finance.models import FinanceBankAccountDB
+    from payroll_test_helpers import set_funding_accounts
+    with get_db_context() as db:
+        funding = FinanceBankAccountDB(account_name="RBAC Funding", account_type="bank", currency="USD", bank_name="B",
+                                       account_number="RBAC-FUND", is_active=True, opening_balance=100000.0, current_balance=100000.0)
+        db.add(funding)
+        db.commit()
+        funding_id = funding.id
+    set_funding_accounts(funding_id)
+
     # 8. Pay run (requires finance.payroll.pay)
     # Maker gets 403
     pay_payload = {"bank_account_id": None, "retry_failed_only": False}

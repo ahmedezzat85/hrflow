@@ -338,13 +338,33 @@ def get_employee_payslip(
     return service.get_employee_payslip(run_id=run_id, employee_id=employee_id)
 
 
+def _funding_summary(account):
+    if account is None:
+        return None
+    return {"id": account.id, "name": account.account_name, "currency": account.currency, "type": account.account_type}
+
+
+def _settings_view(settings) -> dict:
+    return {
+        "id": settings.id,
+        "employee_rate": settings.employee_rate,
+        "employer_rate": settings.employer_rate,
+        "external_funding_account_id": settings.external_funding_account_id,
+        "internal_funding_account_id": settings.internal_funding_account_id,
+        "external_funding_account": _funding_summary(settings.external_funding_account),
+        "internal_funding_account": _funding_summary(settings.internal_funding_account),
+        "updated_at": settings.updated_at,
+        "updated_by": settings.updated_by,
+    }
+
+
 @router.get("/settings", response_model=PayrollSettingsResponse)
 def get_payroll_settings(
     service: PayrollService = Depends(get_payroll_service),
     current_user: dict = Depends(require_permission("finance.payroll.read")),
 ):
-    """Get current organization-wide social insurance contribution rates."""
-    return service.get_payroll_settings()
+    """Get social insurance rates and the default funding accounts (name and currency only, no account numbers)."""
+    return _settings_view(service.get_payroll_settings())
 
 
 @router.put("/settings", response_model=PayrollSettingsResponse)
@@ -353,13 +373,16 @@ def update_payroll_settings(
     service: PayrollService = Depends(get_payroll_service),
     current_user: dict = Depends(require_permission("finance.settings.write")),
 ):
-    """Update organization-wide social insurance contribution rates (Super Admin only)."""
+    """Update social insurance rates and the default funding accounts (replace only, never clear)."""
     user_email = current_user.get("email") if isinstance(current_user, dict) else None
-    return service.update_payroll_settings(
+    settings = service.update_payroll_settings(
         employee_rate=payload.employee_rate,
         employer_rate=payload.employer_rate,
         user_email=user_email,
+        external_funding_account_id=payload.external_funding_account_id,
+        internal_funding_account_id=payload.internal_funding_account_id,
     )
+    return _settings_view(settings)
 
 
 # -----------------------------------------------------------------------------

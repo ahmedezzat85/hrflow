@@ -76,8 +76,9 @@
 
                   <section class="pv-s1-card">
                     <h2>Company funding accounts and FX</h2>
-                    <label for="p1ExtAccount">Company account for external salaries<select id="p1ExtAccount" onchange="PayrollApp.onScreen1AccountChange()"></select></label>
-                    <label for="p1IntAccount">Company account for internal salaries<select id="p1IntAccount" onchange="PayrollApp.onScreen1AccountChange()"></select></label>
+                    <label for="p1ExtAccount">Company account for external salaries<select id="p1ExtAccount" disabled></select></label>
+                    <label for="p1IntAccount">Company account for internal salaries<select id="p1IntAccount" disabled></select></label>
+                    <div class="pv-callout" id="p1FundingNotice" role="status" hidden></div>
                     <div class="pv-fx-field-row">
                       <label class="pv-fx-lbl" for="p1FxRateInput">
                         FX rate, USD to EGP
@@ -393,6 +394,8 @@
                   <div class="payroll-exceptions-strip" id="payrollExceptionList"></div>
                 </div>
 
+                <div class="pv-callout" id="p5FundingBlock" role="alert" hidden></div>
+
                 <div class="footer payroll-footer-actions pv-s5-footer">
                   <button class="btn btn-ghost" id="btnP5Back" onclick="PayrollApp.setStep(3)">Back</button>
                   <div style="display: flex; align-items: center; gap: 14px;">
@@ -631,6 +634,7 @@
                     <select id="payrollTargetInternalAccount" onchange="PayrollApp.setFundingAccount('internal', this.value)"></select>
                     <span class="pv-subhint">Domestic EGP net pay</span>
                   </label>
+                  <span class="pv-subhint" id="payrollFundingNote"></span>
                   <div class="pv-callout">The accounts need enough cleared balance before step 5, confirm payment.</div>
                 </section>
 

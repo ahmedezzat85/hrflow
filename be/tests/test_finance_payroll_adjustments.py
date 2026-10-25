@@ -13,6 +13,7 @@ def usd_egp_rate(app_client):
     seed_usd_egp_rate(50.0)
 
 from db import get_db_context
+from payroll_test_helpers import set_funding_accounts_in
 from models_db import EmployeeDB, EmployeeBankAccountDB
 from finance.models import (
     PayrollRunDB,
@@ -118,6 +119,8 @@ def seed_env():
             effective_start_date="2026-01-01",
         )
         db_session.add_all([p_ext, p_int])
+        db_session.commit()
+        set_funding_accounts_in(db_session, ext_bank.id, int_bank.id)
         db_session.commit()
 
         return {"ext_bank_id": ext_bank.id, "int_bank_id": int_bank.id, "employee_id": emp.id}
