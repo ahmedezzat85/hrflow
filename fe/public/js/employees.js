@@ -220,7 +220,7 @@ async function saveEmployee(evt) {
     closeModal('employeeModal');
     await loadAdminData();
     // D-036: pay is set in the Pay plan, so a new employee goes straight to it (Cancel = set it later).
-    if (created && created.id != null && employees.some(x => String(x.id) === String(created.id)) && typeof openCompPlanModal === 'function') {
+    if (created && created.id != null && employees.some(x => String(x.id) === String(created.id)) && typeof openCompPlanModal === 'function' && canWritePayPlan()) {
       openCompPlanModal(created.id);
     }
   } catch (err) {
@@ -253,6 +253,8 @@ async function confirmDelete(evt) {
 
 function canReadSalary() { return typeof SessionInfo === 'undefined' || SessionInfo.hasPermission('hr.salary.read'); }
 function canWriteSalary() { return typeof SessionInfo === 'undefined' || SessionInfo.hasPermission('hr.salary.write'); }
+// D-038: the Pay plan routes accept the finance key or the matching HR salary key.
+function canWritePayPlan() { return typeof SessionInfo === 'undefined' || SessionInfo.hasPermission('finance.payroll.prepare') || SessionInfo.hasPermission('hr.salary.write'); }
 
 // Profile head, left zone: monthly total only. The split, raises and actions live in the Compensation card.
 function compZoneInnerHtml(e) {
@@ -290,7 +292,11 @@ function renderCompensationCard(e) {
   card.hidden = !canReadSalary() || !e;
   if (card.hidden) return;
   const actions = document.getElementById('employeeCompensationActions');
-  if (actions) actions.hidden = !canWriteSalary();
+  const editPlanBtn = document.getElementById('compEditPlanBtn');
+  const raiseBtn = document.getElementById('compApplyRaiseBtn');
+  if (editPlanBtn) editPlanBtn.hidden = !canWritePayPlan();
+  if (raiseBtn) raiseBtn.hidden = !canWriteSalary(); // Apply raise calls /api/salary/raise (hr.salary.write)
+  if (actions) actions.hidden = !canWritePayPlan() && !canWriteSalary();
 
   const internalUsd = Number(e.internalSalaryUsd || 0);
   const externalUsd = Number(e.externalSalaryUsd || 0);

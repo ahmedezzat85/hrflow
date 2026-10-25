@@ -286,6 +286,7 @@
   }
 
   function timeAt(dateStr) {
+    if (!dateStr) return '—';
     const [y, m, dd] = dateStr.split('-').map(Number);
     const n = new Date();
     let months = (n.getFullYear() - y) * 12 + (n.getMonth() + 1 - m) - (n.getDate() < dd ? 1 : 0);
@@ -296,7 +297,7 @@
   }
 
   function planBars(plan) {
-    if (plan.changes && plan.changes.length) return plan.changes.map((c) => ({ date: c.date, internal: c.new_internal, external: c.new_external, reason: c.reason || '', pct: c.pct_change }));
+    if (plan.changes && plan.changes.length) return plan.changes.map((c) => ({ date: c.date, internal: c.new_internal, external: c.new_external, reason: c.reason || '', pct: c.pct_change, previous: c.previous_total, next: c.new_total }));
     return [{ date: plan.current.effective_date, internal: plan.current.internal, external: plan.current.external, reason: 'Current plan', pct: null }];
   }
 
@@ -308,11 +309,12 @@
     const summary = `<div class="card pay-card" id="paySummary"><div class="pay-kpis pay-kpis--3 ed-kpis">
       ${kpi('Raises since joining', String(ch.length), ch.length ? `last on ${fmtDateShort(ch[ch.length - 1].date)}` : 'none yet')}
       ${kpi('Overall change', overall == null ? '—' : `${overall >= 0 ? '+' : ''}${pct(overall)}%`, first ? `${money(first.previous_total)} → ${money(plan.current.total)}` : '')}
-      ${kpi('Time at current pay', esc(timeAt(plan.current.effective_date)), `since ${fmtDateShort(plan.current.effective_date)}`)}
+      ${kpi('Time at current pay', esc(timeAt(plan.current.effective_date)), plan.current.effective_date ? `since ${fmtDateShort(plan.current.effective_date)}` : 'since —')}
     </div></div>`;
     const legend = `<div class="pay-legend" aria-hidden="true"><span><i class="pay-sw pay-sw--ext"></i>Base (external)</span><span><i class="pay-sw pay-sw--int"></i>Base (internal)</span><span class="pay-legend-cur">${esc(P.currency)}</span></div>`;
     const chart = card('Pay plan history', 'fa-chart-column', 'blue', 'Monthly base at each change',
-      `${legend}<div class="pay-chart-wrap"><canvas id="payChartCanvas" role="img"></canvas><div class="pay-tip" id="payTip" hidden></div></div>`);
+      `${legend}<div class="pay-chart-wrap"><canvas id="payChartCanvas" role="img"></canvas><div class="pay-tip" id="payTip" hidden></div></div>
+      <div class="pay-chart-meta"><button type="button" class="ed-link-btn" id="paySeeRaisesBtn">See raise history</button></div>`);
     return [summary, chart];
   }
 
@@ -563,7 +565,7 @@
       callbacks: {
         title: (items) => (items.length ? rows[items[0].dataIndex].full : ''),
         label: (item) => ` ${item.dataset.label}: ${money_(item.raw)}`,
-        afterBody: (items) => (items.length ? [`Total: ${money_(rows[items[0].dataIndex].total)}`] : []),
+        afterBody: (items) => (items.length ? [`Total: ${money_(rows[items[0].dataIndex].total)}`, ...(rows[items[0].dataIndex].extra || [])] : []),
       },
     };
   }
@@ -597,7 +599,10 @@
       totals = bars.map((b) => b.internal + b.external);
       const rows = bars.map((b) => ({ base_external: b.external, base_internal: b.internal, total: b.internal + b.external }));
       datasets = [dataset('Base (external)', 'base_external', c.ext, rows, c), dataset('Base (internal)', 'base_internal', c.int, rows, c)];
-      tipRows = bars.map((b, i) => ({ total: totals[i], full: `${fmtDateShort(b.date)}${b.reason ? ` · ${b.reason}` : ''}` }));
+      tipRows = bars.map((b, i) => ({
+        total: totals[i], full: `${fmtDateShort(b.date)}${b.reason ? ` · ${b.reason}` : ''}`,
+        extra: b.pct == null ? [] : [`Previous total: ${money(b.previous)}`, `New total: ${money(b.next)}`, `Change: ${b.pct >= 0 ? '+' : ''}${pct(b.pct)}%`, ...(b.reason ? [`Reason: ${b.reason}`] : [])],
+      }));
       plugins = [totalsPlugin(totals, c), changePillsPlugin(bars, c)];
       summaryText = `Pay plan history: ${plural(bars.length, 'plan entry', 'plan entries')}, current monthly base ${money(totals[totals.length - 1])}, ${P.currency}.`;
     }

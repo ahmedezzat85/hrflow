@@ -73,7 +73,7 @@ test.describe('H1: Compensation card on the employee profile', () => {
 
   test('AC3: with read but not write the card has no action buttons', async ({ page }) => {
     await ready(page);
-    await page.evaluate(() => { SessionInfo._permissions = SessionInfo._permissions.filter((p) => p !== 'hr.salary.write'); });
+    await page.evaluate(() => { SessionInfo._permissions = SessionInfo._permissions.filter((p) => p !== 'hr.salary.write' && p !== 'finance.payroll.prepare'); });
     await openProfile(page, 1);
     await expect(page.locator('#employeeCompensationCard')).toBeVisible();
     await expect(page.locator('#compApplyRaiseBtn')).toBeHidden();
