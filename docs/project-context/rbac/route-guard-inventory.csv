@@ -51,6 +51,9 @@ routers/salary_payment_docs.py,GET,/api/salary-payment-docs/{invoice_id}/stream,
 routers/social_insurance.py,GET,/api/employees/{emp_id}/social-insurance,get_employee_social_insurance,hr.employee.read,hr.employee.read,unchanged
 routers/social_insurance.py,GET,/api/employees/{emp_id}/social-insurance/history,get_employee_social_insurance_history,hr.employee.read,hr.employee.read,unchanged
 routers/social_insurance.py,PUT,/api/employees/{emp_id}/social-insurance,set_employee_social_insurance,hr.salary.write,hr.salary.write,unchanged
+routers/tax_method.py,GET,/api/employees/{emp_id}/tax-method,get_employee_tax_method,hr.employee.read,hr.employee.read,new-route
+routers/tax_method.py,GET,/api/employees/{emp_id}/tax-method/history,get_employee_tax_method_history,hr.employee.read,hr.employee.read,new-route
+routers/tax_method.py,PUT,/api/employees/{emp_id}/tax-method,set_employee_tax_method,hr.salary.write,hr.salary.write,new-route
 routers/system.py,GET,/api/audit-log,get_audit_log,require_admin,system.audit.read,new-key
 routers/system.py,GET,/api/health,health,NONE,public (health check),unchanged
 routers/vacations.py,GET,/api/vacations/history,get_vacation_history,NONE,hr.vacation.read (all) | self.vacation.read (own),scope-by-permission

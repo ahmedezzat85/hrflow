@@ -81,6 +81,35 @@ test.describe('FUX: Employee Social Insurance and Payroll Deductions', () => {
     await expect(socialInsCard.locator('#socialInsEffectiveDate')).toContainText('2026-01-01');
   });
 
+  test('Social insurance card lists history newest first', async ({ page }) => {
+    await openAdminPage(page, 'a-employees');
+    await page.locator('#employeesTableBody tr').first().locator('td.tname a').click();
+    await expect(page.locator('#a-employee-detail')).toBeVisible();
+    const modal = page.locator('#socialInsuranceModal');
+
+    await page.locator('#socialInsuranceActionBtn').click();
+    await modal.locator('#fSocialInsFlag').check();
+    await modal.locator('#fSocialInsBase').fill('4500');
+    await modal.locator('#fSocialInsEffectiveDate').fill('2025-01-01');
+    await modal.locator('#socialInsuranceSaveBtn').dispatchEvent('click');
+    await expect(modal).not.toBeVisible();
+
+    await page.locator('#socialInsuranceActionBtn').click();
+    await modal.locator('#fSocialInsFlag').uncheck();
+    await modal.locator('#fSocialInsEffectiveDate').fill('2025-07-01');
+    await modal.locator('#socialInsuranceSaveBtn').dispatchEvent('click');
+    await expect(modal).not.toBeVisible();
+
+    const rows = page.locator('#socialInsHistoryBody tr');
+    await expect(rows).toHaveCount(2);
+    await expect(rows.nth(0)).toContainText('2025-07-01');
+    await expect(rows.nth(0)).toContainText('Present');
+    await expect(rows.nth(0)).toContainText('Not covered');
+    await expect(rows.nth(1)).toContainText('2025-01-01');
+    await expect(rows.nth(1)).toContainText('2025-06-30');
+    await expect(rows.nth(1)).toContainText('Covered');
+  });
+
   test('Payroll Settings view renders statutory contribution rate inputs and allows updating', async ({ page }) => {
     // Navigate to Finance Payroll
     await openAdminPage(page, 'a-finance-payroll');

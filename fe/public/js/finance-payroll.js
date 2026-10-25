@@ -46,6 +46,7 @@
     fxRateValue: null,
     fxRateSource: null,
     resolvedFxRate: 50.0,
+    fxResolved: false, // true only once a preview returned a real rate (manual or from transfer history)
     resolvedFxSource: 'fallback',
     employeeInsuranceRate: 0.11,
     employerInsuranceRate: 0.18,
@@ -876,7 +877,7 @@
       await this.fetchPreview();
       this.drawScreen1();
       this.drawFxRate();
-      this.showBanner(`FX conversion rate updated: ${this.resolvedFxRate.toFixed(4)} USD/EGP.`, 'blue');
+      if (this.fxResolved) this.showBanner(`FX conversion rate updated: ${this.resolvedFxRate.toFixed(4)} USD/EGP.`, 'blue');
     },
 
     async resetScreen1Fx() {
@@ -1300,6 +1301,7 @@
 
     async saveDraftRun() {
       try {
+        if (!this.requireFxRate()) return;
         if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.createPayrollRun === 'function') {
           const run = await FinanceApi.createPayrollRun({
             period_label: this.month,
@@ -1343,6 +1345,7 @@
     async submitRun() {
       try {
         if (!this.currentRun) {
+          if (!this.requireFxRate()) return;
           if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.createPayrollRun === 'function') {
             this.currentRun = await FinanceApi.createPayrollRun({
               period_label: this.month,
@@ -1465,6 +1468,10 @@
             if (l.employee_tax_egp && !existing.employee_tax_egp) {
               existing.employee_tax_egp = l.employee_tax_egp;
             }
+            if (l.tax_method_snapshot && !existing.tax_method_snapshot) {
+              existing.tax_method_snapshot = l.tax_method_snapshot;
+              existing.tax_rate_snapshot = l.tax_rate_snapshot;
+            }
             if (l.insured_base_egp_snapshot && !existing.insured_base_egp_snapshot) {
               existing.insured_base_egp_snapshot = l.insured_base_egp_snapshot;
             }
@@ -1484,6 +1491,9 @@
           const emprSi = Number(l.employer_social_insurance_egp || 0);
           const tSi = Number(l.total_social_insurance_egp || (empSi + emprSi));
           const tax = Number(l.employee_tax_egp || 0);
+          const flatLabel = l.tax_method_snapshot === 'flat' && l.tax_rate_snapshot
+            ? ` <span class="badge-pill pill-warning payroll-flat-tax-label">Flat ${Math.round(Number(l.tax_rate_snapshot) * 10000) / 100}%</span>`
+            : '';
           const netEgp = Number(l.final_internal_net_egp || 0);
           const netUsd = Number(l.net_pay || l.amount || (netEgp / rate));
 
@@ -1514,7 +1524,7 @@
               <td class="num payroll-num" data-label="Employee SI, EGP" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${empSi.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               <td class="num payroll-num" data-label="Employer SI, EGP" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${emprSi.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               <td class="num payroll-num" data-label="Total SI, EGP" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${tSi.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-              <td class="num payroll-num" data-label="Income tax, EGP" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${tax.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td class="num payroll-num" data-label="Income tax, EGP" style="padding:9px 12px; text-align:right; font-variant-numeric:tabular-nums;">${tax.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${flatLabel}</td>
               <td class="num payroll-num strong accent" data-label="Internal net payment" style="padding:9px 16px; text-align:right; font-weight:700; color:var(--ink-strong); font-variant-numeric:tabular-nums;">${this.money(netUsd)}</td>
             </tr>
           `;
@@ -2348,6 +2358,7 @@
         if (preview) {
           this.currentPreview = preview;
           if (preview.fx_rate_value !== undefined && preview.fx_rate_value !== null) {
+            this.fxResolved = true;
             this.resolvedFxRate = Number(preview.fx_rate_value);
             this.resolvedFxSource = preview.fx_rate_source || (this.fxRateValue ? 'manual' : 'fallback');
           }
@@ -2367,7 +2378,17 @@
         }
       } catch (err) {
         console.warn('[PayrollApp] Could not fetch payroll preview:', err);
+        // No silent default rate: say what is missing and block saving until a rate is typed in
+        this.fxResolved = false;
+        this.showBanner(err && err.message ? err.message : 'Could not calculate the payroll preview.', 'red');
       }
+    },
+
+    // Saving a run needs a real rate: the typed one, or one a preview resolved. Never the 50.0000 display default.
+    requireFxRate() {
+      if ((this.fxRateValue && Number(this.fxRateValue) > 0) || this.fxResolved) return true;
+      this.showBanner('No USD-EGP rate available for this period. Enter the rate manually.', 'red');
+      return false;
     },
 
     async loadSettingsFromDb() {
@@ -2406,14 +2427,14 @@
 
       const rateNum = Number(this.resolvedFxRate || 50.0);
       const isManual = this.fxRateValue !== null && this.fxRateValue !== undefined && Number(this.fxRateValue) > 0;
-      const isFallback = !isManual && (this.resolvedFxSource === 'fallback' || rateNum === 50.0);
+      const isMissing = !isManual && !this.fxResolved;
 
-      if (rateEl) rateEl.textContent = rateNum.toFixed(4);
+      if (rateEl) rateEl.textContent = isMissing ? '—' : rateNum.toFixed(4);
       if (srcEl) {
         if (isManual) {
           srcEl.textContent = 'manual override';
-        } else if (isFallback) {
-          srcEl.textContent = 'fallback rate';
+        } else if (isMissing) {
+          srcEl.textContent = 'rate needed: enter it manually';
         } else {
           srcEl.textContent = 'from transfer history';
         }

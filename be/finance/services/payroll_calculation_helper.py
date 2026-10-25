@@ -192,9 +192,13 @@ def validate_and_calculate_internal_statutory(
     bonus_usd: float = 0.0,
     commission_usd: float = 0.0,
     tax_settings: Optional[Dict[str, Any]] = None,
+    tax_method: str = "progressive",
+    flat_rate: Optional[float] = None,
 ) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
     """
     Validates and calculates statutory Social Insurance, Income Tax, and Net/Gross figures for an internal USD employee line.
+    tax_method "flat": tax = flat_rate x taxable gross (recurring gross + bonus + commission), no personal
+    exemption and no brackets, so tax settings are not needed. Default "progressive" is unchanged.
     Returns:
         (calculation_result_dict, exceptions_list)
     """
@@ -204,9 +208,23 @@ def validate_and_calculate_internal_statutory(
     dec_bonus_usd = Decimal(str(round(float(bonus_usd or 0.0), 2)))
     dec_commission_usd = Decimal(str(round(float(commission_usd or 0.0), 2)))
 
-    # Handle FX rate
+    # Handle FX rate: a missing or non-positive rate blocks the line instead of defaulting to a guess
     if locked_fx_rate is None or float(locked_fx_rate) <= 0:
-        dec_fx = Decimal("50.0")
+        dec_fx = Decimal("0")
+        exceptions.append({
+            "id": f"exc-fx-{employee_id}",
+            "employee_id": employee_id,
+            "employee_name": employee_name,
+            "severity": "blocking",
+            "code": "MISSING_FX_RATE",
+            "title": "Missing FX Rate",
+            "description": (
+                f"No USD-EGP rate is available for {employee_name}'s payroll line. "
+                "Enter the exchange rate on the run before calculating payroll."
+            ),
+            "correction_path": "/admin?section=finance-payroll",
+            "is_resolved": False,
+        })
     else:
         dec_fx = Decimal(str(float(locked_fx_rate)))
 
@@ -284,7 +302,30 @@ def validate_and_calculate_internal_statutory(
     # Tax settings resolution and validation for internal line
     has_valid_tax_settings = False
     resolved_brackets = []
-    if has_recurring_internal:
+    is_flat = (tax_method or "progressive") == "flat"
+    dec_flat_rate: Optional[Decimal] = None
+    if is_flat:
+        rate_ok = flat_rate is not None and 0 < float(flat_rate) <= 1
+        if rate_ok and basis == "NET" and float(flat_rate) >= 1:
+            rate_ok = False  # a NET target cannot be grossed up at a 100% rate
+        if rate_ok:
+            dec_flat_rate = Decimal(str(float(flat_rate)))
+        elif has_recurring_internal:
+            exceptions.append({
+                "id": f"exc-flat-rate-{employee_id}",
+                "employee_id": employee_id,
+                "employee_name": employee_name,
+                "severity": "blocking",
+                "code": "INVALID_FLAT_TAX_RATE",
+                "title": "Invalid Flat Tax Rate",
+                "description": (
+                    f"{employee_name} is set to a flat tax rate but the rate is missing or invalid. "
+                    "Set a rate above 0% (and below 100% for NET salaries) under Employee Profile > Tax Method before running payroll."
+                ),
+                "correction_path": f"/admin?section=employees&employee_id={employee_id}",
+                "is_resolved": False,
+            })
+    if has_recurring_internal and not is_flat:
         if tax_settings:
             if tax_settings.get("brackets"):
                 resolved_brackets = tax_settings["brackets"]
@@ -314,7 +355,13 @@ def validate_and_calculate_internal_statutory(
     variable_gross_egp = quantize_money((dec_bonus_usd + dec_commission_usd) * dec_fx)
 
     # Determine recurring gross EGP
-    if has_recurring_internal and has_valid_tax_settings:
+    flat_active = is_flat and has_recurring_internal and dec_flat_rate is not None
+    if flat_active:
+        if basis == "NET":
+            recurring_gross_egp = quantize_money((recurring_internal_egp + emp_si_egp) / (Decimal("1") - dec_flat_rate))
+        else:  # GROSS
+            recurring_gross_egp = recurring_internal_egp
+    elif has_recurring_internal and has_valid_tax_settings:
         tax_limit_p = Decimal(str(tax_settings.get("tax_limit_p_egp", DEFAULT_TAX_LIMIT_P)))
         brackets = resolved_brackets or DEFAULT_TAX_BRACKETS
         if basis == "NET":
@@ -334,7 +381,11 @@ def validate_and_calculate_internal_statutory(
     taxable_gross_egp = quantize_money(recurring_gross_egp + variable_gross_egp)
 
     # Annual taxed salary & Income Tax calculation
-    if has_recurring_internal and has_valid_tax_settings:
+    if flat_active:
+        emp_tax_egp = quantize_money(taxable_gross_egp * dec_flat_rate)
+        annual_taxed_salary_egp = taxable_gross_egp * Decimal("12")
+        annual_tax_egp = emp_tax_egp * Decimal("12")
+    elif has_recurring_internal and has_valid_tax_settings:
         tax_limit_p = Decimal(str(tax_settings.get("tax_limit_p_egp", DEFAULT_TAX_LIMIT_P)))
         brackets = resolved_brackets or DEFAULT_TAX_BRACKETS
         annual_taxed_salary_egp = (taxable_gross_egp - emp_si_egp) * Decimal("12") - tax_limit_p
@@ -378,7 +429,9 @@ def validate_and_calculate_internal_statutory(
         deductions_usd = 0.0
         employer_extra_usd = float(quantize_money(org_si_usd_eq + emp_si_usd_eq + emp_tax_usd_eq))
 
-    tax_version_id = tax_settings.get("id") if (tax_settings and isinstance(tax_settings, dict)) else None
+    tax_version_id = (
+        tax_settings.get("id") if (tax_settings and isinstance(tax_settings, dict) and not is_flat) else None
+    )
 
     result = {
         "salary_basis": basis,
@@ -407,6 +460,8 @@ def validate_and_calculate_internal_statutory(
         "deductions_total_usd": deductions_usd,
         "employer_cost_extra_usd": employer_extra_usd,
         "tax_settings_version_id": tax_version_id,
+        "tax_method": "flat" if is_flat else "progressive",
+        "tax_rate": float(dec_flat_rate) if (is_flat and dec_flat_rate is not None) else None,
     }
 
     return result, exceptions

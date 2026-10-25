@@ -2245,6 +2245,8 @@ class PayrollLineResponse(BaseModel):
     annual_taxed_salary_egp: Optional[float] = 0.0
     annual_tax_egp: Optional[float] = 0.0
     tax_settings_version_id: Optional[int] = None
+    tax_method_snapshot: Optional[str] = None
+    tax_rate_snapshot: Optional[float] = None
     net_pay: float
     amount: Optional[float] = None
     currency: str = "USD"
@@ -2427,6 +2429,7 @@ class PayrollRunPreviewResponse(BaseModel):
     final_int_total: float = 0.0
     final_ext_total: float = 0.0
     total_employee_tax_egp: Optional[float] = 0.0
+    total_flat_tax_egp: Optional[float] = 0.0
     total_social_insurance_egp: Optional[float] = 0.0
     prior_period_total: float = 0.0
     change_amount: float = 0.0
@@ -2504,6 +2507,7 @@ class PayrollRunResponse(BaseModel):
     total_bonuses: Optional[float] = 0.0
     total_additions: Optional[float] = 0.0
     total_employee_tax_egp: Optional[float] = 0.0
+    total_flat_tax_egp: Optional[float] = 0.0
     total_social_insurance_egp: Optional[float] = 0.0
     tax_settings_version_id: Optional[int] = None
 
