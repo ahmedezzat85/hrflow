@@ -2084,6 +2084,9 @@ class CashFlowStatementResponse(BaseModel):
     net_change_in_cash: float
     beginning_cash_balance: float
     ending_cash_balance: float
+    fiscal_year_adjustments: List[Dict[str, Any]] = []  # BI-1: entered yearly opening minus previous closing, per account and year
+    fiscal_year_adjustments_total: float = 0.0
+    unexplained_difference: float = 0.0
     is_reconciled: bool = True
 
 

@@ -5,7 +5,8 @@ category spend rollups, and period matrices.
 """
 import json
 from typing import Dict, Any, List, Optional, Tuple
-from datetime import datetime
+import calendar
+from datetime import datetime, date, timedelta
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, and_, or_
 
@@ -15,7 +16,9 @@ from finance.bill_status import OPEN_STATUSES, SPEND_STATUSES
 from finance import invoice_status as inv_status
 from finance import cash_basis
 from finance import books
+from finance import year_openings
 from finance.models import (
+    FinanceAccountYearOpeningDB,
     FinanceBankAccountDB,
     LedgerTransactionDB,
     TransactionCategoryDB,
@@ -830,6 +833,8 @@ class ReportsService:
         Computes the balance of each bank/cash account as of a given date (inclusive).
         Transactions after as_of_date are excluded. Inactive accounts are left out unless include_inactive.
         Note: opening_balance_date is not used; see tests/test_reports_balances_opening_date.py.
+        BI-1 (D-043): the base is the latest entered yearly opening <= the year of as_of_date, else the account
+        opening_balance (key opening_balance keeps the legacy account value; base_year/base_amount/base_source add the base used).
         """
         scope = self._scope(book)
         acc_q = self.db.query(FinanceBankAccountDB)
@@ -841,32 +846,14 @@ class ReportsService:
         currency_totals: Dict[str, float] = {}
         country_totals: Dict[str, Dict[str, float]] = {}
 
+        all_openings = year_openings.load_openings(self.db, [a.id for a in accounts])
         for acc in accounts:
             opening = float(acc.opening_balance or 0.0)
 
-            # Sum inflows on or before as_of_date
-            inflows = (
-                self.db.query(func.sum(LedgerTransactionDB.amount))
-                .filter(
-                    LedgerTransactionDB.account_id == acc.id,
-                    LedgerTransactionDB.date <= as_of_date,
-                    LedgerTransactionDB.direction == "in",
-                )
-                .scalar() or 0.0
-            )
-
-            # Sum outflows on or before as_of_date
-            outflows = (
-                self.db.query(func.sum(LedgerTransactionDB.amount))
-                .filter(
-                    LedgerTransactionDB.account_id == acc.id,
-                    LedgerTransactionDB.date <= as_of_date,
-                    LedgerTransactionDB.direction == "out",
-                )
-                .scalar() or 0.0
-            )
-
-            balance = round(opening + float(inflows) - float(outflows), 2)
+            # Base amount (latest entered yearly opening, else the account opening) plus movements through as_of_date
+            openings = all_openings.get(acc.id, {})
+            base_year, base_amount = year_openings.base_for(acc, openings, int(as_of_date[:4]))
+            balance = round(year_openings.balance_as_of(self.db, acc, as_of_date, openings), 2)
             curr = acc.currency or "USD"
             country = acc.country or "Egypt"
 
@@ -887,6 +874,9 @@ class ReportsService:
                 "opening_balance_date": acc.opening_balance_date,
                 "is_active": bool(acc.is_active),
                 "balance_as_of_date": balance,
+                "base_year": base_year,
+                "base_amount": round(base_amount, 2),
+                "base_source": year_openings.SOURCE_ENTERED if base_year is not None else year_openings.SOURCE_ACCOUNT_OPENING,
                 "book_code": scope.book_of(acc.id),
                 "visibility": acc.visibility or "full",
             })
@@ -905,20 +895,41 @@ class ReportsService:
     # ------------------------------------------------------------------
     OTHER_COUNTRY_TRANSFERS = "Transfers to another country"
 
-    def get_fiscal_year_summary(self, year: int, book: Optional[str] = None) -> Dict[str, Any]:
+    def get_fiscal_year_summary(self, year: int, book: Optional[str] = None, month: Optional[int] = None) -> Dict[str, Any]:
         """
-        Yearly summary for the calendar year (January to December).
-        Per account, in its own currency: opening (balance as of 31 December of the year before), money in and
-        money out (every ledger movement, transfers between own accounts included, so the statement matches the
-        system), closing (balance as of 31 December). Per currency totals only: nothing is added across currencies.
+        Yearly summary for the calendar year (January to December), or one month of it when `month` is given.
+        Per account, in its own currency: opening (balance at the start of the period), money in and money out
+        (every ledger movement, transfers between own accounts included, so the statement matches the system),
+        closing (balance at the end of the period). Per currency totals only: nothing is added across currencies.
+        Openings follow BI-1 (D-043): an entered yearly opening starts its year, a year without one carries the
+        previous closing forward; the month opening is the previous month's closing (January: the year opening).
         Company spend per category excludes movements between own accounts in the same country; a movement to an
         account in another country stays in spend as "Transfers to another country".
         """
-        start, end, prev_end = f"{year}-01-01", f"{year}-12-31", f"{year - 1}-12-31"
+        if month is not None:
+            if not 1 <= int(month) <= 12:
+                raise HTTPException(status_code=400, detail="month must be between 1 and 12")
+            month = int(month)
+            start = f"{year:04d}-{month:02d}-01"
+            end = f"{year:04d}-{month:02d}-{calendar.monthrange(year, month)[1]:02d}"
+        else:
+            start, end = f"{year:04d}-01-01", f"{year:04d}-12-31"
+        prev_end = (date.fromisoformat(start) - timedelta(days=1)).isoformat()
         scope = self._scope(book)
 
-        opening = {a["account_id"]: a for a in self.get_point_in_time_balances(prev_end, book=book, include_inactive=True)["accounts"]}
         closing = self.get_point_in_time_balances(end, book=book, include_inactive=True)["accounts"]
+        acc_objs = {a.id: a for a in self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id.in_([c["account_id"] for c in closing] or [0])).all()}
+        all_openings = year_openings.load_openings(self.db, list(acc_objs))
+        opening = {
+            aid: year_openings.balance_at_start_of(self.db, acc, start, all_openings.get(aid, {}))
+            for aid, acc in acc_objs.items()
+        }
+        notes = {
+            (r.account_id): r.note or ""
+            for r in self.db.query(FinanceAccountYearOpeningDB).filter(
+                FinanceAccountYearOpeningDB.fiscal_year == year, FinanceAccountYearOpeningDB.account_id.in_(list(acc_objs) or [0])
+            ).all()
+        }
 
         flow_q = (
             self.db.query(LedgerTransactionDB.account_id, LedgerTransactionDB.direction, func.sum(LedgerTransactionDB.amount))
@@ -939,17 +950,29 @@ class ReportsService:
         pre_open = {aid: int(n) for aid, _d, n in scope.filter(pre_open_q, LedgerTransactionDB.account_id).all()}
 
         rows: List[Dict[str, Any]] = []
+        warnings: List[Dict[str, Any]] = []
         totals: Dict[str, Dict[str, float]] = {}
         for acc in closing:
             aid = acc["account_id"]
             fl = flows.get(aid, {"in": 0.0, "out": 0.0})
-            op = float(opening.get(aid, {}).get("balance_as_of_date", 0.0))
+            op = float(opening.get(aid, 0.0))
             cl = float(acc["balance_as_of_date"])
             od = acc.get("opening_balance_date")
-            # a year that ends before the account's opening date has no data yet
-            no_data = bool(od) and end < od
+            ops = all_openings.get(aid, {})
+            # a period that ends before the account's opening date has no data yet, unless a yearly opening was entered
+            no_data = bool(od) and end < od and year_openings.base_year_for(ops, year) is None
             if not acc["is_active"] and not (fl["in"] or fl["out"] or op or cl):
                 continue
+            info = year_openings.year_opening_info(self.db, acc_objs[aid], year, ops)
+            year_start = month in (None, 1)
+            if month in (None, 1):
+                opening_source, variance = info["source"], info["variance"]
+            else:
+                opening_source, variance = "previous_month", None
+            first_base = min(ops) if ops else None
+            before_base = self.db.query(func.count(LedgerTransactionDB.id)).filter(
+                LedgerTransactionDB.account_id == aid, LedgerTransactionDB.date < f"{first_base:04d}-01-01"
+            ).scalar() if first_base is not None else 0
             row = {
                 "account_id": aid,
                 "account_name": acc["account_name"],
@@ -965,10 +988,29 @@ class ReportsService:
                 "money_in": None if no_data else round(fl["in"], 2),
                 "money_out": None if no_data else round(fl["out"], 2),
                 "closing": None if no_data else round(cl, 2),
-                "transactions_before_opening_date": pre_open.get(aid, 0),
+                "transactions_before_opening_date": 0 if ops else pre_open.get(aid, 0),
+                "transactions_before_first_base": int(before_base or 0),
+                "opening_source": opening_source,
+                "previous_year_closing": round(info["previous_closing"], 2),
+                "opening_variance": None if variance is None else round(variance, 2),
+                "opening_note": notes.get(aid, "") if info["source"] == year_openings.SOURCE_ENTERED else None,
             }
             rows.append(row)
             if not no_data:
+                label = f"{acc['account_name']} ({acc['currency']})"
+                if year_start and variance is not None and abs(variance) > 0.005:
+                    warnings.append({"type": "opening_variance", "account_id": aid, "account_name": acc["account_name"], "currency": acc["currency"],
+                                     "fiscal_year": year, "amount": round(variance, 2),
+                                     "message": f"{label}: the entered {year} opening differs from the previous year's closing by {variance:,.2f}."})
+                if year_start and info["source"] == year_openings.SOURCE_CARRIED_FORWARD:
+                    warnings.append({"type": "carried_forward", "account_id": aid, "account_name": acc["account_name"], "currency": acc["currency"],
+                                     "fiscal_year": year, "amount": None,
+                                     "message": f"{label}: no opening entered for {year}; the previous year's closing is carried forward."})
+                n_before = int(before_base or 0) or (0 if ops else pre_open.get(aid, 0))
+                if n_before:
+                    warnings.append({"type": "transactions_before_first_base", "account_id": aid, "account_name": acc["account_name"], "currency": acc["currency"],
+                                     "fiscal_year": year, "amount": n_before,
+                                     "message": f"{label}: {n_before} transaction(s) are dated before the first opening."})
                 t = totals.setdefault(acc["currency"], {"opening": 0.0, "money_in": 0.0, "money_out": 0.0, "closing": 0.0})
                 t["opening"] += op
                 t["money_in"] += fl["in"]
@@ -1015,10 +1057,13 @@ class ReportsService:
 
         return {
             "year": year,
+            "month": month,
+            "period": {"from": start, "to": end},
             "date_from": start,
             "date_to": end,
             "opening_as_of": prev_end,
             "closing_as_of": end,
+            "warnings": warnings,
             "accounts": rows,
             "currency_totals": {cur: {k: round(v, 2) for k, v in t.items()} for cur, t in sorted(totals.items())},
             "spend": spend_out,
@@ -2072,19 +2117,28 @@ class ReportsService:
         d_from = date_from or today.replace(day=1).strftime("%Y-%m-%d")
         curr_norm = (currency or "USD").upper()
 
-        # Opening balance
-        pit_start = self.get_point_in_time_balances(d_from, book=book)
-        beg_cash = 0.0
-        for acc in pit_start.get("accounts", []):
-            if curr_norm == "ALL" or acc.get("currency") == curr_norm:
-                beg_cash += float(acc.get("balance_as_of_date") or 0.0)
-
-        # Closing balance
+        # Closing balance (balance at the end of d_to)
         pit_end = self.get_point_in_time_balances(d_to, book=book)
-        end_cash = 0.0
-        for acc in pit_end.get("accounts", []):
-            if curr_norm == "ALL" or acc.get("currency") == curr_norm:
-                end_cash += float(acc.get("balance_as_of_date") or 0.0)
+        in_scope = [a for a in pit_end.get("accounts", []) if curr_norm == "ALL" or a.get("currency") == curr_norm]
+        end_cash = sum(float(a.get("balance_as_of_date") or 0.0) for a in in_scope)
+
+        # Opening balance: at the START of d_from, before that day's transactions (BI-1: the first day is no longer
+        # counted twice). Year-boundary differences between an entered yearly opening and the previous closing
+        # are listed as explicit fiscal-year adjustments.
+        acc_objs = {a.id: a for a in self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id.in_([a["account_id"] for a in in_scope] or [0])).all()}
+        all_openings = year_openings.load_openings(self.db, list(acc_objs))
+        beg_cash = 0.0
+        adjustments: List[Dict[str, Any]] = []
+        for aid, acc_obj in acc_objs.items():
+            ops = all_openings.get(aid, {})
+            beg_cash += year_openings.balance_at_start_of(self.db, acc_obj, d_from, ops)
+            for y in sorted(ops):
+                if d_from < f"{y:04d}-01-01" <= d_to:
+                    variance = year_openings.year_opening_info(self.db, acc_obj, y, ops)["variance"]
+                    if variance is not None and abs(variance) > 0.005:
+                        adjustments.append({"account_id": aid, "account_name": acc_obj.account_name, "currency": acc_obj.currency,
+                                            "year": y, "amount": round(variance, 2)})
+        adjustments_total = round(sum(a["amount"] for a in adjustments), 2)
 
         # Inflows & Outflows during period
         tx_q = self.db.query(LedgerTransactionDB).filter(
@@ -2130,6 +2184,7 @@ class ReportsService:
                 financing_items.append({"name": to_label, "amount": -round(ib_out, 2), "activity_type": "financing"})
         net_fin = round(ib_in - ib_out, 2)
         net_change = round(net_op + net_inv + net_fin, 2)
+        unexplained = round(end_cash - (beg_cash + net_change + adjustments_total), 2)
 
         return {
             "report_title": "Statement of Cash Flows",
@@ -2146,7 +2201,10 @@ class ReportsService:
             "net_change_in_cash": net_change,
             "beginning_cash_balance": round(beg_cash, 2),
             "ending_cash_balance": round(end_cash, 2),
-            "is_reconciled": True,
+            "fiscal_year_adjustments": adjustments,
+            "fiscal_year_adjustments_total": adjustments_total,
+            "unexplained_difference": unexplained,
+            "is_reconciled": abs(unexplained) <= 0.01,
         }
 
     def get_ar_aging_report(
@@ -2482,6 +2540,7 @@ class ReportsService:
             data = self.get_fiscal_year_summary(
                 year=int(filters.get("year") or datetime.utcnow().year),
                 book=filters.get("book"),
+                month=int(filters["month"]) if filters.get("month") else None,
             )
             row_count = len(data.get("accounts", []))
         elif report_key == "transactions":
