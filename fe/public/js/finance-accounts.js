@@ -241,6 +241,7 @@ function renderFinanceAccounts(allItems) {
       <td data-label="Actions" class="col-actions">${FinanceUI.rowActions({
         icons: [
           { icon: "fa-pen", label: "Edit Account", onclick: `openEditCompanyBankAccountModal(${acc.id})` },
+          { icon: "fa-calendar-check", label: "Yearly opening balances", className: "btn-account-year-openings", onclick: `openAccountYearOpeningsModal(${acc.id})` },
           ...(isPartial ? [{ icon: "fa-flag-checkered", label: "Balance checkpoints", className: "btn-account-checkpoints", onclick: `openAccountCheckpointModal(${acc.id})` }] : []),
           { icon: acc.is_active ? "fa-power-off" : "fa-check", label: acc.is_active ? "Deactivate Account" : "Reactivate Account", className: acc.is_active ? "fv-icon-btn--danger" : "", onclick: `toggleCompanyBankAccountActive(${acc.id}, ${acc.is_active})` },
         ],
@@ -3318,4 +3319,139 @@ async function saveAccountCheckpoint() {
 
 window.openAccountCheckpointModal = openAccountCheckpointModal;
 window.saveAccountCheckpoint = saveAccountCheckpoint;
+
+// ==========================================
+// Yearly opening balances (BI-1, D-043): owner-entered opening per account and fiscal year
+// ==========================================
+function _canWriteYearOpenings() {
+  return typeof SessionInfo === "undefined" || SessionInfo.hasPermission("finance.account.write");
+}
+
+async function openAccountYearOpeningsModal(accountId) {
+  document.getElementById("fYearOpeningAccountId").value = accountId;
+  const acc = (FinanceState.accounts || []).find((a) => a.id === Number(accountId));
+  document.getElementById("accountYearOpeningsModalSubtitle").textContent = acc
+    ? `${acc.account_name} (${acc.currency || "USD"}): enter the balance at the start of January 1 for each year. It is compared with the previous year's calculated closing.`
+    : "Enter the balance at the start of January 1 for each year.";
+  cancelAccountYearOpeningEdit();
+  openModal("accountYearOpeningsModal");
+  await _renderAccountYearOpenings(accountId);
+}
+
+async function _renderAccountYearOpenings(accountId) {
+  const body = document.getElementById("accountYearOpeningsBody");
+  if (!body) return;
+  try {
+    const data = await FinanceApi.getAccountYearOpenings(accountId);
+    const cur = data.currency || "USD";
+    const canWrite = _canWriteYearOpenings();
+    const esc = FinanceUI.esc;
+    const money = (v) => esc(FinanceUI.plainNumber(v, cur));
+    body.innerHTML = [...(data.items || [])].sort((a, b) => b.fiscal_year - a.fiscal_year).map((i) => {
+      const differs = i.entered && i.variance !== null && Math.abs(Number(i.variance)) > 0.005;
+      const sourceLabel = i.entered ? "" : (i.source === "carried_forward" ? "Carried forward" : "From account opening");
+      const diffCell = !i.entered
+        ? "–"
+        : differs
+          ? `<span class="fv-note fv-note--warn" data-year-opening-diff>${Number(i.variance) > 0 ? "+" : ""}${money(i.variance)}</span><div class="helper">Differs from the previous year's closing by ${money(Math.abs(i.variance))}. Add a note to explain it (optional).</div>`
+          : `<span class="fv-note" data-year-opening-diff>${money(0)}</span>`;
+      const actions = canWrite
+        ? (i.entered
+          ? `<button type="button" class="btn btn-sm btn-year-opening-edit" onclick="editAccountYearOpening(${i.fiscal_year})">Edit</button> <button type="button" class="btn btn-sm btn-year-opening-remove" onclick="removeAccountYearOpening(${i.fiscal_year})">Remove</button>`
+          : `<button type="button" class="btn btn-sm btn-year-opening-set" onclick="editAccountYearOpening(${i.fiscal_year})">Set opening</button>`)
+        : "";
+      return `<tr data-year="${i.fiscal_year}" data-entered="${i.entered}" class="${i.entered ? "" : "fv-row--muted"}">
+        <td data-label="Year"><strong>${i.fiscal_year}</strong>${sourceLabel ? `<div class="helper">${esc(sourceLabel)}</div>` : ""}</td>
+        <td class="cell-money" data-label="Opening">${money(i.opening)}</td>
+        <td class="cell-money" data-label="Calculated from previous year">${money(i.previous_closing)}</td>
+        <td class="cell-money" data-label="Difference">${diffCell}</td>
+        <td data-label="Note">${esc(i.note || "")}</td>
+        <td data-label="Actions">${actions}</td>
+      </tr>`;
+    }).join("");
+    const before = document.getElementById("accountYearOpeningsBeforeBase");
+    if (before) {
+      const n = Number(data.transactions_before_first_base || 0);
+      before.style.display = n ? "" : "none";
+      before.textContent = n ? `${n} transaction(s) are dated before the first opening.` : "";
+    }
+    body._items = data.items || [];
+  } catch (err) {
+    toast("Failed to load yearly opening balances: " + (err.message || err), "fa-solid fa-triangle-exclamation");
+  }
+}
+
+function editAccountYearOpening(year) {
+  const body = document.getElementById("accountYearOpeningsBody");
+  const item = ((body && body._items) || []).find((i) => i.fiscal_year === Number(year));
+  document.getElementById("fYearOpeningYear").value = year;
+  document.getElementById("fYearOpeningBalance").value = item ? Number(item.opening).toFixed(2) : "";
+  document.getElementById("fYearOpeningNote").value = item && item.entered ? (item.note || "") : "";
+  document.getElementById("fYearOpeningBalanceLabel").innerHTML = `Opening balance ${year} <span class="req">*</span>`;
+  document.getElementById("accountYearOpeningEditor").style.display = "";
+  document.getElementById("accountYearOpeningSaveBtn").style.display = "";
+  document.getElementById("accountYearOpeningCancelBtn").style.display = "";
+  document.getElementById("fYearOpeningBalance").focus();
+}
+
+function cancelAccountYearOpeningEdit() {
+  ["accountYearOpeningEditor", "accountYearOpeningSaveBtn", "accountYearOpeningCancelBtn"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = "none";
+  });
+}
+
+async function saveAccountYearOpening() {
+  const accountId = document.getElementById("fYearOpeningAccountId").value;
+  const year = document.getElementById("fYearOpeningYear").value;
+  const ok = FinanceForm.validateRequiredFields("accountYearOpeningsModal", [{ id: "fYearOpeningBalance", label: "Opening balance" }]);
+  if (!ok) return;
+  const btn = document.getElementById("accountYearOpeningSaveBtn");
+  if (btn) btn.disabled = true;
+  try {
+    await FinanceApi.setAccountYearOpening(accountId, year, {
+      opening_balance: parseFloat(document.getElementById("fYearOpeningBalance").value),
+      note: document.getElementById("fYearOpeningNote").value.trim() || null,
+    });
+    toast(`Opening balance for ${year} saved.`, "fa-solid fa-circle-check");
+    cancelAccountYearOpeningEdit();
+    await _renderAccountYearOpenings(accountId);
+    FinanceState.accounts = await FinanceApi.getAccounts();
+    renderFinanceAccounts(FinanceState.accounts);
+  } catch (err) {
+    toast(err.message || "Failed to save the opening balance", "fa-solid fa-triangle-exclamation");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function removeAccountYearOpening(year) {
+  const accountId = document.getElementById("fYearOpeningAccountId").value;
+  const result = await FinanceCommand.confirmAction({
+    title: `Remove the ${year} opening balance`,
+    summary: `Year ${year}`,
+    consequence: "The year goes back to the previous year's calculated closing (carried forward). Transactions are not changed.",
+    actionLabel: "Remove opening",
+    actionClass: "btn btn-danger",
+    requireReason: false,
+    severity: "warning",
+  });
+  if (!result.confirmed) return;
+  try {
+    await FinanceApi.deleteAccountYearOpening(accountId, year);
+    toast(`Opening balance for ${year} removed.`, "fa-solid fa-circle-check");
+    cancelAccountYearOpeningEdit();
+    await _renderAccountYearOpenings(accountId);
+    FinanceState.accounts = await FinanceApi.getAccounts();
+    renderFinanceAccounts(FinanceState.accounts);
+  } catch (err) {
+    toast(err.message || "Failed to remove the opening balance", "fa-solid fa-triangle-exclamation");
+  }
+}
+
+window.openAccountYearOpeningsModal = openAccountYearOpeningsModal;
+window.editAccountYearOpening = editAccountYearOpening;
+window.cancelAccountYearOpeningEdit = cancelAccountYearOpeningEdit;
+window.saveAccountYearOpening = saveAccountYearOpening;
+window.removeAccountYearOpening = removeAccountYearOpening;
 

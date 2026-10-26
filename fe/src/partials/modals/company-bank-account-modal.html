@@ -67,6 +67,7 @@
               <label for="fCompanyOpeningBalanceDate">Opening Balance Date</label>
               <input type="date" id="fCompanyOpeningBalanceDate">
             </div>
+            <div class="form-field full" id="fCompanyOpeningHint"><p class="helper" id="fCompanyOpeningHintText">For yearly figures, use Yearly opening balances after saving the account. An entered yearly opening replaces this value for that year and later.</p></div>
             <div class="form-field">
               <label for="fCompanyBook">Book <span class="req">*</span></label>
               <select id="fCompanyBook"></select>
@@ -122,6 +123,45 @@
       <div class="modal-foot">
         <button class="btn" onclick="closeModal('accountCheckpointModal')">Close</button>
         <button class="btn btn-fill" id="accountCheckpointSaveBtn" onclick="saveAccountCheckpoint()">Record checkpoint</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay fv fv-dialog fv-area-sky" id="accountYearOpeningsModal">
+    <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="accountYearOpeningsModalTitle" style="max-width: 860px;">
+      <div class="modal-head">
+        <span class="modal-head-icon"><i class="fa-solid fa-calendar-check" aria-hidden="true"></i></span>
+        <div class="modal-head-text">
+          <h3 id="accountYearOpeningsModalTitle">Yearly opening balances</h3>
+          <p id="accountYearOpeningsModalSubtitle">Enter the balance at the start of January 1 for each year. The system compares it with the previous year's calculated closing.</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('accountYearOpeningsModal')" aria-label="Close dialog"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="fYearOpeningAccountId">
+        <p class="fv-note fv-note--warn" id="accountYearOpeningsBeforeBase" style="display:none;"></p>
+        <table class="responsive-card-table" id="accountYearOpeningsTable">
+          <thead>
+            <tr><th>Year</th><th class="cell-money">Opening</th><th class="cell-money">Calculated from previous year</th><th class="cell-money">Difference</th><th>Note</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="accountYearOpeningsBody"></tbody>
+        </table>
+        <div id="accountYearOpeningEditor" class="form-grid" style="display:none;">
+          <input type="hidden" id="fYearOpeningYear">
+          <div class="form-field">
+            <label for="fYearOpeningBalance" id="fYearOpeningBalanceLabel">Opening balance <span class="req">*</span></label>
+            <input type="number" id="fYearOpeningBalance" step="0.01">
+          </div>
+          <div class="form-field">
+            <label for="fYearOpeningNote">Note (optional)</label>
+            <input id="fYearOpeningNote" maxlength="1000" placeholder="e.g. From the January bank statement">
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="closeModal('accountYearOpeningsModal')">Close</button>
+        <button class="btn" id="accountYearOpeningCancelBtn" style="display:none;" onclick="cancelAccountYearOpeningEdit()">Cancel</button>
+        <button class="btn btn-fill" id="accountYearOpeningSaveBtn" style="display:none;" onclick="saveAccountYearOpening()">Save opening</button>
       </div>
     </div>
   </div>
