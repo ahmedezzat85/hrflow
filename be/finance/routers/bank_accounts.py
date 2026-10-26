@@ -19,6 +19,9 @@ from finance.schemas import (
     BalanceCheckpointCreate,
     BalanceCheckpointResponse,
     BookResponse,
+    YearOpeningItem,
+    YearOpeningsResponse,
+    YearOpeningUpsert,
     LedgerTransactionCreate,
     LedgerTransactionResponse,
     PettySummaryResponse,
@@ -204,6 +207,43 @@ def get_account_petty_summary(
 ):
     """Rollup view for categories flagged is_petty, giving compact recurring totals."""
     return service.get_petty_summary(account_id, date_from=date_from, date_to=date_to)
+
+
+# --- Fiscal-year opening balances (BI-1, D-043): owner-entered opening per account and calendar year ---
+
+@router.get("/{account_id}/year-openings", response_model=YearOpeningsResponse)
+def list_account_year_openings(
+    account_id: int,
+    current_user: dict = Depends(require_permission("finance.account.read")),
+    service: AccountsService = Depends(get_accounts_service),
+):
+    """One item per fiscal year: entered opening or the carried-forward value, with the difference from the previous closing."""
+    return service.list_year_openings(account_id)
+
+
+@router.put("/{account_id}/year-openings/{year}", response_model=YearOpeningItem)
+def set_account_year_opening(
+    account_id: int,
+    year: int,
+    payload: YearOpeningUpsert,
+    current_user: dict = Depends(require_permission("finance.account.write")),
+    service: AccountsService = Depends(get_accounts_service),
+):
+    """Creates or replaces the opening balance of a fiscal year and recalculates the account's running balances."""
+    user_email = (current_user.get("email") or current_user.get("sub")) if isinstance(current_user, dict) else "user"
+    return service.set_year_opening(account_id, year, payload, user=user_email)
+
+
+@router.delete("/{account_id}/year-openings/{year}", response_model=YearOpeningItem)
+def delete_account_year_opening(
+    account_id: int,
+    year: int,
+    current_user: dict = Depends(require_permission("finance.account.write")),
+    service: AccountsService = Depends(get_accounts_service),
+):
+    """Removes an entered opening; the year falls back to the previous closing (carried forward)."""
+    user_email = (current_user.get("email") or current_user.get("sub")) if isinstance(current_user, dict) else "user"
+    return service.delete_year_opening(account_id, year, user=user_email)
 
 
 # --- Balance checkpoints (D-028): owner-entered balances for partial-visibility accounts ---

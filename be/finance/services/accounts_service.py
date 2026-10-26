@@ -2,6 +2,8 @@
 be/finance/services/accounts_service.py
 Business logic and security rules for Company Bank Accounts.
 """
+import json
+from datetime import datetime
 from typing import List, Optional
 from fastapi import HTTPException, status
 
@@ -16,13 +18,20 @@ from finance.schemas import (
     BankAccountResponse,
     BalanceCheckpointCreate,
     BalanceCheckpointResponse,
+    YearOpeningItem,
+    YearOpeningsResponse,
+    YearOpeningUpsert,
 )
+from finance import year_openings
+from finance.repositories.ledger_repository import LedgerRepository
+from models_db import AuditLogDB
 from finance.models import FinanceBankAccountDB, FinanceBookDB, AccountBalanceCheckpointDB
 from finance.services.subscriptions_service import FINANCE_UPLOADS_DIR
 import file_layout
 
 VALID_VISIBILITY = ("full", "partial")
 MAX_CHECKPOINT_FILE_BYTES = 15 * 1024 * 1024
+MIN_FISCAL_YEAR = 2000
 
 
 class AccountsService:
@@ -176,6 +185,92 @@ class AccountsService:
                 detail=f"Bank account with ID {account_id} not found",
             )
         return self.repo.recalculate_and_sync_current_balance(account_id)
+
+    # ------------------------------------------------------------------
+    # Fiscal-year opening balances (BI-1, D-043)
+    # ------------------------------------------------------------------
+    def _year_opening_item(self, account, year: int, openings: dict, rows: dict, closed: dict) -> YearOpeningItem:
+        info = year_openings.year_opening_info(self.repo.db, account, year, openings)
+        row = rows.get(year)
+        return YearOpeningItem(
+            fiscal_year=year,
+            entered=row is not None,
+            opening=info["opening"],
+            source=info["source"],
+            previous_closing=info["previous_closing"],
+            variance=info["variance"],
+            note=(row.note or "") if row is not None else None,
+            updated_by=row.updated_by if row is not None else None,
+            updated_at=row.updated_at if row is not None else None,
+            closed_reconciliation_months=closed.get(year, 0),
+        )
+
+    def list_year_openings(self, account_id: int) -> YearOpeningsResponse:
+        account = self._require_account(account_id)
+        rows = {r.fiscal_year: r for r in self.repo.list_year_openings(account_id)}
+        openings = {y: float(r.opening_balance) for y, r in rows.items()}
+        closed = self.repo.closed_reconciliation_months_by_year(account_id)
+        activity = self.repo.activity_year_range(account_id)
+        this_year = year_openings._today().year
+        years = list(rows) + ([activity[0]] if activity else []) + [this_year]
+        first, last = min(years), max(years + [this_year])
+        items = [self._year_opening_item(account, y, openings, rows, closed) for y in range(first, last + 1)]
+        if rows:
+            before = self.repo.count_transactions_before(account_id, f"{min(rows):04d}-01-01")
+        elif account.opening_balance_date:
+            before = self.repo.count_transactions_before(account_id, account.opening_balance_date)
+        else:
+            before = 0
+        return YearOpeningsResponse(
+            account_id=account_id, currency=account.currency,
+            transactions_before_first_base=before, items=items,
+        )
+
+    def _validate_fiscal_year(self, year: int) -> None:
+        latest = year_openings._today().year + 1
+        if year < MIN_FISCAL_YEAR or year > latest:
+            raise HTTPException(status_code=400, detail=f"fiscal_year must be between {MIN_FISCAL_YEAR} and {latest}")
+
+    def _audit_year_opening(self, action: str, account_id: int, year: int, details: dict, user: Optional[str]) -> None:
+        self.repo.db.add(AuditLogDB(
+            timestamp=datetime.utcnow().isoformat() + "Z",
+            actor_email=user or "system@hrflow.internal",
+            action=action,
+            target_type="bank_account",
+            target_id=str(account_id),
+            details=json.dumps({"fiscal_year": year, **details}),
+        ))
+
+    def _single_year_item(self, account_id: int, year: int) -> YearOpeningItem:
+        account = self._require_account(account_id)
+        rows = {r.fiscal_year: r for r in self.repo.list_year_openings(account_id)}
+        openings = {y: float(r.opening_balance) for y, r in rows.items()}
+        return self._year_opening_item(account, year, openings, rows, self.repo.closed_reconciliation_months_by_year(account_id))
+
+    def set_year_opening(self, account_id: int, year: int, payload: YearOpeningUpsert, user: Optional[str] = None) -> YearOpeningItem:
+        self._require_account(account_id)
+        self._validate_fiscal_year(year)
+        existing = self.repo.get_year_opening(account_id, year)
+        old = float(existing.opening_balance) if existing else None
+        note = (payload.note or "").strip()
+        self.repo.upsert_year_opening(account_id, year, payload.opening_balance, note, user)
+        LedgerRepository(self.repo.db).recalculate_account_running_balances(account_id, commit=False)
+        self._audit_year_opening("account.year_opening.set", account_id, year,
+                                 {"old_opening_balance": old, "opening_balance": float(payload.opening_balance), "note": note}, user)
+        self.repo.db.commit()
+        return self._single_year_item(account_id, year)
+
+    def delete_year_opening(self, account_id: int, year: int, user: Optional[str] = None) -> YearOpeningItem:
+        self._require_account(account_id)
+        row = self.repo.get_year_opening(account_id, year)
+        if row is None:
+            raise HTTPException(status_code=404, detail=f"No entered opening balance for {year}")
+        old = float(row.opening_balance)
+        self.repo.delete_year_opening(row)
+        LedgerRepository(self.repo.db).recalculate_account_running_balances(account_id, commit=False)
+        self._audit_year_opening("account.year_opening.deleted", account_id, year, {"old_opening_balance": old}, user)
+        self.repo.db.commit()
+        return self._single_year_item(account_id, year)
 
     # ------------------------------------------------------------------
     # Books and balance checkpoints (D-028)

@@ -307,13 +307,13 @@ Acceptance criteria (FT-1): (1) an employee with flat 10% shows 10% tax and zero
 
 ---
 
-## 3L. Fiscal-Year Opening Balances (D-043 accepted October 26, 2026; planned)
+## 3L. Fiscal-Year Opening Balances (D-043 accepted October 26, 2026; in progress)
 
 Decision D-043, related open question Q-024. Plan: `docs/finance-module/fiscal-year-opening-balances-plan.md`. Branch `feat/fiscal-year-opening-balances` (from `origin/main`). Risk class high (money logic, one new table and migration, no new permission key). Each slice stops for report and review.
 
 | Slice | Scope | Size | Depends on |
 | :--- | :--- | :--- | :--- |
-| BI-1a | Table and migration (`finance_account_year_openings`), resolver module, recalculation of running and current balances, `compute_balance`, CRUD API with audit log, route-guard inventory, backend tests. **Planned** | M | — |
+| BI-1a | Table and migration (`finance_account_year_openings`), resolver module, recalculation of running and current balances, `compute_balance`, CRUD API with audit log, route-guard inventory, backend tests. **Built on `feat/fiscal-year-opening-balances`, awaiting review (not merged)** | M | — |
 | BI-1b | Reports: point-in-time balances, cash flow (first-day fix, adjustments line, real reconciliation flag), yearly summary fields, warnings and month view, xlsx. **Planned** | M | BI-1a |
 | BI-1c | Frontend: yearly opening balances modal on accounts, month selector and warnings on the yearly summary, cash flow display, mock API, Playwright, real-backend smoke test. **Planned** | M | BI-1b |
 
@@ -352,7 +352,7 @@ The following initiatives remain on hold until formally decided in [04-decision-
 | Item | Status | Source / gate |
 | :--- | :--- | :--- |
 | Q-022: typing and amount field of imported historical payroll lines | Open (owner) | `06`; gates historical payroll import |
-| Fiscal-year opening balances (BI-1a, BI-1b, BI-1c) | Planned; branch `feat/fiscal-year-opening-balances`; BI-1a not started | Section 3L, D-043, Q-024 |
+| Fiscal-year opening balances (BI-1a, BI-1b, BI-1c) | In progress; branch `feat/fiscal-year-opening-balances`; BI-1a built awaiting review, BI-1b and BI-1c not started | Section 3L, D-043, Q-024 |
 | Payroll-Maker run-creation screen check (403 on account list) | Not done | D-039, Q-007 |
 
 ### Planned earlier, not done

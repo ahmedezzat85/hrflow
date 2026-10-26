@@ -68,6 +68,9 @@ finance/routers/bank_accounts.py,GET,/api/finance/accounts/{account_id}/transact
 finance/routers/bank_accounts.py,POST,/api/finance/accounts/{account_id}/transactions,create_account_transaction,finance.account.write,finance.account.write; entry_type=adjustment also needs finance.adjustment.manage (read from resolved permissions),bugfix
 finance/routers/bank_accounts.py,POST,/api/finance/accounts/{account_id}/transactions/preview,preview_account_transaction,finance.account.read,finance.account.read,unchanged
 finance/routers/bank_accounts.py,GET,/api/finance/accounts/{account_id}/transactions/petty-summary,get_account_petty_summary,finance.account.read,finance.account.read,unchanged
+finance/routers/bank_accounts.py,GET,/api/finance/accounts/{account_id}/year-openings,list_account_year_openings,finance.account.read,finance.account.read,new-route
+finance/routers/bank_accounts.py,PUT,/api/finance/accounts/{account_id}/year-openings/{year},set_account_year_opening,finance.account.write,finance.account.write,new-route
+finance/routers/bank_accounts.py,DELETE,/api/finance/accounts/{account_id}/year-openings/{year},delete_account_year_opening,finance.account.write,finance.account.write,new-route
 finance/routers/bills.py,POST,/api/finance/bills/extract,extract_bill_document,finance.bill.write,finance.bill.write,unchanged
 finance/routers/bills.py,GET,/api/finance/bills/category-quality-report,get_bill_category_quality_report,finance.bill.read,finance.bill.read,unchanged
 finance/routers/bills.py,GET,/api/finance/bills/queue-counts,get_bill_queue_counts,finance.bill.read,finance.bill.read,unchanged

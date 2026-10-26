@@ -67,6 +67,31 @@ class BalanceCheckpointResponse(BaseModel):
         from_attributes = True
 
 
+class YearOpeningUpsert(BaseModel):
+    opening_balance: float = Field(..., description="Balance at the start of January 1 of the year; may be negative")
+    note: Optional[str] = Field(None, max_length=1000)
+
+
+class YearOpeningItem(BaseModel):
+    fiscal_year: int
+    entered: bool
+    opening: float  # entered value, or the previous year's calculated closing when carried forward
+    source: str  # entered | carried_forward | account_opening
+    previous_closing: float
+    variance: Optional[float] = None  # entered minus previous_closing; only when entered
+    note: Optional[str] = None
+    updated_by: Optional[str] = None
+    updated_at: Optional[datetime] = None
+    closed_reconciliation_months: int = 0  # information only
+
+
+class YearOpeningsResponse(BaseModel):
+    account_id: int
+    currency: str
+    transactions_before_first_base: int = 0
+    items: List[YearOpeningItem]
+
+
 class BookResponse(BaseModel):
     id: int
     code: str
