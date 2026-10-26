@@ -1964,6 +1964,45 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       { id: 1, account_id: 5, date: "2026-09-30", balance: 31250.0, note: "From the overseas bank portal", has_attachment: false, attachment_name: null, created_by: "admin@voyance.health" },
     ];
   }
+  // Fiscal-year opening balances (BI-1, D-043). The mock has no ledger: every mock year moves the balance by a fixed
+  // amount (in 3600, out 2400), so previous closings and carried-forward openings are deterministic.
+  const MOCK_YEAR_IN = 3600.0;
+  const MOCK_YEAR_OUT = 2400.0;
+  const MOCK_FIRST_YEAR = 2023;
+  if (!FinanceMockState.accountYearOpenings) {
+    FinanceMockState.accountYearOpenings = [
+      { account_id: 1, fiscal_year: new Date().getFullYear(), opening_balance: 120000.0, note: "From the January bank statement", updated_by: "admin@voyance.health", updated_at: "2026-10-26T09:00:00Z" },
+    ];
+  }
+  const _yearOpeningItems = (acc) => {
+    const rows = (FinanceMockState.accountYearOpenings || []).filter((r) => r.account_id === acc.id);
+    const currentYear = new Date().getFullYear();
+    const items = [];
+    let previousClosing = Number(acc.opening_balance || 0);
+    let seenEntered = false;
+    for (let y = MOCK_FIRST_YEAR; y <= currentYear; y++) {
+      const row = rows.find((r) => r.fiscal_year === y);
+      if (row) seenEntered = true;
+      const opening = row ? Number(row.opening_balance) : previousClosing;
+      items.push({
+        fiscal_year: y,
+        entered: !!row,
+        opening,
+        source: row ? "entered" : (seenEntered ? "carried_forward" : "account_opening"),
+        previous_closing: previousClosing,
+        variance: row ? round(opening - previousClosing) : null,
+        note: row ? (row.note || "") : null,
+        updated_by: row ? row.updated_by : null,
+        updated_at: row ? row.updated_at : null,
+        closed_reconciliation_months: 0,
+      });
+      previousClosing = opening + MOCK_YEAR_IN - MOCK_YEAR_OUT;
+    }
+    return items;
+  };
+  FinanceMockState._yearOpeningItems = _yearOpeningItems;
+  FinanceMockState.MOCK_YEAR_FLOWS = { money_in: MOCK_YEAR_IN, money_out: MOCK_YEAR_OUT };
+
   const _checkpointView = (cp) => {
     const acc = FinanceMockState.accounts.find((a) => a.id === cp.account_id);
     const computed = acc ? Number(acc.current_balance || 0) : 0;
@@ -2201,6 +2240,41 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       return _checkpointView(cp);
     }
     return apiRequest("POST", `/api/finance/accounts/${accountId}/checkpoints`, payload);
+  },
+  async getAccountYearOpenings(accountId) {
+    if (_isMock()) {
+      const acc = FinanceMockState.accounts.find((a) => a.id === parseInt(accountId, 10));
+      if (!acc) throw new Error("Account not found");
+      return { account_id: acc.id, currency: acc.currency, transactions_before_first_base: 0, items: _yearOpeningItems(acc) };
+    }
+    return apiRequest("GET", `/api/finance/accounts/${accountId}/year-openings`);
+  },
+  async setAccountYearOpening(accountId, year, payload) {
+    if (_isMock()) {
+      const acc = FinanceMockState.accounts.find((a) => a.id === parseInt(accountId, 10));
+      if (!acc) throw new Error("Account not found");
+      const y = parseInt(year, 10);
+      if (y < 2000 || y > new Date().getFullYear() + 1) throw new Error(`fiscal_year must be between 2000 and ${new Date().getFullYear() + 1}`);
+      const rows = FinanceMockState.accountYearOpenings;
+      const existing = rows.find((r) => r.account_id === acc.id && r.fiscal_year === y);
+      const row = existing || { account_id: acc.id, fiscal_year: y };
+      Object.assign(row, { opening_balance: Number(payload.opening_balance), note: (payload.note || "").trim(), updated_by: "admin@voyance.health", updated_at: new Date().toISOString() });
+      if (!existing) rows.push(row);
+      return _yearOpeningItems(acc).find((i) => i.fiscal_year === y) || { fiscal_year: y, entered: true, opening: row.opening_balance, source: "entered", previous_closing: 0, variance: row.opening_balance, note: row.note };
+    }
+    return apiRequest("PUT", `/api/finance/accounts/${accountId}/year-openings/${year}`, payload);
+  },
+  async deleteAccountYearOpening(accountId, year) {
+    if (_isMock()) {
+      const acc = FinanceMockState.accounts.find((a) => a.id === parseInt(accountId, 10));
+      if (!acc) throw new Error("Account not found");
+      const y = parseInt(year, 10);
+      const idx = FinanceMockState.accountYearOpenings.findIndex((r) => r.account_id === acc.id && r.fiscal_year === y);
+      if (idx < 0) throw new Error(`No entered opening balance for ${y}`);
+      FinanceMockState.accountYearOpenings.splice(idx, 1);
+      return _yearOpeningItems(acc).find((i) => i.fiscal_year === y);
+    }
+    return apiRequest("DELETE", `/api/finance/accounts/${accountId}/year-openings/${year}`);
   },
   async deleteAccount(id) {
     if (_isMock()) {
@@ -4779,9 +4853,26 @@ if (typeof window !== "undefined") window._withBook = _withBook;
     params = _withBook(params, "reports");
     if (_isMock()) {
       const year = Number(params.year) || new Date().getFullYear();
+      const month = params.month ? Number(params.month) : null;
+      // BI-1: figures follow the yearly openings in the mock (every mock year moves by the same fixed flows)
+      const flows = FinanceMockState.MOCK_YEAR_FLOWS || { money_in: 0, money_out: 0 };
+      const divisor = month ? 12 : 1;
+      const warnings = [];
       const accounts = (FinanceMockState.accounts || []).map((a) => {
-        const opening = Number(a.opening_balance || 0);
-        const closing = Number(a.current_balance || 0);
+        const item = (FinanceMockState._yearOpeningItems ? FinanceMockState._yearOpeningItems(a) : []).find((i) => i.fiscal_year === year);
+        const yearOpening = item ? Number(item.opening) : Number(a.opening_balance || 0);
+        const opening = yearOpening + (month ? (flows.money_in - flows.money_out) / 12 * (month - 1) : 0);
+        const moneyIn = flows.money_in / divisor;
+        const moneyOut = flows.money_out / divisor;
+        const closing = opening + moneyIn - moneyOut;
+        const startsYear = !month || month === 1;
+        const source = month > 1 ? "previous_month" : (item ? item.source : "account_opening");
+        if (item && startsYear && item.source === "entered" && item.variance !== null && Math.abs(item.variance) > 0.005) {
+          warnings.push({ type: "opening_variance", account_id: a.id, account_name: a.account_name, currency: a.currency, fiscal_year: year, amount: item.variance, message: `${a.account_name} (${a.currency}): the entered ${year} opening differs from the previous year's closing by ${item.variance.toFixed(2)}.` });
+        }
+        if (item && startsYear && item.source === "carried_forward") {
+          warnings.push({ type: "carried_forward", account_id: a.id, account_name: a.account_name, currency: a.currency, fiscal_year: year, amount: null, message: `${a.account_name} (${a.currency}): no opening entered for ${year}; the previous year's closing is carried forward.` });
+        }
         return {
           account_id: a.id,
           account_name: a.account_name,
@@ -4793,10 +4884,15 @@ if (typeof window !== "undefined") window._withBook = _withBook;
           opening_balance_date: null,
           no_data: false,
           opening,
-          money_in: Math.max(closing - opening, 0),
-          money_out: Math.max(opening - closing, 0),
+          money_in: moneyIn,
+          money_out: moneyOut,
           closing,
           transactions_before_opening_date: 0,
+          transactions_before_first_base: 0,
+          opening_source: source,
+          previous_year_closing: item ? item.previous_closing : yearOpening,
+          opening_variance: startsYear && item ? item.variance : null,
+          opening_note: item && item.source === "entered" ? item.note : null,
         };
       });
       const currency_totals = {};
@@ -4804,12 +4900,18 @@ if (typeof window !== "undefined") window._withBook = _withBook;
         const t = currency_totals[a.currency] || (currency_totals[a.currency] = { opening: 0, money_in: 0, money_out: 0, closing: 0 });
         t.opening += a.opening; t.money_in += a.money_in; t.money_out += a.money_out; t.closing += a.closing;
       });
+      const lastDay = month ? new Date(year, month, 0).getDate() : 31;
+      const from = month ? `${year}-${String(month).padStart(2, "0")}-01` : `${year}-01-01`;
+      const to = month ? `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}` : `${year}-12-31`;
       return {
         year,
-        date_from: `${year}-01-01`,
-        date_to: `${year}-12-31`,
+        month,
+        period: { from, to },
+        date_from: from,
+        date_to: to,
         opening_as_of: `${year - 1}-12-31`,
-        closing_as_of: `${year}-12-31`,
+        closing_as_of: to,
+        warnings,
         accounts,
         currency_totals,
         spend: {
@@ -5505,10 +5607,22 @@ if (typeof window !== "undefined") window._withBook = _withBook;
         ],
         net_cash_operating: 10655.0, investing_activities: [], net_cash_investing: 0.0,
         financing_activities: [{ name: "Transferred to local entity", amount: -5000.0, activity_type: "financing" }],
-        net_cash_financing: -5000.0, net_change_in_cash: 5655.0, beginning_cash_balance: 24345.0, ending_cash_balance: 30000.0, is_reconciled: true,
+        net_cash_financing: -5000.0, net_change_in_cash: 5655.0, beginning_cash_balance: 24345.0, ending_cash_balance: 30000.0,
+        fiscal_year_adjustments: [], fiscal_year_adjustments_total: 0.0, unexplained_difference: 0.0, is_reconciled: true,
       };
     }
     if (_isMock()) {
+      // BI-1: a January 1 inside the range with an entered yearly opening that differs from the previous closing is an adjustment line
+      const adjustments = [];
+      (FinanceMockState.accounts || []).filter((a) => a.currency === (params.currency || "USD")).forEach((a) => {
+        (FinanceMockState._yearOpeningItems ? FinanceMockState._yearOpeningItems(a) : []).forEach((i) => {
+          const jan1 = `${i.fiscal_year}-01-01`;
+          if (i.entered && i.variance && params.date_from && params.date_to && params.date_from < jan1 && jan1 <= params.date_to) {
+            adjustments.push({ account_id: a.id, account_name: a.account_name, currency: a.currency, year: i.fiscal_year, amount: i.variance });
+          }
+        });
+      });
+      const adjustmentsTotal = adjustments.reduce((s, x) => s + x.amount, 0);
       return {
         report_title: "Statement of Cash Flows",
         entity: params.entity || "Voyance Health (Consolidated)",
@@ -5526,7 +5640,10 @@ if (typeof window !== "undefined") window._withBook = _withBook;
         net_cash_financing: 0.0,
         net_change_in_cash: 40000.0,
         beginning_cash_balance: 180000.0,
-        ending_cash_balance: 220000.0,
+        ending_cash_balance: 220000.0 + adjustmentsTotal,
+        fiscal_year_adjustments: adjustments,
+        fiscal_year_adjustments_total: adjustmentsTotal,
+        unexplained_difference: 0.0,
         is_reconciled: true,
       };
     }

@@ -1314,25 +1314,66 @@ function _fillFiscalYearSelect() {
   return sel;
 }
 
+const _FY_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+function _fillFiscalMonthSelect() {
+  const sel = document.getElementById("reportFiscalYearMonth");
+  if (!sel || sel.options.length) return sel;
+  const whole = document.createElement("option");
+  whole.value = "";
+  whole.textContent = "Whole year";
+  sel.appendChild(whole);
+  _FY_MONTHS.forEach((name, i) => {
+    const opt = document.createElement("option");
+    opt.value = String(i + 1);
+    opt.textContent = name;
+    sel.appendChild(opt);
+  });
+  return sel;
+}
+
+function _fiscalSourceBadge(source) {
+  if (source === "entered") return '<span class="fv-pill fv-pill--settled fy-source-badge" data-source="entered">Entered</span>';
+  if (source === "carried_forward") return '<span class="fv-pill fv-pill--waiting fy-source-badge" data-source="carried_forward">Carried forward</span>';
+  return "";
+}
+
 async function loadReportFiscalYear() {
   const loading = document.getElementById("reportFiscalYearLoadingBar");
   if (loading) loading.style.display = "block";
   const sel = _fillFiscalYearSelect();
+  const monthSel = _fillFiscalMonthSelect();
   const year = sel ? sel.value : String(new Date().getFullYear());
+  const month = monthSel ? monthSel.value : "";
   const fmt = (v, c) => (v === null || v === undefined ? "—" : FinanceFormat.formatMoney(Number(v), c));
 
   try {
-    const report = await FinanceApi.getFiscalYearSummaryReport({ year });
+    const report = await FinanceApi.getFiscalYearSummaryReport(month ? { year, month } : { year });
     const tbody = document.getElementById("reportFiscalYearTableBody");
     if (!tbody) return;
     tbody.innerHTML = "";
+    const note = document.getElementById("reportFiscalYearNote");
+    if (note && report.period) {
+      note.textContent = month
+        ? `${_FY_MONTHS[Number(month) - 1]} ${year} (${report.period.from} to ${report.period.to}). Opening is the previous month's closing (January: the year's opening). Money in and out include transfers between your own accounts, so each row reconciles.`
+        : `January to December ${year}. Opening is the balance at the start of the year: the entered yearly opening, or the previous year's closing when none is entered. Money in and out include transfers between your own accounts, so each row reconciles.`;
+    }
+    const banner = document.getElementById("reportFiscalYearWarnings");
+    if (banner) {
+      const ws = report.warnings || [];
+      banner.style.display = ws.length ? "" : "none";
+      banner.innerHTML = ws.map((w) => `<div class="fv-note fv-note--warn fy-warning" data-warning-type="${_escapeHtmlText(w.type)}">${_escapeHtmlText(w.message)} <a href="javascript:void(0)" class="fy-warning-link" onclick="openAccountYearOpeningsModal(${Number(w.account_id)})">Open yearly opening balances</a></div>`).join("");
+    }
     (report.accounts || []).forEach((a) => {
       const tr = document.createElement("tr");
       const notes = [];
       if (a.no_data) notes.push(`No data: account opens ${_escapeHtmlText(String(a.opening_balance_date || ""))}`);
+      if (a.opening_variance !== null && a.opening_variance !== undefined && Math.abs(a.opening_variance) > 0.005) notes.push(`Opening differs from the previous year's closing by ${FinanceFormat.formatMoney(a.opening_variance, a.currency)}`);
+      if (a.opening_note) notes.push(_escapeHtmlText(a.opening_note));
+      if (a.transactions_before_first_base) notes.push(`${a.transactions_before_first_base} transaction(s) dated before the first opening`);
       if (a.transactions_before_opening_date) notes.push(`${a.transactions_before_opening_date} transaction(s) dated before the opening date`);
       tr.innerHTML = `
-        <td data-label="Account">${_escapeHtmlText(a.account_name)}${a.is_active === false ? ' <span class="badge">closed</span>' : ""}${notes.length ? `<div class="helper">${notes.join(" · ")}</div>` : ""}</td>
+        <td data-label="Account">${_escapeHtmlText(a.account_name)} ${_fiscalSourceBadge(a.opening_source)}${a.is_active === false ? ' <span class="badge">closed</span>' : ""}${notes.length ? `<div class="helper">${notes.join(" · ")}</div>` : ""}</td>
         <td data-label="Country">${_escapeHtmlText(a.country || "—")}</td>
         <td data-label="Currency">${_escapeHtmlText(a.currency)}</td>
         <td class="cell-money" data-label="Opening">${fmt(a.opening, a.currency)}</td>
@@ -1379,8 +1420,9 @@ async function loadReportFiscalYear() {
 
 function exportFiscalYearExcel() {
   const year = document.getElementById("reportFiscalYear")?.value || String(new Date().getFullYear());
-  const url = FinanceApi.downloadExcelUrl("/api/finance/reports/fiscal-year-summary", { year });
-  triggerExcelDownload(url, `fiscal_year_${year}_summary.xlsx`);
+  const month = document.getElementById("reportFiscalYearMonth")?.value || "";
+  const url = FinanceApi.downloadExcelUrl("/api/finance/reports/fiscal-year-summary", month ? { year, month } : { year });
+  triggerExcelDownload(url, month ? `fiscal_year_${year}_${String(month).padStart(2, "0")}_summary.xlsx` : `fiscal_year_${year}_summary.xlsx`);
 }
 
 function exportBalancesExcel() {
@@ -1993,6 +2035,14 @@ async function loadReportCashFlow() {
         });
       }
 
+      const adjustments = data.fiscal_year_adjustments || [];
+      if (adjustments.length) {
+        rowsHtml += `
+        <tr class="cf-fiscal-adjustment" id="reportCfAdjustmentRow">
+          <td style="padding-left:32px;" title="${_esc(adjustments.map((x) => `${x.account_name} ${x.year}: ${FinanceFormat.formatMoney(x.amount, curr)}`).join("; "))}">Fiscal-year opening adjustments (entered yearly openings that differ from the previous year's closing)</td>
+          <td class="cell-money" style="text-align:right; font-weight:600;">${FinanceFormat.formatMoney(data.fiscal_year_adjustments_total || 0, curr)}</td>
+        </tr>`;
+      }
       rowsHtml += `
         <tr style="font-weight:700; background:rgba(37,99,235,0.08); border-top:2px solid #2563EB;">
           <td>Net Increase / (Decrease) in Cash and Cash Equivalents</td>
@@ -2005,6 +2055,14 @@ async function loadReportCashFlow() {
       `;
 
       tbody.innerHTML = rowsHtml;
+    }
+    const warn = document.getElementById("reportCfNotReconciled");
+    if (warn) {
+      const bad = data.is_reconciled === false;
+      warn.style.display = bad ? "" : "none";
+      warn.textContent = bad
+        ? `This statement does not reconcile: beginning cash plus the net change${(data.fiscal_year_adjustments || []).length ? " and the fiscal-year adjustments" : ""} differs from ending cash by ${FinanceFormat.formatMoney(data.unexplained_difference || 0, curr)}.`
+        : "";
     }
   } catch (err) {
     console.error("Failed to load Cash Flow report:", err);

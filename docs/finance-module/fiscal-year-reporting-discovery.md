@@ -64,3 +64,5 @@ Recommended: option 2, because you asked for a setting you can see and change.
 
 ## 6. Rollback
 Revert the PR. Nothing existing changes: the new endpoint and tab are additions (the balances report only gains two extra fields and an optional inactive-accounts switch).
+
+Findings F1, F4, F5 are handled by BI-1 (D-043); plan: `docs/finance-module/fiscal-year-opening-balances-plan.md`.

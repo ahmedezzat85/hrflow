@@ -7,6 +7,7 @@ from typing import List, Optional
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, asc
 
+from finance import year_openings
 from finance.models import LedgerTransactionDB, FinanceBankAccountDB
 
 
@@ -63,7 +64,9 @@ class LedgerRepository:
     def recalculate_account_running_balances(self, account_id: int, commit: bool = True) -> float:
         """
         Single source of truth continuous balance recomputation for an account.
-        Iterates chronologically (date ASC, id ASC) from opening_balance and commits.
+        Iterates chronologically (date ASC, id ASC) from the account's opening_balance. When yearly
+        openings are entered (BI-1, D-043) the running balance restarts at each entered opening, and
+        current_balance follows year_openings.current_balance_year. Commits unless commit=False.
         """
         bank_account = (
             self.db.query(FinanceBankAccountDB)
@@ -79,8 +82,14 @@ class LedgerRepository:
             .order_by(asc(LedgerTransactionDB.date), asc(LedgerTransactionDB.id))
             .all()
         )
+        openings = year_openings.load_account_openings(self.db, account_id)
         running = float(bank_account.opening_balance or 0.0)
+        base_year = None  # None = legacy base (the account's opening_balance)
         for tx in txs:
+            tx_base = year_openings.base_year_for(openings, int(tx.date[:4]))
+            if tx_base != base_year:
+                base_year = tx_base
+                running = float(openings[base_year])
             amt = float(tx.amount)
             if tx.direction == "in":
                 running += amt
@@ -88,6 +97,9 @@ class LedgerRepository:
                 running -= amt
             tx.running_balance = round(running, 4)
 
+        final_base = year_openings.base_year_for(openings, year_openings.current_year_for_balance(self.db, account_id))
+        if final_base != base_year:
+            running = float(openings[final_base])  # an entered opening later than the last transaction
         bank_account.current_balance = round(running, 4)
         if commit:
             self.db.commit()

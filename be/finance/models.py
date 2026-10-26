@@ -677,6 +677,25 @@ class AccountBalanceCheckpointDB(Base):
     account = relationship("FinanceBankAccountDB", backref="checkpoints")
 
 
+class FinanceAccountYearOpeningDB(Base):
+    """Owner-entered opening balance of an account for a fiscal year (calendar year), BI-1 / D-043.
+    The balance at the start of January 1, before that day's transactions. May be negative."""
+    __tablename__ = "finance_account_year_openings"
+    __table_args__ = (UniqueConstraint("account_id", "fiscal_year", name="uq_finance_account_year_opening"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="CASCADE"), nullable=False, index=True)
+    fiscal_year = Column(Integer, nullable=False)
+    opening_balance = Column(Float, nullable=False)
+    note = Column(Text, default="", nullable=False)
+    created_by = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_by = Column(String(255), nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    account = relationship("FinanceBankAccountDB", backref="year_openings")
+
+
 class ImportBatchDB(Base):
     """One committed bulk / historical import run (D-033). Dry runs write nothing and have no batch."""
     __tablename__ = "finance_import_batches"

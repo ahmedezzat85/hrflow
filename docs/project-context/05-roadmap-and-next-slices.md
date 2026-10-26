@@ -259,9 +259,9 @@ Plan: [../file-storage/26-file-storage-layout-plan.md](../file-storage/26-file-s
 
 ---
 
-## 3I. Employee Pay Analytics (D-037 accepted October 24, 2026; review fixes pending)
+## 3I. Employee Pay Analytics (D-037 accepted October 24, 2026; review fixes merged)
 
-Decisions D-037 (accepted), related Q-022 (Open). Backend merged to `main` (PR #48). Frontend merged to `main` (PR #49, `fbd3456`). Review fixes on branch `fix/pay-analytics-plan-order` (not merged). No migration.
+Decisions D-037 (accepted), related Q-022 (Open). Backend merged to `main` (PR #48). Frontend merged to `main` (PR #49, `fbd3456`). Review fixes (FE-6) merged to `main` (PR #50, `fix/pay-analytics-plan-order`). No migration.
 
 | Slice | Scope | Size | Depends on |
 | :--- | :--- | :--- | :--- |
@@ -274,24 +274,24 @@ Decisions D-037 (accepted), related Q-022 (Open). Backend merged to `main` (PR #
 | FE-2 | **Done, merged** (PR #49): analytics API client and permission-aware mock fixtures | S | BE-2 |
 | FE-3 | **Done, merged** (PR #49): summary, stacked chart with raise markers, plan history | M | FE-2 |
 | FE-4 | **Done, merged** (PR #49): monthly breakdown table and export menu | M | FE-3 |
-| FE-5 | Polish, dark mode, copy review, docs: merged in part (PR #49); review fixes FE-6 below | S | FE-4 |
-| FE-6 | Review fixes: sort `plan.changes` ascending (backend returns newest first), guard null effective date, HR-only "See raise history" link and detailed tooltips, regression tests. **In progress with Claude Code, not merged** | S | FE-4 |
+| FE-5 | Polish, dark mode, copy review, docs: merged (PR #49 and PR #50) | S | FE-4 |
+| FE-6 | Review fixes: sort `plan.changes` ascending (backend returns newest first), guard null effective date, HR-only "See raise history" link and detailed tooltips, regression tests. **Done, merged** (PR #50); a real-backend smoke test is not recorded | S | FE-4 |
 
-## 3J. HR Access to Compensation Plans (accepted October 24, 2026; not started)
+## 3J. HR Access to Compensation Plans (accepted October 24, 2026; implemented, merged)
 
-Decision D-038 (resolves Q-008). Needs its own approval and a branch before work starts. No migration, no new permission key.
+Decision D-038 (resolves Q-008). Implemented and merged to `main` (commit `47e22df`). No migration, no new permission key.
 
 | Slice | Scope | Size | Depends on |
 | :--- | :--- | :--- | :--- |
-| HP-1 | Backend: plan write routes accept `finance.payroll.prepare` or `hr.salary.write`; plan read routes accept `finance.payroll.read` or `hr.salary.read` (reuse `require_any_permission`). **Not started** | S | — |
-| HP-2 | Frontend: gate the Pay plan modal and its entry points by the same either-or rule. **Not started** | S | HP-1 |
-| HP-3 | Tests and docs. **Not started** | S | HP-1 |
+| HP-1 | Backend: plan write routes accept `finance.payroll.prepare` or `hr.salary.write`; plan read routes accept `finance.payroll.read` or `hr.salary.read` (reuse `require_any_permission`). **Done, merged** | S | — |
+| HP-2 | Frontend: gate the Pay plan modal and its entry points by the same either-or rule. **Done, merged** | S | HP-1 |
+| HP-3 | Tests and docs. **Done, merged** | S | HP-1 |
 
 Acceptance criteria: (1) HR-Admin can read and save a compensation plan and sees the Pay plan modal; (2) Payroll-Maker and Financial-Admin behave as before; (3) Super-Admin unchanged; (4) a user with neither key gets 403 on every plan route; (5) the router permission matrix and the route-guard inventory test pass; (6) no change to plan calculation, `salary_history` or raise behaviour (D-034, D-036).
 
 ---
 
-## 3K. Payroll Cutover Prerequisites (D-040, October 25, 2026; not started)
+## 3K. Payroll Cutover Prerequisites (D-040, October 25, 2026; FT-1, FX-1, SI-1 and FY-1 merged)
 
 Handoff for Claude Code written October 25, 2026 (Project: `claude/claude-code-handoff-payroll-cutover-prerequisites.md`; order A FT-1, B FX-1, C SI-1, D FY-1; FT-1 branch `feat/employee-tax-method`). Each slice needs its own approval and a branch from updated `main`. The cutover guide (Project: `claude/hrflow-historical-data-cutover-guide-2026-10-25.md`) is the operating procedure and is a draft.
 
@@ -299,11 +299,25 @@ Handoff for Claude Code written October 25, 2026 (Project: `claude/claude-code-h
 | :--- | :--- | :--- | :--- |
 | FT-1 | **Required before the 2025-2026 runs.** Employee-level tax method setting with dated history, like the insured base (`progressive` by default when no row exists, or `flat` with the rate stored on the row; 10% of gross incl. bonus and commission, no exemption, remitted with payroll tax on its own line; social insurance stays its own separate setting): table and migration, calculation incl. net-to-gross, line snapshot, employee form, tax payable totals and exports, tests. **Done: merged October 25, 2026 (PR #51)** | M | — |
 | FX-1 | Refuse a run that would use the silent 50.0 fallback rate: with no manual rate and no USD-to-EGP transfer the API now answers 400 and the statutory helper raises a blocking `MISSING_FX_RATE`; the payroll screen asks for the rate and blocks saving. `first_of_month` still falls back to the latest transfer of any date by owner decision (documented, test-pinned). **Done: merged October 25, 2026 (PR #52)** | S | — |
-| SI-1 | Effective-dated social insurance rates (Q-023). Needed only if the rate changes inside 2025-2026. **Built on `feat/payroll-si-rates-effective-dated` (D-041, design note `docs/finance-module/payroll-si-rates-effective-dated-plan.md`), awaiting review and merge** | S-M | Q-023 |
-| FY-1 | Fiscal year reporting: calendar year January to December (no start-month setting, owner decision), year selector, yearly summary per account and per category (opening, in, out, spend, closing). No year lock. **Built on `feat/fiscal-year-reporting` (D-042, note `docs/finance-module/fiscal-year-reporting-discovery.md`), awaiting review and merge** | S-M | — |
+| SI-1 | Effective-dated social insurance rates (Q-023). Needed only if the rate changes inside 2025-2026. **Done: merged October 25, 2026 (PR #55; D-041, design note `docs/finance-module/payroll-si-rates-effective-dated-plan.md`)** | S-M | Q-023 |
+| FY-1 | Fiscal year reporting: calendar year January to December (no start-month setting, owner decision), year selector, yearly summary per account and per category (opening, in, out, spend, closing). No year lock. **Done: merged October 25, 2026 (PR #56; D-042, note `docs/finance-module/fiscal-year-reporting-discovery.md`)** | S-M | — |
 | LJ-1 | Hire and leave dates used by the run generator, or an exclude-employee action that survives refresh. Optional. **Not started** | M | — |
 
 Acceptance criteria (FT-1): (1) an employee with flat 10% shows 10% tax and zero social insurance in preview and in the generated line; (2) bonus and commission are included in the taxed amount; (3) net-basis salary solves gross as net / 0.90; (4) the method has dated history per employee (a new row starts after the current one, the previous row is closed the day before) and a change dated in or before a finalized period is rejected; an employee can move from flat to progressive and the run for each period uses the row in force; (5) progressive-tax employees are unchanged; (6) the tax payable totals show the flat-tax amount on its own line.
+
+---
+
+## 3L. Fiscal-Year Opening Balances (D-043 accepted October 26, 2026; built, awaiting review)
+
+Decision D-043, related open question Q-024. Plan: `docs/finance-module/fiscal-year-opening-balances-plan.md`. Branch `feat/fiscal-year-opening-balances` (from `origin/main`). Risk class high (money logic, one new table and migration, no new permission key). Each slice stops for report and review.
+
+| Slice | Scope | Size | Depends on |
+| :--- | :--- | :--- | :--- |
+| BI-1a | Table and migration (`finance_account_year_openings`), resolver module, recalculation of running and current balances, `compute_balance`, CRUD API with audit log, route-guard inventory, backend tests. **Built on `feat/fiscal-year-opening-balances`, awaiting review (not merged)** | M | — |
+| BI-1b | Reports: point-in-time balances, cash flow (first-day fix, adjustments line, real reconciliation flag), yearly summary fields, warnings and month view, xlsx. **Built on `feat/fiscal-year-opening-balances`, awaiting review (not merged)** | M | BI-1a |
+| BI-1c | Frontend: yearly opening balances modal on accounts, month selector and warnings on the yearly summary, cash flow display, mock API, Playwright, real-backend smoke test. **Built on `feat/fiscal-year-opening-balances`, awaiting review (not merged)** | M | BI-1b |
+
+Acceptance criteria: see section 9 of the plan.
 
 ---
 
@@ -337,10 +351,8 @@ The following initiatives remain on hold until formally decided in [04-decision-
 
 | Item | Status | Source / gate |
 | :--- | :--- | :--- |
-| Employee Pay Analytics review fixes (FE-6) | In progress with Claude Code on `fix/pay-analytics-plan-order`; real-backend smoke test still to be done | Section 3I; handoff `claude-code-handoff-pay-analytics-fix-and-hr-plan-access.md` |
 | Q-022: typing and amount field of imported historical payroll lines | Open (owner) | `06`; gates historical payroll import |
-| HR access to compensation plans (HP-1 to HP-3) | Accepted, not started | Section 3J, D-038 |
-| Payroll cutover prerequisites: flat 10% tax method (FT-1, required before 2025-2026 runs), fiscal year reporting (FY-1), FX fallback warning (FX-1), effective-dated social insurance rate (SI-1) | Accepted; FT-1 and FX-1 done (PR #51, #52); SI-1 built on branch `feat/payroll-si-rates-effective-dated` (D-041, awaiting merge); FY-1 not started | Section 3K, D-040, Q-023 |
+| Fiscal-year opening balances (BI-1a, BI-1b, BI-1c) | In progress; branch `feat/fiscal-year-opening-balances`; BI-1a, BI-1b and BI-1c built, awaiting review and merge | Section 3L, D-043, Q-024 |
 | Payroll-Maker run-creation screen check (403 on account list) | Not done | D-039, Q-007 |
 
 ### Planned earlier, not done

@@ -392,11 +392,14 @@
                   <div class="fr-u58">
                     <label class="fr-u59" for="reportFiscalYear">Year:</label>
                     <select id="reportFiscalYear" class="form-input filter-select fr-u63" onchange="loadReportFiscalYear()"></select>
+                    <label class="fr-u59" for="reportFiscalYearMonth">Month:</label>
+                    <select id="reportFiscalYearMonth" class="form-input filter-select fr-u63" onchange="loadReportFiscalYear()"></select>
                     <button type="button" class="btn" id="reportFiscalYearExport" onclick="exportFiscalYearExcel()"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
                   </div>
                 </div>
               </div>
               <p class="helper" id="reportFiscalYearNote">January to December. Opening is the balance on 31 December of the year before. Money in and out include transfers between your own accounts, so each account matches the system.</p>
+              <div class="card hv-mb-16" id="reportFiscalYearWarnings" style="display:none;" role="status"></div>
               <div class="card">
                 <div class="section-loading-bar fr-u8" id="reportFiscalYearLoadingBar"><span></span></div>
                 <table class="responsive-card-table" id="reportFiscalYearTable">
@@ -846,6 +849,7 @@
                   <tbody id="reportCfTableBody"></tbody>
                 </table>
               </div>
+              <div class="card hv-mt-16 fv-note fv-note--warn" id="reportCfNotReconciled" style="display:none;" role="alert"></div>
             </div>
 
             <!-- PANE: AR Aging Report -->

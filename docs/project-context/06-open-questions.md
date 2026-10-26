@@ -2,7 +2,7 @@
 
 **Status:** Draft — needs owner decisions  
 **Last verified against:** `feature/rbac` at `c236b00cb6fea09cb3474cb8d5fbda66eb23135e` (equal to `main`)  
-**Last updated:** October 25, 2026 (Q-023 resolved by D-041; Q-007, Q-008, Q-009, Q-011, Q-012 resolved by D-038/D-039; Q-002 narrowed; Q-003 deferred; register reorganised: open and deferred questions first, resolved questions in an archive section)  
+**Last updated:** October 26, 2026 (Q-024 raised with D-043; October 25: Q-023 resolved by D-041; Q-007, Q-008, Q-009, Q-011, Q-012 resolved by D-038/D-039; Q-002 narrowed; Q-003 deferred; register reorganised: open and deferred questions first, resolved questions in an archive section)  
 **Branch note:** Q-006 to Q-013 were added on `feature/rbac`, which is now merged into `main` (verified October 24, 2026). On October 1, 2026 the owner approved the interim treatments for Q-006 to Q-009, Q-011 and Q-012 and resolved Q-010 as recommended; Q-013 was raised afterwards and approved on October 2, 2026.  
 **Authority:** Repository baseline and unreconciled owner-level questions  
 
@@ -31,6 +31,7 @@ This register tracks unresolved product, accounting, and technical architecture 
 | Q-005 | Legacy Google Sheets Export Retention | Open |
 | Q-006 | Restoring Archived Users | Open |
 | Q-022 | Historical Payroll Import Line Typing and Adjustment Amount Fields | Open (narrowed October 25, 2026: 2023-2024 payroll history deferred by D-040) |
+| Q-024 | May a Payment Exceed an Account's Balance (Overdraft)? | Open (raised October 26, 2026; decision needed only if an overdraft or credit-card account exists) |
 
 Everything else is resolved and kept in the archive section below.
 
@@ -143,6 +144,25 @@ Everything else is resolved and kept in the archive section below.
 - **Related References:**  
   - [04-decision-log.md](04-decision-log.md) (`D-037`)  
   - [05-roadmap-and-next-slices.md](05-roadmap-and-next-slices.md) (`3I`)  
+
+### Q-024 — May a Payment Exceed an Account's Balance (Overdraft)?
+- **Status:** Open. Raised October 26, 2026 with BI-1 (D-043). Decision needed only if an overdraft or credit-card account exists.
+- **Decider:** Owner
+- **Question:**
+  Should a payment be allowed to take an account below zero, and if so for which accounts?
+- **Why It Matters:**
+  `settlement_service` refuses any payment above `current_balance` on every account, while the attention queue treats a negative balance as an overdraft alert. With negative yearly opening balances allowed (D-043), an overdrawn account can exist but still cannot pay.
+- **Known Current Context:**
+  - The rule is unchanged by BI-1 and pinned by a test.
+- **Options:**
+  - Keep as is.
+  - Add a per-account "allow overdraft" setting.
+- **Decision Needed from Owner:**
+  Choose an option when an overdraft or credit-card account is introduced, then record it in [04-decision-log.md](04-decision-log.md).
+- **Related References:**
+  - [04-decision-log.md](04-decision-log.md) (`D-043`)
+  - [05-roadmap-and-next-slices.md](05-roadmap-and-next-slices.md) (`3L`)
+  - `docs/finance-module/fiscal-year-opening-balances-plan.md`
 
 ---
 

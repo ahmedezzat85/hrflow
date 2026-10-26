@@ -7,7 +7,9 @@ from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func, case
 
+from finance import year_openings
 from finance.models import (
+    FinanceAccountYearOpeningDB,
     FinanceBankAccountDB,
     LedgerTransactionDB,
     FinanceChequeDB,
@@ -90,7 +92,7 @@ class AccountsRepository:
         if "opening_balance" in data and data["opening_balance"] is not None:
             account.opening_balance = float(data["opening_balance"])
             if not self.has_transactions(account_id):
-                account.current_balance = float(data["opening_balance"])
+                account.current_balance = year_openings.current_balance(self.db, account)
         if "is_active" in data and data["is_active"] is not None:
             account.is_active = bool(data["is_active"])
         if data.get("book_id"):
@@ -107,20 +109,17 @@ class AccountsRepository:
 
     def compute_balance(self, account_id: int, as_of_date: Optional[str] = None) -> float:
         """
-        Calculates balance as opening_balance + signed sum of transactions up to as_of_date.
-        Transactions with direction == 'in' are added; direction == 'out' are subtracted.
+        Balance on as_of_date (or the current balance when omitted) from the base of the fiscal year
+        (BI-1, D-043): the latest entered yearly opening, else the account's opening_balance, plus the
+        signed sum of transactions from the base start. Direction 'in' adds; 'out' subtracts.
         """
         account = self.get_by_id(account_id)
         if not account:
             raise ValueError(f"Account {account_id} not found")
 
-        query = self.db.query(LedgerTransactionDB).filter(LedgerTransactionDB.account_id == account_id)
         if as_of_date:
-            query = query.filter(LedgerTransactionDB.date <= as_of_date)
-
-        txs = query.all()
-        signed_sum = sum(tx.amount if tx.direction == "in" else -tx.amount for tx in txs)
-        return round(account.opening_balance + signed_sum, 4)
+            return year_openings.balance_as_of(self.db, account, as_of_date)
+        return year_openings.current_balance(self.db, account)
 
     def recalculate_and_sync_current_balance(self, account_id: int) -> float:
         """
@@ -234,6 +233,72 @@ class AccountsRepository:
             },
             "balance_as_of": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
         }
+
+    # ------------------------------------------------------------------
+    # Fiscal-year opening balances (BI-1, D-043)
+    # ------------------------------------------------------------------
+    def list_year_openings(self, account_id: int) -> List[FinanceAccountYearOpeningDB]:
+        return (
+            self.db.query(FinanceAccountYearOpeningDB)
+            .filter(FinanceAccountYearOpeningDB.account_id == account_id)
+            .order_by(FinanceAccountYearOpeningDB.fiscal_year.asc())
+            .all()
+        )
+
+    def get_year_opening(self, account_id: int, fiscal_year: int) -> Optional[FinanceAccountYearOpeningDB]:
+        return (
+            self.db.query(FinanceAccountYearOpeningDB)
+            .filter(FinanceAccountYearOpeningDB.account_id == account_id, FinanceAccountYearOpeningDB.fiscal_year == fiscal_year)
+            .first()
+        )
+
+    def upsert_year_opening(self, account_id: int, fiscal_year: int, opening_balance: float, note: str, user: Optional[str]) -> FinanceAccountYearOpeningDB:
+        """Creates or updates the row; the caller recalculates balances and commits (one transaction)."""
+        row = self.get_year_opening(account_id, fiscal_year)
+        now = datetime.utcnow()
+        if row is None:
+            row = FinanceAccountYearOpeningDB(
+                account_id=account_id, fiscal_year=fiscal_year, created_by=user, created_at=now,
+            )
+            self.db.add(row)
+        row.opening_balance = float(opening_balance)
+        row.note = note
+        row.updated_by = user
+        row.updated_at = now
+        self.db.flush()
+        return row
+
+    def delete_year_opening(self, row: FinanceAccountYearOpeningDB) -> None:
+        self.db.delete(row)
+        self.db.flush()
+
+    def count_transactions_before(self, account_id: int, date_exclusive: str) -> int:
+        return (
+            self.db.query(func.count(LedgerTransactionDB.id))
+            .filter(LedgerTransactionDB.account_id == account_id, LedgerTransactionDB.date < date_exclusive)
+            .scalar()
+            or 0
+        )
+
+    def activity_year_range(self, account_id: int) -> Optional[tuple]:
+        lo, hi = (
+            self.db.query(func.min(LedgerTransactionDB.date), func.max(LedgerTransactionDB.date))
+            .filter(LedgerTransactionDB.account_id == account_id)
+            .one()
+        )
+        return (int(lo[:4]), int(hi[:4])) if lo else None
+
+    def closed_reconciliation_months_by_year(self, account_id: int) -> Dict[int, int]:
+        rows = (
+            self.db.query(BankStatementImportDB.period_month)
+            .filter(BankStatementImportDB.account_id == account_id, BankStatementImportDB.status == "closed")
+            .all()
+        )
+        counts: Dict[int, int] = {}
+        for (period,) in rows:
+            if period:
+                counts[int(period[:4])] = counts.get(int(period[:4]), 0) + 1
+        return counts
 
     # ------------------------------------------------------------------
     # Balance checkpoints (D-028)

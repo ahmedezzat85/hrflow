@@ -329,6 +329,7 @@ def get_point_in_time_balances(
 @router.get("/fiscal-year-summary")
 def get_fiscal_year_summary(
     year: int = Query(..., ge=1990, le=2100, description="Calendar year (January to December)"),
+    month: Optional[int] = Query(None, ge=1, le=12, description="Optional month (1 to 12); omitted = the whole year"),
     format: str = Query("json", pattern="^(json|xlsx)$"),
     book: Optional[str] = Query(None, description="Book view: local | overseas | consolidated. Omitted = every account (legacy)."),
     service: ReportsService = Depends(get_reports_service),
@@ -337,13 +338,14 @@ def get_fiscal_year_summary(
     """
     Yearly summary: per account opening, money in, money out and closing; company spend per category and currency.
     """
-    data = service.get_fiscal_year_summary(year=year, book=book)
+    data = service.get_fiscal_year_summary(year=year, book=book, month=month)
 
     if format == "xlsx":
+        suffix = f"_{month:02d}" if month else ""
         return Response(
             content=export_fiscal_year_summary_xlsx(data),
             media_type=XLSX_MIME,
-            headers={"Content-Disposition": f'attachment; filename="fiscal_year_{year}_summary.xlsx"'},
+            headers={"Content-Disposition": f'attachment; filename="fiscal_year_{year}{suffix}_summary.xlsx"'},
         )
 
     return data

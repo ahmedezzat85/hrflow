@@ -39,6 +39,45 @@
       { id: 1, account_id: 5, date: "2026-09-30", balance: 31250.0, note: "From the overseas bank portal", has_attachment: false, attachment_name: null, created_by: "admin@voyance.health" },
     ];
   }
+  // Fiscal-year opening balances (BI-1, D-043). The mock has no ledger: every mock year moves the balance by a fixed
+  // amount (in 3600, out 2400), so previous closings and carried-forward openings are deterministic.
+  const MOCK_YEAR_IN = 3600.0;
+  const MOCK_YEAR_OUT = 2400.0;
+  const MOCK_FIRST_YEAR = 2023;
+  if (!FinanceMockState.accountYearOpenings) {
+    FinanceMockState.accountYearOpenings = [
+      { account_id: 1, fiscal_year: new Date().getFullYear(), opening_balance: 120000.0, note: "From the January bank statement", updated_by: "admin@voyance.health", updated_at: "2026-10-26T09:00:00Z" },
+    ];
+  }
+  const _yearOpeningItems = (acc) => {
+    const rows = (FinanceMockState.accountYearOpenings || []).filter((r) => r.account_id === acc.id);
+    const currentYear = new Date().getFullYear();
+    const items = [];
+    let previousClosing = Number(acc.opening_balance || 0);
+    let seenEntered = false;
+    for (let y = MOCK_FIRST_YEAR; y <= currentYear; y++) {
+      const row = rows.find((r) => r.fiscal_year === y);
+      if (row) seenEntered = true;
+      const opening = row ? Number(row.opening_balance) : previousClosing;
+      items.push({
+        fiscal_year: y,
+        entered: !!row,
+        opening,
+        source: row ? "entered" : (seenEntered ? "carried_forward" : "account_opening"),
+        previous_closing: previousClosing,
+        variance: row ? round(opening - previousClosing) : null,
+        note: row ? (row.note || "") : null,
+        updated_by: row ? row.updated_by : null,
+        updated_at: row ? row.updated_at : null,
+        closed_reconciliation_months: 0,
+      });
+      previousClosing = opening + MOCK_YEAR_IN - MOCK_YEAR_OUT;
+    }
+    return items;
+  };
+  FinanceMockState._yearOpeningItems = _yearOpeningItems;
+  FinanceMockState.MOCK_YEAR_FLOWS = { money_in: MOCK_YEAR_IN, money_out: MOCK_YEAR_OUT };
+
   const _checkpointView = (cp) => {
     const acc = FinanceMockState.accounts.find((a) => a.id === cp.account_id);
     const computed = acc ? Number(acc.current_balance || 0) : 0;
@@ -276,6 +315,41 @@
       return _checkpointView(cp);
     }
     return apiRequest("POST", `/api/finance/accounts/${accountId}/checkpoints`, payload);
+  },
+  async getAccountYearOpenings(accountId) {
+    if (_isMock()) {
+      const acc = FinanceMockState.accounts.find((a) => a.id === parseInt(accountId, 10));
+      if (!acc) throw new Error("Account not found");
+      return { account_id: acc.id, currency: acc.currency, transactions_before_first_base: 0, items: _yearOpeningItems(acc) };
+    }
+    return apiRequest("GET", `/api/finance/accounts/${accountId}/year-openings`);
+  },
+  async setAccountYearOpening(accountId, year, payload) {
+    if (_isMock()) {
+      const acc = FinanceMockState.accounts.find((a) => a.id === parseInt(accountId, 10));
+      if (!acc) throw new Error("Account not found");
+      const y = parseInt(year, 10);
+      if (y < 2000 || y > new Date().getFullYear() + 1) throw new Error(`fiscal_year must be between 2000 and ${new Date().getFullYear() + 1}`);
+      const rows = FinanceMockState.accountYearOpenings;
+      const existing = rows.find((r) => r.account_id === acc.id && r.fiscal_year === y);
+      const row = existing || { account_id: acc.id, fiscal_year: y };
+      Object.assign(row, { opening_balance: Number(payload.opening_balance), note: (payload.note || "").trim(), updated_by: "admin@voyance.health", updated_at: new Date().toISOString() });
+      if (!existing) rows.push(row);
+      return _yearOpeningItems(acc).find((i) => i.fiscal_year === y) || { fiscal_year: y, entered: true, opening: row.opening_balance, source: "entered", previous_closing: 0, variance: row.opening_balance, note: row.note };
+    }
+    return apiRequest("PUT", `/api/finance/accounts/${accountId}/year-openings/${year}`, payload);
+  },
+  async deleteAccountYearOpening(accountId, year) {
+    if (_isMock()) {
+      const acc = FinanceMockState.accounts.find((a) => a.id === parseInt(accountId, 10));
+      if (!acc) throw new Error("Account not found");
+      const y = parseInt(year, 10);
+      const idx = FinanceMockState.accountYearOpenings.findIndex((r) => r.account_id === acc.id && r.fiscal_year === y);
+      if (idx < 0) throw new Error(`No entered opening balance for ${y}`);
+      FinanceMockState.accountYearOpenings.splice(idx, 1);
+      return _yearOpeningItems(acc).find((i) => i.fiscal_year === y);
+    }
+    return apiRequest("DELETE", `/api/finance/accounts/${accountId}/year-openings/${year}`);
   },
   async deleteAccount(id) {
     if (_isMock()) {

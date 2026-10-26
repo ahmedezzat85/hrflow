@@ -441,7 +441,8 @@ def export_fiscal_year_summary_xlsx(report: Dict[str, Any]) -> bytes:
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Accounts"
-    ws.cell(row=1, column=1, value=f"HRFlow — Fiscal Year {report.get('year')} Summary").font = TITLE_FONT
+    period_label = f"{report.get('year')}-{int(report['month']):02d}" if report.get("month") else f"Fiscal Year {report.get('year')}"
+    ws.cell(row=1, column=1, value=f"HRFlow — {period_label} Summary").font = TITLE_FONT
     ws.cell(row=2, column=1, value=(
         f"{report.get('date_from')} to {report.get('date_to')} · opening as of {report.get('opening_as_of')}, "
         f"closing as of {report.get('closing_as_of')}. Money in and out include transfers between own accounts."
@@ -456,7 +457,7 @@ def export_fiscal_year_summary_xlsx(report: Dict[str, Any]) -> bytes:
         c = sheet.cell(row=row, column=col, value=value)
         c.font, c.border, c.alignment, c.number_format = CELL_FONT, THIN_BORDER, Alignment(horizontal="right"), NUM_FORMAT_CURRENCY
 
-    header(ws, 4, ["Account", "Country", "Currency", "Opening", "Money in", "Money out", "Closing", "Note"])
+    header(ws, 4, ["Account", "Country", "Currency", "Opening", "Money in", "Money out", "Closing", "Note", "Opening source", "Difference from previous closing"])
     r = 5
     for a in report.get("accounts", []):
         ws.cell(row=r, column=1, value=a.get("account_name")).font = CELL_FONT
@@ -471,9 +472,19 @@ def export_fiscal_year_summary_xlsx(report: Dict[str, Any]) -> bytes:
                 money(ws, r, col, float(a.get(key) or 0.0))
             n = a.get("transactions_before_opening_date") or 0
             note = f"{n} transaction(s) dated before the opening date" if n else ""
+        if a.get("opening_note"):
+            note = (note + "; " if note else "") + str(a.get("opening_note"))
         ws.cell(row=r, column=8, value=note).font = CELL_FONT
+        ws.cell(row=r, column=9, value={"entered": "Entered", "carried_forward": "Carried forward", "previous_month": "Previous month closing"}.get(a.get("opening_source"), a.get("opening_source") or "")).font = CELL_FONT
+        if a.get("opening_variance") is not None:
+            money(ws, r, 10, float(a["opening_variance"]))
         r += 1
     r += 1
+    for w in report.get("warnings") or []:
+        ws.cell(row=r, column=1, value=f"Warning: {w.get('message')}").font = SUBTITLE_FONT
+        r += 1
+    if report.get("warnings"):
+        r += 1
     ws.cell(row=r, column=1, value="Totals per currency").font = TOTAL_FONT
     r += 1
     header(ws, r, ["Currency", "", "", "Opening", "Money in", "Money out", "Closing"])
@@ -486,7 +497,7 @@ def export_fiscal_year_summary_xlsx(report: Dict[str, Any]) -> bytes:
     _auto_fit_columns(ws)
 
     sp = wb.create_sheet("Spend by category")
-    sp.cell(row=1, column=1, value=f"Company spend {report.get('year')} (own-account transfers within the same country excluded)").font = TITLE_FONT
+    sp.cell(row=1, column=1, value=f"Company spend {period_label.replace('Fiscal Year ', '')} (own-account transfers within the same country excluded)").font = TITLE_FONT
     header(sp, 3, ["Currency", "Category", "Transactions", "Spend", "% of spend"])
     r = 4
     for cur, block in (report.get("spend") or {}).items():
