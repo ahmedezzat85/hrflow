@@ -978,8 +978,33 @@
       }
     },
 
+    // HP-1: historical periods list every employee left off the run, with the reason.
+    drawHistoricalNote() {
+      const panel = document.getElementById('p2HistoricalPanel');
+      if (!panel) return;
+      const src = (this.currentRun && this.currentRun.id) ? this.currentRun : this.currentPreview;
+      if (!src || !src.historical_period) { panel.hidden = true; panel.innerHTML = ''; return; }
+      const reasons = {
+        NO_PLAN_IN_PERIOD: 'No compensation plan in this period',
+        JOINED_AFTER_PERIOD: 'Joined after this period',
+      };
+      const skipped = Array.isArray(src.skipped_employees) ? src.skipped_employees : [];
+      panel.innerHTML = `
+        <span class="payroll-historical-badge" id="p2HistoricalBadge"><i class="fa-solid fa-clock-rotate-left"></i> Historical period</span>
+        <span class="payroll-historical-hint">Employees are picked by their compensation plan dates, whatever their status today.</span>
+        ${skipped.length ? `
+        <details class="payroll-historical-skipped" id="p2SkippedDetails">
+          <summary>Skipped employees (${skipped.length})</summary>
+          <ul id="p2SkippedList">
+            ${skipped.map(s => `<li data-employee-id="${escapeHtml(s.employee_id)}"><strong>${escapeHtml(s.employee_name)}</strong> <span>${escapeHtml(reasons[s.reason] || s.reason)}</span></li>`).join('')}
+          </ul>
+        </details>` : ''}`;
+      panel.hidden = false;
+    },
+
     drawScreen2() {
       this.drawReadiness();
+      this.drawHistoricalNote();
       this.drawStats();
       this.drawTable();
       const p2ApproveBtn = document.getElementById('btnP2Approve');

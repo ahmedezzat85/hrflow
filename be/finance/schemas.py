@@ -2179,6 +2179,13 @@ class PayrollExceptionItem(BaseModel):
     is_resolved: bool = False
 
 
+class PayrollSkippedEmployee(BaseModel):
+    """HP-1: an employee left off a historical run, with why (NO_PLAN_IN_PERIOD | JOINED_AFTER_PERIOD)."""
+    employee_id: int
+    employee_name: str
+    reason: str
+
+
 class PayrollVarianceSummary(BaseModel):
     prior_period_label: Optional[str] = None
     headcount_delta: int = 0
@@ -2463,6 +2470,8 @@ class PayrollRunPreviewResponse(BaseModel):
     change_amount: float = 0.0
     has_blocking_exceptions: bool = False
     exceptions: List[PayrollExceptionItem] = []
+    historical_period: bool = False
+    skipped_employees: List[PayrollSkippedEmployee] = []
     variance_summary: Optional[PayrollVarianceSummary] = None
     lines: List[PayrollLineResponse] = []
     recipients: List[PayrollRecipientPreview] = []
@@ -2528,6 +2537,8 @@ class PayrollRunResponse(BaseModel):
     journal_transaction_id: Optional[int] = None
     has_blocking_exceptions: bool = False
     exceptions: List[PayrollExceptionItem] = []
+    historical_period: bool = False
+    skipped_employees: List[PayrollSkippedEmployee] = []
     variance_summary: Optional[PayrollVarianceSummary] = None
     lines: List[PayrollLineResponse] = []
     adjustments: List[PayrollAdjustmentResponse] = []

@@ -32,6 +32,7 @@ from finance.models import (
 )
 from finance.schemas import PayrollAdjustmentCreate, PayrollAdjustmentUpdate
 from finance.repositories.compensation_plan_repository import CompensationPlanRepository
+from finance import payroll_eligibility
 from repositories.social_insurance_repository import SocialInsuranceRepository
 from repositories.tax_method_repository import TaxMethodRepository
 from finance.services.payroll_calculation_helper import validate_and_calculate_internal_statutory
@@ -519,15 +520,27 @@ class PayrollService:
         Constructs line snapshots, readiness exceptions (including MISSING_BANK_DETAILS),
         invokes statutory validation/calculation, and calculates aggregate totals.
         """
-        employees = (
-            self.db.query(EmployeeDB)
-            .filter(EmployeeDB.status.ilike("active"))
-            .order_by(EmployeeDB.name.asc())
-            .all()
-        )
+        # HP-1 (D-045): a historical period takes every employee whose plan and join date fit the period,
+        # whatever their status today; the others are returned as skipped_employees, never dropped silently.
+        historical = payroll_eligibility.is_historical_period(period_end)
+        candidates = self.db.query(EmployeeDB)
+        if not historical:
+            candidates = candidates.filter(EmployeeDB.status.ilike("active"))
+        employees = candidates.order_by(EmployeeDB.name.asc()).all()
 
         comp_repo = CompensationPlanRepository(self.db)
-        if missing_plan_mode == "error":
+        skipped_employees: List[Dict[str, Any]] = []
+        if historical:
+            included = []
+            for emp in employees:
+                has_plan = bool(comp_repo.get_components_for_period(emp.id, period_start, period_end))
+                reason = payroll_eligibility.historical_skip_reason(has_plan, emp.join_date, period_end)
+                if reason:
+                    skipped_employees.append({"employee_id": emp.id, "employee_name": emp.name, "reason": reason})
+                else:
+                    included.append(emp)
+            employees = included
+        elif missing_plan_mode == "error":
             missing_plans = []
             for emp in employees:
                 comps = comp_repo.get_components_for_period(emp.id, period_start, period_end)
@@ -793,6 +806,8 @@ class PayrollService:
 
         return {
             "employees": employees,
+            "historical_period": historical,
+            "skipped_employees": skipped_employees,
             "lines": lines,
             "recipients": recipients,
             "exceptions": exceptions,
@@ -939,6 +954,8 @@ class PayrollService:
             "change_amount": net_delta,
             "has_blocking_exceptions": has_blocking,
             "exceptions": exceptions,
+            "historical_period": snapshot_data["historical_period"],
+            "skipped_employees": snapshot_data["skipped_employees"],
             "variance_summary": variance_summary,
             "lines": lines,
             "recipients": recipients,
@@ -1317,6 +1334,8 @@ class PayrollService:
             "joiners_count": max(0, len(employees) - (prior_run.headcount if prior_run else len(employees))),
             "leavers_count": max(0, (prior_run.headcount if prior_run else len(employees)) - len(employees)),
             "raises_count": 0,
+            "historical_period": snapshot_data["historical_period"],
+            "skipped_employees": snapshot_data["skipped_employees"],
         }
 
         source_version = self._generate_source_version(
@@ -1453,7 +1472,11 @@ class PayrollService:
             submitted_by=user_email if submit_for_approval else None,
             submitted_at=datetime.utcnow() if submit_for_approval else None,
             exceptions_json=json.dumps(preview["exceptions"]),
-            variance_summary_json=json.dumps(preview["variance_summary"]),
+            variance_summary_json=json.dumps({
+                **preview["variance_summary"],
+                "historical_period": preview.get("historical_period", False),
+                "skipped_employees": preview.get("skipped_employees", []),
+            }),
         )
         self.db.add(run)
         self.db.flush()
@@ -1764,6 +1787,13 @@ class PayrollService:
         self.db.flush()
 
         run.exceptions_json = json.dumps(snapshot_data["exceptions"])
+        try:
+            variance = json.loads(run.variance_summary_json or "{}")
+        except Exception:
+            variance = {}
+        variance["historical_period"] = snapshot_data["historical_period"]
+        variance["skipped_employees"] = snapshot_data["skipped_employees"]
+        run.variance_summary_json = json.dumps(variance)
         run.fx_rate_value = resolved_fx
         run.tax_settings_version_id = snapshot_data.get("tax_settings_version_id")
         run.preview_version = (run.preview_version or 1) + 1
@@ -2430,6 +2460,8 @@ class PayrollService:
             var = json.loads(run.variance_summary_json or "{}")
         except Exception:
             var = {}
+        summary["historical_period"] = bool(var.pop("historical_period", False))
+        summary["skipped_employees"] = var.pop("skipped_employees", [])
         summary["variance_summary"] = var
         summary["lines"] = [self._format_line_dict(l) for l in run.lines]
         summary["payment_line_count"] = len(run.lines)

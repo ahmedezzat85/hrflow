@@ -2025,6 +2025,56 @@
   color: var(--text);
 }
 
+#a-finance-payroll .payroll-historical {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--info-soft);
+  color: var(--text);
+}
+
+#a-finance-payroll .payroll-historical[hidden] {
+  display: none;
+}
+
+#a-finance-payroll .payroll-historical-badge {
+  font-weight: 700;
+  color: var(--info);
+}
+
+#a-finance-payroll .payroll-historical-hint {
+  font-size: var(--fs-md);
+  color: var(--text-muted);
+}
+
+#a-finance-payroll .payroll-historical-skipped {
+  flex-basis: 100%;
+  font-size: var(--fs-md);
+}
+
+#a-finance-payroll .payroll-historical-skipped summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+#a-finance-payroll .payroll-historical-skipped ul {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+#a-finance-payroll .payroll-historical-skipped li span {
+  color: var(--text-muted);
+  margin-left: 8px;
+}
+
 /* Step 5 payments table: External and Internal keep the colours of the two rail cards. */
 #a-finance-payroll #payrollDisburseResultsTable thead .payroll-col-ext,
 #a-finance-payroll #payrollDisburseResultsTable tfoot .payroll-col-ext {

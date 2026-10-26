@@ -499,6 +499,15 @@
           });
         }
 
+        // HP-1: a period that ended before the first of the current month is historical; the mock skips two employees
+        const periodEndText = payload.period_end || `${periodLabel}-30`;
+        const firstOfThisMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+        const isHistorical = new Date(`${periodEndText}T00:00:00`) < firstOfThisMonth;
+        const skippedEmployees = isHistorical ? [
+          { employee_id: 7, employee_name: "Omar Planless", reason: "NO_PLAN_IN_PERIOD" },
+          { employee_id: 8, employee_name: "Maya Newhire", reason: "JOINED_AFTER_PERIOD" },
+        ] : [];
+
         const prevObj = {
           preview_id: previewId,
           preview_version: 1,
@@ -530,6 +539,8 @@
           change_amount: round(totalNet - 27000.0),
           has_blocking_exceptions: hasBlocking,
           exceptions: exceptions,
+          historical_period: isHistorical,
+          skipped_employees: skippedEmployees,
           variance_summary: {
             prior_period_label: "2026-08",
             headcount_delta: 0,
@@ -694,6 +705,8 @@
           created_by: "admin@voyance.health",
           has_blocking_exceptions: prev.has_blocking_exceptions,
           exceptions: prev.exceptions,
+          historical_period: prev.historical_period,
+          skipped_employees: prev.skipped_employees,
           variance_summary: prev.variance_summary,
           lines: prev.lines.map((l, idx) => ({ ...l, id: idx + 1, payroll_run_id: (FinanceMockState.payrollRuns || []).length + 1 })),
         };
@@ -749,6 +762,8 @@
           paid_by: null,
           has_blocking_exceptions: prev.has_blocking_exceptions,
           exceptions: prev.exceptions,
+          historical_period: prev.historical_period,
+          skipped_employees: prev.skipped_employees,
           variance_summary: prev.variance_summary,
           lines: prev.lines.map((l, idx) => ({ ...l, id: idx + 10, payroll_run_id: runId })),
         };
@@ -774,6 +789,8 @@
         });
         run.exceptions = prev.exceptions;
         run.has_blocking_exceptions = prev.has_blocking_exceptions;
+        run.historical_period = prev.historical_period;
+        run.skipped_employees = prev.skipped_employees;
         return run;
       }
       return apiRequest("POST", `/api/finance/payroll/runs/${runId}/refresh`);

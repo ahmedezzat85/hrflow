@@ -267,6 +267,8 @@ def payroll_env(db_session):
 def _flat_then_progressive_employee(db_session):
     emp = _employee(db_session, "run@taxmethodtest.com")
     db_session.query(EmployeeDB).filter(EmployeeDB.id != emp.id).update({"status": "Inactive"})
+    # HP-1: past periods take every employee with a plan, so isolation also means no plans for the others
+    db_session.query(EmployeeCompensationPlanDB).filter(EmployeeCompensationPlanDB.employee_id != emp.id).delete()
     db_session.add(EmployeeCompensationPlanDB(employee_id=emp.id, component_type="internal_usd_cash", amount=2000.0,
                                                salary_basis="NET", effective_start_date="2023-01-01"))
     db_session.add(EmployeeTaxMethodDB(employee_id=emp.id, method="flat", flat_rate=0.10,
