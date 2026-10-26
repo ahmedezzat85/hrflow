@@ -52,6 +52,7 @@ coverage.xml
 test-results/
 playwright-report/
 cover/
+Claude outputs/
 
 # Translations
 *.mo
