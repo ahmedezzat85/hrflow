@@ -70,10 +70,17 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-  frontend:
-    name: Frontend build and tests (Node 22)
+  frontend-tests:
+    # The UI suite is the slow part (about 10 minutes on one runner), so it is split into 4 shards that run at the same
+    # time. The three required check names are unchanged: "Frontend build and tests (Node 22)" below waits for every
+    # shard, and the quality gate fails if any shard fails.
+    name: Frontend UI tests (shard ${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     defaults:
       run:
         working-directory: fe
@@ -111,20 +118,51 @@ jobs:
           };
           EOF
 
-      - name: Run frontend tests
-        run: npm test
-
-      - name: Build frontend
-        run: npm run build
+      - name: Run frontend tests (shard ${{ matrix.shard }}/4)
+        run: npx playwright test --shard=${{ matrix.shard }}/4
 
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-shard-${{ matrix.shard }}
           path: fe/playwright-report
           if-no-files-found: ignore
           retention-days: 14
+
+  frontend:
+    name: Frontend build and tests (Node 22)
+    needs: frontend-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: fe
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: fe/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Create CI runtime config
+        run: |
+          cat > config.js <<'EOF'
+          window.HRFLOW_CONFIG = {
+            API_BASE_URL: "http://localhost:5000",
+            GOOGLE_CLIENT_ID: "ci-placeholder.apps.googleusercontent.com"
+          };
+          EOF
+
+      - name: Build frontend
+        run: npm run build
 
       - name: Upload frontend build
         uses: actions/upload-artifact@v4
@@ -137,15 +175,18 @@ jobs:
   quality-gate:
     name: Finance UX quality gate
     if: always()
-    needs: [backend, frontend]
+    needs: [backend, frontend-tests, frontend]
     runs-on: ubuntu-latest
     steps:
       - name: Enforce successful verification
         env:
           BACKEND_RESULT: ${{ needs.backend.result }}
+          FRONTEND_TESTS_RESULT: ${{ needs.frontend-tests.result }}
           FRONTEND_RESULT: ${{ needs.frontend.result }}
         run: |
           echo "Backend: $BACKEND_RESULT"
+          echo "Frontend UI tests: $FRONTEND_TESTS_RESULT"
           echo "Frontend: $FRONTEND_RESULT"
           test "$BACKEND_RESULT" = "success"
+          test "$FRONTEND_TESTS_RESULT" = "success"
           test "$FRONTEND_RESULT" = "success"
