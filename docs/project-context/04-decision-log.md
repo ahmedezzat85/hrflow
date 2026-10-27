@@ -542,6 +542,14 @@ This document records durable product and architectural decisions approved by th
 - **Rationale:** The owner can set leavers Inactive without losing their historical months and without deleting lines by hand when entering 2025 and 2026 payroll. The plan-based inference is interim; EA-1/LJ-1 (employment periods, owner choice E2) later replace it with real employment periods and do not conflict with it.
 - **Related References:** [05-roadmap-and-next-slices.md](05-roadmap-and-next-slices.md) (`3M`, `HP-1`); `docs/finance-module/hp-1-historical-payroll-eligibility-plan.md`; D-040.
 
+### D-046 — Pay Has One Stored Source: the Compensation Plan (PAY-1)
+
+- **Status:** Accepted by owner, October 27, 2026; implemented on `refactor/pay-single-source`, awaiting review and merge.
+- **Decision:** (1) `finance_employee_compensation_plans` is the only stored source of pay amounts. (2) The columns `employees.salary`, `internal_salary_usd`, `external_salary_usd` and `salary_history.previous_salary`, `new_salary` are dropped (migration `0048_pay_single_source`). (3) The API keeps the same field names; employee pay is derived from the plan rows in force today (`finance/current_pay.py`) and history totals are internal plus external. (4) `salary_history` stays as an append-only log of pay-change events (reason, author, percentage, date), written in the same transaction as the plan change; it is never a source of amounts. (5) The migration writes nothing to the plan table and logs any old amount that differs from the plan; `scripts/check_pay_columns.py` shows the same list before upgrading. (6) The script that copied the old columns into plans is removed.
+- **Rationale:** A plan corrected directly in the database did not show in the app because the same pay was stored three times and only the app kept the copies in step. No payroll data existed yet, so the change was cheap now. The history log is kept because it holds what the plan cannot (reason, author, one event per raise).
+- **Not in this change:** removal of the dormant Sheets and dual-write repositories (separate slice).
+- **Related References:** `docs/finance-module/pay-single-source-plan.md`; D-034, D-036, D-040.
+
 ## Related but Not Decisions
 
 The following items are established architectural baseline rules or future roadmaps rather than standalone decision entries:

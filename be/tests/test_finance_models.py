@@ -215,7 +215,6 @@ def test_payroll_run_and_cross_domain_employee_line(db_session):
         email="elena.rostova@voyance.internal",
         role="employee",
         dept="Engineering",
-        salary=6000.0,
     )
     db_session.add(emp)
     db_session.commit()

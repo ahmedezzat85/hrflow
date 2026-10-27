@@ -20,6 +20,7 @@ from models_db import EmployeeDB
 from finance.models import EmployeeCompensationPlanDB, PayrollRunDB
 from finance.repositories.compensation_plan_repository import CompensationPlanRepository
 from employee_test_helpers import PERSONAL, set_pay
+from pay_test_helpers import pay_of
 
 
 def _create_test_employee(email_suffix="comp"):
@@ -31,9 +32,6 @@ def _create_test_employee(email_suffix="comp"):
             role="employee",
             dept="Engineering",
             job_role="Software Engineer",
-            salary=0.0,
-            internal_salary_usd=0.0,
-            external_salary_usd=0.0,
             status="Active",
         )
         db.add(emp)
@@ -86,12 +84,8 @@ def test_set_external_and_internal_components(app_client, admin_cookies):
     assert plan["internal_usd_cash"]["amount"] == 1500.0
     assert plan["total_monthly_usd"] == 4500.0
 
-    # 4. Verify EmployeeDB fields were synchronized
-    with get_db_context() as db:
-        emp = db.query(EmployeeDB).filter(EmployeeDB.id == emp_id).first()
-        assert emp.external_salary_usd == 3000.0
-        assert emp.internal_salary_usd == 1500.0
-        assert emp.salary == 4500.0
+    # 4. The employee's current pay is derived from the plan (D-046)
+    assert pay_of(emp_id) == {"internal": 1500.0, "external": 3000.0, "total": 4500.0}
 
 
 def test_update_component_preserves_history_with_closed_end_date(app_client, admin_cookies):
@@ -266,47 +260,3 @@ def test_employee_profile_create_and_update_never_write_pay_but_the_pay_plan_doe
     again = app_client.get(plan_url, cookies=admin_cookies).json()
     assert again["internal_usd_cash"]["amount"] == 1200.0
     assert again["total_monthly_usd"] == 2000.0
-
-
-def test_backfill_compensation_plans_script(app_client, admin_cookies):
-    """Verifies backfill_compensation_plans_from_employee_fields.py creates missing components and is idempotent."""
-    from scripts.backfill_compensation_plans_from_employee_fields import run as run_backfill
-
-    # Create employee directly with salary fields but no compensation plan rows
-    with get_db_context() as db:
-        unique_email = f"backfill_{int(datetime.utcnow().timestamp() * 1000)}@hrflow.test"
-        emp = EmployeeDB(
-            name="Legacy Employee",
-            email=unique_email,
-            role="employee",
-            dept="Support",
-            job_role="Specialist",
-            salary=3500.0,
-            internal_salary_usd=2000.0,
-            external_salary_usd=1500.0,
-            join_date="2026-02-01",
-            status="Active",
-        )
-        db.add(emp)
-        db.commit()
-        db.refresh(emp)
-        legacy_id = emp.id
-
-    # Run backfill
-    created = run_backfill()
-    assert created >= 2
-
-    # Verify plan is now populated
-    plan_resp = app_client.get(
-        f"/api/finance/employees/{legacy_id}/compensation-plan",
-        cookies=admin_cookies,
-    )
-    assert plan_resp.status_code == 200
-    plan_data = plan_resp.json()
-    assert plan_data["internal_usd_cash"]["amount"] == 2000.0
-    assert plan_data["external_usd"]["amount"] == 1500.0
-    assert plan_data["total_monthly_usd"] == 3500.0
-
-    # Run backfill again (idempotency check: should not duplicate active rows)
-    second_run = run_backfill()
-    assert second_run == 0

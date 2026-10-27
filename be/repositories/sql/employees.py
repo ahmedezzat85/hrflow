@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from db import get_db_context
 from models_db import EmployeeDB, EmployeeNoteDB, EmployeeDocumentDB
+from finance.current_pay import current_pay, current_pay_map, zero_pay
 
 
 PERSONAL_FIELDS = ("legal_name", "phone", "address_line_1", "address_line_2", "id_type", "id_number")
@@ -25,10 +26,14 @@ def _personal_to_dict(emp: EmployeeDB) -> dict:
     }
 
 
-def _employee_to_dict(emp: EmployeeDB, include_personal: bool = False) -> dict:
-    """Profile dict. Personal details (D-036) are only included when explicitly requested."""
+def _employee_to_dict(emp: EmployeeDB, include_personal: bool = False, pay: Optional[Dict[str, float]] = None) -> dict:
+    """Profile dict. Personal details (D-036) are only included when explicitly requested.
+
+    The salary fields are derived from the compensation plan (D-046); `pay` is that employee's current pay.
+    """
     if not emp:
         return {}
+    pay = pay or zero_pay()
     data = {
         "id": emp.id,
         "name": emp.name or "",
@@ -36,9 +41,9 @@ def _employee_to_dict(emp: EmployeeDB, include_personal: bool = False) -> dict:
         "role": emp.role or "employee",
         "dept": emp.dept or "",
         "job_role": emp.job_role or "",
-        "salary": emp.salary if emp.salary is not None else 0.0,
-        "internal_salary_usd": emp.internal_salary_usd if emp.internal_salary_usd is not None else 0.0,
-        "external_salary_usd": emp.external_salary_usd if emp.external_salary_usd is not None else 0.0,
+        "salary": pay["total"],
+        "internal_salary_usd": pay["internal"],
+        "external_salary_usd": pay["external"],
         "join_date": emp.join_date or "",
         "status": emp.status or "Active",
         "vac_total": emp.vac_total if emp.vac_total is not None else 21,
@@ -87,7 +92,7 @@ class SqlEmployeeRepository:
     def get_by_id(self, employee_id: Union[int, str], include_personal: bool = False) -> Optional[Dict[str, Any]]:
         with self._get_session() as db:
             emp = db.query(EmployeeDB).filter(EmployeeDB.id == int(employee_id)).first()
-            return _employee_to_dict(emp, include_personal) if emp else None
+            return _employee_to_dict(emp, include_personal, current_pay(db, emp.id)) if emp else None
 
     def get_personal(self, employee_id: Union[int, str]) -> Optional[Dict[str, Any]]:
         """Personal details with the full ID number; the router masks it. None if the employee is missing."""
@@ -112,15 +117,12 @@ class SqlEmployeeRepository:
             if scoped_employee_id is not None:
                 query = query.filter(EmployeeDB.id == int(scoped_employee_id))
             employees = query.order_by(EmployeeDB.id).all()
-            return [_employee_to_dict(e, include_personal) for e in employees]
+            pay_map = current_pay_map(db, [e.id for e in employees])
+            return [_employee_to_dict(e, include_personal, pay_map.get(e.id)) for e in employees]
 
     def create(self, data: Dict[str, Any]) -> int:
-        # Data layer only. The API never passes pay (D-036: the Pay plan owns it, so the columns start at 0
-        # and no plan rows are written here); imports and fixtures may still seed the salary columns.
-        internal_salary = float(data.get("internal_salary_usd") or 0)
-        external_salary = float(data.get("external_salary_usd") or 0)
-        legacy_total_salary = (internal_salary + external_salary) if (internal_salary or external_salary) else float(data.get("salary") or 0)
-
+        # Data layer only. Pay is never written here: the Pay plan owns it (D-036, D-046), so any salary keys in
+        # `data` are ignored and no plan rows are created.
         with self._get_session() as db:
             emp_kwargs = {
                 "name": data.get("name"),
@@ -128,9 +130,6 @@ class SqlEmployeeRepository:
                 "role": data.get("role", "employee"),
                 "dept": data.get("dept", ""),
                 "job_role": data.get("job_role", ""),
-                "salary": legacy_total_salary,
-                "internal_salary_usd": internal_salary,
-                "external_salary_usd": external_salary,
                 "join_date": data.get("join_date", ""),
                 "status": data.get("status", "Active"),
                 "vac_total": data.get("vac_total", 21),

@@ -12,9 +12,10 @@ from models_db import EmployeeDB
 
 def _employee_pay(emp_id):
     with get_db_context() as db:
-        emp = db.query(EmployeeDB).filter(EmployeeDB.id == emp_id).one()
+        from finance.current_pay import current_pay
+        pay = current_pay(db, emp_id)
         plan_rows = db.query(EmployeeCompensationPlanDB).filter(EmployeeCompensationPlanDB.employee_id == emp_id).count()
-        return emp.internal_salary_usd, emp.external_salary_usd, emp.salary, plan_rows
+        return pay["internal"], pay["external"], pay["total"], plan_rows
 
 
 def test_create_employee_needs_no_pay_and_starts_with_none(app_client, admin_cookies):

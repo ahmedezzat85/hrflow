@@ -627,7 +627,7 @@ class PayrollService:
 
             # Check internal salary presence & basis
             int_comp = next((c for c in comps if c.component_type != "external_usd"), None)
-            internal_salary = float(int_comp.amount or 0.0) if int_comp else float(emp.internal_salary_usd or 0.0)
+            internal_salary = float(int_comp.amount or 0.0) if int_comp else 0.0
             salary_basis = getattr(int_comp, "salary_basis", "NET") if int_comp else "NET"
 
             stat_res, stat_exceptions = validate_and_calculate_internal_statutory(

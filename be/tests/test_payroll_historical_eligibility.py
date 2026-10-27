@@ -56,7 +56,7 @@ def env(db):
 
 def make_emp(db, name, status="Active", join_date="", plans=(("2020-01-01", None),), amount=1000.0):
     emp = EmployeeDB(name=name, email=f"{uuid.uuid4().hex[:8]}@hp1.test", role="employee", status=status,
-                     join_date=join_date, salary=amount)
+                     join_date=join_date)
     db.add(emp)
     db.flush()
     for start, end in plans:

@@ -11,6 +11,7 @@ from sqlalchemy.orm import sessionmaker
 from db import Base, reset_engine_for_testing
 from repositories.sql.employees import SqlEmployeeRepository
 from repositories.sql.salary import SqlSalaryRepository
+from pay_test_helpers import seed_plan
 from repositories.sql.employee_bank_accounts import SqlEmployeeBankAccountRepository, SqlBankRepository
 from repositories.sql.documents import SqlCompanyDocumentRepository
 from repositories.sql.insurance import SqlInsuranceRepository
@@ -44,12 +45,11 @@ def test_sql_employee_and_user_repository():
         "email": "sarah@hrflow.test",
         "dept": "Operations",
         "job_role": "Director",
-        "internal_salary_usd": 4000.0,
-        "external_salary_usd": 2000.0,
         "join_date": "2026-01-01",
         "status": "Active",
     })
     assert emp_id > 0
+    seed_plan(emp_id, internal=4000.0, external=2000.0)
 
     emp = emp_repo.get_by_id(emp_id)
     assert emp["name"] == "Sarah Connor"
@@ -97,9 +97,8 @@ def test_sql_salary_repository():
     emp_id = emp_repo.create({
         "name": "Kyle Reese",
         "email": "kyle@hrflow.test",
-        "internal_salary_usd": 3000.0,
-        "external_salary_usd": 1000.0,
     })
+    seed_plan(emp_id, internal=3000.0, external=1000.0)
 
     salary_repo = SqlSalaryRepository()
     result = salary_repo.apply_raise(
@@ -288,8 +287,6 @@ def test_dual_write_employee_repository(fake_sheets_client):
     emp_id = dual.create({
         "name": "Dual Write Test",
         "email": "dual@hrflow.test",
-        "internal_salary_usd": 2000.0,
-        "external_salary_usd": 1000.0,
     })
     assert emp_id > 0
 
@@ -302,4 +299,3 @@ def test_dual_write_employee_repository(fake_sheets_client):
     shadow_emp = shadow.get_by_id(emp_id)
     assert shadow_emp is not None
     assert shadow_emp["name"] == "Dual Write Test"
-    assert shadow_emp["salary"] == 3000.0

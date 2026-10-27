@@ -54,9 +54,6 @@ def _setup_employee_with_plan(name, email, ext_amount=None, int_amount=None, sta
             role="employee",
             dept="Engineering",
             job_role="Engineer",
-            salary=(ext_amount or 0.0) + (int_amount or 0.0),
-            internal_salary_usd=int_amount or 0.0,
-            external_salary_usd=ext_amount or 0.0,
             status=status,
         )
         db.add(emp)
@@ -160,7 +157,6 @@ def test_generate_payroll_run_missing_plan_error(app_client, admin_cookies):
             role="employee",
             dept="Support",
             status="Active",
-            salary=0.0,
         )
         db.add(emp)
         db.commit()

@@ -88,9 +88,6 @@ def backfill_all(client=None, domain: str = "all", dry_run: bool = False) -> dic
                     emp_id = _safe_int(r.get("id"))
                     if not emp_id:
                         continue
-                    internal = _safe_float(r.get("internal_salary_usd"))
-                    external = _safe_float(r.get("external_salary_usd"))
-                    total_salary = _safe_float(r.get("salary")) or (internal + external)
 
                     emp = db.query(EmployeeDB).filter(EmployeeDB.id == emp_id).first()
                     if not emp:
@@ -102,9 +99,6 @@ def backfill_all(client=None, domain: str = "all", dry_run: bool = False) -> dic
                     emp.role = str(r.get("role") or "employee").strip()
                     emp.dept = str(r.get("dept") or "").strip()
                     emp.job_role = str(r.get("job_role") or "").strip()
-                    emp.salary = total_salary
-                    emp.internal_salary_usd = internal
-                    emp.external_salary_usd = external
                     emp.join_date = str(r.get("join_date") or "").strip()
                     emp.status = str(r.get("status") or "Active").strip()
                     emp.vac_total = _safe_int(r.get("vac_total"), 21)
@@ -147,8 +141,6 @@ def backfill_all(client=None, domain: str = "all", dry_run: bool = False) -> dic
                         db.add(sh)
                     sh.employee_id = emp_id
                     sh.date = str(r.get("date") or "")
-                    sh.previous_salary = _safe_float(r.get("previous_salary"))
-                    sh.new_salary = _safe_float(r.get("new_salary"))
                     sh.pct_change = str(r.get("pct_change") or "")
                     sh.reason = str(r.get("reason") or "")
                     sh.applied_by = str(r.get("applied_by") or "")
@@ -156,6 +148,10 @@ def backfill_all(client=None, domain: str = "all", dry_run: bool = False) -> dic
                     sh.previous_external_usd = _safe_float(r.get("previous_external_usd"))
                     sh.new_internal_usd = _safe_float(r.get("new_internal_usd"))
                     sh.new_external_usd = _safe_float(r.get("new_external_usd"))
+                    if not any((sh.previous_internal_usd, sh.previous_external_usd, sh.new_internal_usd, sh.new_external_usd)):
+                        # Old single-total rows (before the internal/external split): keep the amounts as internal.
+                        sh.previous_internal_usd = _safe_float(r.get("previous_salary"))
+                        sh.new_internal_usd = _safe_float(r.get("new_salary"))
                     stats["salary_history"] += 1
 
             # 3. Bank Accounts

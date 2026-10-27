@@ -39,9 +39,6 @@ def _employee(db, email, internal=2000.0):
         email=email.replace("@", f"+{uuid.uuid4().hex[:8]}@"),
         role="employee",
         status="Active",
-        internal_salary_usd=internal,
-        external_salary_usd=0.0,
-        salary=internal,
     )
     db.add(emp)
     db.commit()

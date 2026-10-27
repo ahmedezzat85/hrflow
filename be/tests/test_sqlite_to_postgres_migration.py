@@ -45,7 +45,6 @@ def source_and_dest_dbs(tmp_path):
             name="John Doe",
             email="john@example.com",
             role="employee",
-            salary=5000.0,
             status="Active",
         )
         db.add(emp)
@@ -70,8 +69,8 @@ def source_and_dest_dbs(tmp_path):
             id=1,
             employee_id=1,
             date="2026-01-01",
-            previous_salary=4000.0,
-            new_salary=5000.0,
+            previous_internal_usd=4000.0,
+            new_internal_usd=5000.0,
             reason="Annual Raise",
         )
         db.add(sal)
@@ -124,7 +123,6 @@ def test_sqlite_to_postgres_migration_execution_and_idempotency(source_and_dest_
         emp = db.query(EmployeeDB).filter(EmployeeDB.id == 1).first()
         assert emp is not None
         assert emp.name == "John Doe"
-        assert emp.salary == 5000.0
 
         user = db.query(UserDB).filter(UserDB.email == "john@example.com").first()
         assert user is not None
@@ -136,7 +134,7 @@ def test_sqlite_to_postgres_migration_execution_and_idempotency(source_and_dest_
 
         sal = db.query(SalaryHistoryDB).filter(SalaryHistoryDB.id == 1).first()
         assert sal is not None
-        assert sal.new_salary == 5000.0
+        assert sal.new_internal_usd == 5000.0
 
     # 2. Run migration again (idempotency check)
     stats2 = migrate_data(source_url=src_url, dest_url=dst_url, dry_run=False)
@@ -159,7 +157,9 @@ def test_dual_write_reads_from_sql_primary(fake_sheets_client, tmp_path):
 
     # In SQL: Employee is "Alice SQL"
     sql_emp_repo = SqlEmployeeRepository()
-    emp_id = sql_emp_repo.create({"name": "Alice SQL", "email": "alice@test.com", "salary": 3000.0})
+    emp_id = sql_emp_repo.create({"name": "Alice SQL", "email": "alice@test.com"})
+    from pay_test_helpers import seed_plan
+    seed_plan(emp_id, internal=3000.0)
 
     # In Sheets: Employee is "Alice Stale Sheets"
     sheets_emp_repo = SheetsEmployeeRepository(client=fake_sheets_client)

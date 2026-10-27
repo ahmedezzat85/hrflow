@@ -334,6 +334,17 @@ EA-1/LJ-1 (employment periods table, owner choice E2) will later replace the pla
 
 ---
 
+## 3N. Pay Single Source (D-046 accepted October 27, 2026; built, awaiting review)
+
+Decision D-046. Plan: `docs/finance-module/pay-single-source-plan.md`. Branch `refactor/pay-single-source`. Risk class high (migration that drops columns); no route change, API field names unchanged, no frontend change.
+
+| Slice | Scope | Size | Depends on |
+| :--- | :--- | :--- | :--- |
+| PAY-1 | Plan table is the only stored pay; employee salary columns and `salary_history` totals dropped and derived; migration 0048 with pre-check script; tests. **Built, awaiting review (not merged)** | M | — |
+| CLEAN-1 | Remove the dormant `repositories/sheets` and `repositories/dual` code (move `compute_consumption` first). **Not started, needs owner approval** | S-M | PAY-1 |
+
+---
+
 ## 4. Deferred Until Decision
 
 The following initiatives remain on hold until formally decided in [04-decision-log.md](04-decision-log.md):
