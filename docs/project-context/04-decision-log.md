@@ -550,6 +550,12 @@ This document records durable product and architectural decisions approved by th
 - **Not in this change:** removal of the dormant Sheets and dual-write repositories (separate slice).
 - **Related References:** `docs/finance-module/pay-single-source-plan.md`; D-034, D-036, D-040.
 
+### D-047 — Remove the Dormant Sheets and Dual-Write Repositories (CLEAN-1)
+
+- **Status:** Accepted by owner, October 27, 2026; implemented on `refactor/remove-sheets-dual` (stacked on PAY-1), awaiting review and merge.
+- **Decision:** (1) Delete `be/repositories/sheets/` and `be/repositories/dual/`; `Config` already rejects any storage engine other than `sql`, so this code could not run. (2) Move `compute_consumption` and its helpers to `be/services/insurance_consumption.py`. (3) Remove the unused imports in `be/auth.py`. (4) Delete the tests that only exercised the removed code; keep the dependency-injection and router-import tests. (5) Keep `be/sheets_client.py` (export destination), the Sheets backfill and reconcile scripts, and the test scaffolding for them.
+- **Related References:** [05-roadmap-and-next-slices.md](05-roadmap-and-next-slices.md) (`3N`, `CLEAN-1`); D-046.
+
 ## Related but Not Decisions
 
 The following items are established architectural baseline rules or future roadmaps rather than standalone decision entries:

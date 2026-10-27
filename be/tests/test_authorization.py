@@ -211,7 +211,6 @@ def test_cookie_secure_flag_is_reflected_in_production_response(monkeypatch, fak
 
     monkeypatch.setattr(sheets_client, "get_client", lambda: fake_sheets_client)
     monkeypatch.setattr(drive_client, "get_drive_client", lambda: fake_drive_client)
-    monkeypatch.setattr(auth_module, "get_client", lambda: fake_sheets_client)
 
     def fake_login_with_google(credential, user_repo=None):
         return {"token": "fake.jwt.token", "role": "admin", "employee_id": 1, "name": "Admin", "email": "admin@hrflow.test"}

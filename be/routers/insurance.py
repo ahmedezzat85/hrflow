@@ -12,7 +12,7 @@ from models import (
 )
 from repositories.interfaces import InsuranceRepository, EmployeeRepository, AuditRepository
 from repositories.deps import get_insurance_repo, get_employee_repo, get_audit_repo
-from repositories.sheets.insurance import compute_consumption
+from services.insurance_consumption import compute_consumption
 
 router = APIRouter(prefix="/api/insurance", tags=["Insurance"])
 

@@ -43,7 +43,7 @@ HRFlow is an internal HR and finance management system for one company (Voyance 
 - Do not replace the pattern with unsynchronized `__new__` logic.
 
 ### Google Sheets (Export Only)
-Operational data lives in SQL. Google Sheets is written only by the export pipeline (`be/services/export.py`). Sheets may auto-type cell values when read back, so treat any value read from a sheet as untrusted and normalize identifiers and filenames to strings. The old `_normalize_document_record` helpers no longer exist in `be/main.py`. Dormant Sheets repositories remain under `be/repositories/sheets/` and `dual/`; do not extend them (`routers/insurance.py` still imports `compute_consumption` from `repositories/sheets/insurance.py`).
+Operational data lives in SQL. Google Sheets is written only by the export pipeline (`be/services/export.py`). Sheets may auto-type cell values when read back, so treat any value read from a sheet as untrusted and normalize identifiers and filenames to strings. The old `_normalize_document_record` helpers no longer exist in `be/main.py`. The dormant Sheets and dual-write repositories were removed (CLEAN-1, D-047); `compute_consumption` now lives in `be/services/insurance_consumption.py`.
 
 ### Startup and Seeding
 `be/main.py` calls `init_db()` (`be/db.py`) at import time: it creates tables, adds missing columns, and seeds RBAC, finance lookups, and default payroll tax settings, logging but not raising on failure. Schema changes still require Alembic migrations. See `docs/project-context/rbac/technical-spec.md` for the planned change to RBAC seeding.
