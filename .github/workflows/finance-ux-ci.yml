@@ -15,6 +15,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    # Decides whether the frontend jobs are needed. Only pull requests can skip them, and only when no file under fe/
+    # or .github/ changed (the UI tests run against the mock API, so backend-only changes cannot affect them).
+    # Every push to main and every manual run always runs everything: the release gate requires the frontend checks
+    # on the commit it tags to be "success", and a skipped job is not.
+    name: Detect UI changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      ui: ${{ steps.filter.outputs.ui }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check changed files
+        id: filter
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT" != "pull_request" ]; then
+            echo "ui=true" >> "$GITHUB_OUTPUT"; echo "Not a pull request: run the frontend checks"; exit 0
+          fi
+          CHANGED=$(git diff --name-only "$BASE_SHA" HEAD)
+          echo "$CHANGED"
+          if echo "$CHANGED" | grep -qE '^(fe/|\.github/)'; then
+            echo "ui=true" >> "$GITHUB_OUTPUT"; echo "UI files changed: run the frontend checks"
+          else
+            echo "ui=false" >> "$GITHUB_OUTPUT"; echo "No UI files changed: frontend checks are skipped"
+          fi
+
   backend:
     name: Backend tests (Python 3.12)
     runs-on: ubuntu-latest
@@ -75,6 +108,8 @@ jobs:
     # time. The three required check names are unchanged: "Frontend build and tests (Node 22)" below waits for every
     # shard, and the quality gate fails if any shard fails.
     name: Frontend UI tests (shard ${{ matrix.shard }}/4)
+    needs: changes
+    if: needs.changes.outputs.ui == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
@@ -132,7 +167,8 @@ jobs:
 
   frontend:
     name: Frontend build and tests (Node 22)
-    needs: frontend-tests
+    needs: [changes, frontend-tests]
+    if: needs.changes.outputs.ui == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -175,11 +211,13 @@ jobs:
   quality-gate:
     name: Finance UX quality gate
     if: always()
-    needs: [backend, frontend-tests, frontend]
+    needs: [changes, backend, frontend-tests, frontend]
     runs-on: ubuntu-latest
     steps:
       - name: Enforce successful verification
         env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          UI_CHANGED: ${{ needs.changes.outputs.ui }}
           BACKEND_RESULT: ${{ needs.backend.result }}
           FRONTEND_TESTS_RESULT: ${{ needs.frontend-tests.result }}
           FRONTEND_RESULT: ${{ needs.frontend.result }}
@@ -187,6 +225,13 @@ jobs:
           echo "Backend: $BACKEND_RESULT"
           echo "Frontend UI tests: $FRONTEND_TESTS_RESULT"
           echo "Frontend: $FRONTEND_RESULT"
+          test "$CHANGES_RESULT" = "success"
           test "$BACKEND_RESULT" = "success"
-          test "$FRONTEND_TESTS_RESULT" = "success"
-          test "$FRONTEND_RESULT" = "success"
+          if [ "$UI_CHANGED" = "true" ]; then
+            test "$FRONTEND_TESTS_RESULT" = "success"
+            test "$FRONTEND_RESULT" = "success"
+          else
+            # A pull request with no UI changes skips the frontend jobs on purpose.
+            test "$FRONTEND_TESTS_RESULT" = "skipped"
+            test "$FRONTEND_RESULT" = "skipped"
+          fi
