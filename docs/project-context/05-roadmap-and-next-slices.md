@@ -341,6 +341,7 @@ Decision D-046. Plan: `docs/finance-module/pay-single-source-plan.md`. Branch `r
 | Slice | Scope | Size | Depends on |
 | :--- | :--- | :--- | :--- |
 | PAY-1 | Plan table is the only stored pay; employee salary columns and `salary_history` totals dropped and derived; migration 0048 with pre-check script; tests. **Built, awaiting review (not merged)** | M | — |
+| PAY-2 | Pay history stores the event only; amounts derived from the plan (D-048), migration 0049. **Built on `refactor/history-derived-amounts`, awaiting review (not merged)** | S-M | PAY-1 |
 | CLEAN-1 | Remove the dormant `repositories/sheets` and `repositories/dual` code (move `compute_consumption` first). **Built on `refactor/remove-sheets-dual`, awaiting review (not merged)** | S-M | PAY-1 |
 
 ---

@@ -50,8 +50,7 @@ def _put_plan(app_client, admin_cookies, emp_id, internal, external, start=TODAY
 
 def _rows(emp_id):
     """History rows as plain dicts (the session is closed when the test inspects them)."""
-    cols = ("date", "reason", "applied_by",
-            "previous_internal_usd", "previous_external_usd", "new_internal_usd", "new_external_usd")
+    from finance.pay_history import history_view
     with get_db_context() as db:
         found = (
             db.query(SalaryHistoryDB)
@@ -59,11 +58,8 @@ def _rows(emp_id):
             .order_by(SalaryHistoryDB.id)
             .all()
         )
-        rows = [{c: getattr(h, c) for c in cols} for h in found]
-        for r in rows:  # the totals are derived, never stored (D-046)
-            r["previous_salary"] = r["previous_internal_usd"] + r["previous_external_usd"]
-            r["new_salary"] = r["new_internal_usd"] + r["new_external_usd"]
-        return rows
+        # Only the event is stored; the amounts are derived from the plan rows (D-048).
+        return history_view(db, found)
 
 
 def _history(app_client, admin_cookies, emp_id):
@@ -141,8 +137,9 @@ def test_raise_writes_exactly_one_row_through_the_plan_service(app_client, admin
 
 def test_pay_history_endpoint_returns_one_row_per_change_newest_first(app_client, admin_cookies):
     emp_id = _create_employee(app_client, admin_cookies, internal=1000.0, external=2000.0)
-    assert _put_plan(app_client, admin_cookies, emp_id, 1100.0, 2000.0, notes="first").status_code == 200
-    assert _put_plan(app_client, admin_cookies, emp_id, 1100.0, 2400.0, notes="second").status_code == 200
+    # Different effective dates: with amounts derived from the plan, two changes on one date show the same pay (D-048)
+    assert _put_plan(app_client, admin_cookies, emp_id, 1100.0, 2000.0, start="2026-03-01", notes="first").status_code == 200
+    assert _put_plan(app_client, admin_cookies, emp_id, 1100.0, 2400.0, start="2026-06-01", notes="second").status_code == 200
 
     history = _history(app_client, admin_cookies, emp_id)
     assert len(history) == 3                   # starting pay + two changes

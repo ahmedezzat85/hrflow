@@ -34,7 +34,8 @@ def _new_employee(email):
 def test_columns_are_gone_from_the_model():
     for name in ("salary", "internal_salary_usd", "external_salary_usd"):
         assert not hasattr(EmployeeDB, name)
-    for name in ("previous_salary", "new_salary"):
+    for name in ("previous_salary", "new_salary", "previous_internal_usd", "previous_external_usd",
+                 "new_internal_usd", "new_external_usd", "pct_change"):
         assert not hasattr(SalaryHistoryDB, name)
 
 
@@ -81,14 +82,26 @@ def test_employee_without_a_plan_shows_zero_pay(app_client, admin_cookies):
     assert (emp["internal_salary_usd"], emp["external_salary_usd"], emp["salary"]) == (0.0, 0.0, 0.0)
 
 
-def test_salary_history_totals_are_derived_from_the_split(app_client, admin_cookies):
+def test_salary_history_amounts_come_from_the_plan_not_from_the_row(app_client, admin_cookies):
+    """D-048: the history row stores the event only; correcting a plan row corrects the history list too."""
     emp_id = _new_employee("hist@hrflow.test")
+    seed_plan(emp_id, internal=1000.0, external=500.0, start="2024-01-01", end="2024-12-31")
+    seed_plan(emp_id, internal=1200.0, external=600.0, start="2025-01-01")
     with get_db_context() as db:
-        db.add(SalaryHistoryDB(employee_id=emp_id, date="2025-01-01", previous_internal_usd=1000.0, previous_external_usd=500.0,
-                               new_internal_usd=1200.0, new_external_usd=600.0, reason="x", applied_by="t"))
+        db.add(SalaryHistoryDB(employee_id=emp_id, date="2025-01-01", reason="Annual raise", applied_by="t"))
         db.commit()
-    rows = app_client.get(f"/api/salary/history?employee_id={emp_id}", cookies=admin_cookies).json()
-    assert (rows[0]["previous_salary"], rows[0]["new_salary"]) == (1500.0, 1800.0)
+    row = app_client.get(f"/api/salary/history?employee_id={emp_id}", cookies=admin_cookies).json()[0]
+    assert (row["previous_salary"], row["new_salary"], row["pct_change"]) == (1500.0, 1800.0, "+20.0%")
+    assert (row["new_internal_usd"], row["new_external_usd"], row["reason"]) == (1200.0, 600.0, "Annual raise")
+    pay_row = app_client.get(f"/api/finance/employees/{emp_id}/compensation-plan/pay-history", cookies=admin_cookies).json()[0]
+    assert (pay_row["new_total_usd"], pay_row["pct_change"]) == (1800.0, "+20.0%")
+
+    with get_db_context() as db:   # a direct database correction of the plan row
+        db.query(EmployeeCompensationPlanDB).filter_by(employee_id=emp_id, component_type="internal_usd_cash",
+                                                       effective_start_date="2025-01-01").update({"amount": 1300.0})
+        db.commit()
+    row = app_client.get(f"/api/salary/history?employee_id={emp_id}", cookies=admin_cookies).json()[0]
+    assert (row["new_internal_usd"], row["new_salary"], row["pct_change"]) == (1300.0, 1900.0, "+26.67%")
 
 
 def test_employee_export_pay_columns_come_from_the_plan(app_client, admin_cookies):
@@ -154,3 +167,36 @@ def test_migration_0048_drops_columns_logs_differences_and_reverses(tmp_path, ca
         assert rows[1] == (1000.0, 2000.0, 3000.0) and rows[2] == (4000.0, 0.0, 4000.0)
         assert conn.execute(sa.text("SELECT previous_salary, new_salary FROM salary_history WHERE id = 1")).fetchone() == (3000.0, 3600.0)
     _run(engine, mod, "downgrade")    # idempotent
+
+
+def test_migration_0049_logs_differences_drops_amounts_and_reverses(tmp_path, caplog):
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "migrations", "versions", "0049_history_amounts_derived.py")
+    spec = importlib.util.spec_from_file_location("mig_0049", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert mod.down_revision == "0048_pay_single_source"
+    engine = sa.create_engine(f"sqlite:///{tmp_path / 'm49.db'}")
+    with engine.begin() as conn:
+        conn.execute(sa.text("CREATE TABLE salary_history (id INTEGER PRIMARY KEY, employee_id INTEGER, date TEXT, reason TEXT, applied_by TEXT, "
+                             "pct_change TEXT, previous_internal_usd FLOAT, previous_external_usd FLOAT, new_internal_usd FLOAT, new_external_usd FLOAT)"))
+        conn.execute(sa.text("CREATE TABLE finance_employee_compensation_plans (id INTEGER PRIMARY KEY, employee_id INTEGER, component_type TEXT, "
+                             "amount FLOAT, effective_start_date TEXT, effective_end_date TEXT)"))
+        conn.execute(sa.text("INSERT INTO finance_employee_compensation_plans VALUES "
+                             "(1, 1, 'internal_usd_cash', 1000, '2024-01-01', '2024-12-31'), (2, 1, 'internal_usd_cash', 1200, '2025-01-01', NULL), "
+                             "(3, 1, 'external_usd', 500, '2024-01-01', NULL)"))
+        conn.execute(sa.text("INSERT INTO salary_history VALUES (1, 1, '2025-01-01', 'raise', 'a', '+13.33%', 1000, 500, 1200, 500), "
+                             "(2, 1, '2025-06-01', 'stale', 'a', '+0.0%', 1200, 500, 9999, 500)"))
+    with caplog.at_level(logging.WARNING, logger="alembic.runtime.migration"):
+        _run(engine, mod, "upgrade")
+    warned = [r.getMessage() for r in caplog.records if "pay history row" in r.getMessage()]
+    assert len(warned) == 1 and "row 2" in warned[0]               # only the row that disagrees with the plan
+    cols = {c["name"] for c in sa.inspect(engine).get_columns("salary_history")}
+    assert {"previous_internal_usd", "previous_external_usd", "new_internal_usd", "new_external_usd", "pct_change"}.isdisjoint(cols)
+    assert {"id", "employee_id", "date", "reason", "applied_by"} <= cols
+    _run(engine, mod, "upgrade")      # idempotent
+    _run(engine, mod, "downgrade")    # refilled from the plan
+    with engine.connect() as conn:
+        rows = {r[0]: r[1:] for r in conn.execute(sa.text(
+            "SELECT id, previous_internal_usd, previous_external_usd, new_internal_usd, new_external_usd, pct_change FROM salary_history"))}
+    assert rows[1] == (1000.0, 500.0, 1200.0, 500.0, "+13.33%")
+    assert rows[2] == (1200.0, 500.0, 1200.0, 500.0, "+0.0%")

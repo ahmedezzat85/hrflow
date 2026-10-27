@@ -556,6 +556,14 @@ This document records durable product and architectural decisions approved by th
 - **Decision:** (1) Delete `be/repositories/sheets/` and `be/repositories/dual/`; `Config` already rejects any storage engine other than `sql`, so this code could not run. (2) Move `compute_consumption` and its helpers to `be/services/insurance_consumption.py`. (3) Remove the unused imports in `be/auth.py`. (4) Delete the tests that only exercised the removed code; keep the dependency-injection and router-import tests. (5) Keep `be/sheets_client.py` (export destination), the Sheets backfill and reconcile scripts, and the test scaffolding for them.
 - **Related References:** [05-roadmap-and-next-slices.md](05-roadmap-and-next-slices.md) (`3N`, `CLEAN-1`); D-046.
 
+### D-048 — Pay History Stores the Event Only; Amounts Come from the Plan (PAY-2)
+
+- **Status:** Accepted by owner, October 27, 2026; implemented on `refactor/history-derived-amounts`, awaiting review and merge. Completes D-046.
+- **Decision:** (1) `salary_history` keeps only the event: employee, date, reason, applied by. The columns `previous_internal_usd`, `previous_external_usd`, `new_internal_usd`, `new_external_usd` and `pct_change` are dropped (migration `0049_history_amounts_derived`). (2) For a change dated D, the new pay is the plan in force on D and the previous pay is the plan in force the day before; totals and the percentage are computed from those (`finance/pay_history.py`). The API, exports and screens keep their field names. (3) A corrected plan row therefore corrects the history list; the two can no longer disagree. (4) The migration writes nothing to the plan table and logs every history row whose stored new amounts differ from the plan; the downgrade refills the columns from the plan.
+- **Consequence to know:** several changes with the same effective date show the same amounts (the plan keeps no memory of an in-place same-day edit). Use different effective dates for different changes.
+- **Rationale:** D-046 left the amounts stored on the history row, so a plan corrected directly in the database conflicted with its history. No payroll data existed yet, so removing the second copy was cheap.
+- **Related References:** `docs/finance-module/pay-single-source-plan.md`; D-046.
+
 ## Related but Not Decisions
 
 The following items are established architectural baseline rules or future roadmaps rather than standalone decision entries:

@@ -124,13 +124,8 @@ class SalaryHistoryDB(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False, index=True)
     date = Column(String(20), nullable=False)
-    pct_change = Column(String(20), default="")
     reason = Column(String(255), default="")
     applied_by = Column(String(255), default="")
-    previous_internal_usd = Column(Float, default=0.0)
-    previous_external_usd = Column(Float, default=0.0)
-    new_internal_usd = Column(Float, default=0.0)
-    new_external_usd = Column(Float, default=0.0)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     employee = relationship("EmployeeDB", back_populates="salary_history")

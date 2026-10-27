@@ -250,7 +250,9 @@ def test_todays_raise_updates_employee_fields_and_plan_together(app_client, admi
         assert emp.next_raise == (datetime.strptime(TODAY, "%Y-%m-%d") + timedelta(days=365)).strftime("%Y-%m-%d")
         assert _history_count(emp_id) == 1
         h = db.query(SalaryHistoryDB).filter(SalaryHistoryDB.employee_id == emp_id).order_by(SalaryHistoryDB.id.desc()).first()
-        assert h.previous_internal_usd + h.previous_external_usd == 3000.0 and h.new_internal_usd + h.new_external_usd == 3700.0
+        from finance.pay_history import history_view
+        view = history_view(db, [h])[0]
+        assert view["previous_salary"] == 3000.0 and view["new_salary"] == 3700.0
     assert _active(emp_id) == {"internal_usd_cash": 1200.0, "external_usd": 2500.0}
 
 

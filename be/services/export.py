@@ -28,6 +28,7 @@ from finance.models import (
     SubscriptionDB,
 )
 from finance.current_pay import current_pay_map, zero_pay
+from finance.pay_history import history_view
 from logging_config import get_logger
 
 logger = get_logger("services.export")
@@ -206,11 +207,9 @@ def get_salary_history_export_data() -> Tuple[List[str], List[List[Any]]]:
             .order_by(SalaryHistoryDB.date.desc(), SalaryHistoryDB.id.desc())
             .all()
         )
-        for hist, emp_name in records:
-            prev_total = round(float(hist.previous_internal_usd or 0.0) + float(hist.previous_external_usd or 0.0), 2)
-            new_total = round(float(hist.new_internal_usd or 0.0) + float(hist.new_external_usd or 0.0), 2)
-            delta = new_total - prev_total
-
+        derived = history_view(db, [hist for hist, _ in records])  # amounts come from the plan (D-048)
+        for (hist, emp_name), d in zip(records, derived):
+            prev_total, new_total = d["previous_salary"], d["new_salary"]
             row = [
                 hist.id,
                 hist.employee_id,
@@ -218,12 +217,12 @@ def get_salary_history_export_data() -> Tuple[List[str], List[List[Any]]]:
                 hist.date or "",
                 prev_total,
                 new_total,
-                delta,
-                hist.pct_change or "",
-                float(hist.previous_internal_usd or 0.0),
-                float(hist.new_internal_usd or 0.0),
-                float(hist.previous_external_usd or 0.0),
-                float(hist.new_external_usd or 0.0),
+                round(new_total - prev_total, 2),
+                d["pct_change"],
+                d["previous_internal_usd"],
+                d["new_internal_usd"],
+                d["previous_external_usd"],
+                d["new_external_usd"],
                 hist.reason or "",
                 hist.applied_by or "",
             ]

@@ -88,22 +88,12 @@ def pay_unit_env(app_client):
         h1 = SalaryHistoryDB(
             employee_id=emp.id,
             date="2025-06-01",
-            previous_internal_usd=3000.0,
-            previous_external_usd=6000.0,
-            new_internal_usd=3500.0,
-            new_external_usd=7000.0,
-            pct_change="+16.7%",
             reason="Mid-year review",
             applied_by="hr@voyance.health",
         )
         h2 = SalaryHistoryDB(
             employee_id=emp.id,
             date="2026-01-01",
-            previous_internal_usd=3500.0,
-            previous_external_usd=7000.0,
-            new_internal_usd=4000.0,
-            new_external_usd=8000.0,
-            pct_change="+14.3%",
             reason="Promotion to Lead PM",
             applied_by="hr@voyance.health",
         )

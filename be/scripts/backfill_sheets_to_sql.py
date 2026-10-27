@@ -141,17 +141,8 @@ def backfill_all(client=None, domain: str = "all", dry_run: bool = False) -> dic
                         db.add(sh)
                     sh.employee_id = emp_id
                     sh.date = str(r.get("date") or "")
-                    sh.pct_change = str(r.get("pct_change") or "")
                     sh.reason = str(r.get("reason") or "")
                     sh.applied_by = str(r.get("applied_by") or "")
-                    sh.previous_internal_usd = _safe_float(r.get("previous_internal_usd"))
-                    sh.previous_external_usd = _safe_float(r.get("previous_external_usd"))
-                    sh.new_internal_usd = _safe_float(r.get("new_internal_usd"))
-                    sh.new_external_usd = _safe_float(r.get("new_external_usd"))
-                    if not any((sh.previous_internal_usd, sh.previous_external_usd, sh.new_internal_usd, sh.new_external_usd)):
-                        # Old single-total rows (before the internal/external split): keep the amounts as internal.
-                        sh.previous_internal_usd = _safe_float(r.get("previous_salary"))
-                        sh.new_internal_usd = _safe_float(r.get("new_salary"))
                     stats["salary_history"] += 1
 
             # 3. Bank Accounts
