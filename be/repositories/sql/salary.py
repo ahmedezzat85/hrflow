@@ -16,8 +16,9 @@ def _history_to_dict(h: SalaryHistoryDB) -> dict:
         "id": h.id,
         "employee_id": h.employee_id,
         "date": h.date or "",
-        "previous_salary": h.previous_salary if h.previous_salary is not None else 0.0,
-        "new_salary": h.new_salary if h.new_salary is not None else 0.0,
+        # Derived: the total is always internal + external (D-046), never stored separately.
+        "previous_salary": round((h.previous_internal_usd or 0.0) + (h.previous_external_usd or 0.0), 2),
+        "new_salary": round((h.new_internal_usd or 0.0) + (h.new_external_usd or 0.0), 2),
         "pct_change": h.pct_change or "",
         "reason": h.reason or "",
         "applied_by": h.applied_by or "",
@@ -57,8 +58,10 @@ class SqlSalaryRepository:
             if not emp:
                 raise ValueError("Employee not found")
 
-            current_internal = float(emp.internal_salary_usd or 0)
-            current_external = float(emp.external_salary_usd or 0)
+            from finance.current_pay import current_pay
+            now_pay = current_pay(db, emp.id)
+            current_internal = now_pay["internal"]
+            current_external = now_pay["external"]
             current_total = current_internal + current_external
 
             new_internal = round(new_internal, 2)

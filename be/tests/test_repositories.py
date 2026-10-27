@@ -105,9 +105,10 @@ def test_salary_repository_apply_raise(fake_sheets_client):
         "email": "salary@hrflow.test",
         "dept": "Ops",
         "job_role": "Specialist",
-        "internal_salary_usd": 2000.0,
-        "external_salary_usd": 1000.0,
     })
+    # The fake Sheets client reads Employees from SQL in sql mode, where pay now comes from the plan (D-046)
+    from pay_test_helpers import seed_plan
+    seed_plan(emp_id, internal=2000.0, external=1000.0)
 
     salary_repo = SheetsSalaryRepository(client=fake_sheets_client)
     result = salary_repo.apply_raise(

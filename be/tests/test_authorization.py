@@ -73,6 +73,8 @@ def test_employee_cannot_apply_raise(app_client, employee_cookies):
 
 
 def test_admin_apply_raise_computes_correct_new_salary(app_client, admin_cookies):
+    from pay_test_helpers import seed_plan
+    seed_plan(2, internal=40000.0)
     payload = {"employee_id": 2, "new_internal_salary_usd": 44000, "new_external_salary_usd": 0, "effective_date": "2026-08-16"}
     response = app_client.post("/api/salary/raise", json=payload, cookies=admin_cookies)
     assert response.status_code == 201

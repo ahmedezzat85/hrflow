@@ -50,7 +50,7 @@ def _put_plan(app_client, admin_cookies, emp_id, internal, external, start=TODAY
 
 def _rows(emp_id):
     """History rows as plain dicts (the session is closed when the test inspects them)."""
-    cols = ("date", "reason", "applied_by", "previous_salary", "new_salary",
+    cols = ("date", "reason", "applied_by",
             "previous_internal_usd", "previous_external_usd", "new_internal_usd", "new_external_usd")
     with get_db_context() as db:
         found = (
@@ -59,7 +59,11 @@ def _rows(emp_id):
             .order_by(SalaryHistoryDB.id)
             .all()
         )
-        return [{c: getattr(h, c) for c in cols} for h in found]
+        rows = [{c: getattr(h, c) for c in cols} for h in found]
+        for r in rows:  # the totals are derived, never stored (D-046)
+            r["previous_salary"] = r["previous_internal_usd"] + r["previous_external_usd"]
+            r["new_salary"] = r["new_internal_usd"] + r["new_external_usd"]
+        return rows
 
 
 def _history(app_client, admin_cookies, emp_id):

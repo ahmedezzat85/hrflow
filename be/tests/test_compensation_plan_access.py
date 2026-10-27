@@ -77,4 +77,4 @@ def test_hr_admin_sets_plan_reads_it_back_and_writes_one_salary_history_row(app_
     with get_db_context() as db:
         rows = db.query(SalaryHistoryDB).filter(SalaryHistoryDB.employee_id == emp_id).all()
         assert len(rows) == 1
-        assert rows[0].new_salary == 10000
+        assert rows[0].new_internal_usd + rows[0].new_external_usd == 10000

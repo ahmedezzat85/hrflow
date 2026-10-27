@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 import pytest
 from fastapi import HTTPException
 
+from finance.current_pay import current_pay
 from db import get_db_context
 from finance.models import EmployeeCompensationPlanDB, PayrollRunDB
 from finance.services.compensation_plan_service import CompensationPlanService
@@ -201,8 +202,8 @@ def test_edit_cannot_change_pay_even_when_a_client_sends_it(app_client, admin_co
     assert resp.status_code == 200, resp.text
     assert _active(emp_id) == {"internal_usd_cash": 1000.0, "external_usd": 2000.0}
     with get_db_context() as db:
-        emp = db.query(EmployeeDB).filter(EmployeeDB.id == emp_id).one()
-        assert emp.external_salary_usd == 2000.0 and emp.salary == 3000.0
+        pay = current_pay(db, emp_id)
+        assert pay["external"] == 2000.0 and pay["total"] == 3000.0
 
 
 def test_employee_with_no_plan_can_still_be_edited(app_client, admin_cookies):
@@ -243,12 +244,13 @@ def test_todays_raise_updates_employee_fields_and_plan_together(app_client, admi
     assert resp.status_code == 201, resp.text
     with get_db_context() as db:
         emp = db.query(EmployeeDB).filter(EmployeeDB.id == emp_id).first()
-        assert emp.internal_salary_usd == 1200.0 and emp.external_salary_usd == 2500.0
-        assert emp.salary == 3700.0
+        pay = current_pay(db, emp_id)
+        assert pay["internal"] == 1200.0 and pay["external"] == 2500.0
+        assert pay["total"] == 3700.0
         assert emp.next_raise == (datetime.strptime(TODAY, "%Y-%m-%d") + timedelta(days=365)).strftime("%Y-%m-%d")
         assert _history_count(emp_id) == 1
         h = db.query(SalaryHistoryDB).filter(SalaryHistoryDB.employee_id == emp_id).order_by(SalaryHistoryDB.id.desc()).first()
-        assert h.previous_salary == 3000.0 and h.new_salary == 3700.0
+        assert h.previous_internal_usd + h.previous_external_usd == 3000.0 and h.new_internal_usd + h.new_external_usd == 3700.0
     assert _active(emp_id) == {"internal_usd_cash": 1200.0, "external_usd": 2500.0}
 
 
@@ -287,8 +289,8 @@ def test_raise_to_zero_closes_that_component_only(app_client, admin_cookies):
     assert ("internal_usd_cash", 1000.0, "2026-01-01", YESTERDAY) in rows
     assert ("external_usd", 2000.0, "2026-01-01", None) in rows
     with get_db_context() as db:
-        emp = db.query(EmployeeDB).filter(EmployeeDB.id == emp_id).first()
-        assert emp.internal_salary_usd == 0.0 and emp.salary == 2000.0
+        pay = current_pay(db, emp_id)
+        assert pay["internal"] == 0.0 and pay["total"] == 2000.0
 
 
 def test_both_zero_is_rejected_with_no_partial_write(app_client, admin_cookies):
