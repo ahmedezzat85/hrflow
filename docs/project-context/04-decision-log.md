@@ -535,6 +535,13 @@ This document records durable product and architectural decisions approved by th
 - **Rationale:** Resolves known issues 1 (as far as reporting), 4 and 5 of D-042 (findings F1, F4, F5 of the FY-1 discovery note). Accounts with no entered rows behave exactly as today, so the change is inert until data is entered.
 - **Related References:** [05-roadmap-and-next-slices.md](05-roadmap-and-next-slices.md) (`3L`, `BI-1`); [06-open-questions.md](06-open-questions.md) (`Q-024`); `docs/finance-module/fiscal-year-opening-balances-plan.md`; D-028, D-040, D-042.
 
+### D-045 — Historical Period Eligibility for Payroll Runs (HP-1)
+
+- **Status:** Accepted by owner, October 26, 2026; implemented on `feat/hp1-historical-payroll-eligibility`, awaiting review and merge. (D-044 is not in this log at the time of writing.)
+- **Decision:** (1) A period whose `period_end` is before the first day of the current month is historical. (2) For a historical period the run takes every employee regardless of status who has at least one compensation component overlapping the period and whose `join_date`, when it parses to a date, is not after `period_end`; an empty or unparsable `join_date` never excludes. (3) Employees left off a historical run are never dropped silently: preview, create, generate and refresh return `historical_period` and `skipped_employees` (`employee_id`, `employee_name`, reason `NO_PLAN_IN_PERIOD` or `JOINED_AFTER_PERIOD`), saved in the run's existing variance JSON (no migration), and the payroll screen shows a "Historical period" badge and a collapsible skipped list. (4) The current month and later are unchanged: status Active only, a missing plan blocks. (5) Leavers are handled by closing their last pay plan; the leave month keeps full plan amounts and is edited by hand (no proration). (6) Refresh follows the same rule; finalized and paid runs are never recomputed. Existing draft runs for past periods can lose lines on refresh.
+- **Rationale:** The owner can set leavers Inactive without losing their historical months and without deleting lines by hand when entering 2025 and 2026 payroll. The plan-based inference is interim; EA-1/LJ-1 (employment periods, owner choice E2) later replace it with real employment periods and do not conflict with it.
+- **Related References:** [05-roadmap-and-next-slices.md](05-roadmap-and-next-slices.md) (`3M`, `HP-1`); `docs/finance-module/hp-1-historical-payroll-eligibility-plan.md`; D-040.
+
 ## Related but Not Decisions
 
 The following items are established architectural baseline rules or future roadmaps rather than standalone decision entries:
