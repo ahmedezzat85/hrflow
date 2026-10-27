@@ -1,6 +1,6 @@
 """
 be/tests/test_sql_repositories.py
-Unit tests testing SQLAlchemy-backed SQL repositories and Dual-Write shadow-mode
+Unit tests testing the SQLAlchemy-backed SQL
 repositories on an isolated test SQLite database.
 """
 from datetime import datetime
@@ -20,8 +20,6 @@ from repositories.sql.vacations import SqlVacationRepository
 from repositories.sql.salary_payment_docs import SqlSalaryPaymentDocRepository, SqlInvoiceRepository
 from repositories.sql.audit import SqlAuditRepository
 from repositories.sql.auth import SqlUserRepository
-from repositories.dual.employees import DualWriteEmployeeRepository
-from repositories.sheets.employees import SheetsEmployeeRepository
 
 
 @pytest.fixture(autouse=True)
@@ -277,25 +275,3 @@ def test_sql_invoice_and_audit_repositories():
     logs = audit_repo.list_all()
     assert len(logs) == 1
     assert logs[0]["action"] == "invoice.generate"
-
-
-def test_dual_write_employee_repository(fake_sheets_client):
-    primary = SheetsEmployeeRepository(client=fake_sheets_client)
-    shadow = SqlEmployeeRepository()
-    dual = DualWriteEmployeeRepository(primary=primary, shadow=shadow)
-
-    emp_id = dual.create({
-        "name": "Dual Write Test",
-        "email": "dual@hrflow.test",
-    })
-    assert emp_id > 0
-
-    # Primary has record
-    primary_emp = primary.get_by_id(emp_id)
-    assert primary_emp is not None
-    assert primary_emp["name"] == "Dual Write Test"
-
-    # Shadow SQL has record
-    shadow_emp = shadow.get_by_id(emp_id)
-    assert shadow_emp is not None
-    assert shadow_emp["name"] == "Dual Write Test"

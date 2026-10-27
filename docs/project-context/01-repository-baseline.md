@@ -168,8 +168,8 @@ hrflow/
    - *Status:* **Partially implemented / Environment-dependent**.
    - *Evidence:* `be/services/pdf_converter.py` attempts Windows COM automation (`win32com.client`) or local LibreOffice CLI (`soffice`), falling back to Google Drive API. On headless Linux containers without LibreOffice or Drive service credentials, PDF payslip/invoice compilation raises an error or outputs DOCX only.
 4. **Dormant Google Sheets Repositories:**
-   - *Status:* **Dormant / Deprecated**.
-   - *Evidence:* `be/repositories/sheets/` (11 files) and `be/repositories/dual/` (11 files) remain in the tree from the transition period. `be/repositories/deps.py` exclusively instantiates `Sql*Repository`. They are **not entirely inactive**: `be/routers/insurance.py` imports `compute_consumption` from `repositories/sheets/insurance.py`, and `be/auth.py` imports (unused) `repositories.sheets.auth`. The directories cannot be deleted wholesale without relocating `compute_consumption`.
+   - *Status:* **Removed (CLEAN-1, D-047)**.
+   - *Evidence:* `be/repositories/sheets/` and `be/repositories/dual/` were deleted in CLEAN-1 (D-047); `compute_consumption` moved to `be/services/insurance_consumption.py` and the unused imports in `be/auth.py` were removed.
 5. **Frontend Mock Mode Parity:**
    - *Status:* **Partially implemented (Testing Utility)**.
    - *Evidence:* `fe/finance-api.js` provides `FinanceMockState` to support `?mock=admin` and `?mock=employee` testing without a running backend. While it mocks user interactions and state transitions for Playwright, mutations do not persist to SQL.
@@ -265,9 +265,9 @@ hrflow/
    - The docstring and API description in `be/main.py` (lines 3 and 80) still say HRFlow is "backed entirely by a Google Sheet" (`AGENTS.md` was corrected on October 1, 2026).
    - *Reality:* The application was completely migrated to relational SQL via SQLAlchemy and Alembic. Google Sheets is strictly an export destination; the application refuses to start if `STORAGE_ENGINE != "sql"` (`be/config.py:180`).
 2. **Dormant Migration Repositories (Medium):**
-   - `be/repositories/sheets/` (11 files) and `be/repositories/dual/` (11 files) are left over from the database migration phase. `be/repositories/deps.py` hard-wires `Sql*Repository`, but `be/routers/insurance.py` still imports `compute_consumption` from `repositories/sheets/insurance.py`, so that function must be relocated before the directory can be removed.
+   - Removed in CLEAN-1 (D-047): `be/repositories/sheets/` and `be/repositories/dual/`; `compute_consumption` now lives in `be/services/insurance_consumption.py`.
 3. **Dead Imports in `be/auth.py` (Low):**
-   - `be/auth.py:21-22` imports `get_client` from `sheets_client` and `SheetsUserRepository` from `repositories.sheets.auth`, neither of which is used anywhere in the file.
+   - Removed in CLEAN-1 (D-047): the unused `get_client` and `SheetsUserRepository` imports in `be/auth.py`.
 4. **Inconsistent Authorization Guards across HR vs Finance (Resolved on `feature/rbac`):**
    - All HR and finance routes now use catalog permission guards; the three previously open finance routes are guarded as well.
    - `require_admin` and the role-string checks were removed. On `main` (before the merge) the previous state still applies.

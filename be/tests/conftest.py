@@ -252,7 +252,6 @@ def app_client(monkeypatch, fake_sheets_client, fake_drive_client, tmp_path, see
 
     monkeypatch.setattr(sheets_client, "get_client", lambda: fake_sheets_client)
     monkeypatch.setattr(drive_client, "get_drive_client", lambda: fake_drive_client)
-    monkeypatch.setattr(auth_module, "get_client", lambda: fake_sheets_client)
 
     if Config.STORAGE_ENGINE == "sql":
         test_db_file = tmp_path / "test_app_sql.db"

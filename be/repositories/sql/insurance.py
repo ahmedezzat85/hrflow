@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from db import get_db_context
 from models_db import InsuranceCategoryDB, InsuranceClaimDB, RequestDB, EmployeeDB
-from repositories.sheets.insurance import compute_consumption
+from services.insurance_consumption import compute_consumption
 
 
 def _category_to_dict(c: InsuranceCategoryDB) -> dict:

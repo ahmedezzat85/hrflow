@@ -21,8 +21,6 @@ from sqlalchemy.orm import Session
 
 from config import Config
 from db import get_db
-from sheets_client import get_client
-from repositories.sheets.auth import SheetsUserRepository
 
 _google_request = google_requests.Request()
 
