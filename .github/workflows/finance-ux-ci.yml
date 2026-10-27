@@ -15,6 +15,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    # Decides whether the frontend jobs are needed. Only pull requests can skip them, and only when no file under fe/
+    # or .github/ changed (the UI tests run against the mock API, so backend-only changes cannot affect them).
+    # Every push to main and every manual run always runs everything: the release gate requires the frontend checks
+    # on the commit it tags to be "success", and a skipped job is not.
+    name: Detect UI changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      ui: ${{ steps.filter.outputs.ui }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check changed files
+        id: filter
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT" != "pull_request" ]; then
+            echo "ui=true" >> "$GITHUB_OUTPUT"; echo "Not a pull request: run the frontend checks"; exit 0
+          fi
+          CHANGED=$(git diff --name-only "$BASE_SHA" HEAD)
+          echo "$CHANGED"
+          if echo "$CHANGED" | grep -qE '^(fe/|\.github/)'; then
+            echo "ui=true" >> "$GITHUB_OUTPUT"; echo "UI files changed: run the frontend checks"
+          else
+            echo "ui=false" >> "$GITHUB_OUTPUT"; echo "No UI files changed: frontend checks are skipped"
+          fi
+
   backend:
     name: Backend tests (Python 3.12)
     runs-on: ubuntu-latest
@@ -70,10 +103,19 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-  frontend:
-    name: Frontend build and tests (Node 22)
+  frontend-tests:
+    # The UI suite is the slow part (about 10 minutes on one runner), so it is split into 4 shards that run at the same
+    # time. The three required check names are unchanged: "Frontend build and tests (Node 22)" below waits for every
+    # shard, and the quality gate fails if any shard fails.
+    name: Frontend UI tests (shard ${{ matrix.shard }}/4)
+    needs: changes
+    if: needs.changes.outputs.ui == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     defaults:
       run:
         working-directory: fe
@@ -92,9 +134,16 @@ jobs:
         run: npm ci
 
       - name: Install Playwright Chrome
-        # The browser download occasionally drops mid-transfer (curl 92 / INTERNAL_ERROR) and used to fail the whole
-        # job before any test ran. Retry a few times; a persistent outage still fails the step.
+        # The GitHub runner image already ships Google Chrome, and the apt download that "--with-deps" does was
+        # sometimes extremely slow (one shard spent 9 minutes on it, the tests themselves took 3). Use the installed
+        # Chrome when it is there. Otherwise install it, retrying: the browser download occasionally drops
+        # mid-transfer (curl 92 / INTERNAL_ERROR); a persistent outage still fails the step.
         run: |
+          if [ -x /opt/google/chrome/chrome ]; then
+            /opt/google/chrome/chrome --version
+            echo "Google Chrome is already installed: skipping the Playwright install"
+            exit 0
+          fi
           for attempt in 1 2 3; do
             npx playwright install --with-deps chrome && exit 0
             echo "Playwright Chrome install failed (attempt $attempt of 3)"
@@ -111,20 +160,52 @@ jobs:
           };
           EOF
 
-      - name: Run frontend tests
-        run: npm test
-
-      - name: Build frontend
-        run: npm run build
+      - name: Run frontend tests (shard ${{ matrix.shard }}/4)
+        run: npx playwright test --shard=${{ matrix.shard }}/4
 
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-shard-${{ matrix.shard }}
           path: fe/playwright-report
           if-no-files-found: ignore
           retention-days: 14
+
+  frontend:
+    name: Frontend build and tests (Node 22)
+    needs: [changes, frontend-tests]
+    if: needs.changes.outputs.ui == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: fe
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: fe/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Create CI runtime config
+        run: |
+          cat > config.js <<'EOF'
+          window.HRFLOW_CONFIG = {
+            API_BASE_URL: "http://localhost:5000",
+            GOOGLE_CLIENT_ID: "ci-placeholder.apps.googleusercontent.com"
+          };
+          EOF
+
+      - name: Build frontend
+        run: npm run build
 
       - name: Upload frontend build
         uses: actions/upload-artifact@v4
@@ -137,15 +218,27 @@ jobs:
   quality-gate:
     name: Finance UX quality gate
     if: always()
-    needs: [backend, frontend]
+    needs: [changes, backend, frontend-tests, frontend]
     runs-on: ubuntu-latest
     steps:
       - name: Enforce successful verification
         env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          UI_CHANGED: ${{ needs.changes.outputs.ui }}
           BACKEND_RESULT: ${{ needs.backend.result }}
+          FRONTEND_TESTS_RESULT: ${{ needs.frontend-tests.result }}
           FRONTEND_RESULT: ${{ needs.frontend.result }}
         run: |
           echo "Backend: $BACKEND_RESULT"
+          echo "Frontend UI tests: $FRONTEND_TESTS_RESULT"
           echo "Frontend: $FRONTEND_RESULT"
+          test "$CHANGES_RESULT" = "success"
           test "$BACKEND_RESULT" = "success"
-          test "$FRONTEND_RESULT" = "success"
+          if [ "$UI_CHANGED" = "true" ]; then
+            test "$FRONTEND_TESTS_RESULT" = "success"
+            test "$FRONTEND_RESULT" = "success"
+          else
+            # A pull request with no UI changes skips the frontend jobs on purpose.
+            test "$FRONTEND_TESTS_RESULT" = "skipped"
+            test "$FRONTEND_RESULT" = "skipped"
+          fi
