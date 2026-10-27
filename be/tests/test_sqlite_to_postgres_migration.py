@@ -63,8 +63,6 @@ def source_and_dest_dbs(tmp_path):
             id=1,
             employee_id=1,
             date="2026-01-01",
-            previous_internal_usd=4000.0,
-            new_internal_usd=5000.0,
             reason="Annual Raise",
         )
         db.add(sal)
@@ -128,7 +126,7 @@ def test_sqlite_to_postgres_migration_execution_and_idempotency(source_and_dest_
 
         sal = db.query(SalaryHistoryDB).filter(SalaryHistoryDB.id == 1).first()
         assert sal is not None
-        assert sal.new_internal_usd == 5000.0
+        assert sal.reason == "Annual Raise"
 
     # 2. Run migration again (idempotency check)
     stats2 = migrate_data(source_url=src_url, dest_url=dst_url, dry_run=False)

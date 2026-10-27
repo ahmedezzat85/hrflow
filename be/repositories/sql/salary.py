@@ -9,24 +9,7 @@ from sqlalchemy.orm import Session
 
 from db import get_db_context
 from models_db import EmployeeDB, SalaryHistoryDB
-
-
-def _history_to_dict(h: SalaryHistoryDB) -> dict:
-    return {
-        "id": h.id,
-        "employee_id": h.employee_id,
-        "date": h.date or "",
-        # Derived: the total is always internal + external (D-046), never stored separately.
-        "previous_salary": round((h.previous_internal_usd or 0.0) + (h.previous_external_usd or 0.0), 2),
-        "new_salary": round((h.new_internal_usd or 0.0) + (h.new_external_usd or 0.0), 2),
-        "pct_change": h.pct_change or "",
-        "reason": h.reason or "",
-        "applied_by": h.applied_by or "",
-        "previous_internal_usd": h.previous_internal_usd if h.previous_internal_usd is not None else 0.0,
-        "previous_external_usd": h.previous_external_usd if h.previous_external_usd is not None else 0.0,
-        "new_internal_usd": h.new_internal_usd if h.new_internal_usd is not None else 0.0,
-        "new_external_usd": h.new_external_usd if h.new_external_usd is not None else 0.0,
-    }
+from finance.pay_history import history_view
 
 
 class SqlSalaryRepository:
@@ -42,7 +25,8 @@ class SqlSalaryRepository:
             if employee_id is not None:
                 query = query.filter(SalaryHistoryDB.employee_id == int(employee_id))
             history = query.order_by(SalaryHistoryDB.id).all()
-            return [_history_to_dict(h) for h in history]
+            # Amounts are derived from the plan, not stored on the history row (D-048).
+            return history_view(db, history)
 
     def apply_raise(
         self,
