@@ -15,7 +15,7 @@ Configuration is a single file, `D:/services/hrflow-prod/.env` (template: `.env.
 | Invoice template | in git: `docs/templates/` | baked into the image at `/app/templates/` (change it with a new release) |
 | Database | Docker volume `hrflow-prod_pgdata` | PostgreSQL service |
 
-`HRFLOW_FILES_ROOT` is a container path and is not set in the host `.env`; to move the files, change `HRFLOW_DATA_DIR` (and move the folders first). Inside `documents/`: `employees/`, `Company Documents/`, `finance_bills/`, `finance_attachments/`, `_meta/`. The database stores paths relative to this root, so never rename or move files inside it.
+`HRFLOW_FILES_ROOT` is a container path and is not set in the host `.env`; to move the files, change `HRFLOW_DATA_DIR` (and move the folders first). Inside `documents/`: `hr/` (`employees/<id>-<name>/`, `salary-payment-docs/<yyyy>/<yyyy-mm>/`, `company-documents/`), `finance/<yyyy>/...` (bills, cheques, statements, ...) and `_meta/` (see `docs/file-storage/26-file-storage-layout-plan.md`). The database stores paths relative to this root, so never rename or move files inside it.
 
 All commands run from the repo root of a checkout of `main`. (The automatic deploy builds from the runner's own checkout of the release tag, `D:/services/actions-runner/_work/hrflow/hrflow`; nothing in the stack depends on any other folder or branch.)
 
