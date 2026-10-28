@@ -6,9 +6,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1
 
 # LibreOffice (headless) converts the generated Word documents to PDF. Fonts: Liberation is metric-compatible
-# with Arial/Times/Courier; DejaVu is the fallback. The invoice template uses Tahoma, which is not available
-# on Linux: LibreOffice substitutes it, so check a sample PDF (see RUNBOOK).
-RUN apt-get update     && apt-get install -y --no-install-recommends libreoffice-writer fonts-liberation fonts-dejavu-core     && rm -rf /var/lib/apt/lists/*
+# with Arial/Times/Courier, Carlito with Calibri and Caladea with Cambria (the template's theme fonts);
+# DejaVu is the last fallback. Tahoma (proprietary) is not installed here: it is mounted from the host
+# at /usr/local/share/fonts/hrflow (see docker-compose.yml and RUNBOOK).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libreoffice-writer fonts-liberation fonts-dejavu-core \
+       fonts-crosextra-carlito fonts-crosextra-caladea \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
