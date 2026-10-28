@@ -69,10 +69,10 @@ class TestLocalStorageClient:
             employee_id=101,
             employee_name="Jane Doe",
         )
-        assert res["file_id"] == "hr/salary-payment-docs/2026/2026-08/inv-2026-08-101__101-jane-doe.docx"
+        assert res["file_id"] == "hr/salary-payment-docs/2026/2026-08/drafts/INV-2026-08-101.docx"
 
         # Verify primary archive
-        primary_path = tmp_path / "hr" / "salary-payment-docs" / "2026" / "2026-08" / "inv-2026-08-101__101-jane-doe.docx"
+        primary_path = tmp_path / "hr" / "salary-payment-docs" / "2026" / "2026-08" / "drafts" / "INV-2026-08-101.docx"
         assert primary_path.is_file()
         assert primary_path.read_bytes() == docx_bytes
 
