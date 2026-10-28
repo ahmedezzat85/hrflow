@@ -120,7 +120,7 @@ if(typeof window !== 'undefined'){
 function renderInvoiceResultsPlaceholder(){
   const body = document.getElementById('invoiceResultsBody');
   if(!body) return;
-  body.innerHTML = renderEmptyTableRow(3, 'Click "Preview Eligible Employees" to see who will get a salary payment doc for the selected month.', 'fa-solid fa-file-invoice-dollar');
+  body.innerHTML = renderEmptyTableRow(6, 'Click "Preview Eligible Employees" to see who will get a salary payment doc for the selected month.', 'fa-solid fa-file-invoice-dollar');
 }
 
 function _getInvoicePeriodInputs(){
@@ -209,7 +209,7 @@ function renderInvoicePreviewResults(results, year, month){
     titleEl.textContent = `${_invoicePeriodLabel(year, month)} · who gets a doc`;
   }
   if(!results || !results.length){
-    body.innerHTML = renderEmptyTableRow(5, 'No employee records found for this period.', 'fa-solid fa-file-invoice-dollar');
+    body.innerHTML = renderEmptyTableRow(6, 'No employee records found for this period.', 'fa-solid fa-file-invoice-dollar');
     return;
   }
 
@@ -243,7 +243,7 @@ function renderInvoicePreviewResults(results, year, month){
     let msg = 'No eligible employees found.';
     if (_invoiceEligibilityFilter === 'skipped') msg = 'No skipped employees found.';
     else if (_invoiceEligibilityFilter === 'all') msg = 'No employee records found.';
-    body.innerHTML = renderEmptyTableRow(5, msg, 'fa-solid fa-file-invoice-dollar');
+    body.innerHTML = renderEmptyTableRow(6, msg, 'fa-solid fa-file-invoice-dollar');
     return;
   }
 
@@ -256,21 +256,23 @@ function renderInvoicePreviewResults(results, year, month){
 
     let statusPill = '';
     let actionBtn = '';
+    let detail = '';
 
     if (r.status === 'eligible') {
       statusPill = '<span class="badge-pill pill-primary"><span class="hv-dot hv-dot--info"></span>Ready</span>';
       actionBtn = `<button type="button" class="btn btn-fill btn-xs" onclick="generateSingleInvoice(${r.employee_id})">Generate</button>`;
     } else if (r.status === 'already_exists' || r.status === 'generated') {
-      const subLine = r.invoice_number ? `<div class="hv-sub-line">${escapeHtml(r.invoice_number)}</div>` : '';
-      statusPill = `<span class="badge-pill pill-success"><span class="hv-dot hv-dot--success"></span>Generated</span>${subLine}`;
+      detail = r.invoice_number ? escapeHtml(r.invoice_number) : '';
+      statusPill = '<span class="badge-pill pill-success"><span class="hv-dot hv-dot--success"></span>Generated</span>';
       actionBtn = `<button type="button" class="btn btn-outline btn-xs" data-action="regenerate-salary-doc" data-employee-id="${escapeHtml(r.employee_id)}" data-name="${escapeHtml(r.employee_name)}" data-year="${escapeHtml(year)}" data-month="${escapeHtml(month)}" data-number="${escapeHtml(r.invoice_number || '')}">Regenerate</button>`;
     } else if (r.status === 'skipped') {
       if (r.reason && r.reason.toLowerCase().includes('doc id')) {
-        statusPill = '<span class="badge-pill pill-warning"><span class="hv-dot hv-dot--warning"></span>Needs a doc ID</span><div class="hv-sub-line">Add a payment doc ID on the employee</div>';
+        detail = 'Add a payment doc ID on the employee';
+        statusPill = '<span class="badge-pill pill-warning"><span class="hv-dot hv-dot--warning"></span>Needs a doc ID</span>';
         actionBtn = `<button type="button" class="btn btn-outline btn-xs" onclick="viewProfile('${escapeHtml(r.employee_id)}')">Edit employee</button>`;
       } else {
-        const subLine = r.reason ? `<div class="hv-sub-line">${escapeHtml(r.reason)}</div>` : '<div class="hv-sub-line">No external salary this month</div>';
-        statusPill = `<span class="badge-pill pill-neutral"><span class="hv-dot hv-dot--muted"></span>Skipped</span>${subLine}`;
+        detail = escapeHtml(r.reason || 'No external salary this month');
+        statusPill = '<span class="badge-pill pill-neutral"><span class="hv-dot hv-dot--muted"></span>Skipped</span>';
         actionBtn = '';
       }
     } else {
@@ -278,10 +280,11 @@ function renderInvoicePreviewResults(results, year, month){
     }
 
     return `<tr>
-      <td class="tname"><div class="avatar">${initials(r.employee_name)}</div><span>${escapeHtml(r.employee_name)}</span></td>
+      <td class="tname"><div class="hv-name-cell"><div class="avatar">${initials(r.employee_name)}</div><span>${escapeHtml(r.employee_name)}</span></div></td>
       <td>${docId}</td>
       <td class="hv-right" style="font-variant-numeric:tabular-nums;font-weight:600;">${extSalary}</td>
       <td>${statusPill}</td>
+      <td class="hv-detail-cell">${detail}</td>
       <td class="hv-right" style="white-space:nowrap;">${actionBtn}</td>
     </tr>`;
   }).join('');
@@ -330,6 +333,7 @@ async function executeBulkGenerateInvoices(evt){
   const chk = document.getElementById('bulkRegenerateExisting');
   const regenerateExisting = chk ? chk.checked : false;
 
+  _setBulkGenerateBusy(true);
   setButtonLoading(btn, true, 'Generating...');
   try{
     const result = await Api.generateInvoices({
@@ -348,7 +352,20 @@ async function executeBulkGenerateInvoices(evt){
     toast(err.message, 'fa-solid fa-triangle-exclamation');
   } finally {
     setButtonLoading(btn, false);
+    _setBulkGenerateBusy(false);
   }
+}
+
+// While the batch runs: show a progress line and lock the dialog so it cannot be changed or dismissed mid-run
+function _setBulkGenerateBusy(busy){
+  const progress = document.getElementById('bulkGenerateProgress');
+  if (progress) progress.hidden = !busy;
+  ['bulkRegenerateExisting', 'btnCancelBulkGenerate'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = busy;
+  });
+  const closeBtn = document.querySelector('#bulkInvoiceModal .modal-close');
+  if (closeBtn) closeBtn.disabled = busy;
 }
 
 function renderInvoiceBatchResults(result, year, month){
@@ -356,16 +373,24 @@ function renderInvoiceBatchResults(result, year, month){
   if(!body) return;
   document.getElementById('invoiceResultsTitle').textContent =
     `Generation Results — ${_invoicePeriodLabel(year, month)}`;
-  body.innerHTML = result.results.map(r => `<tr>
-    <td class="tname"><div class="avatar">${initials(r.employee_name)}</div>${escapeHtml(r.employee_name)}</td>
-    <td><span class="badge-pill ${_invoiceStatusPill(r.status)}">${r.status.replace('_',' ')}</span></td>
-    <td>${r.reason || r.invoice_number || '—'}</td>
-    <td>
-      <div style="display:flex;gap:6px;align-items:center;">
-        ${r.drive_web_url ? `<a href="${r.drive_web_url}" target="_blank" rel="noopener" class="btn btn-sm btn-outline" style="font-size:11.5px;padding:3px 8px;"><i class="fa-solid fa-file-word"></i> Word</a>` : ''}
-      </div>
-    </td>
-  </tr>`).join('');
+  body.innerHTML = result.results.map(r => {
+    const emp = (typeof employees !== 'undefined' && employees)
+      ? employees.find(e => String(e.id) === String(r.employee_id) || e.name === r.employee_name)
+      : null;
+    const docId = (emp && emp.invoice_id) || r.invoice_id || '—';
+    const extSalary = emp && emp.externalSalaryUsd ? fmtUSD(emp.externalSalaryUsd) : (r.amount_usd ? fmtUSD(r.amount_usd) : '—');
+    const wordLink = r.drive_web_url
+      ? `<a href="${escapeHtml(r.drive_web_url)}" target="_blank" rel="noopener" class="btn btn-xs btn-outline"><i class="fa-solid fa-file-word"></i> Word</a>`
+      : '';
+    return `<tr>
+    <td class="tname"><div class="hv-name-cell"><div class="avatar">${initials(r.employee_name)}</div><span>${escapeHtml(r.employee_name)}</span></div></td>
+    <td>${escapeHtml(docId)}</td>
+    <td class="hv-right" style="font-variant-numeric:tabular-nums;font-weight:600;">${extSalary}</td>
+    <td><span class="badge-pill ${_invoiceStatusPill(r.status)}">${escapeHtml(r.status.replace('_',' '))}</span></td>
+    <td class="hv-detail-cell">${escapeHtml(r.reason || r.invoice_number || '')}</td>
+    <td class="hv-right" style="white-space:nowrap;">${wordLink}</td>
+  </tr>`;
+  }).join('');
 }
 
 function openRegenerateInvoiceModal(employeeId, employeeName, year, month, invoiceNumber){
