@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from db import get_db_context
 from models_db import EmployeeDB, EmployeeNoteDB, EmployeeDocumentDB
 from finance.current_pay import current_pay, current_pay_map, zero_pay
+from services.employee_derived import next_raise_map, vacation_days_used_map
 
 
 PERSONAL_FIELDS = ("legal_name", "phone", "address_line_1", "address_line_2", "id_type", "id_number")
@@ -26,10 +27,17 @@ def _personal_to_dict(emp: EmployeeDB) -> dict:
     }
 
 
-def _employee_to_dict(emp: EmployeeDB, include_personal: bool = False, pay: Optional[Dict[str, float]] = None) -> dict:
+def _employee_to_dict(
+    emp: EmployeeDB,
+    include_personal: bool = False,
+    pay: Optional[Dict[str, float]] = None,
+    vac_used: int = 0,
+    next_raise: str = "",
+) -> dict:
     """Profile dict. Personal details (D-036) are only included when explicitly requested.
 
     The salary fields are derived from the compensation plan (D-046); `pay` is that employee's current pay.
+    `vac_used` and `next_raise` are derived too (services/employee_derived.py).
     """
     if not emp:
         return {}
@@ -38,7 +46,6 @@ def _employee_to_dict(emp: EmployeeDB, include_personal: bool = False, pay: Opti
         "id": emp.id,
         "name": emp.name or "",
         "email": emp.email or "",
-        "role": emp.role or "employee",
         "dept": emp.dept or "",
         "job_role": emp.job_role or "",
         "salary": pay["total"],
@@ -47,8 +54,8 @@ def _employee_to_dict(emp: EmployeeDB, include_personal: bool = False, pay: Opti
         "join_date": emp.join_date or "",
         "status": emp.status or "Active",
         "vac_total": emp.vac_total if emp.vac_total is not None else 21,
-        "vac_used": emp.vac_used if emp.vac_used is not None else 0,
-        "next_raise": emp.next_raise or "",
+        "vac_used": vac_used,
+        "next_raise": next_raise,
         "employment_state": emp.employment_state or "Full-Time",
         "invoice_id": emp.invoice_id or "",
     }
@@ -75,8 +82,6 @@ def _doc_to_dict(d: EmployeeDocumentDB) -> dict:
         "name": d.name or "",
         "file_type": d.file_type or "",
         "drive_file_id": d.drive_file_id or "",
-        "view_url": d.view_url or "",
-        "download_url": d.download_url or "",
         "uploaded_by": d.uploaded_by or "",
         "uploaded_at": d.uploaded_at or "",
     }
@@ -92,7 +97,12 @@ class SqlEmployeeRepository:
     def get_by_id(self, employee_id: Union[int, str], include_personal: bool = False) -> Optional[Dict[str, Any]]:
         with self._get_session() as db:
             emp = db.query(EmployeeDB).filter(EmployeeDB.id == int(employee_id)).first()
-            return _employee_to_dict(emp, include_personal, current_pay(db, emp.id)) if emp else None
+            if not emp:
+                return None
+            return _employee_to_dict(
+                emp, include_personal, current_pay(db, emp.id),
+                vacation_days_used_map(db, [emp.id]).get(emp.id, 0), next_raise_map(db, [emp.id]).get(emp.id, ""),
+            )
 
     def get_personal(self, employee_id: Union[int, str]) -> Optional[Dict[str, Any]]:
         """Personal details with the full ID number; the router masks it. None if the employee is missing."""
@@ -117,8 +127,14 @@ class SqlEmployeeRepository:
             if scoped_employee_id is not None:
                 query = query.filter(EmployeeDB.id == int(scoped_employee_id))
             employees = query.order_by(EmployeeDB.id).all()
-            pay_map = current_pay_map(db, [e.id for e in employees])
-            return [_employee_to_dict(e, include_personal, pay_map.get(e.id)) for e in employees]
+            ids = [e.id for e in employees]
+            pay_map = current_pay_map(db, ids)
+            used_map = vacation_days_used_map(db, ids)
+            raise_map = next_raise_map(db, ids)
+            return [
+                _employee_to_dict(e, include_personal, pay_map.get(e.id), used_map.get(e.id, 0), raise_map.get(e.id, ""))
+                for e in employees
+            ]
 
     def create(self, data: Dict[str, Any]) -> int:
         # Data layer only. Pay is never written here: the Pay plan owns it (D-036, D-046), so any salary keys in
@@ -127,14 +143,11 @@ class SqlEmployeeRepository:
             emp_kwargs = {
                 "name": data.get("name"),
                 "email": data.get("email"),
-                "role": data.get("role", "employee"),
                 "dept": data.get("dept", ""),
                 "job_role": data.get("job_role", ""),
                 "join_date": data.get("join_date", ""),
                 "status": data.get("status", "Active"),
                 "vac_total": data.get("vac_total", 21),
-                "vac_used": int(data.get("vac_used", 0)),
-                "next_raise": data.get("next_raise", ""),
                 "employment_state": data.get("employment_state", "Full-Time"),
                 "invoice_id": data.get("invoice_id") or "",
                 "address_line_1": data.get("address_line_1") or "",
@@ -157,7 +170,6 @@ class SqlEmployeeRepository:
                 employee_id=emp.id,
                 email=data.get("email"),
                 name=data.get("name", ""),
-                role=data.get("role", "employee"),
             )
 
             db.commit()
@@ -251,8 +263,6 @@ class SqlEmployeeRepository:
                 name=str(data.get("name")),
                 file_type=data.get("file_type"),
                 drive_file_id=data.get("drive_file_id"),
-                view_url=data.get("view_url", ""),
-                download_url=data.get("download_url", ""),
                 uploaded_by=data.get("uploaded_by", ""),
                 uploaded_at=data.get("uploaded_at", ""),
             )

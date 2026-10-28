@@ -36,7 +36,7 @@ def _plan(conn, emp, start, end, comp="internal_usd_cash"):
 
 
 def test_clean_database_has_no_findings(conn):
-    conn.execute(text("INSERT INTO employees (id, name, email, vac_used) VALUES (1, 'A', 'a@hrflow.test', 0)"))
+    conn.execute(text("INSERT INTO employees (id, name, email) VALUES (1, 'A', 'a@hrflow.test')"))
     _plan(conn, 1, "2026-01-01", "2026-06-30")
     _plan(conn, 1, "2026-07-01", None)
     _plan(conn, 1, "2026-01-01", None, comp="external_usd")  # other component never overlaps
@@ -54,6 +54,8 @@ def test_overlapping_plan_rows_are_reported(conn):
 
 
 def test_bad_date_and_duplicate_bill_and_stale_vac_used(conn):
+    # vac_used was dropped in Stage 1; the audit still checks databases that have not been upgraded yet
+    conn.execute(text("ALTER TABLE employees ADD COLUMN vac_used INTEGER DEFAULT 0"))
     conn.execute(text("INSERT INTO employees (id, name, email, vac_used) VALUES (1, 'A', 'a@hrflow.test', 5)"))
     conn.execute(text("INSERT INTO salary_history (employee_id, date) VALUES (1, '01/02/2026')"))
     conn.execute(text("INSERT INTO finance_vendors (id, name, onboarding_status, is_active) VALUES (1, 'V', 'active', 1)"))

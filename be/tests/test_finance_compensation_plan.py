@@ -29,7 +29,6 @@ def _create_test_employee(email_suffix="comp"):
         emp = EmployeeDB(
             name="Compensation Test Employee",
             email=unique_email,
-            role="employee",
             dept="Engineering",
             job_role="Software Engineer",
             status="Active",

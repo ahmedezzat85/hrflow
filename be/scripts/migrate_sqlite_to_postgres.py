@@ -31,7 +31,7 @@ from models_db import (
     InsuranceClaimDB,
     RequestDB,
     VacationHistoryDB,
-    InvoiceDB,
+    SalaryPaymentDocDB,
     AuditLogDB,
 )
 
@@ -48,7 +48,7 @@ MIGRATION_MODELS = [
     ("insurance_claims", InsuranceClaimDB),
     ("requests", RequestDB),
     ("vacation_history", VacationHistoryDB),
-    ("invoices", InvoiceDB),
+    ("invoices", SalaryPaymentDocDB),
     ("audit_log", AuditLogDB),
 ]
 

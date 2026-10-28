@@ -78,15 +78,12 @@ class EmployeeDB(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(255), nullable=False)
     email = Column(String(255), unique=True, nullable=False, index=True)
-    role = Column(String(50), default="employee")
     dept = Column(String(100), default="")
     job_role = Column(String(100), default="")
     # Pay is not stored here: it is derived from the compensation plan (D-046, finance/current_pay.py).
     join_date = Column(String(20), default="")
     status = Column(String(50), default="Active")
     vac_total = Column(Integer, default=21)
-    vac_used = Column(Integer, default=0)
-    next_raise = Column(String(20), default="")
     employment_state = Column(String(50), default="Full-Time")
     invoice_id = Column(String(20), default="")
     address_line_1 = Column(String(255), default="")
@@ -111,10 +108,6 @@ class EmployeeDB(Base):
     compensation_plans = relationship("EmployeeCompensationPlanDB", back_populates="employee", cascade="all, delete-orphan")
     social_insurance = relationship("EmployeeSocialInsuranceDB", back_populates="employee", cascade="all, delete-orphan")
     tax_methods = relationship("EmployeeTaxMethodDB", back_populates="employee", cascade="all, delete-orphan")
-
-    @property
-    def invoices(self):
-        return self.salary_payment_docs
 
 
 
@@ -167,8 +160,6 @@ class EmployeeDocumentDB(Base):
     name = Column(String(255), nullable=False)
     file_type = Column(String(50), nullable=False)
     drive_file_id = Column(String(255), nullable=False)
-    view_url = Column(Text, default="")
-    download_url = Column(Text, default="")
     uploaded_by = Column(String(255), default="")
     uploaded_at = Column(String(50), default="")
 
@@ -183,8 +174,6 @@ class CompanyDocumentDB(Base):
     file_type = Column(String(50), nullable=False)
     category = Column(String(100), default="General")
     drive_file_id = Column(String(255), nullable=False)
-    view_url = Column(Text, default="")
-    download_url = Column(Text, default="")
     uploaded_by = Column(String(255), default="")
     uploaded_at = Column(String(50), default="")
 
@@ -275,9 +264,6 @@ class SalaryPaymentDocDB(Base):
     __table_args__ = (
         Index("ix_salary_payment_docs_emp_period", "employee_id", "payment_year", "payment_month"),
     )
-
-# Backward compatibility alias
-InvoiceDB = SalaryPaymentDocDB
 
 
 class AuditLogDB(Base):

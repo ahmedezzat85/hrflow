@@ -110,7 +110,7 @@ def test_refresh_keeps_working_from_the_rate_stored_on_the_run(no_transfers):
     db = no_transfers
     bank = FinanceBankAccountDB(account_name="FX Test USD", bank_name="Test Bank", account_number=f"FX-{uuid.uuid4().hex[:8]}",
                                 currency="USD", opening_balance=100000.0, current_balance=100000.0, is_active=True)
-    emp = EmployeeDB(name="FX Employee", email=f"fx+{uuid.uuid4().hex[:8]}@fxtest.com", role="employee", status="Active")
+    emp = EmployeeDB(name="FX Employee", email=f"fx+{uuid.uuid4().hex[:8]}@fxtest.com", status="Active")
     db.add_all([bank, emp])
     db.flush()
     set_funding_accounts_in(db, bank.id)  # funding accounts come from Payroll Settings

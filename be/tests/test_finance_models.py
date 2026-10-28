@@ -213,7 +213,6 @@ def test_payroll_run_and_cross_domain_employee_line(db_session):
     emp = EmployeeDB(
         name="Elena Rostova",
         email="elena.rostova@voyance.internal",
-        role="employee",
         dept="Engineering",
     )
     db_session.add(emp)

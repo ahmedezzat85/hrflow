@@ -52,7 +52,6 @@ class EmployeeCreate(BaseModel):
     join_date: str = ""
     status: str = "Active"
     vac_total: int = 21
-    next_raise: str = ""
     employment_state: EmploymentState = "Full-Time"
     invoice_id: Optional[str] = None
     # Personal details (D-036). Legal name, phone and address line 1 are required for a new employee;
@@ -94,8 +93,6 @@ class EmployeeUpdate(BaseModel):
     join_date: Optional[str] = None
     status: Optional[str] = None
     vac_total: Optional[int] = None
-    vac_used: Optional[int] = None
-    next_raise: Optional[str] = None
     employment_state: Optional[EmploymentState] = None
     invoice_id: Optional[str] = None
 

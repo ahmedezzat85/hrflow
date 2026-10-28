@@ -25,7 +25,7 @@ TOMORROW = (date.today() + timedelta(days=1)).isoformat()
 
 def _new_employee(email):
     with get_db_context() as db:
-        emp = EmployeeDB(name="Pay Source", email=email, role="employee", status="Active", join_date="2024-01-01")
+        emp = EmployeeDB(name="Pay Source", email=email, status="Active", join_date="2024-01-01")
         db.add(emp)
         db.commit()
         return emp.id

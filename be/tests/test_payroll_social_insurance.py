@@ -160,7 +160,6 @@ def test_social_insurance_validation_and_effective_dating(app_client, admin_cook
     emp = EmployeeDB(
         name="Insurance Test Employee",
         email="emp1@insurancetest.com",
-        role="employee",
         status="Active",
     )
     db_session.add(emp)
@@ -236,7 +235,6 @@ def test_finalized_period_guard(app_client, admin_cookies, db_session, setup_soc
     emp = EmployeeDB(
         name="Finalized Guard Emp",
         email="emp_guard@insurancetest.com",
-        role="employee",
         status="Active",
     )
     db_session.add(emp)

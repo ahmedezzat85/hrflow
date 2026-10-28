@@ -38,7 +38,6 @@ def _setup_employee(name, email, ext_amount=None, int_amount=None, dept="Enginee
         emp = EmployeeDB(
             name=name,
             email=email,
-            role="employee",
             dept=dept,
             job_role="Specialist",
             status="Active",
