@@ -32,6 +32,7 @@ from typing import Optional, Tuple
 from docxtpl import DocxTemplate
 
 import drive_client
+import file_layout
 from config import Config
 from logging_config import get_logger
 
@@ -412,7 +413,7 @@ def get_salary_payment_doc_pdf_bytes(doc: dict) -> Tuple[bytes, str]:
 
     # 1. Check if storage client is LocalStorageClient and has the .pdf file
     if hasattr(storage_client, "_resolve_secure_path") and drive_file_id:
-        pdf_rel_path = (drive_file_id[:-5] if drive_file_id.lower().endswith(".docx") else drive_file_id) + ".pdf"
+        pdf_rel_path = file_layout.pdf_ref_for_salary_doc_ref(drive_file_id)
         try:
             full_pdf_path = storage_client._resolve_secure_path(pdf_rel_path)
             if os.path.isfile(full_pdf_path):

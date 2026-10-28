@@ -10,6 +10,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+from pathlib import Path
 from typing import Optional
 
 from logging_config import get_logger
@@ -24,8 +25,12 @@ def _convert_with_libreoffice(docx_path: str, output_dir: str) -> Optional[str]:
 
     try:
         logger.debug("Attempting PDF conversion with LibreOffice (%s)", soffice_cmd)
+        # A private profile in the temp folder: the default (~/.config) is not writable in the read-only
+        # production container, and a shared profile blocks concurrent conversions.
+        profile_uri = Path(output_dir, "lo-profile").as_uri()
         cmd = [
             soffice_cmd,
+            f"-env:UserInstallation={profile_uri}",
             "--headless",
             "--convert-to",
             "pdf",
@@ -33,7 +38,7 @@ def _convert_with_libreoffice(docx_path: str, output_dir: str) -> Optional[str]:
             output_dir,
             docx_path,
         ]
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=120)
         if result.returncode == 0:
             base_name = os.path.splitext(os.path.basename(docx_path))[0]
             pdf_path = os.path.join(output_dir, f"{base_name}.pdf")
