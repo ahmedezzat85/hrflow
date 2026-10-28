@@ -16,7 +16,7 @@ from models_db import (
     InsuranceCategoryDB,
     SalaryHistoryDB,
     VacationHistoryDB,
-    InvoiceDB,
+    SalaryPaymentDocDB,
 )
 from finance.models import (
     LedgerTransactionDB,
@@ -28,6 +28,7 @@ from finance.models import (
     SubscriptionDB,
 )
 from finance.current_pay import current_pay_map, zero_pay
+from services.employee_derived import next_raise_map, vacation_days_used_map
 from finance.pay_history import history_view
 from logging_config import get_logger
 
@@ -60,7 +61,6 @@ def get_employees_export_data() -> Tuple[List[str], List[List[Any]]]:
         "Employee ID",
         "Full Name",
         "Email",
-        "Role",
         "Department",
         "Job Role",
         "Employment State",
@@ -84,11 +84,14 @@ def get_employees_export_data() -> Tuple[List[str], List[List[Any]]]:
     rows = []
     with get_db_context() as db:
         employees = db.query(EmployeeDB).order_by(EmployeeDB.id.asc()).all()
-        pay_map = current_pay_map(db, [e.id for e in employees])
+        ids = [e.id for e in employees]
+        pay_map = current_pay_map(db, ids)
+        used_map = vacation_days_used_map(db, ids)
+        raise_map = next_raise_map(db, ids)
         for emp in employees:
             bank = emp.bank_account
             vac_total = int(emp.vac_total or 0)
-            vac_used = int(emp.vac_used or 0)
+            vac_used = used_map.get(emp.id, 0)
             vac_rem = max(vac_total - vac_used, 0)
             pay = pay_map.get(emp.id) or zero_pay()
             internal_sal, external_sal, total_sal = pay["internal"], pay["external"], pay["total"]
@@ -97,13 +100,12 @@ def get_employees_export_data() -> Tuple[List[str], List[List[Any]]]:
                 emp.id,
                 emp.name or "",
                 emp.email or "",
-                emp.role or "employee",
                 emp.dept or "",
                 emp.job_role or "",
                 emp.employment_state or "Full-Time",
                 emp.status or "Active",
                 emp.join_date or "",
-                emp.next_raise or "",
+                raise_map.get(emp.id, ""),
                 internal_sal,
                 external_sal,
                 total_sal,
@@ -297,13 +299,13 @@ def get_invoices_export_data(
 
     rows = []
     with get_db_context() as db:
-        query = db.query(InvoiceDB)
+        query = db.query(SalaryPaymentDocDB)
         if year:
-            query = query.filter(InvoiceDB.payment_year == year)
+            query = query.filter(SalaryPaymentDocDB.payment_year == year)
         if month:
-            query = query.filter(InvoiceDB.payment_month == month)
+            query = query.filter(SalaryPaymentDocDB.payment_month == month)
 
-        invoices = query.order_by(InvoiceDB.payment_year.desc(), InvoiceDB.payment_month.desc(), InvoiceDB.id.desc()).all()
+        invoices = query.order_by(SalaryPaymentDocDB.payment_year.desc(), SalaryPaymentDocDB.payment_month.desc(), SalaryPaymentDocDB.id.desc()).all()
         for inv in invoices:
             period = f"{inv.payment_year}-{inv.payment_month:02d}" if inv.payment_year and inv.payment_month else ""
             created_str = inv.created_at.strftime("%Y-%m-%d %H:%M:%S") if inv.created_at else ""

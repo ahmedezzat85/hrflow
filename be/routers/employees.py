@@ -73,7 +73,6 @@ def create_employee(
         "join_date": payload.join_date,
         "status": payload.status,
         "vac_total": payload.vac_total,
-        "next_raise": payload.next_raise,
         "employment_state": payload.employment_state,
         "invoice_id": payload.invoice_id or "",
         "address_line_1": payload.address_line_1,
@@ -288,8 +287,6 @@ def upload_employee_document(
             "name": str(payload.name),
             "file_type": payload.file_type,
             "drive_file_id": uploaded["file_id"],
-            "view_url": uploaded["view_url"],
-            "download_url": uploaded["download_url"],
             "uploaded_by": current_user["email"],
             "uploaded_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M"),
         })

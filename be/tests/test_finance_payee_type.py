@@ -110,7 +110,6 @@ def test_payee_type_vendor_and_employee(app_client, admin_cookies):
         emp = EmployeeDB(
             name="Nour Al-Sayed",
             email="nour.sayed@voyancehealth.com",
-            role="staff",
             dept="Engineering",
             status="active",
         )
@@ -234,7 +233,6 @@ def test_update_payee_type_and_switching(app_client, admin_cookies):
         emp = EmployeeDB(
             name="Tarek Mansour",
             email="tarek.mansour@voyancehealth.com",
-            role="staff",
             dept="Operations",
             status="active",
         )
@@ -304,7 +302,6 @@ def test_reports_include_internal_filtering(app_client, admin_cookies):
         emp = EmployeeDB(
             name="Farah Amin",
             email="farah.amin@voyancehealth.com",
-            role="staff",
             dept="Design",
             status="active",
         )

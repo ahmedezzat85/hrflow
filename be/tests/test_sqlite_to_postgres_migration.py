@@ -12,7 +12,7 @@ from models_db import (
     UserDB,
     EmployeeBankAccountDB,
     SalaryHistoryDB,
-    InvoiceDB,
+    SalaryPaymentDocDB,
 )
 from scripts.migrate_sqlite_to_postgres import migrate_data
 
@@ -38,7 +38,6 @@ def source_and_dest_dbs(tmp_path):
             id=1,
             name="John Doe",
             email="john@example.com",
-            role="employee",
             status="Active",
         )
         db.add(emp)
@@ -67,7 +66,7 @@ def source_and_dest_dbs(tmp_path):
         )
         db.add(sal)
 
-        inv = InvoiceDB(
+        inv = SalaryPaymentDocDB(
             id=1,
             employee_id=1,
             employee_name="John Doe",

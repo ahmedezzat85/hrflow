@@ -26,7 +26,7 @@ from models_db import (
     InsuranceClaimDB,
     RequestDB,
     VacationHistoryDB,
-    InvoiceDB,
+    SalaryPaymentDocDB,
     AuditLogDB,
 )
 
@@ -226,7 +226,7 @@ def reconcile(client=None, domain: str = "all") -> dict:
         # 9. Invoices
         if target_domain in ("all", "invoices"):
             sheet_invs = client.get_all_records("Invoices")
-            db_invs = {i.id: i for i in db.query(InvoiceDB).all()}
+            db_invs = {i.id: i for i in db.query(SalaryPaymentDocDB).all()}
             inv_mismatches = []
             for s in sheet_invs:
                 iid = int(s.get("id", 0)) if str(s.get("id", "")).isdigit() else None
