@@ -43,9 +43,6 @@ def db_session(app_client):
 def clean_rates(db_session):
     db_session.query(PayrollRateSettingsDB).delete()
     db_session.commit()
-    g = PayrollService(db_session).get_payroll_settings()
-    g.employee_rate, g.employer_rate = 0.11, 0.18
-    db_session.commit()
     return db_session
 
 

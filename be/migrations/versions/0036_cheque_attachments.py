@@ -42,6 +42,9 @@ def upgrade() -> None:
 
     if 'finance_cheques' not in tables:
         return
+    # 0013 builds missing tables from the current models, so on a fresh database the column may already be gone (0051)
+    if 'attachment_url' not in {c['name'] for c in insp.get_columns('finance_cheques')}:
+        return
     rows = bind.execute(
         text(
             "SELECT id, attachment_url, created_by FROM finance_cheques "

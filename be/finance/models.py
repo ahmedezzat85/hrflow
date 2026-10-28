@@ -405,7 +405,6 @@ class FinanceChequeDB(Base):
     posting_policy = Column(String(30), default="at_issue", nullable=False)  # at_issue | at_clearing
     signer_name = Column(String(255), nullable=True)
     authorized_by = Column(String(255), nullable=True)
-    attachment_url = Column(String(500), nullable=True)  # DEPRECATED (D-032, migration 0036): scans live in finance_attachments.cheque_id; no longer written
     exception_reason = Column(Text, nullable=True)
     exception_evidence = Column(String(255), nullable=True)
     replacement_cheque_id = Column(Integer, ForeignKey("finance_cheques.id", ondelete="SET NULL", use_alter=True), nullable=True)
@@ -751,7 +750,6 @@ class PayrollRunDB(Base):
     total_employer_cost = Column(Float, default=0.0)
     headcount = Column(Integer, default=0)
     currency = Column(String(10), default="USD")
-    bank_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True, index=True)
     external_funding_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True)
     internal_funding_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -781,7 +779,6 @@ class PayrollRunDB(Base):
 
     lines = relationship("PayrollLineDB", back_populates="payroll_run", cascade="all, delete-orphan")
     adjustments = relationship("PayrollAdjustmentDB", back_populates="payroll_run", cascade="all, delete-orphan")
-    bank_account = relationship("FinanceBankAccountDB", foreign_keys=[bank_account_id])
     external_funding_account = relationship("FinanceBankAccountDB", foreign_keys=[external_funding_account_id])
     internal_funding_account = relationship("FinanceBankAccountDB", foreign_keys=[internal_funding_account_id])
     journal_transaction = relationship("LedgerTransactionDB", foreign_keys=[journal_transaction_id])
@@ -1019,11 +1016,11 @@ FinanceEmployeeCompensationPlanDB = EmployeeCompensationPlanDB
 
 
 class PayrollSettingsDB(Base):
+    """Default payroll funding accounts (one row, id 1). Social insurance rates live only in the effective-dated
+    PayrollRateSettingsDB."""
     __tablename__ = "finance_payroll_settings"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    employee_rate = Column(Float, default=0.11, nullable=False)
-    employer_rate = Column(Float, default=0.18, nullable=False)
     external_funding_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True)
     internal_funding_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -1038,8 +1035,8 @@ FinancePayrollSettingsDB = PayrollSettingsDB
 
 class PayrollRateSettingsDB(Base):
     """Effective-dated employee and employer social insurance rates (SI-1, D-040). Newest row with
-    effective_from <= the period start applies, like PayrollTaxSettingsDB. The global PayrollSettingsDB rates are
-    kept as a readable fallback and mirror the rates in force for the current month."""
+    effective_from <= the period start applies, like PayrollTaxSettingsDB. This table is the only store of the rates;
+    it is seeded with the statutory defaults on first use."""
     __tablename__ = "finance_payroll_rate_settings"
 
     id = Column(Integer, primary_key=True, autoincrement=True)

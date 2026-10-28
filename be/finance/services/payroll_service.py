@@ -67,8 +67,6 @@ class PayrollService:
         if not settings:
             settings = PayrollSettingsDB(
                 id=1,
-                employee_rate=0.11,
-                employer_rate=0.18,
                 updated_at=datetime.utcnow(),
                 updated_by="system",
             )
@@ -78,15 +76,16 @@ class PayrollService:
         return settings
 
     RATE_SEED_DATE = "2000-01-01"
+    DEFAULT_EMPLOYEE_RATE = 0.11
+    DEFAULT_EMPLOYER_RATE = 0.18
 
     def _ensure_rate_seed(self) -> None:
-        """First use: seed the dated rates from the global row so every earlier period resolves as before."""
+        """First use: seed the dated rates with the statutory defaults so every earlier period resolves."""
         if self.db.query(PayrollRateSettingsDB).count() == 0:
-            g = self.get_payroll_settings()
             self.db.add(PayrollRateSettingsDB(
                 effective_from=self.RATE_SEED_DATE,
-                employee_rate=g.employee_rate,
-                employer_rate=g.employer_rate,
+                employee_rate=self.DEFAULT_EMPLOYEE_RATE,
+                employer_rate=self.DEFAULT_EMPLOYER_RATE,
                 created_by="system",
                 updated_by="system",
             ))
@@ -94,7 +93,7 @@ class PayrollService:
 
     def get_effective_rate_settings(self, period_start: str) -> tuple:
         """Social insurance (employee_rate, employer_rate) for a payroll period.
-        Rule: newest row where effective_from <= the period start; the global row is the fallback."""
+        Rule: newest row where effective_from <= the period start; the seed row dates from 2000-01-01."""
         self._ensure_rate_seed()
         row = (
             self.db.query(PayrollRateSettingsDB)
@@ -104,8 +103,7 @@ class PayrollService:
         )
         if row:
             return float(row.employee_rate), float(row.employer_rate)
-        g = self.get_payroll_settings()
-        return float(g.employee_rate), float(g.employer_rate)
+        return self.DEFAULT_EMPLOYEE_RATE, self.DEFAULT_EMPLOYER_RATE
 
     def current_rates(self) -> tuple:
         """Rates in force for the current calendar month."""
@@ -179,12 +177,6 @@ class PayrollService:
             self.db.add(row)
         self.db.flush()
 
-        # Keep the global row readable: it mirrors the rates in force for the current month
-        g = self.get_payroll_settings()
-        g.employee_rate, g.employer_rate = self.current_rates()
-        g.updated_at = datetime.utcnow()
-        g.updated_by = user_email or "system"
-
         self._log_audit(
             action="payroll.rate_settings.saved",
             target_type="payroll_rate_settings",
@@ -206,8 +198,7 @@ class PayrollService:
     ) -> PayrollSettingsDB:
         """Update organization-wide social insurance rates and the default payroll funding accounts."""
         settings = self.get_payroll_settings()
-        old_emp_rate = settings.employee_rate
-        old_org_rate = settings.employer_rate
+        old_emp_rate, old_org_rate = self.current_rates()
         old_ext_id = settings.external_funding_account_id
         old_int_id = settings.internal_funding_account_id
 
@@ -252,9 +243,9 @@ class PayrollService:
                 target_id="1",
                 details=json.dumps({
                     "old_employee_rate": old_emp_rate,
-                    "new_employee_rate": settings.employee_rate,
+                    "new_employee_rate": self.current_rates()[0],
                     "old_employer_rate": old_org_rate,
-                    "new_employer_rate": settings.employer_rate,
+                    "new_employer_rate": self.current_rates()[1],
                     "old_external_funding_account_id": old_ext_id,
                     "new_external_funding_account_id": settings.external_funding_account_id,
                     "old_internal_funding_account_id": old_int_id,
@@ -318,7 +309,6 @@ class PayrollService:
         ext_account, int_account = self._settings_funding_accounts()
         if not run.external_funding_account_id and ext_account:
             run.external_funding_account_id = ext_account.id
-            run.bank_account_id = ext_account.id
         if not run.internal_funding_account_id and int_account:
             run.internal_funding_account_id = int_account.id
         self.db.flush()
@@ -1242,7 +1232,6 @@ class PayrollService:
         ext_account, int_account = self._resolve_funding_accounts(
             bank_account_id, external_funding_account_id, internal_funding_account_id
         )
-        run.bank_account_id = ext_account.id if ext_account else None
         run.external_funding_account_id = ext_account.id if ext_account else None
         run.internal_funding_account_id = int_account.id if int_account else None
 
@@ -1458,7 +1447,6 @@ class PayrollService:
             total_social_insurance_egp=preview.get("total_social_insurance_egp", 0.0),
             headcount=preview["headcount"],
             currency=currency or "USD",
-            bank_account_id=resolved_ext_id,
             external_funding_account_id=resolved_ext_id,
             internal_funding_account_id=resolved_int_id,
             fx_rate_source=fx_rate_source or "first_of_month",
@@ -1914,7 +1902,6 @@ class PayrollService:
         ext_account, int_account = self._settings_funding_accounts()
         if ext_account:
             run.external_funding_account_id = ext_account.id
-            run.bank_account_id = ext_account.id
         if int_account:
             run.internal_funding_account_id = int_account.id
 

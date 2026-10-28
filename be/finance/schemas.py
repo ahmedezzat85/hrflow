@@ -1159,7 +1159,6 @@ class ChequeBase(BaseModel):
     posting_policy: str = Field("at_issue", description="at_issue | at_clearing")
     signer_name: Optional[str] = Field(None, description="Authorized cheque signer")
     authorized_by: Optional[str] = Field(None, description="Approver / authorizing officer")
-    attachment_url: Optional[str] = Field(None, description="Attachment / scan reference")
     notes: Optional[str] = Field("", description="Memo or internal notes")
 
 
@@ -1196,7 +1195,6 @@ class ChequeResponse(ChequeBase):
     posting_policy: str = "at_issue"
     signer_name: Optional[str] = None
     authorized_by: Optional[str] = None
-    attachment_url: Optional[str] = None
     attachment_count: int = 0
     has_scan: bool = False
     exception_reason: Optional[str] = None

@@ -342,7 +342,6 @@ class ChequesRepository:
             posting_policy=posting_policy,
             signer_name=data.get("signer_name"),
             authorized_by=data.get("authorized_by"),
-            attachment_url=None,  # deprecated (D-032): scans are stored as finance_attachments rows
             replaced_cheque_id=data.get("replaced_cheque_id"),
             clear_date=None,
             fiscal_year=fiscal_year,

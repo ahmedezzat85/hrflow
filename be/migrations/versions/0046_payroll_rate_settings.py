@@ -46,7 +46,8 @@ def upgrade() -> None:
     already = bind.execute(sa.text("SELECT COUNT(*) FROM finance_payroll_rate_settings")).scalar() or 0
     if already == 0:
         employee_rate, employer_rate = 0.11, 0.18
-        if 'finance_payroll_settings' in tables:
+        # 0013 builds missing tables from the current models, so on a fresh database the columns may be gone (0051)
+        if 'finance_payroll_settings' in tables and {'employee_rate', 'employer_rate'} <= {c['name'] for c in sa.inspect(bind).get_columns('finance_payroll_settings')}:
             row = bind.execute(sa.text("SELECT employee_rate, employer_rate FROM finance_payroll_settings WHERE id = 1")).first()
             if row is not None and row[0] is not None and row[1] is not None:
                 employee_rate, employer_rate = float(row[0]), float(row[1])
