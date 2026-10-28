@@ -11,7 +11,7 @@ C="docker compose --env-file D:/services/hrflow-prod/.env -f deploy/prod/docker-
 ```
 
 ## First install
-1. Copy `deploy/prod/prod.env.example` to `D:/services/hrflow-prod/.env`; fill `SECRET_KEY`, both Postgres passwords (letters/digits only), `GOOGLE_OAUTH_CLIENT_ID`, `BACKUP_PASSPHRASE`. Save `BACKUP_PASSPHRASE` in a password manager.
+1. Copy `.env.prod.example` (repo root) to `D:/services/hrflow-prod/.env`; create `D:/services/hrflow-prod/data/secrets/` (put `google-credentials.json` there if Drive or Sheets export is used); fill `SECRET_KEY`, both Postgres passwords (letters/digits only), `GOOGLE_OAUTH_CLIENT_ID`, `BACKUP_PASSPHRASE`. Save `BACKUP_PASSPHRASE` in a password manager.
 2. In Google Cloud Console add `http://localhost` to the OAuth client's Authorized JavaScript origins.
 3. `$C up -d --build` (migrations run automatically at app start).
 4. Create the first admin: `docker exec hrflow-prod-app-1 python scripts/bootstrap_admin.py --email you@voyance.health`.

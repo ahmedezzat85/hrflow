@@ -89,7 +89,7 @@ def test_validate_raises_with_invalid_storage_backend(monkeypatch):
 
 def test_validate_passes_with_local_storage_backend(monkeypatch, tmp_path):
     local_path = str(tmp_path / "custom_storage")
-    Config = _fresh_config(monkeypatch, SECRET_KEY="x", FILE_STORAGE_BACKEND="local", LOCAL_STORAGE_PATH=local_path)
+    Config = _fresh_config(monkeypatch, SECRET_KEY="x", FILE_STORAGE_BACKEND="local", HRFLOW_FILES_ROOT=local_path)
     Config.validate()
     assert os.path.isdir(local_path)
 

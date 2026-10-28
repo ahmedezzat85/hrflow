@@ -20,7 +20,7 @@ python scripts/backfill_sheets_to_sql.py --domain all
 
 To enable live exporting to Google Sheets:
 1. Create a Google Sheet or use an existing company spreadsheet, copy the Spreadsheet ID into `.env` as `SPREADSHEET_ID`.
-2. Place your service account `credentials.json` in `be/` with Google Sheets API and Drive API access. Share the spreadsheet with your service account email.
+2. Place your service account key at `secrets/google-credentials.json` (repo root, gitignored) with Google Sheets API and Drive API access. Share the spreadsheet with your service account email.
 3. If Google Sheets credentials are not configured, exports will still function via local CSV download (UTF-8 BOM formatted for Excel).
 
 1. https://console.cloud.google.com/ → select/create a project.
@@ -28,7 +28,7 @@ To enable live exporting to Google Sheets:
 3. **APIs & Services → Credentials → Create Credentials → Service Account**,
    name it `hrflow-backend`.
 4. On the service account, **Keys → Add Key → Create new key → JSON** →
-   download, rename to `credentials.json`, place next to `main.py`.
+   download, rename to `google-credentials.json`, place in `secrets/` at the repo root.
 5. Copy the `client_email` from that JSON file.
 6. In your Google Sheet, click **Share** → paste that email → give **Editor** access.
 
@@ -121,7 +121,7 @@ python scripts/export_sheets_cold_storage.py
 
 ```bash
 pip install -r requirements.txt
-cp .env.example .env   # then fill in values as needed
+cp ../.env.example ../.env   # repo-root .env; fill in values as needed
 alembic upgrade head   # ensure schema is up-to-date
 uvicorn main:app --reload --host 0.0.0.0 --port 5000
 ```
