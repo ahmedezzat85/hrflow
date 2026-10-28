@@ -12,7 +12,7 @@ Configuration is a single file, `D:/services/hrflow-prod/.env` (template: `.env.
 | Uploaded files (HR + Finance) | `${HRFLOW_DATA_DIR}/documents` | `/data/documents` (`HRFLOW_FILES_ROOT`, fixed) |
 | Logs | `${HRFLOW_DATA_DIR}/logs` | `/data/logs` |
 | Secret files (Google service account key `google-credentials.json`) | `${HRFLOW_DATA_DIR}/secrets` | `/run/secrets` (read-only) |
-| Extra fonts for PDFs (Tahoma) | `${HRFLOW_DATA_DIR}/fonts` (copy `tahoma.ttf` and `tahomabd.ttf` from `C:\Windows\Fonts`; licensed Microsoft fonts, never committed) | `/usr/local/share/fonts/hrflow` (read-only) |
+| Fonts for PDFs (the template uses Calibri, Cambria, Tahoma) | `${HRFLOW_DATA_DIR}/fonts` (copy `calibri*.ttf`, `cambria*.ttf`/`cambria.ttc`, `tahoma*.ttf` from `C:\Windows\Fonts`; licensed Microsoft fonts, never committed; without them the image falls back to look-alike open fonts) | `/usr/local/share/fonts/hrflow` (read-only) |
 | Invoice template | in git: `docs/templates/` | baked into the image at `/app/templates/` (change it with a new release) |
 | Database | Docker volume `hrflow-prod_pgdata` | PostgreSQL service |
 
