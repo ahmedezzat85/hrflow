@@ -6,16 +6,55 @@ Supports:
 2. Microsoft Word COM (`win32com.client`) on Windows hosts.
 Gracefully returns None if no converter engine is available in the environment.
 """
+import io
 import os
+import re
 import shutil
 import subprocess
 import tempfile
+import zipfile
 from pathlib import Path
 from typing import Optional
 
 from logging_config import get_logger
 
 logger = get_logger("pdf_converter")
+
+_VERTICAL_BAND_STYLES = re.compile(r'<w:tblStylePr w:type="band[12]Vert">.*?</w:tblStylePr>', re.DOTALL)
+_HORIZONTAL_BAND_STYLES = re.compile(r'<w:tblStylePr w:type="band[12]Horz">.*?</w:tblStylePr>', re.DOTALL)
+_SIDE_BORDERS = re.compile(r'<w:(?:left|right|start|end) [^>]*/>')
+
+
+def _like_word_table_look(docx_bytes: bytes) -> bytes:
+    """
+    LibreOffice draws table style borders that Word does not, so PDFs show blue column lines between cells
+    that the Word document does not have (e.g. the "Light List" table style of the invoice template):
+    - banded-row rules (band1Horz/band2Horz) carry left/right cell borders, which Word keeps at the table
+      edge only (the table's own borders still draw the outer box);
+    - banded-column rules (band1Vert/band2Vert) apply even when the table has "Banded Columns" off
+      (w:noVBand="1"), which Word honours.
+    The Word file itself is never changed: this adjusts the copy handed to LibreOffice.
+    Returns the input unchanged if there is nothing to change or the file cannot be processed.
+    """
+    try:
+        with zipfile.ZipFile(io.BytesIO(docx_bytes)) as zin:
+            document = zin.read("word/document.xml").decode("utf-8", errors="ignore")
+            styles = zin.read("word/styles.xml").decode("utf-8", errors="ignore")
+            patched = _HORIZONTAL_BAND_STYLES.sub(lambda m: _SIDE_BORDERS.sub("", m.group(0)), styles)
+            looks = re.findall(r"<w:tblLook\b[^>]*>", document)
+            if looks and all('w:noVBand="1"' in look for look in looks):
+                patched = _VERTICAL_BAND_STYLES.sub("", patched)
+            if patched == styles:
+                return docx_bytes
+            out = io.BytesIO()
+            with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zout:
+                for item in zin.infolist():
+                    data = patched.encode("utf-8") if item.filename == "word/styles.xml" else zin.read(item.filename)
+                    zout.writestr(item, data)
+            return out.getvalue()
+    except Exception as exc:
+        logger.warning("Could not adjust table look before PDF conversion: %s", exc)
+        return docx_bytes
 
 
 def _convert_with_libreoffice(docx_path: str, output_dir: str) -> Optional[str]:
@@ -115,8 +154,11 @@ def convert_docx_to_pdf_bytes(docx_bytes: bytes) -> Optional[bytes]:
         with open(docx_path, "wb") as f:
             f.write(docx_bytes)
 
-        # 1. Try LibreOffice CLI first (standard on Linux/Docker)
-        converted_pdf = _convert_with_libreoffice(docx_path, tmpdir)
+        # 1. Try LibreOffice CLI first (standard on Linux/Docker), on a copy adjusted to match Word's table look
+        libreoffice_path = os.path.join(tmpdir, "lo_input.docx")
+        with open(libreoffice_path, "wb") as f:
+            f.write(_like_word_table_look(docx_bytes))
+        converted_pdf = _convert_with_libreoffice(libreoffice_path, tmpdir)
 
         # 2. Try Word COM on Windows
         if not converted_pdf:
