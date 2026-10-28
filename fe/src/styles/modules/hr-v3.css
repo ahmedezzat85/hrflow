@@ -455,13 +455,13 @@
 #invoiceResultsTable th:nth-child(1),
 #invoiceResultsTable td:nth-child(1) {
   text-align: left;
-  width: 28%;
+  width: 18%;
 }
 
 #invoiceResultsTable th:nth-child(2),
 #invoiceResultsTable td:nth-child(2) {
   text-align: left;
-  width: 18%;
+  width: 15%;
 }
 
 #invoiceResultsTable th:nth-child(3),
@@ -469,21 +469,36 @@
 #a-invoices table thead th.hv-right,
 #a-invoices table tbody td.hv-right {
   text-align: right !important;
-  width: 18%;
+  width: 13%;
 }
 
 #invoiceResultsTable th:nth-child(4),
 #invoiceResultsTable td:nth-child(4) {
   text-align: left;
-  width: 24%;
+  width: 16%;
 }
 
 #invoiceResultsTable th:nth-child(5),
 #invoiceResultsTable td:nth-child(5) {
+  text-align: left;
+  width: 26%;
+  color: var(--ink-muted);
+}
+
+#invoiceResultsTable th:nth-child(6),
+#invoiceResultsTable td:nth-child(6) {
   text-align: right !important;
   width: 12%;
   white-space: nowrap;
 }
+
+/* Name cell stays a real table cell (row borders stay continuous); avatar + name flex inside */
+@media (min-width: 769px) {
+  #a-invoices td.tname { display: table-cell; }
+}
+#bulkGenerateProgress { margin-top: 12px; display: flex; align-items: center; gap: 8px; color: var(--ink-muted); font-size: 12.5px; }
+#bulkGenerateProgress[hidden] { display: none; }
+#a-invoices .hv-name-cell { display: flex; align-items: center; gap: 10px; }
 
 /* Action button styling in Salary payment docs */
 #a-invoices table td .btn,
