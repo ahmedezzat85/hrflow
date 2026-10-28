@@ -1,6 +1,6 @@
 """
 be/tests/test_sqlite_to_postgres_migration.py
-Tests verifying the SQLite -> PostgreSQL data migration script and SQL-primary dual-write behavior.
+Tests verifying the SQLite -> PostgreSQL data migration script.
 """
 import pytest
 from sqlalchemy import create_engine
@@ -15,12 +15,6 @@ from models_db import (
     InvoiceDB,
 )
 from scripts.migrate_sqlite_to_postgres import migrate_data
-from repositories.dual.employees import DualWriteEmployeeRepository
-from repositories.dual.employee_bank_accounts import DualWriteBankRepository
-from repositories.sql.employees import SqlEmployeeRepository
-from repositories.sql.employee_bank_accounts import SqlBankRepository
-from repositories.sheets.employees import SheetsEmployeeRepository
-from repositories.sheets.employee_bank_accounts import SheetsBankRepository
 
 
 @pytest.fixture
@@ -45,7 +39,6 @@ def source_and_dest_dbs(tmp_path):
             name="John Doe",
             email="john@example.com",
             role="employee",
-            salary=5000.0,
             status="Active",
         )
         db.add(emp)
@@ -70,8 +63,6 @@ def source_and_dest_dbs(tmp_path):
             id=1,
             employee_id=1,
             date="2026-01-01",
-            previous_salary=4000.0,
-            new_salary=5000.0,
             reason="Annual Raise",
         )
         db.add(sal)
@@ -124,7 +115,6 @@ def test_sqlite_to_postgres_migration_execution_and_idempotency(source_and_dest_
         emp = db.query(EmployeeDB).filter(EmployeeDB.id == 1).first()
         assert emp is not None
         assert emp.name == "John Doe"
-        assert emp.salary == 5000.0
 
         user = db.query(UserDB).filter(UserDB.email == "john@example.com").first()
         assert user is not None
@@ -136,7 +126,7 @@ def test_sqlite_to_postgres_migration_execution_and_idempotency(source_and_dest_
 
         sal = db.query(SalaryHistoryDB).filter(SalaryHistoryDB.id == 1).first()
         assert sal is not None
-        assert sal.new_salary == 5000.0
+        assert sal.reason == "Annual Raise"
 
     # 2. Run migration again (idempotency check)
     stats2 = migrate_data(source_url=src_url, dest_url=dst_url, dry_run=False)
@@ -145,32 +135,3 @@ def test_sqlite_to_postgres_migration_execution_and_idempotency(source_and_dest_
     with DstSession() as db:
         assert db.query(EmployeeDB).count() == 1
         assert db.query(UserDB).count() == 1
-
-
-def test_dual_write_reads_from_sql_primary(fake_sheets_client, tmp_path):
-    fake_sheets_client.auto_sync_to_sql = False
-    from db import reset_engine_for_testing
-
-    db_file = tmp_path / "dual_test.db"
-    db_url = f"sqlite:///{db_file}"
-    reset_engine_for_testing(db_url)
-    engine = create_engine(db_url, connect_args={"check_same_thread": False})
-    Base.metadata.create_all(bind=engine)
-
-    # In SQL: Employee is "Alice SQL"
-    sql_emp_repo = SqlEmployeeRepository()
-    emp_id = sql_emp_repo.create({"name": "Alice SQL", "email": "alice@test.com", "salary": 3000.0})
-
-    # In Sheets: Employee is "Alice Stale Sheets"
-    sheets_emp_repo = SheetsEmployeeRepository(client=fake_sheets_client)
-    fake_sheets_client.append_row("Employees", {"id": emp_id, "name": "Alice Stale Sheets", "email": "alice@test.com", "salary": 2000.0})
-
-    # Dual write repo (default primary = SQL)
-    dual_repo = DualWriteEmployeeRepository(primary=sql_emp_repo, shadow=sheets_emp_repo)
-
-    # Read should return the fresh SQL version
-    fetched = dual_repo.get_by_id(emp_id)
-    assert fetched["name"] == "Alice SQL"
-    assert fetched["salary"] == 3000.0
-
-    reset_engine_for_testing(None)

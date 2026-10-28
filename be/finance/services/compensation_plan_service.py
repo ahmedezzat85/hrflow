@@ -8,6 +8,7 @@ import json
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
 from fastapi import HTTPException, status
+from finance.pay_history import history_view
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -66,21 +67,10 @@ class CompensationPlanService:
             .order_by(SalaryHistoryDB.date.desc(), SalaryHistoryDB.id.desc())
             .all()
         )
+        # Amounts are derived from the plan rows, never stored on the history row (D-048).
         return [
-            {
-                "id": h.id,
-                "employee_id": h.employee_id,
-                "date": h.date or "",
-                "previous_internal_usd": h.previous_internal_usd or 0.0,
-                "previous_external_usd": h.previous_external_usd or 0.0,
-                "new_internal_usd": h.new_internal_usd or 0.0,
-                "new_external_usd": h.new_external_usd or 0.0,
-                "new_total_usd": round((h.new_internal_usd or 0.0) + (h.new_external_usd or 0.0), 2),
-                "pct_change": h.pct_change or "",
-                "reason": h.reason or "",
-                "applied_by": h.applied_by or "",
-            }
-            for h in rows
+            {k: v for k, v in item.items() if k not in ("previous_salary", "new_salary")}
+            for item in history_view(self.db, rows)
         ]
 
     # ------------------------------------------------------------------ guards
@@ -155,15 +145,6 @@ class CompensationPlanService:
 
     # ------------------------------------------------------------------ writes (flush only)
 
-    def _sync_employee_fields(self, emp: EmployeeDB, component_type: str, amt: float) -> None:
-        if component_type == "external_usd":
-            emp.external_salary_usd = round(amt, 2)
-        else:
-            emp.internal_salary_usd = round(amt, 2)
-        emp.salary = round(
-            (emp.external_salary_usd or 0.0) + (emp.internal_salary_usd or 0.0), 2
-        )
-
     def _write_component(
         self,
         emp: EmployeeDB,
@@ -210,7 +191,6 @@ class CompensationPlanService:
                 currency="USD",
                 salary_basis=basis,
             )
-        self._sync_employee_fields(emp, component_type, amt)
         self.db.flush()
         return new_row
 
@@ -220,7 +200,6 @@ class CompensationPlanService:
         active_row = self.repo.get_active_component(emp.id, component_type)
         end_dt = self._parse_date(effective_start_date) - timedelta(days=1)
         self.repo.close_component(active_row, end_dt.strftime("%Y-%m-%d"))
-        self._sync_employee_fields(emp, component_type, 0.0)
 
     # ------------------------------------------------------------------ public
 
@@ -339,25 +318,12 @@ class CompensationPlanService:
             })
 
         if changed or force_history:
-            prev_int = next(p[4] for p in plan if p[0] == "internal_usd_cash")
-            prev_ext = next(p[4] for p in plan if p[0] == "external_usd")
-            new_int = amounts["internal_usd_cash"]
-            new_ext = amounts["external_usd"]
-            prev_total = round(prev_int + prev_ext, 2)
-            new_total = round(new_int + new_ext, 2)
-            pct = round((new_total - prev_total) / prev_total * 100, 2) if prev_total > 0 else 0.0
+            # Only the event is stored; the amounts come from the plan rows (D-048).
             self.db.add(SalaryHistoryDB(
                 employee_id=employee_id,
                 date=effective_start_date,
-                previous_salary=prev_total,
-                new_salary=new_total,
-                pct_change=f"{'+' if pct >= 0 else ''}{pct}%",
                 reason=(reason if reason is not None else notes) or "",
                 applied_by=actor_email or "",
-                previous_internal_usd=prev_int,
-                previous_external_usd=prev_ext,
-                new_internal_usd=new_int,
-                new_external_usd=new_ext,
             ))
         if changed:
             try:

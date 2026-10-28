@@ -162,9 +162,6 @@ def test_social_insurance_validation_and_effective_dating(app_client, admin_cook
         email="emp1@insurancetest.com",
         role="employee",
         status="Active",
-        internal_salary_usd=1000.0,
-        external_salary_usd=0.0,
-        salary=1000.0,
     )
     db_session.add(emp)
     db_session.commit()
@@ -241,8 +238,6 @@ def test_finalized_period_guard(app_client, admin_cookies, db_session, setup_soc
         email="emp_guard@insurancetest.com",
         role="employee",
         status="Active",
-        internal_salary_usd=800.0,
-        salary=800.0,
     )
     db_session.add(emp)
     db_session.flush()
@@ -289,57 +284,42 @@ def test_2x2_blocking_and_calculation_matrix(app_client, db_session, setup_socia
         name="Employee A (Missing Base)",
         email="emp_a@insurancetest.com",
         status="Active",
-        internal_salary_usd=1000.0,
-        salary=1000.0,
     )
     # 2. Employee B: Insured with base (NET basis)
     emp_b = EmployeeDB(
         name="Employee B (Insured NET)",
         email="emp_b@insurancetest.com",
         status="Active",
-        internal_salary_usd=1000.0,
-        salary=1000.0,
     )
     # 3. Employee B2: Insured with base (GROSS basis)
     emp_b2 = EmployeeDB(
         name="Employee B2 (Insured GROSS)",
         email="emp_b2@insurancetest.com",
         status="Active",
-        internal_salary_usd=1000.0,
-        salary=1000.0,
     )
     # 4. Employee C: Not insured
     emp_c = EmployeeDB(
         name="Employee C (Not Insured)",
         email="emp_c@insurancetest.com",
         status="Active",
-        internal_salary_usd=1000.0,
-        salary=1000.0,
     )
     # 5. Employee D: Zero internal salary (external USD only)
     emp_d = EmployeeDB(
         name="Employee D (External Only)",
         email="emp_d@insurancetest.com",
         status="Active",
-        internal_salary_usd=0.0,
-        external_salary_usd=2000.0,
-        salary=2000.0,
     )
     # 6. Employee Legacy: legacy USD currency row
     emp_leg = EmployeeDB(
         name="Employee Legacy USD",
         email="emp_leg@insurancetest.com",
         status="Active",
-        internal_salary_usd=1000.0,
-        salary=1000.0,
     )
     # 7. Employee Exceed: insured base exceeds internal salary * fx
     emp_exc = EmployeeDB(
         name="Employee Exceeds Base",
         email="emp_exc@insurancetest.com",
         status="Active",
-        internal_salary_usd=1000.0,
-        salary=1000.0,
     )
     db_session.add_all([emp_a, emp_b, emp_b2, emp_c, emp_d, emp_leg, emp_exc])
     db_session.flush()
@@ -463,8 +443,8 @@ def test_snapshot_immutability_and_post_journal(app_client, db_session, setup_so
     db_session.commit()
 
     # Setup 2 employees: 1 internal insured (NET), 1 external
-    emp_int = EmployeeDB(name="Int Emp", email="int@insurancetest.com", status="Active", internal_salary_usd=1200.0, salary=1200.0)
-    emp_ext = EmployeeDB(name="Ext Emp", email="ext@insurancetest.com", status="Active", external_salary_usd=2500.0, salary=2500.0)
+    emp_int = EmployeeDB(name="Int Emp", email="int@insurancetest.com", status="Active")
+    emp_ext = EmployeeDB(name="Ext Emp", email="ext@insurancetest.com", status="Active")
     db_session.add_all([emp_int, emp_ext])
     db_session.flush()
 
@@ -553,8 +533,8 @@ def test_payroll_csv_export_one_row_per_employee(app_client, admin_cookies, db_s
     db_session.query(EmployeeDB).update({EmployeeDB.status: "Inactive"})
     db_session.commit()
 
-    emp1 = EmployeeDB(name="Emp One", email="emp1@insurancetest.com", status="Active", internal_salary_usd=1000.0, salary=1000.0)
-    emp2 = EmployeeDB(name="Emp Two", email="emp2@insurancetest.com", status="Active", external_salary_usd=1500.0, salary=1500.0)
+    emp1 = EmployeeDB(name="Emp One", email="emp1@insurancetest.com", status="Active")
+    emp2 = EmployeeDB(name="Emp Two", email="emp2@insurancetest.com", status="Active")
     db_session.add_all([emp1, emp2])
     db_session.flush()
 
@@ -601,7 +581,7 @@ def test_locked_fx_rate_variance(db_session, setup_social_ins_env):
     db_session.query(EmployeeDB).update({EmployeeDB.status: "Inactive"})
     db_session.commit()
 
-    emp = EmployeeDB(name="FX Emp", email="fx_emp@insurancetest.com", status="Active", internal_salary_usd=1000.0, salary=1000.0)
+    emp = EmployeeDB(name="FX Emp", email="fx_emp@insurancetest.com", status="Active")
     db_session.add(emp)
     db_session.flush()
 

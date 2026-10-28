@@ -32,26 +32,16 @@ def export_env(app_client):
         db.refresh(emp)
         emp_id = emp.id
 
-        # Seed salary history with formula injection attack in reason and pct_change
+        # Seed salary history with a formula injection attack in the reason
         h1 = SalaryHistoryDB(
             employee_id=emp_id,
             date="2026-01-01",
-            previous_internal_usd=3000.0,
-            previous_external_usd=7000.0,
-            new_internal_usd=3500.0,
-            new_external_usd=8000.0,
-            pct_change="+15.0%",  # starts with '+'
             reason="=1+1",        # starts with '='
             applied_by="admin@voyance.health",
         )
         h2 = SalaryHistoryDB(
             employee_id=emp_id,
             date="2026-03-01",
-            previous_internal_usd=3500.0,
-            previous_external_usd=8000.0,
-            new_internal_usd=3500.0,
-            new_external_usd=9000.0,
-            pct_change="@malicious",  # starts with '@'
             reason="-cmd|' /C calc'!A0",  # starts with '-'
             applied_by="admin@voyance.health",
         )
@@ -185,8 +175,8 @@ def test_export_formula_injection_neutralization(app_client, export_env):
     ws_r = wb["Raises"]
     rows_r = list(ws_r.iter_rows(values_only=True))
 
-    # Row 1: h1 has pct_change="+15.0%", reason="=1+1"
-    # Row 2: h2 has pct_change="@malicious", reason="-cmd|' /C calc'!A0"
+    # Row 1: reason="=1+1"; row 2: reason="-cmd|' /C calc'!A0". The percentage is derived from the plan and always
+    # starts with '+' or '-', so it must be neutralized too.
     # Both rows must be neutralized with leading single-quote
     reasons = [r[5] for r in rows_r[1:]]
     pcts = [r[4] for r in rows_r[1:]]

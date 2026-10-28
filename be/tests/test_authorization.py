@@ -73,6 +73,8 @@ def test_employee_cannot_apply_raise(app_client, employee_cookies):
 
 
 def test_admin_apply_raise_computes_correct_new_salary(app_client, admin_cookies):
+    from pay_test_helpers import seed_plan
+    seed_plan(2, internal=40000.0)
     payload = {"employee_id": 2, "new_internal_salary_usd": 44000, "new_external_salary_usd": 0, "effective_date": "2026-08-16"}
     response = app_client.post("/api/salary/raise", json=payload, cookies=admin_cookies)
     assert response.status_code == 201
@@ -209,7 +211,6 @@ def test_cookie_secure_flag_is_reflected_in_production_response(monkeypatch, fak
 
     monkeypatch.setattr(sheets_client, "get_client", lambda: fake_sheets_client)
     monkeypatch.setattr(drive_client, "get_drive_client", lambda: fake_drive_client)
-    monkeypatch.setattr(auth_module, "get_client", lambda: fake_sheets_client)
 
     def fake_login_with_google(credential, user_repo=None):
         return {"token": "fake.jwt.token", "role": "admin", "employee_id": 1, "name": "Admin", "email": "admin@hrflow.test"}

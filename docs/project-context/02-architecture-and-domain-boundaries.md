@@ -94,7 +94,7 @@ When resolving technical conflicts, apply the following order of precedence:
 
 ## 7. Current Known Boundary Gaps
 
-- **Dormant Repositories:** `be/repositories/sheets/` and `be/repositories/dual/` are migration relics, but `be/routers/insurance.py` still imports `compute_consumption` from `repositories/sheets/insurance.py`.
+- **Dormant Repositories:** removed in CLEAN-1 (D-047). Only the SQL repositories remain; Google Sheets is an export destination (`be/sheets_client.py`, `be/services/export.py`).
 - **Incomplete Payslip Self-Service:** the employee payslip section ([fe/src/partials/employee/sections/payslips.html](../../fe/src/partials/employee/sections/payslips.html)) calls `refreshMyPayslips()`, which is not defined; the API client already exposes `getMyPayslips`.
 - **No Background Processing Layer:** Heavy tasks run synchronously in-process, needing careful query and payload optimization.
 

@@ -6,6 +6,8 @@ PyJWT==2.15.1
 pydantic==2.14.1
 email-validator==2.2.0
 docxtpl==0.16.8
+# PDF conversion needs an office converter, which is not a pip package: LibreOffice is installed in
+# deploy/prod/Dockerfile.app (Linux/Docker); on Windows hosts pywin32 drives Microsoft Word instead.
 pywin32>=306; sys_platform == "win32"
 
 

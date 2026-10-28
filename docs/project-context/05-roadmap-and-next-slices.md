@@ -321,6 +321,31 @@ Acceptance criteria: see section 9 of the plan.
 
 ---
 
+## 3M. Historical Period Eligibility (D-045 accepted October 26, 2026; built, awaiting review)
+
+Decision D-045. Plan: `docs/finance-module/hp-1-historical-payroll-eligibility-plan.md`. Branch `feat/hp1-historical-payroll-eligibility`. Risk class high (money logic), no migration, no route change.
+
+| Slice | Scope | Size | Depends on |
+| :--- | :--- | :--- | :--- |
+| HP-1 | Run employee list depends on the period: for a period ended before the current month, every employee with a plan overlapping the period and a join date not after its end; skipped employees returned with reasons. Backend tests. **Built, awaiting review (not merged)** | S | — |
+| HP-1b | Payroll screen: "Historical period" badge and collapsible skipped list; mock API; Playwright spec. **Built, awaiting review (not merged)** | S | HP-1 |
+
+EA-1/LJ-1 (employment periods table, owner choice E2) will later replace the plan-based inference with real hire and leave periods; HP-1 does not conflict with it. LJ-1 above is the optional follow-up for hire and leave dates.
+
+---
+
+## 3N. Pay Single Source (D-046 accepted October 27, 2026; built, awaiting review)
+
+Decision D-046. Plan: `docs/finance-module/pay-single-source-plan.md`. Branch `refactor/pay-single-source`. Risk class high (migration that drops columns); no route change, API field names unchanged, no frontend change.
+
+| Slice | Scope | Size | Depends on |
+| :--- | :--- | :--- | :--- |
+| PAY-1 | Plan table is the only stored pay; employee salary columns and `salary_history` totals dropped and derived; migration 0048 with pre-check script; tests. **Built, awaiting review (not merged)** | M | — |
+| PAY-2 | Pay history stores the event only; amounts derived from the plan (D-048), migration 0049. **Built on `refactor/history-derived-amounts`, awaiting review (not merged)** | S-M | PAY-1 |
+| CLEAN-1 | Remove the dormant `repositories/sheets` and `repositories/dual` code (move `compute_consumption` first). **Built on `refactor/remove-sheets-dual`, awaiting review (not merged)** | S-M | PAY-1 |
+
+---
+
 ## 4. Deferred Until Decision
 
 The following initiatives remain on hold until formally decided in [04-decision-log.md](04-decision-log.md):
@@ -353,6 +378,7 @@ The following initiatives remain on hold until formally decided in [04-decision-
 | :--- | :--- | :--- |
 | Q-022: typing and amount field of imported historical payroll lines | Open (owner) | `06`; gates historical payroll import |
 | Fiscal-year opening balances (BI-1a, BI-1b, BI-1c) | In progress; branch `feat/fiscal-year-opening-balances`; BI-1a, BI-1b and BI-1c built, awaiting review and merge | Section 3L, D-043, Q-024 |
+| Historical period eligibility (HP-1, HP-1b) | Built on `feat/hp1-historical-payroll-eligibility`, awaiting review and merge | Section 3M, D-045 |
 | Payroll-Maker run-creation screen check (403 on account list) | Not done | D-039, Q-007 |
 
 ### Planned earlier, not done

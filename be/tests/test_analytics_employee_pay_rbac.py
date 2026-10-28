@@ -11,7 +11,7 @@ RBAC and Permission Matrix tests for Employee Pay Analytics (AC 1 & AC 2):
 import pytest
 from db import get_db_context
 from models_db import EmployeeDB, SalaryHistoryDB
-from finance.models import PayrollRunDB, PayrollLineDB
+from finance.models import PayrollRunDB, PayrollLineDB, EmployeeCompensationPlanDB
 from conftest import create_test_user
 
 
@@ -30,15 +30,16 @@ def rbac_env(app_client):
         db.refresh(emp)
         emp_id = emp.id
 
-        # Seed salary history
+        # The plan holds the pay; the history row is only the event (D-048)
+        db.add_all([
+            EmployeeCompensationPlanDB(employee_id=emp_id, component_type="internal_usd_cash", amount=2500.0,
+                                       effective_start_date="2026-01-01"),
+            EmployeeCompensationPlanDB(employee_id=emp_id, component_type="external_usd", amount=6000.0,
+                                       effective_start_date="2026-01-01"),
+        ])
         h = SalaryHistoryDB(
             employee_id=emp_id,
             date="2026-01-01",
-            previous_internal_usd=2000.0,
-            previous_external_usd=5000.0,
-            new_internal_usd=2500.0,
-            new_external_usd=6000.0,
-            pct_change="+21.4%",
             reason="Annual Adjustment",
             applied_by="admin@voyance.health",
         )

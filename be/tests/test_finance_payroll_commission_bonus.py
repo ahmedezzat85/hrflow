@@ -51,9 +51,6 @@ def _setup_employee(name, email, ext_amount=None, int_amount=None):
             role="employee",
             dept="Sales",
             job_role="Account Exec",
-            salary=(ext_amount or 0.0) + (int_amount or 0.0),
-            internal_salary_usd=int_amount or 0.0,
-            external_salary_usd=ext_amount or 0.0,
             status="Active",
         )
         db.add(emp)
@@ -171,7 +168,6 @@ def test_add_commission_to_employee_without_plan(app_client, admin_cookies):
             role="employee",
             dept="Sales",
             status="On Leave",
-            salary=0.0,
         )
         db.add(emp2)
         db.commit()

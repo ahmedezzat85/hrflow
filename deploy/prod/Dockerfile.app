@@ -3,8 +3,12 @@ FROM python:3.12-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
-    ENVIRONMENT=production
+    PIP_NO_CACHE_DIR=1
+
+# LibreOffice (headless) converts the generated Word documents to PDF. Fonts: Liberation is metric-compatible
+# with Arial/Times/Courier; DejaVu is the fallback. The invoice template uses Tahoma, which is not available
+# on Linux: LibreOffice substitutes it, so check a sample PDF (see RUNBOOK).
+RUN apt-get update     && apt-get install -y --no-install-recommends libreoffice-writer fonts-liberation fonts-dejavu-core     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 

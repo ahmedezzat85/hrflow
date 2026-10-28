@@ -41,9 +41,6 @@ def _setup_employee(name, email, ext_amount=None, int_amount=None, dept="Enginee
             role="employee",
             dept=dept,
             job_role="Specialist",
-            salary=(ext_amount or 0.0) + (int_amount or 0.0),
-            internal_salary_usd=int_amount or 0.0,
-            external_salary_usd=ext_amount or 0.0,
             status="Active",
         )
         db.add(emp)

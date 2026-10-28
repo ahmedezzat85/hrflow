@@ -27,6 +27,8 @@ from finance.models import (
     AccountTransferDB,
     SubscriptionDB,
 )
+from finance.current_pay import current_pay_map, zero_pay
+from finance.pay_history import history_view
 from logging_config import get_logger
 
 logger = get_logger("services.export")
@@ -82,14 +84,14 @@ def get_employees_export_data() -> Tuple[List[str], List[List[Any]]]:
     rows = []
     with get_db_context() as db:
         employees = db.query(EmployeeDB).order_by(EmployeeDB.id.asc()).all()
+        pay_map = current_pay_map(db, [e.id for e in employees])
         for emp in employees:
             bank = emp.bank_account
             vac_total = int(emp.vac_total or 0)
             vac_used = int(emp.vac_used or 0)
             vac_rem = max(vac_total - vac_used, 0)
-            internal_sal = float(emp.internal_salary_usd or 0.0)
-            external_sal = float(emp.external_salary_usd or 0.0)
-            total_sal = float(emp.salary or (internal_sal + external_sal))
+            pay = pay_map.get(emp.id) or zero_pay()
+            internal_sal, external_sal, total_sal = pay["internal"], pay["external"], pay["total"]
 
             row = [
                 emp.id,
@@ -205,11 +207,9 @@ def get_salary_history_export_data() -> Tuple[List[str], List[List[Any]]]:
             .order_by(SalaryHistoryDB.date.desc(), SalaryHistoryDB.id.desc())
             .all()
         )
-        for hist, emp_name in records:
-            prev_total = float(hist.previous_salary or 0.0)
-            new_total = float(hist.new_salary or 0.0)
-            delta = new_total - prev_total
-
+        derived = history_view(db, [hist for hist, _ in records])  # amounts come from the plan (D-048)
+        for (hist, emp_name), d in zip(records, derived):
+            prev_total, new_total = d["previous_salary"], d["new_salary"]
             row = [
                 hist.id,
                 hist.employee_id,
@@ -217,12 +217,12 @@ def get_salary_history_export_data() -> Tuple[List[str], List[List[Any]]]:
                 hist.date or "",
                 prev_total,
                 new_total,
-                delta,
-                hist.pct_change or "",
-                float(hist.previous_internal_usd or 0.0),
-                float(hist.new_internal_usd or 0.0),
-                float(hist.previous_external_usd or 0.0),
-                float(hist.new_external_usd or 0.0),
+                round(new_total - prev_total, 2),
+                d["pct_change"],
+                d["previous_internal_usd"],
+                d["new_internal_usd"],
+                d["previous_external_usd"],
+                d["new_external_usd"],
                 hist.reason or "",
                 hist.applied_by or "",
             ]

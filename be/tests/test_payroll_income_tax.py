@@ -204,13 +204,13 @@ def test_internal_vs_external_tax_scope(db_session, setup_tax_env):
     db_session.commit()
 
     # Internal employee
-    emp_int = EmployeeDB(name="Internal Emp", email="int_tax@tax_test.com", status="Active", internal_salary_usd=2000.0, salary=2000.0)
+    emp_int = EmployeeDB(name="Internal Emp", email="int_tax@tax_test.com", status="Active")
     db_session.add(emp_int)
     db_session.flush()
     db_session.add(EmployeeCompensationPlanDB(employee_id=emp_int.id, component_type="internal_usd_cash", amount=2000.0, salary_basis="GROSS", effective_start_date="2026-01-01"))
 
     # External employee
-    emp_ext = EmployeeDB(name="External Emp", email="ext_tax@tax_test.com", status="Active", salary=3000.0)
+    emp_ext = EmployeeDB(name="External Emp", email="ext_tax@tax_test.com", status="Active")
     db_session.add(emp_ext)
     db_session.flush()
     db_session.add(EmployeeCompensationPlanDB(employee_id=emp_ext.id, component_type="external_usd", amount=3000.0, salary_basis="GROSS", effective_start_date="2026-01-01"))
@@ -244,7 +244,7 @@ def test_missing_tax_settings_blocks_internal_run(db_session, setup_tax_env):
     db_session.query(PayrollTaxSettingsDB).delete()
     db_session.commit()
 
-    emp_int = EmployeeDB(name="Internal Emp", email="int_tax2@tax_test.com", status="Active", internal_salary_usd=2000.0, salary=2000.0)
+    emp_int = EmployeeDB(name="Internal Emp", email="int_tax2@tax_test.com", status="Active")
     db_session.add(emp_int)
     db_session.flush()
     db_session.add(EmployeeCompensationPlanDB(employee_id=emp_int.id, component_type="internal_usd_cash", amount=2000.0, salary_basis="GROSS", effective_start_date="2026-01-01"))
@@ -284,14 +284,14 @@ def test_tax_with_insured_si_deduction(db_session, setup_tax_env):
     db_session.commit()
 
     # Employee 1: Insured (SI = 550 EGP at 5000 insured base)
-    emp_ins = EmployeeDB(name="Insured Emp", email="ins@tax_test.com", status="Active", internal_salary_usd=2000.0, salary=2000.0)
+    emp_ins = EmployeeDB(name="Insured Emp", email="ins@tax_test.com", status="Active")
     db_session.add(emp_ins)
     db_session.flush()
     db_session.add(EmployeeCompensationPlanDB(employee_id=emp_ins.id, component_type="internal_usd_cash", amount=2000.0, salary_basis="GROSS", effective_start_date="2026-01-01"))
     db_session.add(EmployeeSocialInsuranceDB(employee_id=emp_ins.id, insured_flag=True, insured_base=5000.0, currency="EGP", effective_start_date="2026-01-01"))
 
     # Employee 2: Uninsured (SI = 0 EGP)
-    emp_unins = EmployeeDB(name="Uninsured Emp", email="unins@tax_test.com", status="Active", internal_salary_usd=2000.0, salary=2000.0)
+    emp_unins = EmployeeDB(name="Uninsured Emp", email="unins@tax_test.com", status="Active")
     db_session.add(emp_unins)
     db_session.flush()
     db_session.add(EmployeeCompensationPlanDB(employee_id=emp_unins.id, component_type="internal_usd_cash", amount=2000.0, salary_basis="GROSS", effective_start_date="2026-01-01"))
@@ -384,7 +384,7 @@ def test_settings_resolution_and_immutability(db_session, setup_tax_env):
     db_session.query(EmployeeDB).update({EmployeeDB.status: "Inactive"})
     db_session.commit()
 
-    emp = EmployeeDB(name="Imm Emp", email="imm@tax_test.com", status="Active", internal_salary_usd=2000.0, salary=2000.0)
+    emp = EmployeeDB(name="Imm Emp", email="imm@tax_test.com", status="Active")
     db_session.add(emp)
     db_session.flush()
     db_session.add(EmployeeCompensationPlanDB(employee_id=emp.id, component_type="internal_usd_cash", amount=2000.0, salary_basis="GROSS", effective_start_date="2026-01-01"))

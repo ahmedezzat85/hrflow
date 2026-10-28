@@ -1,11 +1,22 @@
 """
 Configuration for HRFlow backend.
-Loads secrets from environment variables (.env file supported via python-dotenv).
+
+All settings come from environment variables. For local development only, the
+repo-root `.env` is loaded as a convenience; in production the platform (Docker
+Compose, an orchestrator, a CI/CD secret store) injects real environment
+variables and no `.env` file is read. The full list of variables is documented
+in the repo-root `.env.example` (development) and `.env.prod.example` (production).
 """
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+_BE_DIR = os.path.dirname(os.path.abspath(__file__))
+_REPO_ROOT = os.path.dirname(_BE_DIR)
+
+# Real environment variables always win (override=False). Skipped in production
+# so a stray file can never change a deployed configuration.
+if os.getenv("ENVIRONMENT", "development").lower() != "production":
+    load_dotenv(os.path.join(_REPO_ROOT, ".env"), override=False)
 
 class Config:
     # "development" (default, local work) or "production". Controls whether
@@ -13,8 +24,12 @@ class Config:
     ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
     IS_PRODUCTION = ENVIRONMENT.lower() == "production"
 
-    # Path to the downloaded Google Service Account JSON key file (Sheets + Drive access)
-    GOOGLE_CREDENTIALS_FILE = os.getenv("GOOGLE_CREDENTIALS_FILE", "credentials.json")
+    # Path to the Google Service Account JSON key file (Sheets export + Drive access).
+    # It is a secret: keep it outside git and outside the image (repo-root `secrets/`
+    # in development, a read-only mount such as /run/secrets in containers).
+    GOOGLE_CREDENTIALS_FILE = os.getenv(
+        "GOOGLE_CREDENTIALS_FILE", os.path.join(_REPO_ROOT, "secrets", "google-credentials.json")
+    )
 
     # The ID of your Google Sheet (found in its URL between /d/ and /edit)
     SPREADSHEET_ID = os.getenv("SPREADSHEET_ID", "")
@@ -94,9 +109,6 @@ class Config:
     # ---- Database & Storage Engine settings ----
     # Storage engine mode: "sql" (default, SQL as primary system of record), "dual", or "sheets" (legacy)
     STORAGE_ENGINE = os.getenv("STORAGE_ENGINE", "sql").lower()
-
-    # Read source when in "dual" mode: "sql" (default, reads from SQL) or "sheets" (legacy)
-    DUAL_READ_SOURCE = os.getenv("DUAL_READ_SOURCE", "sql").lower()
 
     # Relational Database engine type: "sqlite" (default) or "postgres" / "postgresql"
     DB_TYPE = os.getenv("DB_TYPE", "sqlite").lower()

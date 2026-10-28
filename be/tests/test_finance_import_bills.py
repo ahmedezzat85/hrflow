@@ -27,6 +27,13 @@ def _pdfs(*numbers, total=100.0):
     return {f"bill-{n:04d}.pdf": text_pdf("Import Vendor Co", f"IMP-{n:03d}", total) for n in numbers}
 
 
+@pytest.fixture(autouse=True)
+def _own_files_root(monkeypatch, tmp_path):
+    """The dry-run test compares the whole files root before and after, so it must not share it with other tests
+    running in parallel workers (that made test_dry_run_writes_nothing fail now and then)."""
+    monkeypatch.setenv("HRFLOW_FILES_ROOT", str(tmp_path / "files"))
+
+
 def _counts():
     from db import get_db_context
     from finance.models import (

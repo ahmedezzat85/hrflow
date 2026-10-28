@@ -12,6 +12,11 @@ fe/config.js
 fe/test-results
 fe/tests
 fe/x
+.env
+.env.*
+!.env.example
+!.env.prod.example
+secrets
 be/.env
 be/credentials.json
 be/uploads

@@ -22,7 +22,7 @@ HRFlow is an internal HR and finance management system for one company (Voyance 
 - **Authentication:** Google Sign-In. The backend verifies the Google ID token and then issues HRFlow's own short-lived JWT session token using `PyJWT`, stored in an `HttpOnly` cookie (`hrflow_session`).
 - **Frontend:** `fe/` — vanilla HTML/CSS/JavaScript, bundled with Vite and `vite-plugin-singlefile` into a single deployable HTML artifact (`fe/dist/index.html`). Source of truth is `fe/src/`.
 - **No React:** do not introduce React or another frontend framework unless explicitly approved.
-- **Configuration:** `fe/config.js` is gitignored and contains `API_BASE_URL` and `GOOGLE_CLIENT_ID`; use `config-example.js` as the template. Never commit secrets or environment-specific configuration.
+- **Configuration:** the backend reads environment variables only. For local development the repo-root `.env` (template `.env.example`) is loaded; production uses a host `.env` (template `.env.prod.example`) that `deploy/prod/docker-compose.yml` passes through explicitly, with no hidden values. Secret files (Google service account key) live in `secrets/` (gitignored) and are mounted read-only in containers. The browser config is `fe/config.js` (gitignored, template `config-example.js`) in development and is generated from container env at start in production. A new `os.getenv` in `be/` must be added to both templates and to compose (`be/tests/test_env_contract.py` enforces this). Never commit secrets or environment-specific configuration.
 
 ## Non-Negotiables
 
@@ -43,7 +43,7 @@ HRFlow is an internal HR and finance management system for one company (Voyance 
 - Do not replace the pattern with unsynchronized `__new__` logic.
 
 ### Google Sheets (Export Only)
-Operational data lives in SQL. Google Sheets is written only by the export pipeline (`be/services/export.py`). Sheets may auto-type cell values when read back, so treat any value read from a sheet as untrusted and normalize identifiers and filenames to strings. The old `_normalize_document_record` helpers no longer exist in `be/main.py`. Dormant Sheets repositories remain under `be/repositories/sheets/` and `dual/`; do not extend them (`routers/insurance.py` still imports `compute_consumption` from `repositories/sheets/insurance.py`).
+Operational data lives in SQL. Google Sheets is written only by the export pipeline (`be/services/export.py`). Sheets may auto-type cell values when read back, so treat any value read from a sheet as untrusted and normalize identifiers and filenames to strings. The old `_normalize_document_record` helpers no longer exist in `be/main.py`. The dormant Sheets and dual-write repositories were removed (CLEAN-1, D-047); `compute_consumption` now lives in `be/services/insurance_consumption.py`.
 
 ### Startup and Seeding
 `be/main.py` calls `init_db()` (`be/db.py`) at import time: it creates tables, adds missing columns, and seeds RBAC, finance lookups, and default payroll tax settings, logging but not raising on failure. Schema changes still require Alembic migrations. See `docs/project-context/rbac/technical-spec.md` for the planned change to RBAC seeding.

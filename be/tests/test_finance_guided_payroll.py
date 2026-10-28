@@ -42,6 +42,15 @@ def db_session():
 
 
 @pytest.fixture
+def september_2026_is_current(monkeypatch):
+    """HP-1: these tests pin current-month rules (Active only, a missing plan blocks) on the 2026-09 period,
+    which was the current month when they were written. A past period is historical now, so pin today."""
+    from datetime import date
+    from finance import payroll_eligibility
+    monkeypatch.setattr(payroll_eligibility, "_today", lambda: date(2026, 9, 15))
+
+
+@pytest.fixture
 def seed_payroll_env(db_session):
     """Seeds test bank account, categories, and employees for payroll runs."""
     # Ensure bank account
@@ -102,7 +111,6 @@ def seed_payroll_env(db_session):
         email="alice@payrolltest.com",
         role="employee",
         dept="Engineering",
-        salary=10000.0,
         status="Active",
     )
     db_session.add(e1)
@@ -130,7 +138,6 @@ def seed_payroll_env(db_session):
         email="bob@payrolltest.com",
         role="employee",
         dept="Product",
-        salary=8000.0,
         status="Active",
     )
     db_session.add(e2)
@@ -151,7 +158,6 @@ def seed_payroll_env(db_session):
         email="charlie@payrolltest.com",
         role="employee",
         dept="Operations",
-        salary=0.0,
         status="Active",
     )
     db_session.add(e3)
@@ -173,7 +179,7 @@ def seed_payroll_env(db_session):
     }
 
 
-def test_payroll_preview_and_exception_detection(app_client, admin_cookies, seed_payroll_env):
+def test_payroll_preview_and_exception_detection(app_client, admin_cookies, seed_payroll_env, september_2026_is_current):
     """Verifies that payroll preview computes totals, identifies blocking exceptions, and previews GL journal."""
     res = app_client.post(
         "/api/finance/payroll/runs/preview",
@@ -230,7 +236,7 @@ def test_payroll_preview_fx_rate_override_and_recipients(app_client, admin_cooki
     assert len(data["recipients"]) > 0
 
 
-def test_payroll_approval_blocked_by_exceptions(app_client, admin_cookies, seed_payroll_env):
+def test_payroll_approval_blocked_by_exceptions(app_client, admin_cookies, seed_payroll_env, september_2026_is_current):
     """Verifies that an attempt to approve a payroll run with unresolved blocking exceptions is rejected."""
     # Create draft run
     create_res = app_client.post(
@@ -547,7 +553,7 @@ def test_maker_checker_segregation_blocks_self_approval(app_client, admin_cookie
     assert app_bypass_res.json()["status"] == "approved"
 
 
-def test_payroll_preview_blocking_exception_for_missing_plan(app_client, admin_cookies, db_session, seed_payroll_env):
+def test_payroll_preview_blocking_exception_for_missing_plan(app_client, admin_cookies, db_session, seed_payroll_env, september_2026_is_current):
     """Verifies that employees without compensation plans produce blocking exceptions and no preview lines."""
     res = app_client.post(
         "/api/finance/payroll/runs/preview",
@@ -723,7 +729,7 @@ def _create_blocked_draft(app_client, admin_cookies, bank_id, period="2026-09"):
     return res.json()["id"]
 
 
-def test_refresh_draft_run_clears_fixed_blocker_and_keeps_ad_hoc_lines(app_client, admin_cookies, db_session, seed_payroll_env):
+def test_refresh_draft_run_clears_fixed_blocker_and_keeps_ad_hoc_lines(app_client, admin_cookies, db_session, seed_payroll_env, september_2026_is_current):
     """A stale draft run picks up a newly configured compensation plan and keeps manual lines."""
     run_id = _create_blocked_draft(app_client, admin_cookies, seed_payroll_env["bank_id"])
     before = app_client.get(f"/api/finance/payroll/runs/{run_id}", cookies=admin_cookies).json()

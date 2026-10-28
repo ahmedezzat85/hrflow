@@ -8,6 +8,7 @@ from db import get_db_context
 from finance.models import EmployeeCompensationPlanDB, PayrollRunDB
 from models_db import EmployeeDB
 from employee_test_helpers import PERSONAL, set_pay
+from pay_test_helpers import pay_of
 
 _counter = [0]
 
@@ -58,9 +59,7 @@ def test_provisions_empty_plan_and_returns_changes(app_client, admin_cookies):
         "internal_usd_cash": ("created", 0.0, 1200.0),
         "external_usd": ("created", 0.0, 2500.0),
     }
-    with get_db_context() as db:
-        emp = db.query(EmployeeDB).filter(EmployeeDB.id == emp_id).first()
-        assert emp.salary == 3700.0
+    assert pay_of(emp_id)["total"] == 3700.0
 
 
 def test_raise_style_change_unchanged_and_switch_via_zero(app_client, admin_cookies):

@@ -535,6 +535,35 @@ This document records durable product and architectural decisions approved by th
 - **Rationale:** Resolves known issues 1 (as far as reporting), 4 and 5 of D-042 (findings F1, F4, F5 of the FY-1 discovery note). Accounts with no entered rows behave exactly as today, so the change is inert until data is entered.
 - **Related References:** [05-roadmap-and-next-slices.md](05-roadmap-and-next-slices.md) (`3L`, `BI-1`); [06-open-questions.md](06-open-questions.md) (`Q-024`); `docs/finance-module/fiscal-year-opening-balances-plan.md`; D-028, D-040, D-042.
 
+### D-045 — Historical Period Eligibility for Payroll Runs (HP-1)
+
+- **Status:** Accepted by owner, October 26, 2026; implemented on `feat/hp1-historical-payroll-eligibility`, awaiting review and merge. (D-044 is not in this log at the time of writing.)
+- **Decision:** (1) A period whose `period_end` is before the first day of the current month is historical. (2) For a historical period the run takes every employee regardless of status who has at least one compensation component overlapping the period and whose `join_date`, when it parses to a date, is not after `period_end`; an empty or unparsable `join_date` never excludes. (3) Employees left off a historical run are never dropped silently: preview, create, generate and refresh return `historical_period` and `skipped_employees` (`employee_id`, `employee_name`, reason `NO_PLAN_IN_PERIOD` or `JOINED_AFTER_PERIOD`), saved in the run's existing variance JSON (no migration), and the payroll screen shows a "Historical period" badge and a collapsible skipped list. (4) The current month and later are unchanged: status Active only, a missing plan blocks. (5) Leavers are handled by closing their last pay plan; the leave month keeps full plan amounts and is edited by hand (no proration). (6) Refresh follows the same rule; finalized and paid runs are never recomputed. Existing draft runs for past periods can lose lines on refresh.
+- **Rationale:** The owner can set leavers Inactive without losing their historical months and without deleting lines by hand when entering 2025 and 2026 payroll. The plan-based inference is interim; EA-1/LJ-1 (employment periods, owner choice E2) later replace it with real employment periods and do not conflict with it.
+- **Related References:** [05-roadmap-and-next-slices.md](05-roadmap-and-next-slices.md) (`3M`, `HP-1`); `docs/finance-module/hp-1-historical-payroll-eligibility-plan.md`; D-040.
+
+### D-046 — Pay Has One Stored Source: the Compensation Plan (PAY-1)
+
+- **Status:** Accepted by owner, October 27, 2026; implemented on `refactor/pay-single-source`, awaiting review and merge.
+- **Decision:** (1) `finance_employee_compensation_plans` is the only stored source of pay amounts. (2) The columns `employees.salary`, `internal_salary_usd`, `external_salary_usd` and `salary_history.previous_salary`, `new_salary` are dropped (migration `0048_pay_single_source`). (3) The API keeps the same field names; employee pay is derived from the plan rows in force today (`finance/current_pay.py`) and history totals are internal plus external. (4) `salary_history` stays as an append-only log of pay-change events (reason, author, percentage, date), written in the same transaction as the plan change; it is never a source of amounts. (5) The migration writes nothing to the plan table and logs any old amount that differs from the plan; `scripts/check_pay_columns.py` shows the same list before upgrading. (6) The script that copied the old columns into plans is removed.
+- **Rationale:** A plan corrected directly in the database did not show in the app because the same pay was stored three times and only the app kept the copies in step. No payroll data existed yet, so the change was cheap now. The history log is kept because it holds what the plan cannot (reason, author, one event per raise).
+- **Not in this change:** removal of the dormant Sheets and dual-write repositories (separate slice).
+- **Related References:** `docs/finance-module/pay-single-source-plan.md`; D-034, D-036, D-040.
+
+### D-047 — Remove the Dormant Sheets and Dual-Write Repositories (CLEAN-1)
+
+- **Status:** Accepted by owner, October 27, 2026; implemented on `refactor/remove-sheets-dual` (stacked on PAY-1), awaiting review and merge.
+- **Decision:** (1) Delete `be/repositories/sheets/` and `be/repositories/dual/`; `Config` already rejects any storage engine other than `sql`, so this code could not run. (2) Move `compute_consumption` and its helpers to `be/services/insurance_consumption.py`. (3) Remove the unused imports in `be/auth.py`. (4) Delete the tests that only exercised the removed code; keep the dependency-injection and router-import tests. (5) Keep `be/sheets_client.py` (export destination), the Sheets backfill and reconcile scripts, and the test scaffolding for them.
+- **Related References:** [05-roadmap-and-next-slices.md](05-roadmap-and-next-slices.md) (`3N`, `CLEAN-1`); D-046.
+
+### D-048 — Pay History Stores the Event Only; Amounts Come from the Plan (PAY-2)
+
+- **Status:** Accepted by owner, October 27, 2026; implemented on `refactor/history-derived-amounts`, awaiting review and merge. Completes D-046.
+- **Decision:** (1) `salary_history` keeps only the event: employee, date, reason, applied by. The columns `previous_internal_usd`, `previous_external_usd`, `new_internal_usd`, `new_external_usd` and `pct_change` are dropped (migration `0049_history_amounts_derived`). (2) For a change dated D, the new pay is the plan in force on D and the previous pay is the plan in force the day before; totals and the percentage are computed from those (`finance/pay_history.py`). The API, exports and screens keep their field names. (3) A corrected plan row therefore corrects the history list; the two can no longer disagree. (4) The migration writes nothing to the plan table and logs every history row whose stored new amounts differ from the plan; the downgrade refills the columns from the plan.
+- **Consequence to know:** several changes with the same effective date show the same amounts (the plan keeps no memory of an in-place same-day edit). Use different effective dates for different changes.
+- **Rationale:** D-046 left the amounts stored on the history row, so a plan corrected directly in the database conflicted with its history. No payroll data existed yet, so removing the second copy was cheap.
+- **Related References:** `docs/finance-module/pay-single-source-plan.md`; D-046.
+
 ## Related but Not Decisions
 
 The following items are established architectural baseline rules or future roadmaps rather than standalone decision entries:

@@ -156,6 +156,7 @@ activemq-data/
 .envrc
 !.env.example
 !*.env.example
+!.env.prod.example
 .venv
 env/
 venv/
@@ -260,3 +261,5 @@ migration_report.csv
 *.bkp
 be/.env
 be/credentials.json
+# Secret files (Google service account key, etc.) live here; never committed
+secrets/
