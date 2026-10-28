@@ -296,6 +296,16 @@ def seed_default_roles(db):
     db.commit()
 
 
+def ensure_employee(db, employee_id):
+    """Make sure an employees row with this id exists: foreign keys are enforced in tests as in production, so a
+    user (or any child row) may only point at an employee that exists. Does not commit."""
+    from models_db import EmployeeDB
+
+    if employee_id is not None and db.get(EmployeeDB, employee_id) is None:
+        db.add(EmployeeDB(id=employee_id, name=f"Employee {employee_id}", email=f"employee{employee_id}@hrflow.test"))
+        db.flush()
+
+
 def add_test_user(db, email, role_key=None, employee_id=None, name=None):
     """Create (or reset) a users row on the given session with at most one assigned
     role (by system_key). The employee baseline comes from employee_id, never from a
@@ -304,6 +314,7 @@ def add_test_user(db, email, role_key=None, employee_id=None, name=None):
     from core.rbac_models import RoleDB, UserRoleDB
 
     seed_default_roles(db)
+    ensure_employee(db, employee_id)
     user = db.query(UserDB).filter(UserDB.email == email).first()
     if user is None:
         user = UserDB(email=email)
