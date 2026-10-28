@@ -7,7 +7,7 @@ import os
 from contextlib import contextmanager
 from typing import Generator
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
 import config
@@ -16,6 +16,19 @@ Base = declarative_base()
 
 _engine = None
 _SessionFactory = None
+
+
+def enable_sqlite_foreign_keys(engine) -> None:
+    """SQLite ignores foreign keys unless every connection turns them on, so dev and tests would not enforce the
+    RESTRICT / CASCADE / SET NULL rules that PostgreSQL enforces."""
+    if engine.dialect.name != "sqlite":
+        return
+
+    @event.listens_for(engine, "connect")
+    def _foreign_keys_on(dbapi_connection, _record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
 
 
 def get_engine():
@@ -36,6 +49,7 @@ def get_engine():
             db_url,
             **engine_kwargs,
         )
+        enable_sqlite_foreign_keys(_engine)
     return _engine
 
 
@@ -157,6 +171,7 @@ def reset_engine_for_testing(custom_url: str = None):
     if custom_url:
         connect_args = {"check_same_thread": False} if custom_url.startswith("sqlite") else {}
         _engine = create_engine(custom_url, connect_args=connect_args, pool_pre_ping=True)
+        enable_sqlite_foreign_keys(_engine)
     else:
         _engine = None
     _SessionFactory = None

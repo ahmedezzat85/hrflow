@@ -340,6 +340,8 @@ def test_failing_rbac_sync_fails_startup(app_client, monkeypatch):
 
 def _create_test_user_with_roles(db, email, role_names=None, system_keys=None, employee_id=None, is_archived=False):
     import datetime
+    from conftest import ensure_employee
+    ensure_employee(db, employee_id)
     user = db.query(UserDB).filter(UserDB.email == email).first()
     if not user:
         user = UserDB(
@@ -473,6 +475,8 @@ def test_linked_employee_gets_baseline_without_user_roles_row(app_client):
     from core.permissions import resolve_access
     with get_db_context() as db:
         sync_catalog(db)
+        from conftest import ensure_employee
+        ensure_employee(db, 42)
         user = db.query(UserDB).filter(UserDB.email == "baseline_emp@voyance.health").first()
         if not user:
             user = UserDB(
