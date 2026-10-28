@@ -8,6 +8,7 @@ import base64
 import os
 import pytest
 
+import file_layout
 from storage import LocalStorageClient
 
 
@@ -90,7 +91,7 @@ def test_salary_payment_doc_lands_in_hr_layout(tmp_path, monkeypatch):
     res = client.upload_invoice_file(
         payment_year=2026,
         payment_month=7,
-        file_name="260207.docx",
+        file_name="Invoice_SARAH_CONNOR_260207.docx",
         file_bytes=docx_bytes,
         employee_id=2,
         employee_name="Sarah Connor",
@@ -99,11 +100,11 @@ def test_salary_payment_doc_lands_in_hr_layout(tmp_path, monkeypatch):
     rel_ref = res["file_id"]
 
     assert not os.path.isabs(rel_ref)
-    assert rel_ref == "hr/salary-payment-docs/2026/2026-07/260207__2-sarah-connor.docx"
+    assert rel_ref == "hr/salary-payment-docs/2026/2026-07/drafts/Invoice_SARAH_CONNOR_260207.docx"
 
     # Both docx and pdf files must exist
     docx_file = tmp_path / rel_ref
-    pdf_file = tmp_path / "hr" / "salary-payment-docs" / "2026" / "2026-07" / "260207__2-sarah-connor.pdf"
+    pdf_file = tmp_path / "hr" / "salary-payment-docs" / "2026" / "2026-07" / "Invoice_SARAH_CONNOR_260207.pdf"
 
     assert docx_file.is_file()
     assert docx_file.read_bytes() == docx_bytes
@@ -113,10 +114,11 @@ def test_salary_payment_doc_lands_in_hr_layout(tmp_path, monkeypatch):
     # Download docx
     content, mime, fname = client.download_file(rel_ref)
     assert content == docx_bytes
-    assert fname == "260207__2-sarah-connor.docx"
+    assert fname == "Invoice_SARAH_CONNOR_260207.docx"
 
     # Download pdf
-    pdf_rel_ref = "hr/salary-payment-docs/2026/2026-07/260207__2-sarah-connor.pdf"
+    pdf_rel_ref = "hr/salary-payment-docs/2026/2026-07/Invoice_SARAH_CONNOR_260207.pdf"
+    assert file_layout.pdf_ref_for_salary_doc_ref(rel_ref) == pdf_rel_ref
     content_pdf, mime_pdf, fname_pdf = client.download_file(pdf_rel_ref)
     assert content_pdf == pdf_bytes
     assert mime_pdf == "application/pdf"
@@ -171,3 +173,27 @@ def test_path_traversal_attacks_blocked(tmp_path, monkeypatch):
 
     with pytest.raises(ValueError, match="Security error: Invalid path traversal attempt"):
         client.download_file("hr/../../../windows/win.ini")
+
+
+def test_salary_doc_names_keep_the_generated_name_and_split_pdf_from_drafts():
+    docx = file_layout.build_ref(
+        "salary_payment_doc", year=2026, month=9, filename="Invoice_MOHAMED_ALI_MOHAMED_ALI_EL_KASED_260909.docx",
+        doc_number="x", employee_id=13, employee_name="Mohamed Ali", ext="docx",
+    )
+    pdf = file_layout.build_ref(
+        "salary_payment_doc", year=2026, month=9, filename="Invoice_MOHAMED_ALI_MOHAMED_ALI_EL_KASED_260909.docx",
+        doc_number="x", employee_id=13, employee_name="Mohamed Ali", ext="pdf",
+    )
+    assert docx == "hr/salary-payment-docs/2026/2026-09/drafts/Invoice_MOHAMED_ALI_MOHAMED_ALI_EL_KASED_260909.docx"
+    assert pdf == "hr/salary-payment-docs/2026/2026-09/Invoice_MOHAMED_ALI_MOHAMED_ALI_EL_KASED_260909.pdf"
+
+
+def test_pdf_ref_for_legacy_salary_doc_without_drafts_keeps_its_folder():
+    old = "hr/salary-payment-docs/2026/2026-07/260207__2-sarah-connor.docx"
+    assert file_layout.pdf_ref_for_salary_doc_ref(old) == "hr/salary-payment-docs/2026/2026-07/260207__2-sarah-connor.pdf"
+
+
+def test_safe_display_filename_drops_only_windows_unsafe_characters():
+    assert file_layout.safe_display_filename('Invoice_A:B*C?.docx') == "Invoice_ABC.docx"
+    assert file_layout.safe_display_filename("../../Invoice_X_1") == "Invoice_X_1"
+    assert file_layout.safe_display_filename("CON") == "_CON"

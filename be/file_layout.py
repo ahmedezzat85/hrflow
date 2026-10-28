@@ -144,6 +144,31 @@ def sanitize_filename(filename: Optional[str], max_length: int = 80) -> str:
     return safe_name
 
 
+_UNSAFE_FILENAME_CHARS = re.compile(r'[<>:"/\|?*\x00-\x1f]')
+
+
+def safe_display_filename(name: Optional[str], max_length: int = 120) -> str:
+    """
+    Makes a human-readable file name safe for Windows without re-styling it:
+    keeps case, underscores and digits, only drops characters Windows rejects.
+    Used where the stored name is part of the product (e.g. Invoice_NAME_260909).
+    """
+    cleaned = _UNSAFE_FILENAME_CHARS.sub("", os.path.basename(name or "")).strip(" .")
+    if not cleaned or cleaned.split(".")[0].lower() in WINDOWS_RESERVED_NAMES:
+        cleaned = f"_{cleaned}" if cleaned else "document"
+    return cleaned[:max_length].rstrip(" .") or "document"
+
+
+def pdf_ref_for_salary_doc_ref(docx_ref: str) -> str:
+    """
+    Maps a stored salary payment .docx ref to the ref of its PDF:
+    the PDF lives in the month folder, the .docx in its 'drafts' subfolder.
+    Refs without a 'drafts' folder (older files) keep the same folder.
+    """
+    base = docx_ref[:-5] if docx_ref.lower().endswith(".docx") else docx_ref
+    return re.sub(r"/drafts/([^/]+)$", r"/\1", base) + ".pdf"
+
+
 def build_account_folder(
     account_id: Union[int, str],
     bank_name: Optional[str] = None,
@@ -241,7 +266,8 @@ def build_ref(kind: str, **ctx: Any) -> str:
     - "import_batch": finance/imports/<batch-id>/<clean-filename>
     - "employee_document": hr/employees/<employee_id>-<name-slug>/documents/<safe_name>
     - "employee_bank_proof": hr/employees/<employee_id>-<name-slug>/bank-account-proofs/<safe_name>
-    - "salary_payment_doc": hr/salary-payment-docs/<yyyy>/<yyyy-mm>/<doc_number>__<employee_id>-<slug>.<ext>
+    - "salary_payment_doc": hr/salary-payment-docs/<yyyy>/<yyyy-mm>/<filename>.pdf and <yyyy-mm>/drafts/<filename>.docx
+      (without `filename`: <doc_number>__<employee_id>-<slug>.<ext> in the month folder)
     - "company_document": hr/company-documents/<safe_name>
     """
     yyyy, yyyy_mm = _extract_year_month(
@@ -340,6 +366,13 @@ def build_ref(kind: str, **ctx: Any) -> str:
         filename = ctx.get("filename") or f"bank-proof{ext_suffix}"
         safe_file = sanitize_filename(filename, max_length=50)
         ref = f"hr/employees/{emp_id}-{emp_slug}/bank-account-proofs/{safe_file}"
+
+    elif kind == "salary_payment_doc" and ctx.get("filename"):
+        # Keep the generated document name (e.g. Invoice_NAME_260909). PDFs sit in the month
+        # folder; the editable Word files go to its 'drafts' subfolder.
+        stem = safe_display_filename(os.path.splitext(str(ctx["filename"]))[0])
+        month_dir = f"hr/salary-payment-docs/{yyyy}/{yyyy_mm}"
+        ref = f"{month_dir}/{stem}{ext_suffix}" if ext == "pdf" else f"{month_dir}/drafts/{stem}{ext_suffix}"
 
     elif kind == "salary_payment_doc":
         doc_num = slugify(str(ctx.get("doc_number", "doc")), max_length=25)
