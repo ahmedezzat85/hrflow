@@ -4,6 +4,19 @@ Host folder (never committed): `D:/services/hrflow-prod/` containing `.env`, `da
 Database lives in the Docker named volume `hrflow-prod_pgdata` (use backups, not file copies).
 The app container is read-only: uploaded files (Finance and HR) are stored under the unified files root `HRFLOW_FILES_ROOT` (`/data/documents` in the container, backed by `D:/services/hrflow-prod/data/documents` on the host). All stored references are relative to this root (e.g. `finance/2026/bills/...`, `hr/salary-payment-docs/...`).
 
+## Where things live
+Configuration is a single file, `D:/services/hrflow-prod/.env` (template: `.env.prod.example` in the repo root). `docker-compose.yml` passes every setting to the containers; only values that describe the container itself are fixed there. Apply a change with `$C up -d` (add `--build` after a code change).
+
+| What | Host (disk) | Inside the container |
+|---|---|---|
+| Uploaded files (HR + Finance) | `${HRFLOW_DATA_DIR}/documents` | `/data/documents` (`HRFLOW_FILES_ROOT`, fixed) |
+| Logs | `${HRFLOW_DATA_DIR}/logs` | `/data/logs` |
+| Secret files (Google service account key `google-credentials.json`) | `${HRFLOW_DATA_DIR}/secrets` | `/run/secrets` (read-only) |
+| Invoice template | in git: `docs/templates/` | baked into the image at `/app/templates/` (change it with a new release) |
+| Database | Docker volume `hrflow-prod_pgdata` | PostgreSQL service |
+
+`HRFLOW_FILES_ROOT` is a container path and is not set in the host `.env`; to move the files, change `HRFLOW_DATA_DIR` (and move the folders first). Inside `documents/`: `employees/`, `Company Documents/`, `finance_bills/`, `finance_attachments/`, `_meta/`. The database stores paths relative to this root, so never rename or move files inside it.
+
 All commands run from the repo root of a checkout of `main`. (The automatic deploy builds from the runner's own checkout of the release tag, `D:/services/actions-runner/_work/hrflow/hrflow`; nothing in the stack depends on any other folder or branch.)
 
 ```bash
