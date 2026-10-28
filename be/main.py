@@ -113,9 +113,9 @@ _CSP_POLICY = (
     "script-src 'self' 'unsafe-inline' https://accounts.google.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; "
     "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; "
-    "img-src 'self' data: https:; "
+    "img-src 'self' data: blob: https:; "
     "connect-src 'self' https://accounts.google.com; "
-    "frame-src https://accounts.google.com; "
+    "frame-src https://accounts.google.com blob:; "
     "frame-ancestors 'self';"
 )
 

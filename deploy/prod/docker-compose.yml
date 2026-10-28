@@ -82,6 +82,8 @@ services:
       - ${HRFLOW_DATA_DIR:?set HRFLOW_DATA_DIR}/documents:/data/documents
       - ${HRFLOW_DATA_DIR}/logs:/data/logs
       - ${HRFLOW_DATA_DIR}/secrets:/run/secrets:ro
+      # Fonts the document template needs but Linux lacks (e.g. Tahoma): LibreOffice finds them here for PDFs.
+      - ${HRFLOW_DATA_DIR}/fonts:/usr/local/share/fonts/hrflow:ro
     networks: [internal]
     read_only: true
     tmpfs: [/tmp]
