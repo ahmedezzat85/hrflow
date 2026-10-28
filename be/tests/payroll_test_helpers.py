@@ -6,7 +6,7 @@ from finance.models import PayrollSettingsDB
 def _settings_row(db):
     row = db.query(PayrollSettingsDB).filter(PayrollSettingsDB.id == 1).first()
     if not row:
-        row = PayrollSettingsDB(id=1, employee_rate=0.11, employer_rate=0.18, updated_by="test")
+        row = PayrollSettingsDB(id=1, updated_by="test")
         db.add(row)
         db.flush()
     return row

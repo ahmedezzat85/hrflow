@@ -111,7 +111,7 @@ def test_has_scan_filter(app_client, admin_cookies):
 def test_new_cheque_does_not_write_attachment_url(app_client, admin_cookies):
     acc = _acct(app_client, admin_cookies)
     chq = _issue(app_client, admin_cookies, acc, "S-030", attachment_url="legacy/ref.pdf")
-    assert chq["attachment_url"] is None
+    assert "attachment_url" not in chq  # the column was dropped (0051); scans are finance_attachments rows
 
 
 def test_next_cheque_number(app_client, admin_cookies, employee_cookies):

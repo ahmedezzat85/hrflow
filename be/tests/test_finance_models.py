@@ -238,7 +238,7 @@ def test_payroll_run_and_cross_domain_employee_line(db_session):
         total_deductions=400.0,
         total_net=5000.0,
         total_employer_cost=6500.0,
-        bank_account_id=bank.id,
+        external_funding_account_id=bank.id,
     )
     db_session.add(run)
     db_session.commit()

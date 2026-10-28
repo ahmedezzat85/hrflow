@@ -110,7 +110,7 @@ def test_posting_without_funding_accounts_is_refused_never_to_account_1(app_clie
     run_id = _finalized_run(app_client, admin_cookies, "2027-03")   # no funding accounts at all
     with get_db_context() as db:
         run = db.query(PayrollRunDB).filter(PayrollRunDB.id == run_id).first()
-        run.bank_account_id = run.external_funding_account_id = run.internal_funding_account_id = None
+        run.external_funding_account_id = run.internal_funding_account_id = None
         db.commit()
 
     pay = app_client.post(f"{RUNS}/{run_id}/pay", json={}, cookies=admin_cookies)

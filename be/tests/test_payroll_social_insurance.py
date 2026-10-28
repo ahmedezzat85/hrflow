@@ -76,14 +76,11 @@ def setup_social_ins_env(db_session):
         db_session.add(pt)
         db_session.flush()
 
-    # Reset default rates
-    settings = db_session.query(PayrollSettingsDB).filter_by(id=1).first()
-    if not settings:
-        settings = PayrollSettingsDB(id=1, employee_rate=0.11, employer_rate=0.18, updated_by="test")
-        db_session.add(settings)
-    else:
-        settings.employee_rate = 0.11
-        settings.employer_rate = 0.18
+    # Reset default rates: the dated table is reseeded with the statutory defaults on first use
+    from finance.models import PayrollRateSettingsDB
+    db_session.query(PayrollRateSettingsDB).delete()
+    if not db_session.query(PayrollSettingsDB).filter_by(id=1).first():
+        db_session.add(PayrollSettingsDB(id=1, updated_by="test"))
 
     import json
     db_session.query(PayrollTaxSettingsDB).filter(PayrollTaxSettingsDB.effective_from != "2026-01-01").delete()
