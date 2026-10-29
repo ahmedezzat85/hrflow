@@ -16,6 +16,12 @@ def conn(tmp_path):
     engine = create_engine(f"sqlite:///{tmp_path / 'audit.db'}")
     Base.metadata.create_all(bind=engine)
     with engine.connect() as c:
+        # The audit exists to find bad data in databases from before the Stage 4 constraints, so drop them here
+        names = [row[0] for row in c.execute(text("SELECT name FROM sqlite_master WHERE type = 'index'")).fetchall()]
+        for name in names:
+            if name.startswith("uq_"):
+                c.execute(text(f"DROP INDEX {name}"))
+        c.commit()
         yield c
     engine.dispose()
 

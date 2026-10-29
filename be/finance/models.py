@@ -16,6 +16,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     UniqueConstraint,
+    CheckConstraint,
     text,
 )
 from sqlalchemy import func, select
@@ -220,6 +221,14 @@ class BillDB(Base):
     voided_by = Column(String(255), nullable=True)
     voided_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        # The service refuses a number already in use when a bill leaves Draft, unless it is saved with the duplicate
+        # override; a Draft may hold any number (D-019), so drafts are outside the index
+        Index("uq_bills_number", "bill_number", unique=True,
+              sqlite_where=text("bill_number IS NOT NULL AND is_duplicate_override = 0 AND status <> 'draft'"),
+              postgresql_where=text("bill_number IS NOT NULL AND is_duplicate_override = false AND status <> 'draft'")),
+    )
 
     vendor = relationship("VendorDB", back_populates="bills")
     transaction_category = relationship("TransactionCategoryDB", foreign_keys=[category_id])
@@ -753,6 +762,15 @@ class FinanceAttachmentDB(Base):
     uploaded_at = Column(DateTime, default=datetime.utcnow)
     uploaded_by = Column(String(255), nullable=True)
 
+    __table_args__ = (
+        CheckConstraint(
+            "(CASE WHEN subscription_charge_id IS NULL THEN 0 ELSE 1 END + CASE WHEN statement_import_id IS NULL THEN 0 ELSE 1 END"
+            " + CASE WHEN ledger_transaction_id IS NULL THEN 0 ELSE 1 END + CASE WHEN cheque_id IS NULL THEN 0 ELSE 1 END"
+            " + CASE WHEN checkpoint_id IS NULL THEN 0 ELSE 1 END + CASE WHEN sales_invoice_id IS NULL THEN 0 ELSE 1 END) = 1",
+            name="ck_finance_attachments_one_parent",
+        ),
+    )
+
     subscription_charge = relationship("SubscriptionChargeDB", back_populates="attachments")
     statement_import = relationship("BankStatementImportDB", back_populates="attachments")
     ledger_transaction = relationship("LedgerTransactionDB")
@@ -802,6 +820,11 @@ class PayrollRunDB(Base):
     total_social_insurance_egp = Column(Float, default=0.0, nullable=True)
     total_flat_tax_egp = Column(Float, default=0.0, nullable=True)  # breakdown of total_employee_tax_egp, not an addition
     tax_settings_version_id = Column(Integer, ForeignKey("finance_payroll_tax_settings.id", ondelete="SET NULL"), nullable=True)
+
+    __table_args__ = (
+        Index("uq_payroll_runs_period_active", "period_label", unique=True,
+              sqlite_where=text("status <> 'cancelled'"), postgresql_where=text("status <> 'cancelled'")),
+    )
 
     lines = relationship("PayrollLineDB", back_populates="payroll_run", cascade="all, delete-orphan")
     adjustments = relationship("PayrollAdjustmentDB", back_populates="payroll_run", cascade="all, delete-orphan")
@@ -1045,6 +1068,8 @@ class EmployeeCompensationPlanDB(Base):
 
     __table_args__ = (
         Index("ix_emp_comp_plan_lookup", "employee_id", "component_type", "effective_end_date"),
+        Index("uq_emp_comp_plan_open", "employee_id", "component_type", unique=True,
+              sqlite_where=text("effective_end_date IS NULL"), postgresql_where=text("effective_end_date IS NULL")),
     )
 
 

@@ -14,6 +14,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Boolean,
+    text,
 )
 from sqlalchemy.orm import relationship
 
@@ -263,6 +264,8 @@ class SalaryPaymentDocDB(Base):
 
     __table_args__ = (
         Index("ix_salary_payment_docs_emp_period", "employee_id", "payment_year", "payment_month"),
+        Index("uq_salary_payment_docs_generated", "employee_id", "payment_year", "payment_month", unique=True,
+              sqlite_where=text("status = 'generated'"), postgresql_where=text("status = 'generated'")),
     )
 
 
@@ -297,6 +300,8 @@ class EmployeeSocialInsuranceDB(Base):
 
     __table_args__ = (
         Index("ix_emp_social_ins_lookup", "employee_id", "effective_end_date"),
+        Index("uq_emp_social_ins_open", "employee_id", unique=True,
+              sqlite_where=text("effective_end_date IS NULL"), postgresql_where=text("effective_end_date IS NULL")),
     )
 
 
@@ -318,5 +323,7 @@ class EmployeeTaxMethodDB(Base):
 
     __table_args__ = (
         Index("ix_emp_tax_method_lookup", "employee_id", "effective_end_date"),
+        Index("uq_emp_tax_method_open", "employee_id", unique=True,
+              sqlite_where=text("effective_end_date IS NULL"), postgresql_where=text("effective_end_date IS NULL")),
     )
 
