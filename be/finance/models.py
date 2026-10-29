@@ -906,6 +906,14 @@ class PayrollLineDB(Base):
     paid_at = Column(DateTime, nullable=True)
     linked_payment_id = Column(Integer, ForeignKey("finance_payments.id", ondelete="SET NULL"), nullable=True, index=True)
 
+    __table_args__ = (
+        # The two base pay lines (plan components) appear once per employee and run; commission and bonus lines may
+        # repeat on purpose (several deals or bonuses in one run, FUX-418)
+        Index("uq_payroll_lines_base_pay", "payroll_run_id", "employee_id", "compensation_type", unique=True,
+              sqlite_where=text("compensation_type IN ('external_usd', 'internal_usd_cash')"),
+              postgresql_where=text("compensation_type IN ('external_usd', 'internal_usd_cash')")),
+    )
+
     payroll_run = relationship("PayrollRunDB", back_populates="lines")
     employee = relationship("EmployeeDB")
     linked_payment = relationship("PaymentDB", foreign_keys=[linked_payment_id])
