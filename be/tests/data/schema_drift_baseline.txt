@@ -55,4 +55,3 @@ modify_nullable:finance_subscriptions.proof_expected:True->False
 modify_nullable:finance_subscriptions.proof_source:True->False
 modify_nullable:finance_vendors.onboarding_status:True->False
 modify_nullable:roles.is_locked:True->False
-remove_column:finance_ledger_transactions.category
