@@ -106,9 +106,10 @@ class EmployeeDB(Base):
     requests = relationship("RequestDB", back_populates="employee", cascade="all, delete-orphan")
     vacations = relationship("VacationHistoryDB", back_populates="employee", cascade="all, delete-orphan")
     salary_payment_docs = relationship("SalaryPaymentDocDB", back_populates="employee", cascade="all, delete-orphan")
-    compensation_plans = relationship("EmployeeCompensationPlanDB", back_populates="employee", cascade="all, delete-orphan")
-    social_insurance = relationship("EmployeeSocialInsuranceDB", back_populates="employee", cascade="all, delete-orphan")
-    tax_methods = relationship("EmployeeTaxMethodDB", back_populates="employee", cascade="all, delete-orphan")
+    # Pay history is finance data: no ORM delete cascade, the database (RESTRICT) refuses to delete the employee
+    compensation_plans = relationship("EmployeeCompensationPlanDB", back_populates="employee", cascade="save-update, merge", passive_deletes="all")
+    social_insurance = relationship("EmployeeSocialInsuranceDB", back_populates="employee", cascade="save-update, merge", passive_deletes="all")
+    tax_methods = relationship("EmployeeTaxMethodDB", back_populates="employee", cascade="save-update, merge", passive_deletes="all")
 
 
 
@@ -285,7 +286,7 @@ class EmployeeSocialInsuranceDB(Base):
     __tablename__ = "employee_social_insurance"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="RESTRICT"), nullable=False, index=True)
     insured_flag = Column(Boolean, default=False, nullable=False)
     insured_base = Column(Float, nullable=True)
     currency = Column(String(10), default="EGP", nullable=False)
@@ -309,7 +310,7 @@ class EmployeeTaxMethodDB(Base):
     __tablename__ = "employee_tax_method"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="RESTRICT"), nullable=False, index=True)
     method = Column(String(20), default="progressive", nullable=False)  # progressive / flat
     flat_rate = Column(Float, nullable=True)  # fraction (0 < rate <= 1); only for flat
     effective_start_date = Column(String(20), nullable=False, index=True)

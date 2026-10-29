@@ -85,6 +85,15 @@ def test_sql_employee_and_user_repository():
     assert emp_repo.delete_document(doc_id) is True
     assert emp_repo.get_document_by_id(doc_id) is None
 
+    # Pay history is finance data: the database refuses to delete an employee who has a plan (RESTRICT, Stage 4b)
+    from sqlalchemy.exc import IntegrityError
+    with pytest.raises(IntegrityError):
+        emp_repo.delete(emp_id)
+    from finance.models import EmployeeCompensationPlanDB
+    with get_db_context() as db:
+        db.query(EmployeeCompensationPlanDB).filter(EmployeeCompensationPlanDB.employee_id == emp_id).delete()
+        db.commit()
+
     # Test delete employee
     assert emp_repo.delete(emp_id) is True
     assert emp_repo.get_by_id(emp_id) is None

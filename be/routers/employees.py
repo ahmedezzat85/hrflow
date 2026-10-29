@@ -17,6 +17,7 @@ from deps import audit_log, permission_scope, Scope
 from services.uploads import validate_upload_content, safe_content_disposition_filename
 from models import EmployeeCreate, EmployeeUpdate, EmployeePersonalUpdate, EmployeeNoteCreate, EmployeeDocumentCreate
 from services.employee_personal import mask_id
+from services.employee_delete_guard import pay_history_counts, delete_blocked_message
 from repositories.interfaces import EmployeeRepository, AuditRepository
 from repositories.deps import get_employee_repo, get_audit_repo
 from core.permissions import require_permission
@@ -182,6 +183,10 @@ def delete_employee(
     # Enforce R1, R2, R4 before deleting; the repository removes the baseline-only user (R5) in the same transaction
     access_service = AccessService(db, audit_repo)
     access_service.validate_employee_delete(emp_id, current_user)
+    # Pay and payroll history is finance data: it blocks the delete (database RESTRICT is the backstop)
+    history = pay_history_counts(db, emp_id)
+    if history:
+        raise HTTPException(status_code=409, detail=delete_blocked_message(history))
     ok = employee_repo.delete(emp_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Employee not found")
