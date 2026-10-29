@@ -25,7 +25,7 @@ from sqlalchemy.orm import column_property, relationship
 from db import Base
 from finance.bill_status import BILL_STATUSES
 from finance.invoice_status import INVOICE_STATUSES
-from finance.money import Money, Rate
+from finance.money import Money, Quantity, Rate
 
 
 def _one_of(column: str, values) -> str:
@@ -49,7 +49,7 @@ class CustomerDB(Base):
     owner = Column(String(255), nullable=True)
     notes = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
-    withholding_tax_rate = Column(Float, default=0.0, nullable=False, server_default="0")  # percent; default for new invoices (D-024)
+    withholding_tax_rate = Column(Rate, default=0.0, nullable=False, server_default="0")  # percent; default for new invoices (D-024)
     is_intercompany = Column(Boolean, default=False, nullable=False, server_default="0")  # the overseas entity or another group company (D-028)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -73,7 +73,7 @@ class VendorDB(Base):
     category = Column(String(100), default="General")
     default_department = Column(String(100), nullable=True)
     tax_treatment = Column(String(50), default="standard", nullable=True)
-    withholding_tax_rate = Column(Float, default=0.0, nullable=True)
+    withholding_tax_rate = Column(Rate, default=0.0, nullable=True)
     onboarding_status = Column(String(50), default="active", nullable=False)
     default_category_id = Column(Integer, ForeignKey("finance_transaction_categories.id", ondelete="SET NULL"), nullable=True, index=True)
     notes = Column(Text, nullable=True)
@@ -120,11 +120,11 @@ class SalesInvoiceDB(Base):
     due_date = Column(String(20), nullable=False)
     status = Column(String(30), default="draft", nullable=False, index=True)  # draft/sent/partially_paid/paid/void (D-022); overdue is a flag
     currency = Column(String(10), default="USD", nullable=False)
-    subtotal = Column(Float, default=0.0)
-    vat_rate = Column(Float, default=0.0, nullable=False, server_default="0")  # percent (D-023); tax_amount = subtotal * rate / 100
-    withholding_tax_rate = Column(Float, default=0.0, nullable=False, server_default="0")  # percent of the net subtotal (D-024)
-    tax_amount = Column(Float, default=0.0)
-    total = Column(Float, default=0.0)
+    subtotal = Column(Money, default=0.0)
+    vat_rate = Column(Rate, default=0.0, nullable=False, server_default="0")  # percent (D-023); tax_amount = subtotal * rate / 100
+    withholding_tax_rate = Column(Rate, default=0.0, nullable=False, server_default="0")  # percent of the net subtotal (D-024)
+    tax_amount = Column(Money, default=0.0)
+    total = Column(Money, default=0.0)
     expected_bank_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True, index=True)
     revenue_channel = Column(String(50), nullable=True, index=True)  # local_egp | overseas_usd | cash | intercompany_transfer_us | other
     notes = Column(Text, nullable=True)
@@ -154,7 +154,7 @@ class ProductDB(Base):
     code = Column(String(50), nullable=False, unique=True, index=True)
     product_type = Column(String(40), default="other", nullable=False)  # saas_subscription | license | implementation_service | support | other
     default_currency = Column(String(10), default="USD", nullable=False)
-    default_price = Column(Float, nullable=True)
+    default_price = Column(Money, nullable=True)
     default_receiving_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -182,9 +182,9 @@ class SalesInvoiceLineDB(Base):
     invoice_id = Column(Integer, ForeignKey("finance_sales_invoices.id", ondelete="CASCADE"), nullable=False, index=True)
     product_id = Column(Integer, ForeignKey("finance_products.id", ondelete="SET NULL"), nullable=True, index=True)
     description = Column(String(255), nullable=False)
-    quantity = Column(Float, default=1.0)
-    unit_price = Column(Float, default=0.0)
-    line_total = Column(Float, default=0.0)
+    quantity = Column(Quantity, default=1.0)
+    unit_price = Column(Money, default=0.0)
+    line_total = Column(Money, default=0.0)
 
     invoice = relationship("SalesInvoiceDB", back_populates="lines")
     product = relationship("ProductDB")
@@ -204,9 +204,9 @@ class BillDB(Base):
     due_date = Column(String(20), nullable=True)
     status = Column(String(30), default="draft", nullable=False, index=True)  # draft | pending_approval | rejected | approved | scheduled | partially_paid | paid | void
     currency = Column(String(10), default="USD", nullable=False)
-    subtotal = Column(Float, default=0.0)
-    tax_amount = Column(Float, default=0.0)
-    total = Column(Float, default=0.0)
+    subtotal = Column(Money, default=0.0)
+    tax_amount = Column(Money, default=0.0)
+    total = Column(Money, default=0.0)
     notes = Column(Text, nullable=True)
     capture_source = Column(String(20), default="manual", nullable=False)  # manual | upload | ocr | import (D-033)
     import_batch_id = Column(Integer, ForeignKey("finance_import_batches.id", ondelete="SET NULL"), nullable=True, index=True)
@@ -262,9 +262,9 @@ class BillLineDB(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     bill_id = Column(Integer, ForeignKey("finance_bills.id", ondelete="CASCADE"), nullable=False, index=True)
     description = Column(String(255), nullable=False)
-    quantity = Column(Float, default=1.0)
-    unit_price = Column(Float, default=0.0)
-    line_total = Column(Float, default=0.0)
+    quantity = Column(Quantity, default=1.0)
+    unit_price = Column(Money, default=0.0)
+    line_total = Column(Money, default=0.0)
 
     bill = relationship("BillDB", back_populates="lines")
 
@@ -433,7 +433,7 @@ class FinanceChequeDB(Base):
     cheque_number = Column(String(50), nullable=False)
     account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="RESTRICT"), nullable=False, index=True)
     issue_date = Column(String(20), nullable=False, index=True)  # YYYY-MM-DD
-    amount = Column(Float, nullable=False)
+    amount = Column(Money, nullable=False)
     currency = Column(String(10), default="USD", nullable=False)
     payee = Column(String(255), nullable=False, index=True)
     purpose_type = Column(String(50), default="other", nullable=False, index=True)  # vendor_payment | cash_withdrawal | other
@@ -483,8 +483,8 @@ class PaymentDB(Base):
     related_invoice_id = Column(Integer, ForeignKey("finance_sales_invoices.id", ondelete="SET NULL"), nullable=True, index=True)
     related_bill_id = Column(Integer, ForeignKey("finance_bills.id", ondelete="SET NULL"), nullable=True, index=True)
     related_statutory_obligation_id = Column(Integer, ForeignKey("finance_statutory_obligations.id", ondelete="SET NULL"), nullable=True, index=True)
-    amount = Column(Float, nullable=False)
-    withheld_amount = Column(Float, default=0.0, nullable=False, server_default="0")  # customer-withheld tax settled with this receipt; no bank movement (D-024)
+    amount = Column(Money, nullable=False)
+    withheld_amount = Column(Money, default=0.0, nullable=False, server_default="0")  # customer-withheld tax settled with this receipt; no bank movement (D-024)
     currency = Column(String(10), default="USD", nullable=False)
     payment_date = Column(String(20), nullable=False, index=True)  # YYYY-MM-DD
     bank_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="RESTRICT"), nullable=False, index=True)
