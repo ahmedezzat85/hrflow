@@ -389,6 +389,7 @@ class InvoicesRepository:
         )
         self.db.add(ledger_tx)
         self.db.flush()
+        payment.ledger_transaction_id = ledger_tx.id
         LedgerRepository(self.db).recalculate_account_running_balances(account.id, commit=False)
 
         self.db.commit()

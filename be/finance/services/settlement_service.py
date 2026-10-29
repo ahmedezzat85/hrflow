@@ -411,6 +411,7 @@ class SettlementService:
         )
         self.db.add(ledger_tx)
         self.db.flush()
+        payment.ledger_transaction_id = ledger_tx.id
         from finance.repositories.ledger_repository import LedgerRepository
         LedgerRepository(self.db).recalculate_account_running_balances(bank_account.id, commit=False)
 

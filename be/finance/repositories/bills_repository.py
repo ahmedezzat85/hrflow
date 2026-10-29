@@ -513,6 +513,7 @@ class BillsRepository:
         )
         self.db.add(ledger_tx)
         self.db.flush()
+        payment.ledger_transaction_id = ledger_tx.id
         LedgerRepository(self.db).recalculate_account_running_balances(payment.bank_account_id, commit=False)
 
         if commit:
