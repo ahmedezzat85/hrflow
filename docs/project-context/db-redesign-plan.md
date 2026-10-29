@@ -20,7 +20,8 @@ on read.
 | 4b-2 | Value CHECKs (migration 0058) on columns whose allowed values the code defines in one place: bill status, invoice status, ledger direction, payment direction, bank account type. Other status columns (payroll runs, cheques, statement lines) have no single authoritative list and are left alone. The upgrade stops with a list of out-of-set values | done |
 | 4b-3 | Employee delete guard (migration 0059, owner decision: block): an employee with pay plan, tax method, social insurance, payroll line or payroll adjustment history cannot be deleted. The API answers 409 (`services/employee_delete_guard.py`, use status Suspended instead), the ORM no longer cascades the delete to pay history, and the tax method and social insurance foreign keys changed from `CASCADE` to `RESTRICT` like the plan table | done |
 | 4b-4 | Still open: full non-overlap of effective ranges (needs real date columns, Stage 5) | planned |
-| 5 | Types: Float to Numeric for money, date strings to Date, timezone-aware timestamps; Alembic as the only schema path (remove the `ALTER TABLE` sync in `init_db()`); index clean-up | planned |
+| 5a | Alembic is the only schema path: `init_db()` no longer adds missing columns or creates tables on an existing database (only a brand-new SQLite file is built from the models); it logs an error when the database is not at the Alembic head. Migration 0013 still builds missing tables from the current models on a fresh `upgrade head`; the drift ratchet and tests guard that fresh chain, and a baseline squash is the remaining option | done |
+| 5b | Types: Float to Numeric for money, date strings to Date, timezone-aware timestamps; index clean-up. Table by table in separate PRs, starting with the ledger | planned |
 | 6 | Remove alias classes, dead Sheets-era scripts, stray `.db` files; update the decision log | planned |
 
 ## Tools from Stage 0
@@ -63,3 +64,13 @@ Probing the suite with each candidate constraint showed which application rules 
 number (D-019), so the unique index excludes them. A payroll line unique on (run, employee, component type) was not
 added: the audit script flags such duplicates, but the payroll flow was not shown to forbid them, so the rule needs an
 owner decision before it becomes a constraint.
+
+## Release note for Stages 1 to 4 (backward compatibility)
+
+`deploy/prod/RUNBOOK.md` asks migrations to be backward compatible with the previous release where possible, because a
+failed health check rolls the app back to the old release. Several migrations in this redesign drop columns that the old
+release still reads (for example `employees.role`, `employees.vac_used`, `finance_bills.category`, `finance_bills.amount_paid`,
+the document URL columns) or tighten constraints the old release can violate. The old release cannot run against a database
+migrated by them, so a rollback after such a migration means restoring the backup taken at the start of the deploy
+(`scripts/restore.ps1`). Release these stages deliberately, with a fresh backup, and run
+`python scripts/audit_db_integrity.py` on a copy of production first because several migrations stop on bad data.
