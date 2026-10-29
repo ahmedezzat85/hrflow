@@ -13,7 +13,7 @@ on read.
 | 2b-1 | Bill category (migration 0052): `finance_bills.category` text becomes `imported_category`, kept only while no category row matched; `category_id` is the category and the API still returns `category` | done |
 | 2b-2 | `bills.amount_paid` (migration 0053): not stored; a read-only `column_property` sums the bill's live payments in the same query. After adding or reversing a payment, flush and `session.expire(bill, ["amount_paid"])` (done in `SettlementService` and `BillsRepository`) | done |
 | 2b-3 | `finance_payments.ledger_transaction_id` (migration 0054): unique link to the ledger row a payment posted, set by every payment path (bill pay, invoice receipt, manual transaction, cheque, statutory remittance). Older payments are backfilled by matching; unmatched ones stay empty and are logged and listed by the audit script | done |
-| 2b-4 | Cached `current_balance` / `running_balance` kept, with one write path and a reconciliation check in the audit script and CI (decided); bill scans into `finance_attachments` still open | planned |
+| 2b-4 | Cached balances (decided: keep, one writer): `LedgerRepository.recalculate_account_running_balances` is the only code that writes `current_balance` and `running_balance`; the rule lives in `finance/balances.py` (`compute_balances`, `find_drift`). The account update and recalculate paths now go through it, which also fixes an opening-balance change on an account that already had transactions. `tests/test_balance_write_path.py` fails if another file assigns a stored balance; the audit script reports drift. Bill scans into `finance_attachments` still open | done |
 | 3 | Payroll line cleanup: dead `tax_amount`, redundant snapshot columns, run totals, missing foreign keys | planned |
 | 4 | Constraints: uniqueness (bill number per vendor, payroll run period, line per employee, salary document per month), no overlapping effective-dated rows, one-parent CHECK on attachments, status CHECKs, delete-rule fixes | planned |
 | 5 | Types: Float to Numeric for money, date strings to Date, timezone-aware timestamps; Alembic as the only schema path (remove the `ALTER TABLE` sync in `init_db()`); index clean-up | planned |
@@ -45,3 +45,10 @@ Migration 0013 builds missing tables with `Base.metadata.create_all` from the *c
 column fail on a fresh database (0036 and 0046 now check that the column exists first). Any stage that drops a column
 must check the older migrations that read it. The permanent fix is Stage 5 (Alembic as the only schema path, with
 0013 made explicit).
+
+## Finding from Stage 2b-4
+
+Running the whole backend suite with a balance-drift probe at teardown found 20 tests that end with stored balances
+that differ from the ledger. All of them set up report data by inserting `LedgerTransactionDB` rows directly through
+the ORM; no application path left drift. The probe was not kept because those tests would fail it; the static and
+behaviour tests in `tests/test_balance_write_path.py` and the audit script are the guards.
