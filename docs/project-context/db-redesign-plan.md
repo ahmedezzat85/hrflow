@@ -79,3 +79,16 @@ the document URL columns) or tighten constraints the old release can violate. Th
 migrated by them, so a rollback after such a migration means restoring the backup taken at the start of the deploy
 (`scripts/restore.ps1`). Release these stages deliberately, with a fresh backup, and run
 `python scripts/audit_db_integrity.py` on a copy of production first because several migrations stop on bad data.
+
+## Finding: production schema check (2026-11-04)
+
+With the owner's go-ahead, production's schema (tables, columns, constraints, indexes; no row data) was dumped with
+`pg_dump --schema-only`, loaded into a throwaway PostgreSQL 16 database and compared with the models.
+- Production is at revision `0049_history_amounts_derived`: none of migrations 0050 to 0064 is applied yet.
+- Against the models it differs by exactly the planned changes: 17 columns to drop, 4 to add, 25 foreign keys and 30 indexes to add,
+  6 stale indexes to drop, 29 money columns to convert (floats to NUMERIC), and nullability differences.
+- Applying `alembic upgrade head` (0050 to 0064) to that schema copy succeeds, and the result matches the models except for 49
+  nullability differences and the legacy `finance_ledger_transactions.category` column (production: `varchar(100) NOT NULL DEFAULT 'other'`,
+  which the app never fills, so it holds `other` on every row; drop it in Stage 6).
+- Not covered: anything that depends on rows. Whether production holds orphan rows, duplicate bill numbers, overlapping pay-plan rows
+  or out-of-set statuses needs the audit script run on a restored backup, as the release checklist says.
