@@ -15,7 +15,7 @@ PostgreSQL in Docker (`deploy/prod/RUNBOOK.md`); the app container runs `alembic
 
 ## Dry run already done
 
-On 2026-11-04 the whole chain (0050 to 0064) was run on a restore of the 2026-10-28 production backup in a throwaway PostgreSQL: no audit findings, no migration warnings, no stop, application code reads the result correctly (see the plan doc). Production then held no bills, ledger rows or payroll runs, so repeat the steps below on a fresh backup right before the real release.
+On 2026-10-29 the whole chain (0050 to 0069) was run on a restore of the 2026-10-28 production backup in a throwaway PostgreSQL: no audit findings, no migration warnings, no stop, row counts unchanged, application code reads the result correctly (see the plan doc). Production then held no bills, ledger rows or payroll runs, so repeat the steps below on a fresh backup right before the real release.
 
 ## Before the deploy
 
