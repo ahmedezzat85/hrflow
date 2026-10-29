@@ -3085,7 +3085,13 @@ def test_restore_endpoints_removed_and_no_restore_text_in_frontend(app_client):
                 os.path.join("src", "partials", "modals", "assign-roles-modal.html")):
         with open(os.path.join(fe_dir, rel), "r", encoding="utf-8") as fh:
             text = fh.read().lower()
-        assert "unarchive" not in text, rel
+        if rel == "api.js":
+            # api.js is shared: employees can be unarchived (their record only), users never. No user route may mention it.
+            for line in text.splitlines():
+                if "/api/access/users" in line:
+                    assert "unarchive" not in line and "restore" not in line, line.strip()
+        else:
+            assert "unarchive" not in text, rel
         assert "restore" not in text.replace("restoresession", ""), rel
 
 

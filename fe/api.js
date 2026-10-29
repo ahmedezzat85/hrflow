@@ -373,6 +373,8 @@ const Api = {
     return apiRequest("PUT", `/api/employees/${empId}/personal`, payload);
   },
   deleteEmployee(empId) { return apiRequest("DELETE", `/api/employees/${empId}`); },
+  archiveEmployee(empId) { return apiRequest("POST", `/api/employees/${empId}/archive`); },
+  unarchiveEmployee(empId) { return apiRequest("POST", `/api/employees/${empId}/unarchive`); },
 
   getEmployeeNotes(empId) { return apiRequest("GET", `/api/employees/${empId}/notes`); },
   createEmployeeNote(empId, payload) { return apiRequest("POST", `/api/employees/${empId}/notes`, payload); },

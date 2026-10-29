@@ -1,18 +1,18 @@
 let currentEmpStatusFilter = 'all';
 
 function updateEmployeeStatusCounts() {
-  const allCount = (typeof employees !== 'undefined' && employees) ? employees.length : 0;
+  const allCount = (typeof employees !== 'undefined' && employees) ? employees.filter(e => !e.archived).length : 0;
   const activeCount = (typeof employees !== 'undefined' && employees) ? employees.filter(e => (e.status || '').toLowerCase() === 'active').length : 0;
   const leaveCount = (typeof employees !== 'undefined' && employees) ? employees.filter(e => (e.status || '').toLowerCase() === 'on leave').length : 0;
-  const inactiveCount = (typeof employees !== 'undefined' && employees) ? employees.filter(e => (e.status || '').toLowerCase() === 'inactive').length : 0;
+  const archivedCount = (typeof employees !== 'undefined' && employees) ? employees.filter(e => e.archived).length : 0;
   const elAll = document.getElementById('empCountAll');
   const elActive = document.getElementById('empCountActive');
   const elLeave = document.getElementById('empCountOnLeave');
-  const elInactive = document.getElementById('empCountInactive');
+  const elArchived = document.getElementById('empCountArchived');
   if (elAll) elAll.textContent = allCount;
   if (elActive) elActive.textContent = activeCount;
   if (elLeave) elLeave.textContent = leaveCount;
-  if (elInactive) elInactive.textContent = inactiveCount;
+  if (elArchived) elArchived.textContent = archivedCount;
 }
 
 function filterEmployeesByStatus(status) {
@@ -39,8 +39,13 @@ function renderEmployeesTable(filter = '') {
   updateEmployeeStatusCounts();
   const f = filter.toLowerCase();
   let list = employees.filter(e => (e.name || '').toLowerCase().includes(f) || (e.role || '').toLowerCase().includes(f) || (e.dept || e.department || '').toLowerCase().includes(f) || (e.email || '').toLowerCase().includes(f) || (e.employment_state || "").toLowerCase().includes(f));
-  if (currentEmpStatusFilter && currentEmpStatusFilter !== 'all') {
-    list = list.filter(e => (e.status || '').toLowerCase() === currentEmpStatusFilter.toLowerCase());
+  if (currentEmpStatusFilter === 'Archived') {
+    list = list.filter(e => e.archived);
+  } else {
+    list = list.filter(e => !e.archived);
+    if (currentEmpStatusFilter && currentEmpStatusFilter !== 'all') {
+      list = list.filter(e => (e.status || '').toLowerCase() === currentEmpStatusFilter.toLowerCase());
+    }
   }
   body.innerHTML = list.map(e => `<tr>
     <td data-label="Employee" class="tname"><div class="avatar">${initials(e.name)}</div><div><div><a href="#" class="hv-name-link" onclick="viewProfile('${e.id}'); return false;">${escapeHtml(e.name)}</a></div><div class="hv-sub-line">${e.id ? `${/^\d+$/.test(String(e.id)) ? 'EMP' + String(e.id).padStart(3, '0') : escapeHtml(String(e.id))} · ` : ''}${escapeHtml(e.email)}</div></div></td>
@@ -51,7 +56,10 @@ function renderEmployeesTable(filter = '') {
     <td data-label="Status">${statusPill(e.status)}</td>
     <td data-label="Actions" class="col-actions hv-right" style="white-space:nowrap;">
       ${canWrite ? `<button class="icon-action" onclick="openEmployeeModal('${e.id}')" title="Edit" aria-label="Edit ${escapeHtml(e.name)}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"></path></svg></button>` : ''}
-      <button class="icon-action" title="Generate salary payment doc" aria-label="Generate salary payment doc for ${escapeHtml(e.name)}" onclick="showSection('a-invoices','admin'); generateSingleInvoice('${e.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h6"></path></svg></button>
+      ${e.archived ? '' : `<button class="icon-action" title="Generate salary payment doc" aria-label="Generate salary payment doc for ${escapeHtml(e.name)}" onclick="showSection('a-invoices','admin'); generateSingleInvoice('${e.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h6"></path></svg></button>`}
+      ${canWrite ? (e.archived
+        ? `<button class="icon-action" onclick="unarchiveEmployee('${e.id}')" title="Unarchive" aria-label="Unarchive ${escapeHtml(e.name)}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"></path></svg></button>`
+        : `<button class="icon-action" onclick="askArchive('${e.id}')" title="Archive" aria-label="Archive ${escapeHtml(e.name)}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="4" rx="1"></rect><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M10 12h4"></path></svg></button>`) : ''}
       ${canWrite ? `<button class="icon-action" onclick="askDelete('${e.id}')" title="Delete" aria-label="Remove ${escapeHtml(e.name)}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"></path></svg></button>` : ''}
     </td></tr>`).join('') || renderEmptyTableRow(6, 'No employees found.', 'fa-solid fa-user-slash');
   setTableFoot('employeesTableBody', list.length, 'employees');
@@ -153,13 +161,13 @@ function openEmployeeModal(id = null) {
     fEmpName.value = e.name || ''; fEmpEmail.value = e.email || ''; fEmpDept.value = e.dept || e.department || ''; fEmpRole.value = e.role || '';
     document.getElementById('fEmpInvoiceId').value = e.invoice_id || '';
     if (canWritePersonal()) loadEmployeePersonalIntoModal(id);
-    fEmpJoin.value = e.join || ''; fEmpStatus.value = e.status || 'Active'; fEmpVac.value = (e.vacTotal || 21) - (e.vacUsed || 0);
+    fEmpJoin.value = e.join || ''; fEmpStatus.value = e.archived ? '' : (e.status || 'Active'); fEmpStatus.disabled = !!e.archived; fEmpVac.value = (e.vacTotal || 21) - (e.vacUsed || 0);
     document.getElementById('fEmpEmploymentState').value = e.employment_state || 'Full-Time';
   } else {
     empNameTouched = false;
     ['fEmpName', 'fEmpEmail', 'fEmpRole'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('fEmpInvoiceId').value = '';
-    fEmpJoin.value = ''; fEmpVac.value = 21; fEmpStatus.value = 'Active'; fEmpDept.value = 'Engineering';
+    fEmpJoin.value = ''; fEmpVac.value = 21; fEmpStatus.value = 'Active'; fEmpStatus.disabled = false; fEmpDept.value = 'Engineering';
     document.getElementById('fEmpEmploymentState').value = 'Full-Time';
   }
   updateEmpNameHint();
@@ -208,12 +216,12 @@ async function saveEmployee(evt) {
   let created = null;
   try {
     if (currentEditId) {
-      const updates = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, join_date: fEmpJoin.value, status: fEmpStatus.value, vac_total: vacTotal, employment_state: document.getElementById('fEmpEmploymentState').value, invoice_id };
+      const updates = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, join_date: fEmpJoin.value, status: fEmpStatus.disabled ? undefined : fEmpStatus.value, vac_total: vacTotal, employment_state: document.getElementById('fEmpEmploymentState').value, invoice_id };
       await Api.updateEmployee(currentEditId, updates);
       if (withPersonal) await Api.updateEmployeePersonal(currentEditId, { ...personal, ...(idFields || {}) });
       toast('Employee updated successfully.');
     } else {
-      const payload = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, join_date: fEmpJoin.value, status: fEmpStatus.value, vac_total: vacTotal, next_raise: '2027-01-01', employment_state: document.getElementById('fEmpEmploymentState').value, invoice_id, ...personal, ...(idFields || {}) };
+      const payload = { name, email: fEmpEmail.value, dept: fEmpDept.value, job_role: fEmpRole.value, join_date: fEmpJoin.value, status: fEmpStatus.disabled ? undefined : fEmpStatus.value, vac_total: vacTotal, next_raise: '2027-01-01', employment_state: document.getElementById('fEmpEmploymentState').value, invoice_id, ...personal, ...(idFields || {}) };
       created = await Api.createEmployee(payload);
       toast('New employee added. Set their pay plan next, or skip it for now.');
     }
@@ -227,6 +235,47 @@ async function saveEmployee(evt) {
     toast(err.message, 'fa-solid fa-triangle-exclamation');
   } finally {
     setButtonLoading(btn, false);
+  }
+}
+
+// Archive: the employee and their login are set aside, every record stays (backend: services/employee_archive.py)
+let currentArchiveId = null;
+function askArchive(id) {
+  currentArchiveId = id;
+  const emp = employees.find(e => String(e.id) === String(id));
+  document.getElementById('archiveEmpName').textContent = emp ? emp.name : 'this employee';
+  openModal('archiveModal');
+}
+function applyArchivedState(id, updated) {
+  const emp = employees.find(e => String(e.id) === String(id));
+  if (emp && updated) {
+    emp.archived = !!updated.archived;
+    emp.archived_at = updated.archived_at || null;
+    emp.status = updated.status || emp.status;
+  }
+  renderEmployeesTable(document.getElementById('empSearch') ? document.getElementById('empSearch').value : '');
+}
+async function confirmArchive(evt) {
+  const btn = (evt && evt.currentTarget) || document.querySelector('#archiveModal .btn-fill');
+  setButtonLoading(btn, true, 'Archiving...');
+  try {
+    const updated = await Api.archiveEmployee(currentArchiveId);
+    closeModal('archiveModal');
+    applyArchivedState(currentArchiveId, updated);
+    toast('Employee archived.', 'fa-solid fa-box-archive');
+  } catch (err) {
+    toast(err.message, 'fa-solid fa-triangle-exclamation');
+  } finally {
+    setButtonLoading(btn, false);
+  }
+}
+async function unarchiveEmployee(id) {
+  try {
+    const updated = await Api.unarchiveEmployee(id);
+    applyArchivedState(id, updated);
+    toast(updated && updated.login_archived ? 'Employee unarchived. Their login stays archived.' : 'Employee unarchived.', 'fa-solid fa-rotate-left');
+  } catch (err) {
+    toast(err.message, 'fa-solid fa-triangle-exclamation');
   }
 }
 
