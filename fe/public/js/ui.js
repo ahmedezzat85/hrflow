@@ -485,8 +485,8 @@ function fmtDateRange(a, b){
   return `${s.getDate()}–${e.getDate()} ${_MON[e.getMonth()]} ${e.getFullYear()}`;
 }
 function statusPill(status){
-  const map = {Waiting:'pill-warning',Pending:'pill-warning',Approved:'pill-success','Active':'pill-success',Rejected:'pill-danger','On Leave':'pill-info','On leave':'pill-info',Suspended:'pill-danger',Inactive:'pill-neutral'};
-  const dotMap = {Waiting:'hv-dot--warning',Pending:'hv-dot--warning',Approved:'hv-dot--success','Active':'hv-dot--success',Rejected:'hv-dot--danger','On Leave':'hv-dot--info','On leave':'hv-dot--info',Suspended:'hv-dot--danger',Inactive:'hv-dot--muted'};
+  const map = {Waiting:'pill-warning',Pending:'pill-warning',Approved:'pill-success','Active':'pill-success',Rejected:'pill-danger','On Leave':'pill-info','On leave':'pill-info',Suspended:'pill-danger',Inactive:'pill-neutral',Archived:'pill-neutral'};
+  const dotMap = {Waiting:'hv-dot--warning',Pending:'hv-dot--warning',Approved:'hv-dot--success','Active':'hv-dot--success',Rejected:'hv-dot--danger','On Leave':'hv-dot--info','On leave':'hv-dot--info',Suspended:'hv-dot--danger',Inactive:'hv-dot--muted',Archived:'hv-dot--muted'};
   return `<span class="badge-pill ${map[status]||'pill-neutral'}"><span class="hv-dot ${dotMap[status]||'hv-dot--muted'}"></span>${status === 'On Leave' ? 'On leave' : status}</span>`;
 }
 /**

@@ -1,0 +1,18 @@
+  <div class="modal-overlay fv fv-dialog fv-dialog--w440 fv-dialog--confirm" id="archiveModal">
+    <div class="modal">
+      <div class="modal-head">
+        <span class="modal-head-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="4" rx="1"></rect><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M10 12h4"></path></svg></span>
+        <div class="modal-head-text">
+          <h3 id="archiveModalTitle">Archive employee?</h3>
+        </div>
+        <button class="modal-close" onclick="closeModal('archiveModal')" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
+      </div>
+      <div class="modal-body">
+        <p style="color:var(--ink-muted);font-size:13.5px;line-height:1.5;margin:0;"><b id="archiveEmpName" style="color:var(--ink-strong);"></b> will be set aside: they can no longer sign in and are left out of new payroll runs and salary documents. Their records, pay history and documents stay, and you can unarchive them at any time.</p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="closeModal('archiveModal')">Cancel</button>
+        <button class="btn btn-fill" id="archiveConfirmBtn" onclick="confirmArchive(event)">Archive</button>
+      </div>
+    </div>
+  </div>

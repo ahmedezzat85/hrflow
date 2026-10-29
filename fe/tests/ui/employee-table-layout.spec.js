@@ -18,10 +18,10 @@ test.describe('Employee Directory Table Layout & Action Columns', () => {
     console.log('Current employee row height:', rowBox.height);
     expect(rowBox.height).toBeLessThanOrEqual(65);
 
-    // Check that all 3 action buttons (the View button was removed, D-0xx restyle v3) inside td.col-actions are on the same horizontal line
+    // Check that all 4 action buttons (edit, salary document, archive, delete; the View button was removed, D-0xx restyle v3) inside td.col-actions are on the same horizontal line
     const actionButtons = firstRow.locator('td.col-actions .icon-action');
     const count = await actionButtons.count();
-    expect(count).toBe(3);
+    expect(count).toBe(4);
 
     // Read all boxes in one browser call: reading them one by one let a settling layout move them between reads (Linux CI)
     const buttonBoxes = await firstRow.locator('td.col-actions .icon-action').evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; }));
@@ -38,9 +38,9 @@ test.describe('Employee Directory Table Layout & Action Columns', () => {
       expect(buttonBoxes[i].x).toBeGreaterThan(buttonBoxes[i - 1].x);
     }
 
-    // td.col-actions width should accommodate all buttons horizontally (>= 130px), not 44px
+    // td.col-actions width should accommodate all buttons horizontally (>= 170px), not 44px
     const actionsColBox = await firstRow.locator('td.col-actions').boundingBox();
     console.log('Actions column width:', actionsColBox.width);
-    expect(actionsColBox.width).toBeGreaterThanOrEqual(130);
+    expect(actionsColBox.width).toBeGreaterThanOrEqual(170);
   });
 });

@@ -143,7 +143,7 @@ document.getElementById('salaryTableBody').addEventListener('click', e=>{
 });
 function openRaiseModal(empId=null){
   const sel = document.getElementById('rEmpSelect');
-  sel.innerHTML = employees.map(e=>`<option value="${e.id}">${escapeHtml(e.name)} — ${e.job_role || e.role}</option>`).join('');
+  sel.innerHTML = employees.filter(e=>!e.archived).map(e=>`<option value="${e.id}">${escapeHtml(e.name)} — ${e.job_role || e.role}</option>`).join('');
   if(empId) sel.value = empId;
   // Opened for one employee (profile): show the name read-only instead of a dropdown
   const nameField = document.getElementById('rEmpName');

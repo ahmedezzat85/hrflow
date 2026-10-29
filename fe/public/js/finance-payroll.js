@@ -131,6 +131,7 @@
           }
         }
 
+        if (Array.isArray(rawEmployees)) rawEmployees = rawEmployees.filter(e => !e.archived);   // archived employees are not paid
         if (Array.isArray(rawEmployees) && rawEmployees.length > 0) {
           const existingBonusesMap = {};
           (this.rows || []).forEach(r => {
