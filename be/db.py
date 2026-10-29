@@ -142,7 +142,7 @@ def init_db():
             default_id = _books.default_book_id(db)
             db.execute(text("UPDATE finance_bank_accounts SET book_id = :b WHERE book_id IS NULL"), {"b": default_id})
             db.execute(text("UPDATE finance_bank_accounts SET visibility = 'full' WHERE visibility IS NULL"))
-            db.execute(text("UPDATE finance_customers SET is_intercompany = 0 WHERE is_intercompany IS NULL"))
+            db.execute(text("UPDATE finance_customers SET is_intercompany = :f WHERE is_intercompany IS NULL"), {"f": False})
             db.commit()
     except Exception:
         import logging
