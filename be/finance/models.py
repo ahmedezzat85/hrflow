@@ -809,11 +809,11 @@ class PayrollRunDB(Base):
     period_start = Column(String(20), nullable=False)
     period_end = Column(String(20), nullable=False)
     status = Column(String(30), default="draft", nullable=False, index=True)  # draft/approved/finalized/paid/partially_paid/cancelled
-    total_gross = Column(Float, default=0.0)
-    total_tax = Column(Float, default=0.0)
-    total_deductions = Column(Float, default=0.0)
-    total_net = Column(Float, default=0.0)
-    total_employer_cost = Column(Float, default=0.0)
+    total_gross = Column(Money, default=0.0)
+    total_tax = Column(Money, default=0.0)
+    total_deductions = Column(Money, default=0.0)
+    total_net = Column(Money, default=0.0)
+    total_employer_cost = Column(Money, default=0.0)
     headcount = Column(Integer, default=0)
     currency = Column(String(10), default="USD")
     external_funding_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True)
@@ -834,13 +834,13 @@ class PayrollRunDB(Base):
     source_version = Column(String(100), nullable=True)
     journal_transaction_id = Column(Integer, ForeignKey("finance_ledger_transactions.id", ondelete="SET NULL"), nullable=True)
     fx_rate_source = Column(String(30), default="first_of_month", nullable=True)  # first_of_month / payment_date
-    fx_rate_value = Column(Float, nullable=True)
+    fx_rate_value = Column(Rate, nullable=True)
     liabilities_summary_json = Column(Text, default="{}")
     exceptions_json = Column(Text, default="[]")
     variance_summary_json = Column(Text, default="{}")
-    total_employee_tax_egp = Column(Float, default=0.0, nullable=True)
-    total_social_insurance_egp = Column(Float, default=0.0, nullable=True)
-    total_flat_tax_egp = Column(Float, default=0.0, nullable=True)  # breakdown of total_employee_tax_egp, not an addition
+    total_employee_tax_egp = Column(Money, default=0.0, nullable=True)
+    total_social_insurance_egp = Column(Money, default=0.0, nullable=True)
+    total_flat_tax_egp = Column(Money, default=0.0, nullable=True)  # breakdown of total_employee_tax_egp, not an addition
     tax_settings_version_id = Column(Integer, ForeignKey("finance_payroll_tax_settings.id", ondelete="SET NULL"), nullable=True)
 
     __table_args__ = (
@@ -865,7 +865,7 @@ class PayrollAdjustmentDB(Base):
     payroll_run_id = Column(Integer, ForeignKey("finance_payroll_runs.id", ondelete="CASCADE"), nullable=True, index=True)
     type = Column(String(30), nullable=False)  # COMMISSION | BONUS
     direction = Column(String(20), default="ADDITION", nullable=False)  # ADDITION
-    amount = Column(Float, nullable=False)  # strictly positive
+    amount = Column(Money, nullable=False)  # strictly positive
     currency = Column(String(10), default="USD", nullable=False)
     payment_source = Column(String(10), default="INT", nullable=False)  # INT | EXT
     effective_period = Column(String(20), nullable=False)  # YYYY-MM
@@ -891,33 +891,33 @@ class PayrollLineDB(Base):
     compensation_type = Column(String(50), default="internal_usd_cash", nullable=True)  # external_usd / internal_usd_cash / commission_sales / commission_support / bonus
     is_taxable_local = Column(Boolean, default=True, nullable=True)
     is_insurable = Column(Boolean, default=True, nullable=True)
-    base_salary = Column(Float, default=0.0)
-    allowances_total = Column(Float, default=0.0)
-    deductions_total = Column(Float, default=0.0)
-    net_pay = Column(Float, default=0.0)
-    employer_cost_extra = Column(Float, default=0.0)
-    insured_base_snapshot = Column(Float, default=0.0, nullable=True)
-    employee_rate_snapshot = Column(Float, default=0.0, nullable=True)
-    employer_rate_snapshot = Column(Float, default=0.0, nullable=True)
+    base_salary = Column(Money, default=0.0)
+    allowances_total = Column(Money, default=0.0)
+    deductions_total = Column(Money, default=0.0)
+    net_pay = Column(Money, default=0.0)
+    employer_cost_extra = Column(Money, default=0.0)
+    insured_base_snapshot = Column(Money, default=0.0, nullable=True)
+    employee_rate_snapshot = Column(Rate, default=0.0, nullable=True)
+    employer_rate_snapshot = Column(Rate, default=0.0, nullable=True)
     salary_basis_snapshot = Column(String(20), nullable=True)
-    configured_internal_salary_usd_snapshot = Column(Float, default=0.0, nullable=True)
-    insured_base_egp_snapshot = Column(Float, default=0.0, nullable=True)
-    fx_rate_snapshot = Column(Float, nullable=True)
-    base_gross_egp = Column(Float, default=0.0, nullable=True)
-    variable_gross_egp = Column(Float, default=0.0, nullable=True)
-    employee_social_insurance_egp = Column(Float, default=0.0, nullable=True)
-    employer_social_insurance_egp = Column(Float, default=0.0, nullable=True)
-    employee_tax_egp = Column(Float, default=0.0, nullable=True)
-    employee_social_insurance_usd_equivalent = Column(Float, default=0.0, nullable=True)
-    employee_tax_usd_equivalent = Column(Float, default=0.0, nullable=True)
-    final_internal_net_egp = Column(Float, default=0.0, nullable=True)
-    final_internal_payment_usd = Column(Float, nullable=True)
-    taxable_gross_egp = Column(Float, default=0.0, nullable=True)
-    annual_taxed_salary_egp = Column(Float, default=0.0, nullable=True)
-    annual_tax_egp = Column(Float, default=0.0, nullable=True)
+    configured_internal_salary_usd_snapshot = Column(Money, default=0.0, nullable=True)
+    insured_base_egp_snapshot = Column(Money, default=0.0, nullable=True)
+    fx_rate_snapshot = Column(Rate, nullable=True)
+    base_gross_egp = Column(Money, default=0.0, nullable=True)
+    variable_gross_egp = Column(Money, default=0.0, nullable=True)
+    employee_social_insurance_egp = Column(Money, default=0.0, nullable=True)
+    employer_social_insurance_egp = Column(Money, default=0.0, nullable=True)
+    employee_tax_egp = Column(Money, default=0.0, nullable=True)
+    employee_social_insurance_usd_equivalent = Column(Money, default=0.0, nullable=True)
+    employee_tax_usd_equivalent = Column(Money, default=0.0, nullable=True)
+    final_internal_net_egp = Column(Money, default=0.0, nullable=True)
+    final_internal_payment_usd = Column(Money, nullable=True)
+    taxable_gross_egp = Column(Money, default=0.0, nullable=True)
+    annual_taxed_salary_egp = Column(Money, default=0.0, nullable=True)
+    annual_tax_egp = Column(Money, default=0.0, nullable=True)
     tax_settings_version_id = Column(Integer, ForeignKey("finance_payroll_tax_settings.id", ondelete="SET NULL"), nullable=True)
     tax_method_snapshot = Column(String(20), nullable=True)  # NULL = progressive (legacy rows)
-    tax_rate_snapshot = Column(Float, nullable=True)
+    tax_rate_snapshot = Column(Rate, nullable=True)
     bank_name = Column(String(100), nullable=True)
     bank_account_masked = Column(String(50), nullable=True)
     payment_status = Column(String(30), default="pending")  # pending / paid / failed
@@ -1089,7 +1089,7 @@ class EmployeeCompensationPlanDB(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     employee_id = Column(Integer, ForeignKey("employees.id", ondelete="RESTRICT"), nullable=False, index=True)
     component_type = Column(String(50), nullable=False, index=True)  # external_usd | internal_usd_cash
-    amount = Column(Float, nullable=False)
+    amount = Column(Money, nullable=False)
     currency = Column(String(10), default="USD", nullable=False)
     salary_basis = Column(String(20), default="NET", nullable=False)
     effective_start_date = Column(String(20), nullable=False, index=True)  # YYYY-MM-DD
@@ -1136,8 +1136,8 @@ class PayrollRateSettingsDB(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     effective_from = Column(String(20), nullable=False, index=True)  # YYYY-MM-01
-    employee_rate = Column(Float, nullable=False)
-    employer_rate = Column(Float, nullable=False)
+    employee_rate = Column(Rate, nullable=False)
+    employer_rate = Column(Rate, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(String(255), nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -1152,7 +1152,7 @@ class PayrollTaxSettingsDB(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     effective_from = Column(String(20), nullable=False, index=True)  # YYYY-MM-01
-    tax_limit_p_egp = Column(Float, default=20000.0, nullable=False)
+    tax_limit_p_egp = Column(Money, default=20000.0, nullable=False)
     brackets_json = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(String(255), nullable=True)
