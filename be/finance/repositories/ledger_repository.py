@@ -110,7 +110,9 @@ class LedgerRepository:
         account_id: int,
         data: dict,
         created_by: Optional[str] = None,
+        payment=None,
     ) -> LedgerTransactionDB:
+        """`payment`: the bill/invoice payment this row records (settlement already created it); it is linked to the row."""
         bank_account = (
             self.db.query(FinanceBankAccountDB)
             .filter(FinanceBankAccountDB.id == account_id)
@@ -170,6 +172,8 @@ class LedgerRepository:
         )
         self.db.add(tx)
         self.db.flush()
+        if payment is not None:
+            payment.ledger_transaction_id = tx.id
 
         # Direct teller cash withdrawal: auto-fund destination cash account if specified on an outflow
         if data.get("destination_cash_account_id") and direction == "out" and not data.get("linked_cheque_id"):

@@ -464,8 +464,15 @@ class PaymentDB(Base):
     reversed_at = Column(DateTime, nullable=True)
     reversed_by = Column(String(255), nullable=True)
     reversal_reason = Column(Text, nullable=True)
+    # The ledger row this payment posted (one payment, one ledger row); NULL for payments recorded before the link existed
+    ledger_transaction_id = Column(Integer, ForeignKey("finance_ledger_transactions.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    __table_args__ = (
+        Index("uq_finance_payments_ledger_transaction_id", "ledger_transaction_id", unique=True),
+    )
+
+    ledger_transaction = relationship("LedgerTransactionDB", foreign_keys=[ledger_transaction_id])
     sales_invoice = relationship("SalesInvoiceDB", back_populates="payments", foreign_keys=[related_invoice_id])
     bill = relationship("BillDB", back_populates="payments", foreign_keys=[related_bill_id])
     bank_account = relationship("FinanceBankAccountDB", back_populates="payments")

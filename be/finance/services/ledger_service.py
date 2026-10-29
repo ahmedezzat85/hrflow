@@ -316,6 +316,7 @@ class LedgerService:
             )
 
         # Unified settlement linking (FUX-406)
+        payment = None
         if data.get("linked_bill_id"):
             from finance.services.settlement_service import SettlementService
             from finance import bill_payment_rules as rules
@@ -330,7 +331,7 @@ class LedgerService:
                     data["payment_type_id"] = default_pt.id
             settlement_svc = SettlementService(self.repo.db)
             try:
-                settlement_svc.settle_bill(
+                _bill, payment = settlement_svc.settle_bill(
                     bill_id=data["linked_bill_id"],
                     amount=data["amount"],
                     payment_date=data["date"],
@@ -351,7 +352,7 @@ class LedgerService:
             from finance.invoice_status import InvalidInvoiceTransition, ReceiptError
             settlement_svc = SettlementService(self.repo.db)
             try:
-                settlement_svc.settle_invoice(
+                _invoice, payment = settlement_svc.settle_invoice(
                     invoice_id=data["linked_invoice_id"],
                     amount=data["amount"],
                     payment_date=data["date"],
@@ -371,7 +372,7 @@ class LedgerService:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
         try:
-            tx = self.repo.create_transaction(account_id, data, created_by=user_email)
+            tx = self.repo.create_transaction(account_id, data, created_by=user_email, payment=payment)
             return self.to_response(tx)
         except ValueError as e:
             raise HTTPException(

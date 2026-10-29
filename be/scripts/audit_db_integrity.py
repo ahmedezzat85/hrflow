@@ -204,6 +204,17 @@ def _check_balances(a: Audit):
 
 
 def check_payment_ledger_link(a: Audit):
+    if a.has("finance_payments", "ledger_transaction_id", "is_reversed", "id"):
+        # Stage 2b: payments carry a real link to the ledger row they posted
+        a.add("link:payment_no_ledger", "Live payments with no ledger row linked (older payments the migration could not match)", a.rows(
+            "SELECT p.id AS payment_id, p.related_bill_id, p.related_invoice_id, p.payment_date, p.amount FROM finance_payments p "
+            "WHERE p.is_reversed = :f AND p.ledger_transaction_id IS NULL", f=False))
+        if a.has("finance_ledger_transactions", "source", "id"):
+            a.add("link:ledger_no_payment", "Bill/invoice payment ledger rows that no payment points at", a.rows(
+                "SELECT l.id AS ledger_id, l.source, l.linked_bill_id, l.linked_invoice_id, l.date, l.amount "
+                "FROM finance_ledger_transactions l WHERE l.source IN ('invoice_payment', 'bill_payment') "
+                "AND NOT EXISTS (SELECT 1 FROM finance_payments p WHERE p.ledger_transaction_id = l.id)"))
+        return
     if not (a.has("finance_payments", "id", "bank_account_id", "payment_date", "amount", "is_reversed")
             and a.has("finance_ledger_transactions", "account_id", "date", "amount", "linked_bill_id", "linked_invoice_id")):
         return
