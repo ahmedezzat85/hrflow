@@ -217,6 +217,8 @@ def check_orphans(a: Audit):
 
 def check_attachments(a: Audit):
     parents = ["subscription_charge_id", "statement_import_id", "ledger_transaction_id", "cheque_id", "checkpoint_id", "sales_invoice_id"]
+    if a.has("finance_attachments", "bill_id"):   # added by migration 0068
+        parents.append("bill_id")
     if a.has("finance_attachments", "id", *parents):
         total = " + ".join(f"CASE WHEN {p} IS NULL THEN 0 ELSE 1 END" for p in parents)
         a.add("attach:parents", "Attachments with zero or several parents", a.rows(

@@ -21,6 +21,7 @@ from finance.repositories.ledger_repository import LedgerRepository
 from finance.models import (
     BillDB,
     BillLineDB,
+    FinanceAttachmentDB,
     PaymentDB,
     FinanceBankAccountDB,
     VendorDB,
@@ -86,9 +87,9 @@ class BillsRepository:
         if vendor_id is not None:
             query = query.filter(BillDB.vendor_id == vendor_id)
         if has_attachment is True:
-            query = query.filter(BillDB.attachment_url.isnot(None), BillDB.attachment_url != "")
+            query = query.filter(BillDB.scan.has(FinanceAttachmentDB.storage_ref != ""))
         elif has_attachment is False:
-            query = query.filter(or_(BillDB.attachment_url.is_(None), BillDB.attachment_url == ""))
+            query = query.filter(~BillDB.scan.has(FinanceAttachmentDB.storage_ref != ""))
         if search:
             s = f"%{search.strip()}%"
             query = query.join(VendorDB, isouter=True).filter(
@@ -129,8 +130,7 @@ class BillsRepository:
         bill = self.get_by_id(bill_id)
         if not bill:
             return None
-        bill.attachment_name = None
-        bill.attachment_url = None
+        bill.scan = None
         bill.file_fingerprint = None
         self.db.commit()
         self.db.refresh(bill)
