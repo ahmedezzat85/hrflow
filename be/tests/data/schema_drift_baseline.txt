@@ -74,7 +74,6 @@ modify_nullable:finance_bank_accounts.visibility:True->False
 modify_nullable:finance_bill_lines.line_total:False->True
 modify_nullable:finance_bill_lines.quantity:False->True
 modify_nullable:finance_bill_lines.unit_price:False->True
-modify_nullable:finance_bills.amount_paid:True->False
 modify_nullable:finance_bills.capture_source:True->False
 modify_nullable:finance_bills.is_duplicate_override:True->False
 modify_nullable:finance_bills.is_reviewed:True->False

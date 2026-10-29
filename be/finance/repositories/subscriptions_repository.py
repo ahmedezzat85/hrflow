@@ -195,7 +195,6 @@ class SubscriptionsRepository:
                 subtotal=charged_amount,
                 tax_amount=0.0,
                 total=charged_amount,
-                amount_paid=0.0,
                 department=sub.department or "Operations",
                 capture_source="recurring_match",
                 extraction_confidence=1.0,

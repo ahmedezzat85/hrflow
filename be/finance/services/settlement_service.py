@@ -146,8 +146,9 @@ class SettlementService:
         )
         self.db.add(payment)
 
-        # Update bill status & amount_paid
-        bill.amount_paid = round(paid_so_far + payment_amount, 2)
+        # The paid amount is derived from live payments: flush the payment, re-read it, derive the status
+        self.db.flush()
+        self.db.expire(bill, ["amount_paid"])
         bill.status = bs.derive_payment_status(bill, amount_paid=bill.amount_paid)
 
         return bill, payment
@@ -175,11 +176,8 @@ class SettlementService:
             payment.reversed_by = reversed_by
             payment.reversal_reason = reason
             self.db.flush()
-        remaining = [
-            p for p in self.db.query(PaymentDB).filter(PaymentDB.related_bill_id == bill.id).all()
-            if not p.is_reversed
-        ]
-        bill.amount_paid = round(sum(float(p.amount) for p in remaining), 2)
+        self.db.flush()
+        self.db.expire(bill, ["amount_paid"])
         bill.status = bs.derive_payment_status(bill, amount_paid=bill.amount_paid)
         return payment
 

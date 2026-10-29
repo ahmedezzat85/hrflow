@@ -85,7 +85,9 @@ def upgrade() -> None:
 
     # Rows that were already payable and carry unreversed payments: derive from amount_paid.
     # Done before the plain remap so only legacy payable keys are touched.
-    payable = tuple(k for k, v in UP_MAP.items() if v == 'approved')
+    # 0013 builds missing tables from the current models, so on a fresh database amount_paid may be gone (0053)
+    has_paid = 'amount_paid' in {c['name'] for c in sa.inspect(bind).get_columns('finance_bills')}
+    payable = tuple(k for k, v in UP_MAP.items() if v == 'approved') if has_paid else ()
     for old in payable:
         bind.execute(
             text(
