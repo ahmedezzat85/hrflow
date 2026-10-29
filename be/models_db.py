@@ -19,6 +19,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 
 from db import Base
+from finance.money import Money, Rate
 
 
 class UserDB(Base):
@@ -189,7 +190,7 @@ class InsuranceCategoryDB(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(100), unique=True, nullable=False, index=True)
-    annual_limit = Column(Float, default=0.0)
+    annual_limit = Column(Money, default=0.0)
 
 
 class InsuranceClaimDB(Base):
@@ -200,7 +201,7 @@ class InsuranceClaimDB(Base):
     employee_name = Column(String(255), default="")
     category = Column(String(100), nullable=False)
     provider = Column(String(255), default="")
-    amount = Column(Float, default=0.0)
+    amount = Column(Money, default=0.0)
     date = Column(String(20), nullable=False)
     status = Column(String(50), default="Pending", index=True)
     document_url = Column(Text, default="")
@@ -254,7 +255,7 @@ class SalaryPaymentDocDB(Base):
     payment_year = Column(Integer, nullable=False, index=True)
     payment_month = Column(Integer, nullable=False, index=True)
     invoice_date = Column(String(20), default="")
-    amount_usd = Column(Float, default=0.0)
+    amount_usd = Column(Money, default=0.0)
     currency = Column(String(10), default="USD")
     document_name = Column(String(255), default="")
     drive_file_id = Column(String(255), default="")
@@ -292,7 +293,7 @@ class EmployeeSocialInsuranceDB(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     employee_id = Column(Integer, ForeignKey("employees.id", ondelete="RESTRICT"), nullable=False, index=True)
     insured_flag = Column(Boolean, default=False, nullable=False)
-    insured_base = Column(Float, nullable=True)
+    insured_base = Column(Money, nullable=True)
     currency = Column(String(10), default="EGP", nullable=False)
     effective_start_date = Column(String(20), nullable=False, index=True)
     effective_end_date = Column(String(20), nullable=True, index=True)  # NULL when active
@@ -316,7 +317,7 @@ class EmployeeTaxMethodDB(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     employee_id = Column(Integer, ForeignKey("employees.id", ondelete="RESTRICT"), nullable=False, index=True)
     method = Column(String(20), default="progressive", nullable=False)  # progressive / flat
-    flat_rate = Column(Float, nullable=True)  # fraction (0 < rate <= 1); only for flat
+    flat_rate = Column(Rate, nullable=True)  # fraction (0 < rate <= 1); only for flat
     effective_start_date = Column(String(20), nullable=False, index=True)
     effective_end_date = Column(String(20), nullable=True, index=True)  # NULL when active
     notes = Column(Text, default="", nullable=False)
