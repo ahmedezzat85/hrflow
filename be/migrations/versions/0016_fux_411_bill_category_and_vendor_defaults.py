@@ -62,7 +62,9 @@ def upgrade() -> None:
         logger.warning(f"Could not seed lookups during migration 0016: {e}")
 
     # 4. Data-quality pass: Backfill bill.category_id based on bill.category text match
-    if 'finance_bills' in tables and 'finance_transaction_categories' in tables:
+    # 0013 builds missing tables from the current models, so on a fresh database the text column may be gone (0052)
+    if ('finance_bills' in tables and 'finance_transaction_categories' in tables
+            and 'category' in {c['name'] for c in inspector.get_columns('finance_bills')}):
         try:
             # Query categories
             cats = bind.execute(sa.text("SELECT id, name FROM finance_transaction_categories")).fetchall()

@@ -131,7 +131,7 @@ def test_vendor_bill_lines_and_subscriptions(db_session):
     bill = BillDB(
         vendor_id=vendor.id,
         bill_number="BILL-AWS-SEP26",
-        category="Cloud Infrastructure",
+        imported_category="Cloud Infrastructure",
         issue_date="2026-09-01",
         due_date="2026-09-15",
         status="approved",
