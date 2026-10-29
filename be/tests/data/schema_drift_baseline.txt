@@ -94,7 +94,6 @@ modify_nullable:finance_payroll_lines.base_salary:False->True
 modify_nullable:finance_payroll_lines.deductions_total:False->True
 modify_nullable:finance_payroll_lines.employer_cost_extra:False->True
 modify_nullable:finance_payroll_lines.net_pay:False->True
-modify_nullable:finance_payroll_lines.tax_amount:False->True
 modify_nullable:finance_payroll_runs.total_deductions:False->True
 modify_nullable:finance_payroll_runs.total_employer_cost:False->True
 modify_nullable:finance_payroll_runs.total_gross:False->True
