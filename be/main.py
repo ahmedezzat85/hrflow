@@ -13,6 +13,7 @@ router-decomposition rationale (this refactor is a pure structural move -
 no behavior change from the previous single-file main.py).
 """
 import time
+from sqlalchemy.exc import IntegrityError
 import uuid
 from datetime import datetime
 
@@ -118,6 +119,15 @@ _CSP_POLICY = (
     "frame-src https://accounts.google.com blob:; "
     "frame-ancestors 'self';"
 )
+
+@app.exception_handler(IntegrityError)
+async def database_rule_handler(request: Request, exc: IntegrityError):
+    """A database constraint refused the write (a malformed date, a duplicate, a missing reference...). Answer 409 with a plain
+    message instead of a 500; the details go to the log, never to the client."""
+    logger.warning("Database rule refused %s %s: %s", request.method, request.url.path, str(getattr(exc, "orig", exc))[:300])
+    return JSONResponse(status_code=409, content={"detail": "The data breaks a rule of the database (for example a date that is not "
+                                                            "YYYY-MM-DD, a duplicate, or a reference to something that does not exist)."})
+
 
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
