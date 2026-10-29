@@ -815,7 +815,7 @@ class PayrollAdjustmentDB(Base):
     __tablename__ = "finance_payroll_adjustments"
 
     id = Column(String(50), primary_key=True)  # e.g. "adj_xxx"
-    employee_id = Column(Integer, nullable=False, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="RESTRICT"), nullable=False, index=True)
     preview_id = Column(String(50), nullable=True, index=True)
     payroll_run_id = Column(Integer, ForeignKey("finance_payroll_runs.id", ondelete="CASCADE"), nullable=True, index=True)
     type = Column(String(30), nullable=False)  # COMMISSION | BONUS
@@ -863,17 +863,15 @@ class PayrollLineDB(Base):
     variable_gross_egp = Column(Float, default=0.0, nullable=True)
     employee_social_insurance_egp = Column(Float, default=0.0, nullable=True)
     employer_social_insurance_egp = Column(Float, default=0.0, nullable=True)
-    total_social_insurance_egp = Column(Float, default=0.0, nullable=True)
     employee_tax_egp = Column(Float, default=0.0, nullable=True)
     employee_social_insurance_usd_equivalent = Column(Float, default=0.0, nullable=True)
     employee_tax_usd_equivalent = Column(Float, default=0.0, nullable=True)
     final_internal_net_egp = Column(Float, default=0.0, nullable=True)
     final_internal_payment_usd = Column(Float, nullable=True)
     taxable_gross_egp = Column(Float, default=0.0, nullable=True)
-    tax_employee_si_egp = Column(Float, default=0.0, nullable=True)
     annual_taxed_salary_egp = Column(Float, default=0.0, nullable=True)
     annual_tax_egp = Column(Float, default=0.0, nullable=True)
-    tax_settings_version_id = Column(Integer, nullable=True)
+    tax_settings_version_id = Column(Integer, ForeignKey("finance_payroll_tax_settings.id", ondelete="SET NULL"), nullable=True)
     tax_method_snapshot = Column(String(20), nullable=True)  # NULL = progressive (legacy rows)
     tax_rate_snapshot = Column(Float, nullable=True)
     bank_name = Column(String(100), nullable=True)
@@ -888,6 +886,18 @@ class PayrollLineDB(Base):
     payroll_run = relationship("PayrollRunDB", back_populates="lines")
     employee = relationship("EmployeeDB")
     linked_payment = relationship("PaymentDB", foreign_keys=[linked_payment_id])
+
+    @property
+    def total_social_insurance_egp(self):
+        """Employee plus employer social insurance (EGP). Derived: never stored a second time."""
+        if self.employee_social_insurance_egp is None and self.employer_social_insurance_egp is None:
+            return None
+        return round(float(self.employee_social_insurance_egp or 0.0) + float(self.employer_social_insurance_egp or 0.0), 2)
+
+    @property
+    def tax_employee_si_egp(self):
+        """The employee's social insurance as it enters the tax base: the same amount as employee_social_insurance_egp."""
+        return self.employee_social_insurance_egp
 
 
 class AccountTransferDB(Base):
