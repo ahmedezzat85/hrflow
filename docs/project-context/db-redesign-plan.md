@@ -15,7 +15,8 @@ on read.
 | 2b-3 | `finance_payments.ledger_transaction_id` (migration 0054): unique link to the ledger row a payment posted, set by every payment path (bill pay, invoice receipt, manual transaction, cheque, statutory remittance). Older payments are backfilled by matching; unmatched ones stay empty and are logged and listed by the audit script | done |
 | 2b-4 | Cached balances (decided: keep, one writer): `LedgerRepository.recalculate_account_running_balances` is the only code that writes `current_balance` and `running_balance`; the rule lives in `finance/balances.py` (`compute_balances`, `find_drift`). The account update and recalculate paths now go through it, which also fixes an opening-balance change on an account that already had transactions. `tests/test_balance_write_path.py` fails if another file assigns a stored balance; the audit script reports drift. Bill scans into `finance_attachments` still open | done |
 | 3 | Payroll line cleanup (migration 0055): `payroll_lines.tax_employee_si_egp` and `.total_social_insurance_egp` are derived (model properties, same API fields); foreign keys added for `payroll_lines.tax_settings_version_id` (orphans set to NULL and logged) and `payroll_adjustments.employee_id` (the upgrade stops and lists orphan adjustments). **Open, needs an owner decision:** `payroll_lines.tax_amount` is always written as 0.0 and the Employee flows report (`reports_service`, `_raw_tax`) reads it, so that report's employee-tax figure is always 0; stored run totals (`total_net`, `total_tax`, ...) remain | done (3a) |
-| 4 | Constraints: uniqueness (bill number per vendor, payroll run period, line per employee, salary document per month), no overlapping effective-dated rows, one-parent CHECK on attachments, status CHECKs, delete-rule fixes | planned |
+| 4a | Constraints (migration 0056): unique bill number (Drafts and duplicate overrides excluded), one non-cancelled payroll run per period, one open-ended row per employee in the compensation plan, social insurance and tax method tables, one generated salary document per employee and month, and a CHECK that a finance attachment has exactly one parent. The upgrade checks existing data first and stops with a list of every violation (run the audit script beforehand). A unique payroll line per employee and component was tried and left out: see below | done |
+| 4b | Still open: status / direction CHECKs (need the real value sets from production), ORM cascade vs database delete rules, full non-overlap of effective ranges (needs real date columns, Stage 5) | planned |
 | 5 | Types: Float to Numeric for money, date strings to Date, timezone-aware timestamps; Alembic as the only schema path (remove the `ALTER TABLE` sync in `init_db()`); index clean-up | planned |
 | 6 | Remove alias classes, dead Sheets-era scripts, stray `.db` files; update the decision log | planned |
 
@@ -52,3 +53,10 @@ Running the whole backend suite with a balance-drift probe at teardown found 20 
 that differ from the ledger. All of them set up report data by inserting `LedgerTransactionDB` rows directly through
 the ORM; no application path left drift. The probe was not kept because those tests would fail it; the static and
 behaviour tests in `tests/test_balance_write_path.py` and the audit script are the guards.
+
+## Finding from Stage 4a
+
+Probing the suite with each candidate constraint showed which application rules are real. Drafts may hold any bill
+number (D-019), so the unique index excludes them. A payroll line unique on (run, employee, component type) was not
+added: the audit script flags such duplicates, but the payroll flow was not shown to forbid them, so the rule needs an
+owner decision before it becomes a constraint.

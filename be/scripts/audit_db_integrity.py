@@ -126,11 +126,12 @@ def check_bad_dates(a: Audit):
 
 
 def check_duplicates(a: Audit):
-    if a.has("finance_bills", "vendor_id", "bill_number", "status"):
-        a.add("dup:bills", "Duplicate bill number per vendor (non-void)", a.rows(
-            "SELECT vendor_id, bill_number, COUNT(*) AS n, MIN(id) AS first_id FROM finance_bills "
-            "WHERE vendor_id IS NOT NULL AND bill_number IS NOT NULL AND bill_number <> '' AND status <> 'void' "
-            "GROUP BY vendor_id, bill_number HAVING COUNT(*) > 1"))
+    if a.has("finance_bills", "bill_number", "status", "is_duplicate_override"):
+        a.add("dup:bills", "Bill number used by more than one bill (Drafts and duplicate overrides excluded)", a.rows(
+            "SELECT bill_number, COUNT(*) AS n, MIN(id) AS first_id FROM finance_bills "
+            "WHERE bill_number IS NOT NULL AND bill_number <> '' AND status <> 'draft' AND is_duplicate_override = :f "
+            "GROUP BY bill_number HAVING COUNT(*) > 1", f=False),
+            "Migration 0056 adds a unique index on this rule and stops while any of these exist.")
     if a.has("finance_payroll_runs", "period_label", "status"):
         a.add("dup:payroll_runs", "Several non-cancelled payroll runs for one period", a.rows(
             "SELECT period_label, COUNT(*) AS n FROM finance_payroll_runs WHERE status <> 'cancelled' "

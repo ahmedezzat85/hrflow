@@ -48,7 +48,7 @@ def test_current_pay_uses_only_rows_in_force_today(app_client):
             EmployeeCompensationPlanDB(employee_id=emp_id, component_type="internal_usd_cash", amount=1500.0,
                                        effective_start_date=TODAY),                                        # in force
             EmployeeCompensationPlanDB(employee_id=emp_id, component_type="external_usd", amount=700.0,
-                                       effective_start_date="2024-01-01"),                                 # in force
+                                       effective_start_date="2024-01-01", effective_end_date=TODAY),       # in force, ends today
             EmployeeCompensationPlanDB(employee_id=emp_id, component_type="external_usd", amount=9999.0,
                                        effective_start_date=TOMORROW),                                     # future
         ])
