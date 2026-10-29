@@ -15,7 +15,7 @@ from logging_config import get_logger
 from auth import get_current_user
 from deps import audit_log, permission_scope, Scope
 from services.uploads import validate_upload_content, safe_content_disposition_filename
-from models import EmployeeCreate, EmployeeUpdate, EmployeePersonalUpdate, EmployeeNoteCreate, EmployeeDocumentCreate
+from models import ArchiveEmployeeRequest, EmployeeCreate, EmployeeUpdate, EmployeePersonalUpdate, EmployeeNoteCreate, EmployeeDocumentCreate
 from services.employee_personal import mask_id
 from services.employee_delete_guard import pay_history_counts, delete_blocked_message
 from services.employee_archive import archive_employee, unarchive_employee
@@ -198,13 +198,15 @@ def delete_employee(
 @router.post("/{emp_id}/archive")
 def archive_employee_route(
     emp_id: int,
+    payload: Optional[ArchiveEmployeeRequest] = None,
     current_user: dict = Depends(require_permission("hr.employee.write")),
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
     audit_repo: AuditRepository = Depends(get_audit_repo),
     db: Session = Depends(get_db),
 ):
-    """Archive an employee: they and their login are set aside, every record stays. Reversible with /unarchive."""
-    archive_employee(db, emp_id, current_user, audit_repo)
+    """Archive an employee: they and their login are set aside, every record stays. Reversible with /unarchive.
+    Optional `left_date` (YYYY-MM-DD, not in the future) is the real last day of employment: the employee's open pay rows end on it."""
+    archive_employee(db, emp_id, current_user, audit_repo, left_date=payload.left_date if payload else None)
     return employee_repo.get_by_id(emp_id)
 
 

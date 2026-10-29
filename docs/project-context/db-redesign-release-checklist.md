@@ -63,6 +63,7 @@ The migration message lists every offending row at once.
 | 0067 | PostgreSQL only: a warning when the no-overlap constraints cannot be created (the `btree_gist` extension or the helper function needs a privileged role); the date checks are still applied |
 | 0068 | nothing is dropped silently: every bill with a scan name or reference gets a `finance_attachments` row (file size stays 0, mime type guessed from the name) |
 | 0069 | drops the unused `finance_ledger_transactions.category` text column (production: `varchar(100) NOT NULL DEFAULT 'other'`); nothing reads it |
+| 0070 | (after this release) adds `employees.left_date` with a date check; existing employees have none |
 
 ## Deploy
 

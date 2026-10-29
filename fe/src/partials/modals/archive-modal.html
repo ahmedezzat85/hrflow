@@ -9,6 +9,11 @@
       </div>
       <div class="modal-body">
         <p style="color:var(--ink-muted);font-size:13.5px;line-height:1.5;margin:0;"><b id="archiveEmpName" style="color:var(--ink-strong);"></b> will be set aside: they can no longer sign in and are left out of new payroll runs and salary documents. Their records, pay history and documents stay. You can unarchive the employee later, but an archived login is never restored.</p>
+        <div class="form-field" style="margin-top:14px;">
+          <label for="archiveLeftDate">Last day of employment, optional</label>
+          <input type="date" id="archiveLeftDate">
+          <p style="color:var(--ink-muted);font-size:12.5px;line-height:1.45;margin:6px 0 0;">Leave empty if the employee is only being set aside. With a date, their pay plan, social insurance and tax method end on that day, so payroll runs after it leave them out.</p>
+        </div>
       </div>
       <div class="modal-foot">
         <button class="btn" onclick="closeModal('archiveModal')">Cancel</button>

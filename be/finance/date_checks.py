@@ -22,7 +22,7 @@ DATE_COLUMNS: Dict[str, Dict[str, bool]] = {
     "employee_notes": {"date": False},
     "employee_social_insurance": {"effective_start_date": False, "effective_end_date": True},
     "employee_tax_method": {"effective_start_date": False, "effective_end_date": True},
-    "employees": {"join_date": True},
+    "employees": {"join_date": True, "left_date": True},
     "finance_account_balance_checkpoints": {"date": False},
     "finance_account_transfers": {"date": False, "expected_date": True},
     "finance_bank_accounts": {"opening_balance_date": True},

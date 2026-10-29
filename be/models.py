@@ -235,6 +235,11 @@ class RaiseApply(BaseModel):
     reason: str = "Annual performance raise"
 
 
+class ArchiveEmployeeRequest(BaseModel):
+    """Optional body of POST /api/employees/{id}/archive: the real last day of employment (YYYY-MM-DD, not in the future)."""
+    left_date: Optional[str] = None
+
+
 class EmployeeNoteCreate(BaseModel):
     date: Optional[str] = None
     category: str = "General"

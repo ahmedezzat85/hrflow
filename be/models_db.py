@@ -81,6 +81,8 @@ class EmployeeDB(Base):
     # status "Archived" while this is set and the saved status above comes back when it is cleared.
     archived_at = Column(DateTime, nullable=True)
     archived_by = Column(String(255), nullable=True)
+    # Last day of employment (YYYY-MM-DD), entered when archiving; archived_at is only when the record was archived
+    left_date = Column(String(20), nullable=True)
     vac_total = Column(Integer, default=21)
     employment_state = Column(String(50), default="Full-Time")
     invoice_id = Column(String(20), default="")

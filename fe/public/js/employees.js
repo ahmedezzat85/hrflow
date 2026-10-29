@@ -244,6 +244,9 @@ function askArchive(id) {
   currentArchiveId = id;
   const emp = employees.find(e => String(e.id) === String(id));
   document.getElementById('archiveEmpName').textContent = emp ? emp.name : 'this employee';
+  const leftInput = document.getElementById('archiveLeftDate');
+  leftInput.value = '';
+  leftInput.max = new Date().toISOString().slice(0, 10);
   openModal('archiveModal');
 }
 function applyArchivedState(id, updated) {
@@ -251,6 +254,7 @@ function applyArchivedState(id, updated) {
   if (emp && updated) {
     emp.archived = !!updated.archived;
     emp.archived_at = updated.archived_at || null;
+    emp.left_date = updated.left_date || '';
     emp.status = updated.status || emp.status;
   }
   renderEmployeesTable(document.getElementById('empSearch') ? document.getElementById('empSearch').value : '');
@@ -259,7 +263,7 @@ async function confirmArchive(evt) {
   const btn = (evt && evt.currentTarget) || document.querySelector('#archiveModal .btn-fill');
   setButtonLoading(btn, true, 'Archiving...');
   try {
-    const updated = await Api.archiveEmployee(currentArchiveId);
+    const updated = await Api.archiveEmployee(currentArchiveId, document.getElementById('archiveLeftDate').value);
     closeModal('archiveModal');
     applyArchivedState(currentArchiveId, updated);
     toast('Employee archived.', 'fa-solid fa-box-archive');
