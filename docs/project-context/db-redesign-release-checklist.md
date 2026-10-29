@@ -1,4 +1,4 @@
-# Releasing the database redesign (migrations 0050 to 0062, init_db change)
+# Releasing the database redesign (migrations 0050 to 0063, init_db change)
 
 Read `db-redesign-plan.md` first. This is the checklist for putting Stages 1 to 5a into production. Production is
 PostgreSQL in Docker (`deploy/prod/RUNBOOK.md`); the app container runs `alembic upgrade head` on every start.
@@ -36,6 +36,7 @@ PostgreSQL in Docker (`deploy/prod/RUNBOOK.md`); the app container runs `alembic
 | 0056 | a bill number is used by more than one non-draft bill without the duplicate override; two non-cancelled payroll runs for one period; two open-ended (no end date) compensation plan rows for one employee and component; two open-ended social insurance or tax method rows for one employee; two generated salary documents for one employee and month; a finance attachment with zero or several parents | `dup:bills`, `dup:payroll_runs`, `overlap:*`, `dup:salary_docs`, `attach:parents` |
 | 0057 | a base pay line (`external_usd` / `internal_usd_cash`) appears twice for one employee in one payroll run | `dup:payroll_lines` |
 | 0058 | a bill or invoice status, a ledger or payment direction, or a bank account type outside the allowed sets | (the migration message lists the values) |
+| 0063 | a ledger or account money value has more decimals than its column keeps (4 for amounts and balances, 8 for the exchange rate) | (the migration message lists the values) |
 | 0062 | a row points at a record that does not exist where the reference is `CASCADE` or `RESTRICT` (attachments of a missing cheque, invoice, statement import or checkpoint; statement lines of a missing parent; a bank account without a book) | `fk:violations`, `orphan:*` |
 
 The migration message lists every offending row at once.
@@ -56,7 +57,7 @@ The migration message lists every offending row at once.
 ## Deploy
 
 1. Run the release workflow, then the production deploy (`RUNBOOK.md`). The deploy takes its own backup first.
-2. Watch the container log: `alembic upgrade head` runs 0050 to 0062, then the app starts. `init_db()` no longer changes the
+2. Watch the container log: `alembic upgrade head` runs 0050 to 0063, then the app starts. `init_db()` no longer changes the
    schema; it logs an error if the database is not at the Alembic head.
 3. If a migration stops: read the message, fix the rows (the audit script lists them), restart the container. Nothing was
    half-applied for the data checks in 0056 to 0058 because they run before any change.
