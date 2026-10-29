@@ -25,6 +25,7 @@ from sqlalchemy.orm import column_property, relationship
 from db import Base
 from finance.bill_status import BILL_STATUSES
 from finance.invoice_status import INVOICE_STATUSES
+from finance.money import Money, Rate
 
 
 def _one_of(column: str, values) -> str:
@@ -329,9 +330,9 @@ class FinanceBankAccountDB(Base):
     bank_name = Column(String(100), nullable=True)  # Nullable for cash accounts
     account_number = Column(String(100), nullable=False)
     currency = Column(String(10), default="USD", nullable=False)
-    opening_balance = Column(Float, default=0.0)
+    opening_balance = Column(Money, default=0.0)
     opening_balance_date = Column(String(20), nullable=True)  # YYYY-MM-DD
-    current_balance = Column(Float, default=0.0)
+    current_balance = Column(Money, default=0.0)
     account_type = Column(String(20), default="bank", nullable=False)  # bank | cash
     country = Column(String(100), default="Egypt", nullable=True)
     is_active = Column(Boolean, default=True)
@@ -369,7 +370,7 @@ class LedgerTransactionDB(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="RESTRICT"), nullable=False, index=True)
     date = Column(String(20), nullable=False, index=True)  # YYYY-MM-DD
-    amount = Column(Float, nullable=False)
+    amount = Column(Money, nullable=False)
     direction = Column(String(20), nullable=False)  # in / out
     currency = Column(String(10), default="USD", nullable=False)
     category_id = Column(Integer, ForeignKey("finance_transaction_categories.id", ondelete="SET NULL"), nullable=True, index=True)
@@ -381,11 +382,11 @@ class LedgerTransactionDB(Base):
     payee_type = Column(String(20), default="none", nullable=True, index=True)  # none | vendor | employee
     payee_id = Column(Integer, nullable=True, index=True)
     payee_name = Column(String(255), nullable=True)
-    tax_amount = Column(Float, default=0.0)
-    base_amount = Column(Float, nullable=True)
+    tax_amount = Column(Money, default=0.0)
+    base_amount = Column(Money, nullable=True)
     reason = Column(Text, nullable=True)
     cheque_number = Column(String(50), nullable=True, index=True)
-    fx_rate = Column(Float, nullable=True)
+    fx_rate = Column(Rate, nullable=True)
     source = Column(String(50), nullable=False, index=True)
     # sources: manual | invoice_payment | bill_payment | transfer | cheque | subscription_charge | statement_import | statutory_remittance
     linked_invoice_id = Column(Integer, ForeignKey("finance_sales_invoices.id", ondelete="SET NULL"), nullable=True, index=True)
@@ -400,9 +401,9 @@ class LedgerTransactionDB(Base):
     revenue_source_id = Column(Integer, ForeignKey("finance_revenue_sources.id", ondelete="SET NULL"), nullable=True, index=True)
     period_start = Column(String(20), nullable=True)  # service period the receipt covers, YYYY-MM-DD
     period_end = Column(String(20), nullable=True)
-    memo_gross_amount = Column(Float, nullable=True)
-    memo_fee_amount = Column(Float, nullable=True)
-    running_balance = Column(Float, default=0.0, nullable=False)
+    memo_gross_amount = Column(Money, nullable=True)
+    memo_fee_amount = Column(Money, nullable=True)
+    running_balance = Column(Money, default=0.0, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(String(255), nullable=True)
 
