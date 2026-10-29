@@ -181,26 +181,16 @@ def check_cached_values(a: Audit):
 
 
 def _check_balances(a: Audit):
-    """current_balance against the application's own recomputation; running_balance of the last row against it."""
+    """Stored current_balance and every stored running_balance against the balance rule in finance/balances.py."""
     from sqlalchemy.orm import Session
-    from finance import year_openings
-    from finance.models import FinanceBankAccountDB, LedgerTransactionDB
+    from finance import balances
 
-    items, running = [], []
     with Session(a.conn) as db:
-        for acct in db.query(FinanceBankAccountDB).all():
-            expected = round(float(year_openings.current_balance(db, acct)), 2)
-            stored = round(float(acct.current_balance or 0.0), 2)
-            if abs(expected - stored) > 0.005:
-                items.append({"account_id": acct.id, "name": acct.account_name, "stored": stored, "recomputed": expected})
-            last = (db.query(LedgerTransactionDB).filter(LedgerTransactionDB.account_id == acct.id)
-                    .order_by(LedgerTransactionDB.date.desc(), LedgerTransactionDB.id.desc()).first())
-            if last is not None and abs(round(float(last.running_balance or 0.0), 2) - expected) > 0.005:
-                running.append({"account_id": acct.id, "last_tx_id": last.id,
-                                "running_balance": last.running_balance, "recomputed": expected})
-    a.add("cache:current_balance", "finance_bank_accounts.current_balance differs from the recomputed balance", items)
-    a.add("cache:running_balance", "Last ledger row's running_balance differs from the recomputed balance", running,
-          "Informational: running_balance may follow a different year-opening rule than current_balance.")
+        drift = balances.find_drift(db)
+    a.add("cache:balances", "Stored account balances (current_balance or ledger running_balance) differ from the ledger", [
+        {"account_id": d["account_id"], "name": d["account_name"], **d["current_balance"],
+         "running_balance_rows_off": d["running_balance_rows"], "first_bad_rows": d["first_bad_rows"]} for d in drift],
+        "Any ledger write on the account recomputes both copies; or call LedgerRepository.recalculate_account_running_balances(account_id).")
 
 
 def check_payment_ledger_link(a: Audit):
@@ -293,7 +283,7 @@ CHECKS: List[Callable[[Audit], None]] = [
 ]
 
 # Sections reported for information only; they never fail the run.
-INFORMATIONAL = {"info:employee_role", "cache:running_balance"}
+INFORMATIONAL = {"info:employee_role"}
 
 
 def run_audit(conn) -> List[dict]:
