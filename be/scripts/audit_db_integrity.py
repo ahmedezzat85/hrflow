@@ -137,9 +137,11 @@ def check_duplicates(a: Audit):
             "SELECT period_label, COUNT(*) AS n FROM finance_payroll_runs WHERE status <> 'cancelled' "
             "GROUP BY period_label HAVING COUNT(*) > 1"))
     if a.has("finance_payroll_lines", "payroll_run_id", "employee_id", "compensation_type"):
-        a.add("dup:payroll_lines", "Same employee and component twice in one payroll run", a.rows(
+        a.add("dup:payroll_lines", "Base pay line (external_usd / internal_usd_cash) twice for one employee in one payroll run", a.rows(
             "SELECT payroll_run_id, employee_id, compensation_type, COUNT(*) AS n FROM finance_payroll_lines "
-            "GROUP BY payroll_run_id, employee_id, compensation_type HAVING COUNT(*) > 1"))
+            "WHERE compensation_type IN ('external_usd', 'internal_usd_cash') "
+            "GROUP BY payroll_run_id, employee_id, compensation_type HAVING COUNT(*) > 1"),
+            "Commission and bonus lines may repeat by design. Migration 0057 adds a unique index on the base pay lines.")
     if a.has("salary_payment_docs", "employee_id", "payment_year", "payment_month", "status"):
         a.add("dup:salary_docs", "Several generated salary documents for one employee and month", a.rows(
             "SELECT employee_id, payment_year, payment_month, COUNT(*) AS n FROM salary_payment_docs "
