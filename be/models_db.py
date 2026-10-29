@@ -134,7 +134,7 @@ class EmployeeBankAccountDB(Base):
     __tablename__ = "employee_bank_accounts"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), unique=True, nullable=False, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), unique=True, nullable=False)  # the unique constraint is the index
     bank_name = Column(String(255), nullable=False)
     iban = Column(String(100), nullable=False)
     swift_code = Column(String(50), default="")
