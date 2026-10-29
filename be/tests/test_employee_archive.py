@@ -1,7 +1,7 @@
 """
 be/tests/test_employee_archive.py
 Employees can be archived and unarchived: status "Archived" while archived, the saved status comes back, the linked login is
-archived and restored, archived employees leave current payroll and new salary documents, and migration 0061 adds the state.
+archived (and stays archived), archived employees leave current payroll and new salary documents, and migration 0061 adds the state.
 """
 import os
 import sqlite3
@@ -62,15 +62,17 @@ def test_an_admin_cannot_archive_their_own_employee(app_client, admin_cookies):
     assert _get(app_client, admin_cookies, 1)["archived"] is False
 
 
-def test_the_linked_login_is_archived_with_the_employee_and_restored(app_client, admin_cookies):
+def test_the_linked_login_is_archived_with_the_employee_and_stays_archived(app_client, admin_cookies):
     emp = _new_employee(app_client, admin_cookies, "arch3@hrflow.test")
     cookies = create_test_user("arch3@hrflow.test", role_key="employee", employee_id=emp)
     assert app_client.get("/api/auth/me", cookies=cookies).status_code == 200
     app_client.post(f"/api/employees/{emp}/archive", cookies=admin_cookies)
     blocked = app_client.get("/api/auth/me", cookies=cookies)
     assert blocked.status_code == 403 and "archived" in blocked.json()["detail"].lower()
-    app_client.post(f"/api/employees/{emp}/unarchive", cookies=admin_cookies)
-    assert app_client.get("/api/auth/me", cookies=cookies).status_code == 200
+    back = app_client.post(f"/api/employees/{emp}/unarchive", cookies=admin_cookies)
+    assert back.status_code == 200 and back.json()["login_archived"] is True
+    # RBAC F5: an archived user is never restored, so the employee comes back without a working login
+    assert app_client.get("/api/auth/me", cookies=cookies).status_code == 403
 
 
 def test_the_status_field_cannot_be_set_to_archived_directly(app_client, admin_cookies):

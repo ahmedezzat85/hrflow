@@ -21,7 +21,7 @@ async function stubArchiveApi(page) {
   await page.route('**/api/employees/*/unarchive', async (route) => {
     calls.push('unarchive');
     await route.fulfill({ status: 200, contentType: 'application/json',
-      body: JSON.stringify({ archived: false, archived_at: null, status: 'Active' }) });
+      body: JSON.stringify({ archived: false, archived_at: null, status: 'Active', login_archived: true }) });
   });
   return calls;
 }

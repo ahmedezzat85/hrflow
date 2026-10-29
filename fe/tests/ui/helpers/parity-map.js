@@ -121,7 +121,7 @@ export const PARITY_MAP = {
       appContainerSelector: '#a-employees',
       // Issue 1 (owner decision 2026-10-19): the app keeps 13.5px table text and its own border tones,
       // the View button stays removed, and the search box is an input placeholder (not a text label).
-      keptLabels: ['Search employees', 'View'],
+      keptLabels: ['Search employees', 'View', 'Inactive 0', 'Archived 0'],
       setup: async (page) => showAdminSection(page, 'a-employees', '#a-employees table'),
       pairs: [
         { name: 'table header cells', mockSelector: 'table thead th:first-child', appSelector: '#a-employees table thead th:first-child', props: ['fontSize', 'fontWeight', 'paddingTop', 'paddingBottom'] },
@@ -234,12 +234,12 @@ export const PARITY_MAP = {
       mockContainerSelector: 'main',
       appContainerSelector: '#a-employees',
       // Same owner decision as issue 1 (S1.3): the View button stays removed, the search box is a placeholder
-      keptLabels: ['Search employees', 'View'],
+      keptLabels: ['Search employees', 'View', 'Inactive 0', 'Archived 0'],
       setup: async (page) => showAdminSection(page, 'a-employees', '#a-employees table'),
       pairs: [
         { name: 'employees table shell', mockSelector: 'main > div:last-child', appSelector: '#a-employees .card:has(table)', accepted: { light: { fontSize: '16px', color: 'rgb(20, 30, 48)', borderColor: 'rgba(32, 86, 232, 0.12)', height: '378px' }, dark: { fontSize: '16px', height: '378px' } } },
-        { name: 'employee header', mockSelector: 'table th:first-child', appSelector: '#a-employees table th:first-child', accepted: { light: { backgroundColor: 'rgb(255, 255, 255)', borderColor: 'rgb(32, 86, 232) rgb(32, 86, 232) rgba(32, 86, 232, 0.16)', width: '299px' }, dark: { borderColor: /rgb\(38, 57, 111\)$/, width: '299px' } } },
-        { name: 'first employee cell', mockSelector: 'table tbody tr:first-child td:first-child', appSelector: '#employeesTableBody tr:first-child td:first-child', accepted: { light: { fontSize: '13.5px', fontWeight: '600', color: 'rgb(22, 36, 94)', borderColor: 'rgb(22, 36, 94) rgb(22, 36, 94) rgba(32, 86, 232, 0.1)', width: '299px', gap: '10px' }, dark: { fontSize: '13.5px', fontWeight: '600', borderColor: /rgb\(38, 57, 111\)$/, width: '299px', gap: '10px' } } }
+        { name: 'employee header', mockSelector: 'table th:first-child', appSelector: '#a-employees table th:first-child', accepted: { light: { backgroundColor: 'rgb(255, 255, 255)', borderColor: 'rgb(32, 86, 232) rgb(32, 86, 232) rgba(32, 86, 232, 0.16)', width: '290px' }, dark: { borderColor: /rgb\(38, 57, 111\)$/, width: '290px' } } },
+        { name: 'first employee cell', mockSelector: 'table tbody tr:first-child td:first-child', appSelector: '#employeesTableBody tr:first-child td:first-child', accepted: { light: { fontSize: '13.5px', fontWeight: '600', color: 'rgb(22, 36, 94)', borderColor: 'rgb(22, 36, 94) rgb(22, 36, 94) rgba(32, 86, 232, 0.1)', width: '290px', gap: '10px' }, dark: { fontSize: '13.5px', fontWeight: '600', borderColor: /rgb\(38, 57, 111\)$/, width: '290px', gap: '10px' } } }
       ]
     }
   ],

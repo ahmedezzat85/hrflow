@@ -273,7 +273,7 @@ async function unarchiveEmployee(id) {
   try {
     const updated = await Api.unarchiveEmployee(id);
     applyArchivedState(id, updated);
-    toast('Employee unarchived.', 'fa-solid fa-rotate-left');
+    toast(updated && updated.login_archived ? 'Employee unarchived. Their login stays archived.' : 'Employee unarchived.', 'fa-solid fa-rotate-left');
   } catch (err) {
     toast(err.message, 'fa-solid fa-triangle-exclamation');
   }

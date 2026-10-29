@@ -216,9 +216,10 @@ def unarchive_employee_route(
     audit_repo: AuditRepository = Depends(get_audit_repo),
     db: Session = Depends(get_db),
 ):
-    """Bring an archived employee back with the status they had; their login is reactivated."""
-    unarchive_employee(db, emp_id, current_user, audit_repo)
-    return employee_repo.get_by_id(emp_id)
+    """Bring an archived employee back with the status they had. Their login stays archived (archived users are never
+    restored); `login_archived` says whether there is one."""
+    login_archived = unarchive_employee(db, emp_id, current_user, audit_repo)
+    return {**employee_repo.get_by_id(emp_id), "login_archived": login_archived}
 
 
 @router.get("/{emp_id}/notes")
