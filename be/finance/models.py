@@ -190,6 +190,9 @@ class SalesInvoiceLineDB(Base):
     product = relationship("ProductDB")
 
 
+_NO_SCAN_NAME = "bill_document"   # stored when a scan has a reference but no name (file_name cannot be empty); read back as no name
+
+
 class BillDB(Base):
     __tablename__ = "finance_bills"
 
@@ -214,8 +217,6 @@ class BillDB(Base):
     missing_fields = Column(Text, nullable=True)
     department = Column(String(100), nullable=True)
     legal_entity = Column(String(100), default="Voyance Health Inc", nullable=True)
-    attachment_url = Column(String(500), nullable=True)
-    attachment_name = Column(String(255), nullable=True)
     file_fingerprint = Column(String(128), nullable=True, index=True)
     is_reviewed = Column(Boolean, default=True, nullable=False)
     is_duplicate_override = Column(Boolean, default=False, nullable=False)
@@ -247,6 +248,37 @@ class BillDB(Base):
     transaction_category = relationship("TransactionCategoryDB", foreign_keys=[category_id])
     lines = relationship("BillLineDB", back_populates="bill", cascade="all, delete-orphan")
     payments = relationship("PaymentDB", back_populates="bill", foreign_keys="PaymentDB.related_bill_id")
+    # The scanned document: one row of finance_attachments (like cheques, invoices and statements); lazy="selectin" so a list of bills is not N+1
+    scan = relationship("FinanceAttachmentDB", back_populates="bill", uselist=False, lazy="selectin", cascade="all, delete-orphan", passive_deletes=True)
+
+    @property
+    def attachment_url(self):
+        """Storage reference of the scan; None when the bill has none. The API field keeps its name."""
+        return self.scan.storage_ref if self.scan is not None else None
+
+    @attachment_url.setter
+    def attachment_url(self, value):
+        self._write_scan(self.attachment_name, value)
+
+    @property
+    def attachment_name(self):
+        if self.scan is None or self.scan.file_name == _NO_SCAN_NAME:
+            return None
+        return self.scan.file_name
+
+    @attachment_name.setter
+    def attachment_name(self, value):
+        self._write_scan(value, self.attachment_url)
+
+    def _write_scan(self, name, url):
+        """The scan row exists while there is a name or a reference (an upload being processed has a name and an empty reference)."""
+        if not name and not url:
+            self.scan = None
+            return
+        if self.scan is None:
+            self.scan = FinanceAttachmentDB()
+        self.scan.file_name = name or _NO_SCAN_NAME
+        self.scan.storage_ref = url or ""
 
     @property
     def category(self) -> str:
@@ -777,6 +809,7 @@ class FinanceAttachmentDB(Base):
     cheque_id = Column(Integer, ForeignKey("finance_cheques.id", ondelete="CASCADE"), nullable=True, index=True)
     checkpoint_id = Column(Integer, ForeignKey("finance_account_balance_checkpoints.id", ondelete="CASCADE"), nullable=True, index=True)
     sales_invoice_id = Column(Integer, ForeignKey("finance_sales_invoices.id", ondelete="CASCADE"), nullable=True, index=True)  # I4 (D-033): invoice scans
+    bill_id = Column(Integer, ForeignKey("finance_bills.id", ondelete="CASCADE"), nullable=True, index=True)  # the bill's scanned document (one per bill)
     file_name = Column(String(255), nullable=False)
     file_size = Column(Integer, default=0, nullable=False)
     mime_type = Column(String(100), default="application/octet-stream", nullable=False)
@@ -788,9 +821,11 @@ class FinanceAttachmentDB(Base):
         CheckConstraint(
             "(CASE WHEN subscription_charge_id IS NULL THEN 0 ELSE 1 END + CASE WHEN statement_import_id IS NULL THEN 0 ELSE 1 END"
             " + CASE WHEN ledger_transaction_id IS NULL THEN 0 ELSE 1 END + CASE WHEN cheque_id IS NULL THEN 0 ELSE 1 END"
-            " + CASE WHEN checkpoint_id IS NULL THEN 0 ELSE 1 END + CASE WHEN sales_invoice_id IS NULL THEN 0 ELSE 1 END) = 1",
+            " + CASE WHEN checkpoint_id IS NULL THEN 0 ELSE 1 END + CASE WHEN sales_invoice_id IS NULL THEN 0 ELSE 1 END"
+            " + CASE WHEN bill_id IS NULL THEN 0 ELSE 1 END) = 1",
             name="ck_finance_attachments_one_parent",
         ),
+        Index("uq_finance_attachments_bill_id", "bill_id", unique=True),
     )
 
     subscription_charge = relationship("SubscriptionChargeDB", back_populates="attachments")
@@ -798,6 +833,7 @@ class FinanceAttachmentDB(Base):
     ledger_transaction = relationship("LedgerTransactionDB")
     cheque = relationship("FinanceChequeDB", back_populates="attachments")
     sales_invoice = relationship("SalesInvoiceDB", back_populates="attachments")
+    bill = relationship("BillDB", back_populates="scan")
 
 
 

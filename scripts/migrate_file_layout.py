@@ -165,7 +165,7 @@ class FileMigrator:
         file_layout.ensure_meta(self.root)
 
         # 1. Finance Bills
-        bills = db.query(BillDB).filter(BillDB.attachment_url.isnot(None), BillDB.attachment_url != "").all()
+        bills = db.query(BillDB).filter(BillDB.scan.has(FinanceAttachmentDB.storage_ref != "")).all()
         for b in bills:
             vendor_name = b.vendor.name if b.vendor else (b.suggested_vendor_name or "vendor")
             clean_name = b.attachment_name or b.attachment_url or "bill.pdf"
@@ -185,7 +185,7 @@ class FileMigrator:
             self.migrate_single_record("BillDB", str(b.id), b.attachment_url, new_ref, _update_bill)
 
         # 2. Finance Attachments
-        atts = db.query(FinanceAttachmentDB).filter(FinanceAttachmentDB.storage_ref.isnot(None), FinanceAttachmentDB.storage_ref != "", FinanceAttachmentDB.storage_ref != "pending").all()
+        atts = db.query(FinanceAttachmentDB).filter(FinanceAttachmentDB.bill_id.is_(None), FinanceAttachmentDB.storage_ref.isnot(None), FinanceAttachmentDB.storage_ref != "", FinanceAttachmentDB.storage_ref != "pending").all()
         for a in atts:
             clean_name = a.file_name or a.storage_ref or "file.pdf"
             ext = os.path.splitext(clean_name)[1].lstrip(".") or "pdf"
