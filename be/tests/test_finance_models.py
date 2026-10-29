@@ -250,7 +250,7 @@ def test_payroll_run_and_cross_domain_employee_line(db_session):
         base_salary=6000.0,
         allowances_total=0.0,
         deductions_total=400.0,
-        tax_amount=600.0,
+        employee_tax_usd_equivalent=600.0,
         net_pay=5000.0,
         employer_cost_extra=500.0,
         snapshot_notes="September standard payroll",

@@ -893,7 +893,6 @@ class PayrollLineDB(Base):
     base_salary = Column(Float, default=0.0)
     allowances_total = Column(Float, default=0.0)
     deductions_total = Column(Float, default=0.0)
-    tax_amount = Column(Float, default=0.0)
     net_pay = Column(Float, default=0.0)
     employer_cost_extra = Column(Float, default=0.0)
     insured_base_snapshot = Column(Float, default=0.0, nullable=True)
@@ -938,6 +937,11 @@ class PayrollLineDB(Base):
     payroll_run = relationship("PayrollRunDB", back_populates="lines")
     employee = relationship("EmployeeDB")
     linked_payment = relationship("PaymentDB", foreign_keys=[linked_payment_id])
+
+    @property
+    def tax_amount(self):
+        """The employee's income tax on this line in USD (employee_tax_usd_equivalent). Derived: never stored a second time."""
+        return float(self.employee_tax_usd_equivalent or 0.0)
 
     @property
     def total_social_insurance_egp(self):

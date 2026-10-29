@@ -727,7 +727,6 @@ class PayrollService:
                     "base_salary": amount,
                     "allowances_total": 0.0,
                     "deductions_total": deduction,
-                    "tax_amount": 0.0,
                     "net_pay": net,
                     "amount": net,
                     "employer_cost_extra": cost,
@@ -1269,7 +1268,6 @@ class PayrollService:
                 base_salary=line_data["base_salary"],
                 allowances_total=0.0,
                 deductions_total=line_data["deductions_total"],
-                tax_amount=0.0,
                 net_pay=line_data["net_pay"],
                 employer_cost_extra=line_data["employer_cost_extra"],
                 insured_base_snapshot=line_data["insured_base_snapshot"],
@@ -1490,7 +1488,6 @@ class PayrollService:
                 base_salary=base_sal,
                 allowances_total=0.0,
                 deductions_total=ded,
-                tax_amount=0.0,
                 net_pay=net,
                 employer_cost_extra=emp_extra,
                 insured_base_snapshot=ins_base,
@@ -1673,7 +1670,6 @@ class PayrollService:
             base_salary=net,
             allowances_total=0.0,
             deductions_total=0.0,
-            tax_amount=0.0,
             net_pay=net,
             employer_cost_extra=0.0,
             bank_name=bank_name or "Unassigned",
@@ -1766,7 +1762,6 @@ class PayrollService:
             line_db.bank_account_masked = ld["bank_account_masked"]
             line_db.is_taxable_local = True
             line_db.allowances_total = 0.0
-            line_db.tax_amount = 0.0
             self.db.add(line_db)
         self.db.flush()
 
