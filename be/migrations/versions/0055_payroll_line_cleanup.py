@@ -126,5 +126,5 @@ def downgrade() -> None:
                 batch_op.add_column(sa.Column("tax_employee_si_egp", sa.Float(), nullable=True, server_default="0.0"))
         bind.execute(sa.text(
             "UPDATE finance_payroll_lines SET "
-            "total_social_insurance_egp = ROUND(COALESCE(employee_social_insurance_egp, 0) + COALESCE(employer_social_insurance_egp, 0), 2), "
+            "total_social_insurance_egp = ROUND(CAST(COALESCE(employee_social_insurance_egp, 0) + COALESCE(employer_social_insurance_egp, 0) AS NUMERIC), 2), "
             "tax_employee_si_egp = COALESCE(employee_social_insurance_egp, 0)"))
