@@ -103,7 +103,7 @@ def get_employees_export_data() -> Tuple[List[str], List[List[Any]]]:
                 emp.dept or "",
                 emp.job_role or "",
                 emp.employment_state or "Full-Time",
-                emp.status or "Active",
+                "Archived" if emp.archived_at is not None else (emp.status or "Active"),
                 emp.join_date or "",
                 raise_map.get(emp.id, ""),
                 internal_sal,

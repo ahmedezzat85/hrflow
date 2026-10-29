@@ -35,5 +35,5 @@ def delete_blocked_message(counts: Dict[str, int]) -> str:
     listing = ", ".join(f"{n} {label}" for label, n in counts.items())
     return (
         f"This employee has pay history ({listing}) and cannot be deleted. "
-        "Set their status to Suspended instead; their pay records stay available to finance."
+        "Archive them instead; their pay records stay available to finance."
     )

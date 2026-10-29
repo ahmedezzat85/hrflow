@@ -13,6 +13,7 @@ from finance.current_pay import current_pay, current_pay_map, zero_pay
 from services.employee_derived import next_raise_map, vacation_days_used_map
 
 
+ARCHIVED_STATUS = "Archived"
 PERSONAL_FIELDS = ("legal_name", "phone", "address_line_1", "address_line_2", "id_type", "id_number")
 
 
@@ -52,7 +53,9 @@ def _employee_to_dict(
         "internal_salary_usd": pay["internal"],
         "external_salary_usd": pay["external"],
         "join_date": emp.join_date or "",
-        "status": emp.status or "Active",
+        "status": ARCHIVED_STATUS if emp.archived_at is not None else (emp.status or "Active"),
+        "archived": emp.archived_at is not None,
+        "archived_at": emp.archived_at.isoformat() if emp.archived_at is not None else None,
         "vac_total": emp.vac_total if emp.vac_total is not None else 21,
         "vac_used": vac_used,
         "next_raise": next_raise,

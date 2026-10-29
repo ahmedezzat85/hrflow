@@ -34,7 +34,7 @@ def test_an_employee_with_a_pay_plan_cannot_be_deleted(app_client, admin_cookies
     seed_plan(emp, internal=1000.0, external=500.0)
     resp = app_client.delete(f"/api/employees/{emp}", cookies=admin_cookies)
     assert resp.status_code == 409
-    assert "pay plan rows" in resp.json()["detail"] and "Suspended" in resp.json()["detail"]
+    assert "pay plan rows" in resp.json()["detail"] and "Archive" in resp.json()["detail"]
     assert _count("finance_employee_compensation_plans", emp) == 2   # nothing was deleted
     assert app_client.get(f"/api/employees/{emp}", cookies=admin_cookies).status_code == 200
 

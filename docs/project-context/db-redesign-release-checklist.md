@@ -1,4 +1,4 @@
-# Releasing the database redesign (migrations 0050 to 0059, init_db change)
+# Releasing the database redesign (migrations 0050 to 0061, init_db change)
 
 Read `db-redesign-plan.md` first. This is the checklist for putting Stages 1 to 5a into production. Production is
 PostgreSQL in Docker (`deploy/prod/RUNBOOK.md`); the app container runs `alembic upgrade head` on every start.
@@ -49,11 +49,12 @@ The migration message lists every offending row at once.
 | 0053 | bills whose stored `amount_paid` differed from their live payments |
 | 0054 | payments with no matching ledger row (`ledger_transaction_id` stays empty; the audit lists them under `link:payment_no_ledger`) |
 | 0055 | payroll lines whose stored totals differed from the derived ones; tax settings versions that do not exist (set to NULL) |
+| 0060 | payroll lines whose stored `tax_amount` was not zero (none expected) |
 
 ## Deploy
 
 1. Run the release workflow, then the production deploy (`RUNBOOK.md`). The deploy takes its own backup first.
-2. Watch the container log: `alembic upgrade head` runs 0050 to 0059, then the app starts. `init_db()` no longer changes the
+2. Watch the container log: `alembic upgrade head` runs 0050 to 0061, then the app starts. `init_db()` no longer changes the
    schema; it logs an error if the database is not at the Alembic head.
 3. If a migration stops: read the message, fix the rows (the audit script lists them), restart the container. Nothing was
    half-applied for the data checks in 0056 to 0058 because they run before any change.
@@ -64,7 +65,7 @@ The migration message lists every offending row at once.
   payments logged by 0054.
 - Smoke test: an employee profile (vacation used, next raise), a bill with a payment and its reversal, an invoice receipt,
   a payroll preview, an account's balance and ledger, deleting an employee with a pay plan (409), deleting one without.
-- API changes to expect: the employee response no longer has `role`; the employee export has no `Role` column; new employees
+- API changes to expect: employees can be archived (`archived`, status `Archived`); the payment-flows report now shows real employee tax and insurance (it showed 0 tax before); the employee response no longer has `role`; the employee export has no `Role` column; new employees
   show no next raise until their first pay change; a bill with no category has none (it used to get "Operating Expense").
 
 ## Rollback
