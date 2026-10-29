@@ -56,6 +56,7 @@ def _employee_to_dict(
         "status": ARCHIVED_STATUS if emp.archived_at is not None else (emp.status or "Active"),
         "archived": emp.archived_at is not None,
         "archived_at": emp.archived_at.isoformat() if emp.archived_at is not None else None,
+        "left_date": emp.left_date or "",
         "vac_total": emp.vac_total if emp.vac_total is not None else 21,
         "vac_used": vac_used,
         "next_raise": next_raise,

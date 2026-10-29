@@ -58,6 +58,30 @@ test.describe('Employee archived state', () => {
     await expect(page.locator('#empCountArchived')).toHaveText('0');
   });
 
+  test('the last day of employment is sent only when entered and the field starts empty each time', async ({ page }) => {
+    await openEmployees(page);
+    const bodies = [];
+    await page.route('**/api/employees/*/archive', async (route) => {
+      bodies.push(route.request().postData());
+      await route.fulfill({ status: 200, contentType: 'application/json',
+        body: JSON.stringify({ archived: true, archived_at: '2026-11-01T09:00:00', left_date: '2025-06-30', status: 'Archived' }) });
+    });
+    const rows = page.locator('#employeesTableBody tr');
+    await rows.nth(0).locator('button[title="Archive"]').click();
+    await expect(page.locator('#archiveLeftDate')).toHaveValue('');
+    await expect(page.locator('#archiveLeftDate')).toHaveAttribute('max', /^\d{4}-\d{2}-\d{2}$/);
+    await page.locator('#archiveLeftDate').fill('2025-06-30');
+    await page.locator('#archiveConfirmBtn').click();
+    await expect.poll(() => bodies.length).toBe(1);
+    expect(JSON.parse(bodies[0])).toEqual({ left_date: '2025-06-30' });
+
+    await rows.nth(0).locator('button[title="Archive"]').click();
+    await expect(page.locator('#archiveLeftDate')).toHaveValue('');
+    await page.locator('#archiveConfirmBtn').click();
+    await expect.poll(() => bodies.length).toBe(2);
+    expect(bodies[1]).toBeNull();
+  });
+
   test('cancelling the archive dialog changes nothing', async ({ page }) => {
     await openEmployees(page);
     const calls = await stubArchiveApi(page);
