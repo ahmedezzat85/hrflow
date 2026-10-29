@@ -92,3 +92,17 @@ With the owner's go-ahead, production's schema (tables, columns, constraints, in
   which the app never fills, so it holds `other` on every row; drop it in Stage 6).
 - Not covered: anything that depends on rows. Whether production holds orphan rows, duplicate bill numbers, overlapping pay-plan rows
   or out-of-set statuses needs the audit script run on a restored backup, as the release checklist says.
+
+## Finding: dry run on the latest production backup (2026-11-04)
+
+With the owner's go-ahead, the latest production backup (taken 2026-10-28 13:47, checksum verified) was decrypted with the
+production passphrase, restored into a throwaway PostgreSQL 16 database (not production) and used for a full dry run.
+The decrypted files and the data copy were deleted afterwards.
+- The backup holds 14 employees, 58 compensation plan rows, 54 pay-change rows, 14 users and 2 bank accounts; no bills, invoices,
+  payments, ledger rows or payroll runs yet. Finance is barely used in production.
+- `scripts/audit_db_integrity.py` on that data: **no findings** (no orphans, duplicates, overlapping or out-of-set rows).
+- `alembic upgrade head` (migrations 0050 to 0064) on that data: all 15 migrations apply, with **no warnings and no stop**.
+- Afterwards the application code reads the copy correctly (employee list with the derived vacation and next-raise fields,
+  floats from the NUMERIC columns, no balance drift), the audit still reports no findings, and the row counts are unchanged.
+- Not covered: data entered after 2026-10-28, and the document files (the dry run touched the database only). Repeat the audit on a
+  fresh backup immediately before the release, as the checklist says.

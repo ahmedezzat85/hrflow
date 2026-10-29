@@ -13,6 +13,10 @@ PostgreSQL in Docker (`deploy/prod/RUNBOOK.md`); the app container runs `alembic
 - **Several migrations stop on bad data** instead of guessing (below). A stop leaves the app unable to start the new
   release, so find these before the deploy, not during it.
 
+## Dry run already done
+
+On 2026-11-04 the whole chain (0050 to 0064) was run on a restore of the 2026-10-28 production backup in a throwaway PostgreSQL: no audit findings, no migration warnings, no stop, application code reads the result correctly (see the plan doc). Production then held no bills, ledger rows or payroll runs, so repeat the steps below on a fresh backup right before the real release.
+
 ## Before the deploy
 
 1. Take a backup: `powershell deploy/prod/scripts/backup.ps1`. Check the file exists and `BACKUP_PASSPHRASE` is known.
