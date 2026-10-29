@@ -62,8 +62,8 @@ def test_bad_date_and_duplicate_bill_and_stale_vac_used(conn):
     for _ in range(2):
         conn.execute(text(
             "INSERT INTO finance_bills (vendor_id, bill_number, status, currency, capture_source, is_reviewed, "
-            "is_duplicate_override, requires_approval, amount_paid, vendor_to_confirm) "
-            "VALUES (1, 'B-1', 'approved', 'USD', 'manual', 1, 0, 0, 0, 0)"))
+            "is_duplicate_override, requires_approval, vendor_to_confirm) "
+            "VALUES (1, 'B-1', 'approved', 'USD', 'manual', 1, 0, 0, 0)"))
     conn.commit()
     found = _real_findings(conn)
     assert found["date:salary_history.date"]["count"] == 1

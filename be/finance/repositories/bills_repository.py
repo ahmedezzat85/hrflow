@@ -289,7 +289,6 @@ class BillsRepository:
             approved_at=data.get("approved_at"),
             approval_comment=data.get("approval_comment"),
             scheduled_payment_date=data.get("scheduled_payment_date"),
-            amount_paid=data.get("amount_paid", 0.0),
             vendor_to_confirm=bool(data.get("vendor_to_confirm", False)),
             suggested_vendor_name=data.get("suggested_vendor_name"),
             import_batch_id=data.get("import_batch_id"),
@@ -385,8 +384,6 @@ class BillsRepository:
             bill.approval_comment = data["approval_comment"]
         if "scheduled_payment_date" in data:
             bill.scheduled_payment_date = data["scheduled_payment_date"]
-        if "amount_paid" in data and data["amount_paid"] is not None:
-            bill.amount_paid = data["amount_paid"]
         if "vendor_to_confirm" in data and data["vendor_to_confirm"] is not None:
             bill.vendor_to_confirm = data["vendor_to_confirm"]
         if "suggested_vendor_name" in data:
@@ -577,16 +574,9 @@ class BillsRepository:
         self.db.flush()
         LedgerRepository(self.db).recalculate_account_running_balances(bank_account.id, commit=False)
 
-        # 3. Recalculate bill amount_paid and status
+        # 3. Re-read the paid amount (derived from live payments) and derive the status
         self.db.flush()
-        remaining_payments = [
-            p for p in self.list_payments(bill_id) if not p.is_reversed and p.id != payment.id
-        ]
-        paid_remaining = sum(p.amount for p in remaining_payments)
-        bill.amount_paid = round(paid_remaining, 2)
-
-        if bill.amount_paid <= 0.001:
-            bill.amount_paid = 0.0
+        self.db.expire(bill, ["amount_paid"])
         bill.status = bs.derive_payment_status(bill, amount_paid=bill.amount_paid)
 
         self.db.commit()

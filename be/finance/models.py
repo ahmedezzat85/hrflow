@@ -18,7 +18,8 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy import func, select
+from sqlalchemy.orm import column_property, relationship
 
 from db import Base
 
@@ -213,7 +214,6 @@ class BillDB(Base):
     approved_at = Column(DateTime, nullable=True)
     approval_comment = Column(Text, nullable=True)
     scheduled_payment_date = Column(String(20), nullable=True)
-    amount_paid = Column(Float, default=0.0, nullable=False)
     vendor_to_confirm = Column(Boolean, default=False, nullable=False)  # upload could not match the vendor with confidence
     suggested_vendor_name = Column(String(255), nullable=True)  # vendor name read from the document; never auto-created
     void_reason = Column(Text, nullable=True)
@@ -470,6 +470,17 @@ class PaymentDB(Base):
     bill = relationship("BillDB", back_populates="payments", foreign_keys=[related_bill_id])
     bank_account = relationship("FinanceBankAccountDB", back_populates="payments")
     statutory_obligation = relationship("StatutoryObligationDB", back_populates="payments", foreign_keys=[related_statutory_obligation_id])
+
+
+# A bill's paid amount is never stored: it is the sum of its live (not reversed) payments, read in the same query.
+# It is read-only. After adding or reversing a payment in a session, flush and expire it
+# (session.expire(bill, ["amount_paid"])) so the next read re-queries.
+BillDB.amount_paid = column_property(
+    select(func.coalesce(func.sum(PaymentDB.amount), 0.0))
+    .where(PaymentDB.related_bill_id == BillDB.id, PaymentDB.is_reversed == False)  # noqa: E712
+    .correlate_except(PaymentDB)
+    .scalar_subquery()
+)
 
 
 class SubscriptionDB(Base):

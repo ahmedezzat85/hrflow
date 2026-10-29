@@ -106,9 +106,9 @@ def test_migration_0052_matches_text_keeps_the_rest_and_downgrade_refills(tmp_pa
             (4, "no text", "", None),
         ]
         for bill_id, number, text, cat_id in rows:
-            conn.execute("INSERT INTO finance_bills (id, bill_number, category, category_id, status, currency, amount_paid, "
+            conn.execute("INSERT INTO finance_bills (id, bill_number, category, category_id, status, currency, "
                          "is_reviewed, is_duplicate_override, requires_approval, capture_source, vendor_to_confirm) "
-                         "VALUES (?, ?, ?, ?, 'draft', 'USD', 0, 1, 0, 0, 'manual', 0)", (bill_id, number, text, cat_id))
+                         "VALUES (?, ?, ?, ?, 'draft', 'USD', 1, 0, 0, 'manual', 0)", (bill_id, number, text, cat_id))
         conn.commit()
 
     _alembic(url, "upgrade", "head")
