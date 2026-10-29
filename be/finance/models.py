@@ -527,7 +527,7 @@ class SubscriptionDB(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     vendor_id = Column(Integer, ForeignKey("finance_vendors.id", ondelete="RESTRICT"), nullable=False, index=True)
     name = Column(String(255), nullable=False)
-    amount = Column(Float, nullable=False)
+    amount = Column(Money, nullable=False)
     currency = Column(String(10), default="USD", nullable=False)
     billing_cycle = Column(String(20), default="monthly")  # monthly/quarterly/yearly
     next_renewal_date = Column(String(20), nullable=False)
@@ -539,7 +539,7 @@ class SubscriptionDB(Base):
     payment_method = Column(String(50), default="card", nullable=True)
     payment_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True)
     seats_count = Column(Integer, nullable=True)
-    monthly_equivalent_amount = Column(Float, nullable=True)
+    monthly_equivalent_amount = Column(Money, nullable=True)
     auto_generate_bill = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -559,18 +559,18 @@ class SubscriptionChargeDB(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     subscription_id = Column(Integer, ForeignKey("finance_subscriptions.id", ondelete="CASCADE"), nullable=False, index=True)
     billing_date = Column(String(20), nullable=False, index=True)  # YYYY-MM-DD
-    amount = Column(Float, nullable=False)
+    amount = Column(Money, nullable=False)
     currency = Column(String(10), default="USD", nullable=False)
     linked_transaction_id = Column(Integer, ForeignKey("finance_ledger_transactions.id", ondelete="SET NULL"), nullable=True, index=True)
     linked_bill_id = Column(Integer, ForeignKey("finance_bills.id", ondelete="SET NULL"), nullable=True, index=True)
-    variance_amount = Column(Float, default=0.0, nullable=False)
+    variance_amount = Column(Money, default=0.0, nullable=False)
     variance_reason = Column(String(255), nullable=True)
     note = Column(Text, default="", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(String(255), nullable=True)
     # Subscriptions v2 (X5, D-031): a generated charge is `expected` until it is settled or skipped
     status = Column(String(20), default="settled", nullable=False, server_default="settled")  # expected | settled | skipped
-    expected_amount = Column(Float, nullable=True)
+    expected_amount = Column(Money, nullable=True)
     proof_status = Column(String(20), default="pending", nullable=False, server_default="pending")  # attached | pending | unavailable
     proof_note = Column(Text, nullable=True)
     settled_at = Column(DateTime, nullable=True)
@@ -598,8 +598,8 @@ class BankStatementImportDB(Base):
     status = Column(String(20), default="needs_review", nullable=False, index=True)  # parsing | needs_review | reconciled
     uploaded_file_ref = Column(String(500), default="", nullable=False)
     file_fingerprint = Column(String(64), nullable=True, index=True)
-    opening_balance = Column(Float, nullable=True)
-    closing_balance = Column(Float, nullable=True)
+    opening_balance = Column(Money, nullable=True)
+    closing_balance = Column(Money, nullable=True)
     encoding = Column(String(20), default="utf-8", nullable=True)
     date_format = Column(String(30), default="auto", nullable=True)
     decimal_separator = Column(String(5), default=".", nullable=True)
@@ -632,7 +632,7 @@ class StatementLineDB(Base):
     row_index = Column(Integer, nullable=True)
     line_fingerprint = Column(String(64), nullable=True, index=True)
     raw_date = Column(String(20), nullable=False, index=True)  # YYYY-MM-DD
-    raw_amount = Column(Float, nullable=False)
+    raw_amount = Column(Money, nullable=False)
     direction = Column(String(10), default="out", nullable=False)  # in | out
     raw_description = Column(String(500), default="", nullable=False)
     raw_reference = Column(String(100), default="", nullable=True)
@@ -686,8 +686,8 @@ class ReconciliationRuleDB(Base):
     # Conditions
     description_pattern = Column(String(255), nullable=True)
     direction = Column(String(10), nullable=True)  # in | out
-    min_amount = Column(Float, nullable=True)
-    max_amount = Column(Float, nullable=True)
+    min_amount = Column(Money, nullable=True)
+    max_amount = Column(Money, nullable=True)
     counterparty = Column(String(255), nullable=True)
     
     # Action
@@ -725,7 +725,7 @@ class AccountBalanceCheckpointDB(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="CASCADE"), nullable=False, index=True)
     date = Column(String(20), nullable=False, index=True)  # YYYY-MM-DD
-    balance = Column(Float, nullable=False)
+    balance = Column(Money, nullable=False)
     note = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(String(255), nullable=True)
@@ -742,7 +742,7 @@ class FinanceAccountYearOpeningDB(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="CASCADE"), nullable=False, index=True)
     fiscal_year = Column(Integer, nullable=False)
-    opening_balance = Column(Float, nullable=False)
+    opening_balance = Column(Money, nullable=False)
     note = Column(Text, default="", nullable=False)
     created_by = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -964,16 +964,16 @@ class AccountTransferDB(Base):
     from_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True, index=True)
     to_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True, index=True)
     date = Column(String(20), nullable=False, index=True)  # YYYY-MM-DD
-    from_amount = Column(Float, nullable=False)
+    from_amount = Column(Money, nullable=False)
     from_currency = Column(String(10), default="USD", nullable=False)
-    to_amount = Column(Float, nullable=False)
+    to_amount = Column(Money, nullable=False)
     to_currency = Column(String(10), default="USD", nullable=False)
-    fx_rate = Column(Float, nullable=True)
+    fx_rate = Column(Rate, nullable=True)
     transfer_type = Column(String(30), default="internal", nullable=False, index=True)  # same_bank_fx | internal | external_linked
     exchange_reference = Column(String(100), nullable=True, index=True)
     confirmed_leg = Column(String(20), default="both", nullable=False)  # both | from_only | to_only
     settlement_status = Column(String(30), default="settled", nullable=False, index=True)  # settled | in_transit | awaiting_match
-    fee = Column(Float, default=0.0, nullable=True)
+    fee = Column(Money, default=0.0, nullable=True)
     expected_date = Column(String(20), nullable=True)  # YYYY-MM-DD
     note = Column(Text, default="", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -1060,10 +1060,10 @@ class StatutoryObligationDB(Base):
     obligation_type = Column(String(50), nullable=False, index=True)
     # sales_tax | withholding_tax | income_tax | social_insurance_employee | social_insurance_employer | health_insurance | other_statutory
     period = Column(String(20), nullable=False, index=True)  # YYYY-MM
-    amount_estimated = Column(Float, nullable=True)
-    amount_accrued = Column(Float, nullable=False)
-    amount_remitted = Column(Float, default=0.0, nullable=False)
-    variance_amount = Column(Float, default=0.0, nullable=False)
+    amount_estimated = Column(Money, nullable=True)
+    amount_accrued = Column(Money, nullable=False)
+    amount_remitted = Column(Money, default=0.0, nullable=False)
+    variance_amount = Column(Money, default=0.0, nullable=False)
     variance_note = Column(Text, nullable=True)
     currency = Column(String(10), default="EGP", nullable=False)  # statutory obligations are EGP by default (D-025 context, F4)
     status = Column(String(30), default="estimated", nullable=False, index=True)
