@@ -23,6 +23,13 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import column_property, relationship
 
 from db import Base
+from finance.bill_status import BILL_STATUSES
+from finance.invoice_status import INVOICE_STATUSES
+
+
+def _one_of(column: str, values) -> str:
+    """CHECK expression: the column holds one of the listed values (tests/test_value_checks.py keeps these in step)."""
+    return f"{column} IN ({', '.join(repr(v) for v in values)})"
 
 
 class CustomerDB(Base):
@@ -126,6 +133,10 @@ class SalesInvoiceDB(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     import_batch_id = Column(Integer, ForeignKey("finance_import_batches.id", ondelete="SET NULL"), nullable=True, index=True)  # D-033
 
+    __table_args__ = (
+        CheckConstraint(_one_of("status", INVOICE_STATUSES), name="ck_finance_sales_invoices_status"),
+    )
+
     customer = relationship("CustomerDB", back_populates="invoices")
     expected_bank_account = relationship("FinanceBankAccountDB", foreign_keys=[expected_bank_account_id])
     lines = relationship("SalesInvoiceLineDB", back_populates="invoice", cascade="all, delete-orphan")
@@ -228,6 +239,7 @@ class BillDB(Base):
         Index("uq_bills_number", "bill_number", unique=True,
               sqlite_where=text("bill_number IS NOT NULL AND is_duplicate_override = 0 AND status <> 'draft'"),
               postgresql_where=text("bill_number IS NOT NULL AND is_duplicate_override = false AND status <> 'draft'")),
+        CheckConstraint(_one_of("status", BILL_STATUSES), name="ck_finance_bills_status"),
     )
 
     vendor = relationship("VendorDB", back_populates="bills")
@@ -327,6 +339,10 @@ class FinanceBankAccountDB(Base):
     book_id = Column(Integer, ForeignKey("finance_books.id", ondelete="RESTRICT"), nullable=False, index=True, default=_default_book_id)  # D-028; defaults to the default (Local) book
     visibility = Column(String(20), default="full", nullable=False, server_default="full")  # full | partial (D-028)
 
+    __table_args__ = (
+        CheckConstraint(_one_of("account_type", ("bank", "cash")), name="ck_finance_bank_accounts_type"),
+    )
+
     book = relationship("FinanceBookDB")
     payments = relationship("PaymentDB", back_populates="bank_account")
     ledger_transactions = relationship(
@@ -389,6 +405,10 @@ class LedgerTransactionDB(Base):
     running_balance = Column(Float, default=0.0, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(String(255), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint(_one_of("direction", ("in", "out")), name="ck_finance_ledger_direction"),
+    )
 
     account = relationship("FinanceBankAccountDB", foreign_keys=[account_id], back_populates="ledger_transactions")
     category = relationship("TransactionCategoryDB", back_populates="transactions")
@@ -479,6 +499,7 @@ class PaymentDB(Base):
 
     __table_args__ = (
         Index("uq_finance_payments_ledger_transaction_id", "ledger_transaction_id", unique=True),
+        CheckConstraint(_one_of("direction", ("incoming", "outgoing")), name="ck_finance_payments_direction"),
     )
 
     ledger_transaction = relationship("LedgerTransactionDB", foreign_keys=[ledger_transaction_id])
