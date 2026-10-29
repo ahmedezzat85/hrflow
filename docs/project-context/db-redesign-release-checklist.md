@@ -1,4 +1,4 @@
-# Releasing the database redesign (migrations 0050 to 0068, init_db change)
+# Releasing the database redesign (migrations 0050 to 0069, init_db change)
 
 Read `db-redesign-plan.md` first. This is the checklist for putting Stages 1 to 5a into production. Production is
 PostgreSQL in Docker (`deploy/prod/RUNBOOK.md`); the app container runs `alembic upgrade head` on every start.
@@ -62,11 +62,12 @@ The migration message lists every offending row at once.
 | 0062 | orphan references on `SET NULL` columns (a bill, ledger row, cheque, invoice, vendor... pointing at a deleted record), set to NULL |
 | 0067 | PostgreSQL only: a warning when the no-overlap constraints cannot be created (the `btree_gist` extension or the helper function needs a privileged role); the date checks are still applied |
 | 0068 | nothing is dropped silently: every bill with a scan name or reference gets a `finance_attachments` row (file size stays 0, mime type guessed from the name) |
+| 0069 | drops the unused `finance_ledger_transactions.category` text column (production: `varchar(100) NOT NULL DEFAULT 'other'`); nothing reads it |
 
 ## Deploy
 
 1. Run the release workflow, then the production deploy (`RUNBOOK.md`). The deploy takes its own backup first.
-2. Watch the container log: `alembic upgrade head` runs 0050 to 0068, then the app starts. `init_db()` no longer changes the
+2. Watch the container log: `alembic upgrade head` runs 0050 to 0069, then the app starts. `init_db()` no longer changes the
    schema; it logs an error if the database is not at the Alembic head.
 3. If a migration stops: read the message, fix the rows (the audit script lists them), restart the container. Nothing was
    half-applied for the data checks in 0056 to 0058 because they run before any change.

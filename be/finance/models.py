@@ -392,10 +392,6 @@ class FinanceBankAccountDB(Base):
     )
 
 
-# Alias for clean domain referencing
-BankAccountDB = FinanceBankAccountDB
-
-
 class LedgerTransactionDB(Base):
     __tablename__ = "finance_ledger_transactions"
 
@@ -454,10 +450,6 @@ class LedgerTransactionDB(Base):
     destination_cash_account = relationship("FinanceBankAccountDB", foreign_keys=[destination_cash_account_id])
 
 
-# Alias for clean domain referencing
-FinanceLedgerTransactionDB = LedgerTransactionDB
-
-
 class FinanceChequeDB(Base):
     __tablename__ = "finance_cheques"
 
@@ -501,10 +493,6 @@ class FinanceChequeDB(Base):
     replacement_cheque = relationship("FinanceChequeDB", foreign_keys=[replacement_cheque_id], remote_side=[id], post_update=True)
     replaced_cheque = relationship("FinanceChequeDB", foreign_keys=[replaced_cheque_id], remote_side=[id], post_update=True)
     attachments = relationship("FinanceAttachmentDB", back_populates="cheque", cascade="all, delete-orphan", passive_deletes=True)
-
-
-# Alias for clean domain referencing
-ChequeDB = FinanceChequeDB
 
 
 class PaymentDB(Base):
@@ -743,13 +731,6 @@ class ReconciliationRuleDB(Base):
     statement_lines = relationship("StatementLineDB", back_populates="applied_rule")
 
 
-# Aliases for statement models
-FinanceBankStatementImportDB = BankStatementImportDB
-FinanceStatementLineDB = StatementLineDB
-FinanceStatementMappingTemplateDB = StatementMappingTemplateDB
-FinanceReconciliationRuleDB = ReconciliationRuleDB
-
-
 class AccountBalanceCheckpointDB(Base):
     """Owner-entered balance of an account on a date (D-028). Never posts an adjustment."""
     __tablename__ = "finance_account_balance_checkpoints"
@@ -834,7 +815,6 @@ class FinanceAttachmentDB(Base):
     cheque = relationship("FinanceChequeDB", back_populates="attachments")
     sales_invoice = relationship("SalesInvoiceDB", back_populates="attachments")
     bill = relationship("BillDB", back_populates="scan")
-
 
 
 class PayrollRunDB(Base):
@@ -1020,10 +1000,6 @@ class AccountTransferDB(Base):
     ledger_transactions = relationship("LedgerTransactionDB", back_populates="linked_transfer")
 
 
-# Alias for clean domain referencing
-FinanceAccountTransferDB = AccountTransferDB
-
-
 class FinanceAttentionReviewDB(Base):
     __tablename__ = "finance_attention_reviews"
 
@@ -1036,10 +1012,6 @@ class FinanceAttentionReviewDB(Base):
     notes = Column(Text, default="", nullable=False)
 
 
-# Alias for clean domain referencing
-AttentionReviewDB = FinanceAttentionReviewDB
-
-
 class FinanceSavedReportViewDB(Base):
     __tablename__ = "finance_saved_report_views"
 
@@ -1050,9 +1022,6 @@ class FinanceSavedReportViewDB(Base):
     created_by = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     is_default = Column(Boolean, default=False, nullable=False)
-
-
-SavedReportViewDB = FinanceSavedReportViewDB
 
 
 class FinanceExportAuditDB(Base):
@@ -1068,9 +1037,6 @@ class FinanceExportAuditDB(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
-ExportAuditDB = FinanceExportAuditDB
-
-
 class FinanceReportScheduleDB(Base):
     __tablename__ = "finance_report_schedules"
 
@@ -1084,9 +1050,6 @@ class FinanceReportScheduleDB(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     created_by = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-
-
-ReportScheduleDB = FinanceReportScheduleDB
 
 
 class StatutoryObligationDB(Base):
@@ -1116,9 +1079,6 @@ class StatutoryObligationDB(Base):
     payments = relationship("PaymentDB", back_populates="statutory_obligation")
 
 
-FinanceStatutoryObligationDB = StatutoryObligationDB
-
-
 class EmployeeCompensationPlanDB(Base):
     __tablename__ = "finance_employee_compensation_plans"
 
@@ -1143,9 +1103,6 @@ class EmployeeCompensationPlanDB(Base):
     )
 
 
-FinanceEmployeeCompensationPlanDB = EmployeeCompensationPlanDB
-
-
 class PayrollSettingsDB(Base):
     """Default payroll funding accounts (one row, id 1). Social insurance rates live only in the effective-dated
     PayrollRateSettingsDB."""
@@ -1159,9 +1116,6 @@ class PayrollSettingsDB(Base):
 
     external_funding_account = relationship("FinanceBankAccountDB", foreign_keys=[external_funding_account_id])
     internal_funding_account = relationship("FinanceBankAccountDB", foreign_keys=[internal_funding_account_id])
-
-
-FinancePayrollSettingsDB = PayrollSettingsDB
 
 
 class PayrollRateSettingsDB(Base):
@@ -1180,9 +1134,6 @@ class PayrollRateSettingsDB(Base):
     updated_by = Column(String(255), nullable=True)
 
 
-FinancePayrollRateSettingsDB = PayrollRateSettingsDB
-
-
 class PayrollTaxSettingsDB(Base):
     __tablename__ = "finance_payroll_tax_settings"
 
@@ -1195,6 +1146,4 @@ class PayrollTaxSettingsDB(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     updated_by = Column(String(255), nullable=True)
 
-
-FinancePayrollTaxSettingsDB = PayrollTaxSettingsDB
 
