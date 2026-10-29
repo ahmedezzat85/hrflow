@@ -95,7 +95,7 @@ With the owner's go-ahead, production's schema (tables, columns, constraints, in
 - Not covered: anything that depends on rows. Whether production holds orphan rows, duplicate bill numbers, overlapping pay-plan rows
   or out-of-set statuses needs the audit script run on a restored backup, as the release checklist says.
 
-## Finding: dry run on the latest production backup (2026-11-04)
+## Finding: dry run on the latest production backup (2026-10-29)
 
 With the owner's go-ahead, the latest production backup (taken 2026-10-28 13:47, checksum verified) was decrypted with the
 production passphrase, restored into a throwaway PostgreSQL 16 database (not production) and used for a full dry run.
@@ -108,3 +108,12 @@ The decrypted files and the data copy were deleted afterwards.
   floats from the NUMERIC columns, no balance drift), the audit still reports no findings, and the row counts are unchanged.
 - Not covered: data entered after 2026-10-28, and the document files (the dry run touched the database only). Repeat the audit on a
   fresh backup immediately before the release, as the checklist says.
+
+## Finding: final dry run of the whole chain (2026-10-29)
+
+With the owner's go-ahead, the newest production backup (still the 2026-10-28 13:47 one; checksum verified) was decrypted (database dump only, no documents), restored into a throwaway PostgreSQL 16 database (not production), and the final code (migrations 0050 to 0069) was run on it. The decrypted dump and the restored database were deleted afterwards, and the throwaway container removed.
+- `scripts/audit_db_integrity.py` before and after: **no findings**.
+- `alembic upgrade head` from 0049 to 0069: all 20 migrations apply with **no warnings and no stop**; the database ends at `0069_drop_ledger_category`.
+- Row counts of all 21 non-empty tables are identical before and after; the application models read the result correctly (14 employees, accounts and balances as floats from the NUMERIC columns).
+- This run adds 0065 to 0069 (payroll and remaining money, date checks, bill scans, ledger category) to the earlier dry run of 0050 to 0064. The copy has no bills, payments or payroll runs, so those migrations were run on empty tables; their data paths are covered by the tests and the PostgreSQL runs with planted data.
+- Still to do at release time: a fresh backup immediately before deploying, as the checklist says.
