@@ -18,6 +18,7 @@ from services.uploads import validate_upload_content, safe_content_disposition_f
 from models import EmployeeCreate, EmployeeUpdate, EmployeePersonalUpdate, EmployeeNoteCreate, EmployeeDocumentCreate
 from services.employee_personal import mask_id
 from services.employee_delete_guard import pay_history_counts, delete_blocked_message
+from services.employee_archive import archive_employee, unarchive_employee
 from repositories.interfaces import EmployeeRepository, AuditRepository
 from repositories.deps import get_employee_repo, get_audit_repo
 from core.permissions import require_permission
@@ -192,6 +193,32 @@ def delete_employee(
         raise HTTPException(status_code=404, detail="Employee not found")
     audit_log(audit_repo, "employee.delete", current_user.get("email"), "employee", emp_id)
     return {"message": "Employee deleted"}
+
+
+@router.post("/{emp_id}/archive")
+def archive_employee_route(
+    emp_id: int,
+    current_user: dict = Depends(require_permission("hr.employee.write")),
+    employee_repo: EmployeeRepository = Depends(get_employee_repo),
+    audit_repo: AuditRepository = Depends(get_audit_repo),
+    db: Session = Depends(get_db),
+):
+    """Archive an employee: they and their login are set aside, every record stays. Reversible with /unarchive."""
+    archive_employee(db, emp_id, current_user, audit_repo)
+    return employee_repo.get_by_id(emp_id)
+
+
+@router.post("/{emp_id}/unarchive")
+def unarchive_employee_route(
+    emp_id: int,
+    current_user: dict = Depends(require_permission("hr.employee.write")),
+    employee_repo: EmployeeRepository = Depends(get_employee_repo),
+    audit_repo: AuditRepository = Depends(get_audit_repo),
+    db: Session = Depends(get_db),
+):
+    """Bring an archived employee back with the status they had; their login is reactivated."""
+    unarchive_employee(db, emp_id, current_user, audit_repo)
+    return employee_repo.get_by_id(emp_id)
 
 
 @router.get("/{emp_id}/notes")

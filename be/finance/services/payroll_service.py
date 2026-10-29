@@ -515,7 +515,7 @@ class PayrollService:
         historical = payroll_eligibility.is_historical_period(period_end)
         candidates = self.db.query(EmployeeDB)
         if not historical:
-            candidates = candidates.filter(EmployeeDB.status.ilike("active"))
+            candidates = candidates.filter(EmployeeDB.status.ilike("active"), EmployeeDB.archived_at.is_(None))
         employees = candidates.order_by(EmployeeDB.name.asc()).all()
 
         comp_repo = CompensationPlanRepository(self.db)

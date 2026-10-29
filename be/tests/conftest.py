@@ -35,6 +35,13 @@ os.environ["STORAGE_ENGINE"] = "sql"
 worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
 test_db_name = f"hrflow_test_{worker_id}.db"
 os.environ["DATABASE_URL"] = f"sqlite:///./{test_db_name}"
+# A fresh file per test process: init_db() builds a brand-new SQLite file from the models but never alters an existing
+# one (Stage 5a), so a file left over from an earlier run would miss columns added since.
+for _stale in (test_db_name, test_db_name + "-journal", test_db_name + "-wal", test_db_name + "-shm"):
+    try:
+        os.remove(_stale)
+    except OSError:
+        pass
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 

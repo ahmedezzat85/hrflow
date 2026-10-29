@@ -84,6 +84,10 @@ class EmployeeDB(Base):
     # Pay is not stored here: it is derived from the compensation plan (D-046, finance/current_pay.py).
     join_date = Column(String(20), default="")
     status = Column(String(50), default="Active")
+    # Archived state: the employee left or is set aside; their records stay. NULL = not archived. The API reports
+    # status "Archived" while this is set and the saved status above comes back when it is cleared.
+    archived_at = Column(DateTime, nullable=True)
+    archived_by = Column(String(255), nullable=True)
     vac_total = Column(Integer, default=21)
     employment_state = Column(String(50), default="Full-Time")
     invoice_id = Column(String(20), default="")

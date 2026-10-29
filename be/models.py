@@ -96,6 +96,13 @@ class EmployeeUpdate(BaseModel):
     employment_state: Optional[EmploymentState] = None
     invoice_id: Optional[str] = None
 
+    @field_validator("status")
+    @classmethod
+    def _status_is_not_archived(cls, v):
+        if v is not None and v.strip().lower() == "archived":
+            raise ValueError("Use the archive action to archive an employee")
+        return v
+
 
 class EmployeePersonalUpdate(BaseModel):
     """
