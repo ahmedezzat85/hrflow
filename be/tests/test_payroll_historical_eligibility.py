@@ -200,10 +200,15 @@ def test_join_date_after_period_end_is_skipped_even_with_a_plan(env, fixed_today
 
 
 def test_empty_or_unparsable_join_date_never_excludes(env, fixed_today):
-    emps = [make_emp(env, f"Odd Join {i}", join_date=jd) for i, jd in enumerate(["", "garbage", "31/02/2025", "  "])]
+    # The database now refuses a join date that is not YYYY-MM-DD (or empty), so only the empty one can be stored; the rule for
+    # unparsable text is still checked on the eligibility function itself.
+    emps = [make_emp(env, "Odd Join 0", join_date="")]
     p = preview(env, 2025, 1)
     assert {e.id for e in emps} <= ids(p["lines"])
     assert not {e.id for e in emps} & set(skipped(p))
+    from finance import payroll_eligibility
+    for odd in ("", "garbage", "31/02/2025", "  ", None):
+        assert payroll_eligibility.historical_skip_reason(True, odd, "2025-01-31") is None
 
 
 def test_inactive_and_on_leave_with_a_plan_are_included(env, fixed_today):

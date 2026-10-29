@@ -14,7 +14,15 @@ from scripts.audit_db_integrity import INFORMATIONAL, run_audit
 @pytest.fixture
 def conn(tmp_path):
     engine = create_engine(f"sqlite:///{tmp_path / 'audit.db'}")
-    Base.metadata.create_all(bind=engine)
+    # The audit finds bad data in databases from before the Stage 4 and 5 constraints: build this one without the date checks
+    removed = [(t, c) for t in Base.metadata.tables.values() for c in list(t.constraints) if (c.name or "").startswith("ck_dt_")]
+    for table, constraint in removed:
+        table.constraints.discard(constraint)
+    try:
+        Base.metadata.create_all(bind=engine)
+    finally:
+        for table, constraint in removed:
+            table.constraints.add(constraint)
     with engine.connect() as c:
         # The audit exists to find bad data in databases from before the Stage 4 constraints, so drop them here
         names = [row[0] for row in c.execute(text("SELECT name FROM sqlite_master WHERE type = 'index'")).fetchall()]

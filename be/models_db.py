@@ -333,3 +333,7 @@ class EmployeeTaxMethodDB(Base):
               sqlite_where=text("effective_end_date IS NULL"), postgresql_where=text("effective_end_date IS NULL")),
     )
 
+
+# Every YYYY-MM-DD text column is also checked by the database (finance/date_checks.py)
+from finance.date_checks import attach_date_checks  # noqa: E402
+attach_date_checks(Base.metadata)

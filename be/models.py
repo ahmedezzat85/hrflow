@@ -13,6 +13,18 @@ from services.employee_personal import normalize_id, normalize_phone
 EmploymentState = Literal["Full-Time", "Part-Time", "Freelance", "Occasional"]
 
 
+def _iso_date_or_empty(value: str) -> str:
+    """Empty, or a real YYYY-MM-DD date (the database refuses anything else)."""
+    text = (value or "").strip()
+    if not text:
+        return ""
+    try:
+        datetime.strptime(text, "%Y-%m-%d")
+    except ValueError:
+        raise ValueError("join_date must be a date in YYYY-MM-DD format")
+    return text
+
+
 class GoogleLoginRequest(BaseModel):
     credential: str
 
@@ -50,6 +62,11 @@ class EmployeeCreate(BaseModel):
     dept: str = ""
     job_role: str = ""
     join_date: str = ""
+
+    @field_validator("join_date")
+    @classmethod
+    def _join_date_is_a_date(cls, v):
+        return _iso_date_or_empty(v)
     status: str = "Active"
     vac_total: int = 21
     employment_state: EmploymentState = "Full-Time"
@@ -91,6 +108,11 @@ class EmployeeUpdate(BaseModel):
     dept: Optional[str] = None
     job_role: Optional[str] = None
     join_date: Optional[str] = None
+
+    @field_validator("join_date")
+    @classmethod
+    def _join_date_is_a_date(cls, v):
+        return None if v is None else _iso_date_or_empty(v)
     status: Optional[str] = None
     vac_total: Optional[int] = None
     employment_state: Optional[EmploymentState] = None

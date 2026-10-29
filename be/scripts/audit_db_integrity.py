@@ -27,37 +27,6 @@ SAMPLE = 5
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
 
-# (table, column, nullable): columns that hold a YYYY-MM-DD string today.
-DATE_COLUMNS = [
-    ("salary_history", "date", False),
-    ("employee_notes", "date", False),
-    ("insurance_claims", "date", False),
-    ("requests", "date", False),
-    ("vacation_history", "start_date", False),
-    ("vacation_history", "end_date", False),
-    ("employee_social_insurance", "effective_start_date", False),
-    ("employee_social_insurance", "effective_end_date", True),
-    ("employee_tax_method", "effective_start_date", False),
-    ("employee_tax_method", "effective_end_date", True),
-    ("finance_employee_compensation_plans", "effective_start_date", False),
-    ("finance_employee_compensation_plans", "effective_end_date", True),
-    ("finance_sales_invoices", "issue_date", False),
-    ("finance_sales_invoices", "due_date", False),
-    ("finance_bills", "issue_date", True),
-    ("finance_bills", "due_date", True),
-    ("finance_ledger_transactions", "date", False),
-    ("finance_payments", "payment_date", False),
-    ("finance_cheques", "issue_date", False),
-    ("finance_cheques", "clear_date", True),
-    ("finance_account_transfers", "date", False),
-    ("finance_subscriptions", "next_renewal_date", False),
-    ("finance_subscription_charges", "billing_date", False),
-    ("finance_payroll_runs", "period_start", False),
-    ("finance_payroll_runs", "period_end", False),
-    ("finance_payroll_rate_settings", "effective_from", False),
-    ("finance_payroll_tax_settings", "effective_from", False),
-]
-
 # Tables whose effective-dated rows must not overlap, grouped by these columns.
 EFFECTIVE_TABLES = [
     ("finance_employee_compensation_plans", ("employee_id", "component_type")),
@@ -111,18 +80,16 @@ def check_effective_overlaps(a: Audit):
 
 
 def check_bad_dates(a: Audit):
-    for table, column, nullable in DATE_COLUMNS:
-        if not a.has(table, column, "id"):
-            continue
-        bad = []
-        for r in a.rows(f"SELECT id, {column} AS v FROM {table}"):
-            v = r["v"]
-            if v is None or v == "":
-                if not nullable:
-                    bad.append({"id": r["id"], "value": v})
-            elif not DATE_RE.match(str(v)):
-                bad.append({"id": r["id"], "value": v})
-        a.add(f"date:{table}.{column}", f"Invalid date in {table}.{column}", bad)
+    """Values the date CHECK constraints (finance/date_checks.py, migration 0067) would refuse."""
+    from finance import date_checks
+    for table, cols in date_checks.DATE_COLUMNS.items():
+        for column, may_be_empty in cols.items():
+            if not a.has(table, column, "id"):
+                continue
+            expression = date_checks.check_expression(column, may_be_empty)
+            bad = [{"id": r["id"], "value": r["v"]} for r in a.rows(f"SELECT id, {column} AS v FROM {table} WHERE NOT ({expression})")]
+            a.add(f"date:{table}.{column}", f"Invalid date in {table}.{column}", bad,
+                  "Migration 0067 stops while any of these exist." if bad else "")
 
 
 def check_duplicates(a: Audit):
