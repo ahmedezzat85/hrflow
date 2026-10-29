@@ -184,7 +184,8 @@ class BillDB(Base):
     vendor_id = Column(Integer, ForeignKey("finance_vendors.id", ondelete="RESTRICT"), nullable=True, index=True)
     bill_number = Column(String(50), nullable=True, index=True)
     category_id = Column(Integer, ForeignKey("finance_transaction_categories.id", ondelete="SET NULL"), nullable=True, index=True)
-    category = Column(String(100), default="Operating Expense")
+    # Raw category text, kept only while no transaction category matched it (data-quality report); category_id is the category
+    imported_category = Column(String(100), nullable=True)
     issue_date = Column(String(20), nullable=True)
     due_date = Column(String(20), nullable=True)
     status = Column(String(30), default="draft", nullable=False, index=True)  # draft | pending_approval | rejected | approved | scheduled | partially_paid | paid | void
@@ -224,6 +225,13 @@ class BillDB(Base):
     transaction_category = relationship("TransactionCategoryDB", foreign_keys=[category_id])
     lines = relationship("BillLineDB", back_populates="bill", cascade="all, delete-orphan")
     payments = relationship("PaymentDB", back_populates="bill", foreign_keys="PaymentDB.related_bill_id")
+
+    @property
+    def category(self) -> str:
+        """Display name: the category row when matched, else the imported text, else empty. Read-only."""
+        if self.transaction_category is not None:
+            return self.transaction_category.name
+        return self.imported_category or ""
 
 
 class BillLineDB(Base):

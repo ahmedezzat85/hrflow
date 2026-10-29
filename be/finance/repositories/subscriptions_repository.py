@@ -184,7 +184,7 @@ class SubscriptionsRepository:
             bill = BillDB(
                 vendor_id=sub.vendor_id,
                 bill_number=bill_num,
-                category="SaaS / Software",
+                imported_category="SaaS / Software",
                 issue_date=data.billing_date,
                 due_date=data.billing_date,
                 status="approved",
