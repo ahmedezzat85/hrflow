@@ -121,7 +121,7 @@ export const PARITY_MAP = {
       appContainerSelector: '#a-employees',
       // Issue 1 (owner decision 2026-10-19): the app keeps 13.5px table text and its own border tones,
       // the View button stays removed, and the search box is an input placeholder (not a text label).
-      keptLabels: ['Search employees', 'View'],
+      keptLabels: ['Search employees', 'View', 'Inactive 0', 'Archived 0'],
       setup: async (page) => showAdminSection(page, 'a-employees', '#a-employees table'),
       pairs: [
         { name: 'table header cells', mockSelector: 'table thead th:first-child', appSelector: '#a-employees table thead th:first-child', props: ['fontSize', 'fontWeight', 'paddingTop', 'paddingBottom'] },
@@ -234,12 +234,12 @@ export const PARITY_MAP = {
       mockContainerSelector: 'main',
       appContainerSelector: '#a-employees',
       // Same owner decision as issue 1 (S1.3): the View button stays removed, the search box is a placeholder
-      keptLabels: ['Search employees', 'View'],
+      keptLabels: ['Search employees', 'View', 'Inactive 0', 'Archived 0'],
       setup: async (page) => showAdminSection(page, 'a-employees', '#a-employees table'),
       pairs: [
         { name: 'employees table shell', mockSelector: 'main > div:last-child', appSelector: '#a-employees .card:has(table)', accepted: { light: { fontSize: '16px', color: 'rgb(20, 30, 48)', borderColor: 'rgba(32, 86, 232, 0.12)', height: '378px' }, dark: { fontSize: '16px', height: '378px' } } },
-        { name: 'employee header', mockSelector: 'table th:first-child', appSelector: '#a-employees table th:first-child', accepted: { light: { backgroundColor: 'rgb(255, 255, 255)', borderColor: 'rgb(32, 86, 232) rgb(32, 86, 232) rgba(32, 86, 232, 0.16)', width: '299px' }, dark: { borderColor: /rgb\(38, 57, 111\)$/, width: '299px' } } },
-        { name: 'first employee cell', mockSelector: 'table tbody tr:first-child td:first-child', appSelector: '#employeesTableBody tr:first-child td:first-child', accepted: { light: { fontSize: '13.5px', fontWeight: '600', color: 'rgb(22, 36, 94)', borderColor: 'rgb(22, 36, 94) rgb(22, 36, 94) rgba(32, 86, 232, 0.1)', width: '299px', gap: '10px' }, dark: { fontSize: '13.5px', fontWeight: '600', borderColor: /rgb\(38, 57, 111\)$/, width: '299px', gap: '10px' } } }
+        { name: 'employee header', mockSelector: 'table th:first-child', appSelector: '#a-employees table th:first-child', accepted: { light: { backgroundColor: 'rgb(255, 255, 255)', borderColor: 'rgb(32, 86, 232) rgb(32, 86, 232) rgba(32, 86, 232, 0.16)', width: '290px' }, dark: { borderColor: /rgb\(38, 57, 111\)$/, width: '290px' } } },
+        { name: 'first employee cell', mockSelector: 'table tbody tr:first-child td:first-child', appSelector: '#employeesTableBody tr:first-child td:first-child', accepted: { light: { fontSize: '13.5px', fontWeight: '600', color: 'rgb(22, 36, 94)', borderColor: 'rgb(22, 36, 94) rgb(22, 36, 94) rgba(32, 86, 232, 0.1)', width: '290px', gap: '10px' }, dark: { fontSize: '13.5px', fontWeight: '600', borderColor: /rgb\(38, 57, 111\)$/, width: '290px', gap: '10px' } } }
       ]
     }
   ],
@@ -318,7 +318,7 @@ export const PARITY_MAP = {
       mockContainerSelector: 'main',
       appContainerSelector: '#a-invoices',
       // Issue 12 (owner decision 2026-10-19): the app keeps its grouped Generated docs table (Name / Doc # / Expand All, Preview); the mock's flat list with Download is not built
-      keptLabels: ['Download', 'Action', 'Amount', 'Doc #', 'Document', 'Expand All', 'INV-2026-001', 'Name', 'October 2026', 'Preview'],
+      keptLabels: ['Download', 'Action', 'Amount', 'Details', 'Doc #', 'Document', 'Expand All', 'INV-2026-001', 'Name', 'October 2026', 'Preview'],
       setup: async (page) => {
         await showAdminSection(page, 'a-invoices', '#a-invoices');
         await page.evaluate(async () => {
@@ -327,7 +327,7 @@ export const PARITY_MAP = {
         await page.locator('#invoiceResultsBody tr').first().waitFor({ state: 'visible' });
       },
       pairs: [
-        { name: 'salary docs results table', mockSelector: 'main > section:first-of-type', appSelector: '#a-invoices .card:has(#invoiceResultsBody)', accepted: { light: { fontSize: '16px', color: 'rgb(20, 30, 48)', borderColor: 'rgba(32, 86, 232, 0.12)', height: '405px' }, dark: { fontSize: '16px', height: '405px' } } },
+        { name: 'salary docs results table', mockSelector: 'main > section:first-of-type', appSelector: '#a-invoices .card:has(#invoiceResultsBody)', accepted: { light: { fontSize: '16px', color: 'rgb(20, 30, 48)', borderColor: 'rgba(32, 86, 232, 0.12)', height: '347px' }, dark: { fontSize: '16px', height: '347px' } } },
         { name: 'filter pill all', mockSelector: 'div[role="group"] button:first-child', appSelector: '#invFilterAllBtn', props: ['height', 'borderRadius', 'fontWeight'] },
         { name: 'generate action button', mockSelector: 'table tbody tr:first-child td:last-child a', appSelector: '#invoiceResultsBody tr:first-child td:last-child .btn', props: ['height', 'borderRadius', 'fontWeight'] }
       ]

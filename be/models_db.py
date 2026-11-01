@@ -14,10 +14,12 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Boolean,
+    text,
 )
 from sqlalchemy.orm import relationship
 
 from db import Base
+from finance.money import Money, Rate
 
 
 class UserDB(Base):
@@ -50,25 +52,17 @@ from finance.models import (  # noqa: E402, F401
     BillDB,
     BillLineDB,
     FinanceBankAccountDB,
-    BankAccountDB,
     LedgerTransactionDB,
-    FinanceLedgerTransactionDB,
     PaymentDB,
     SubscriptionDB,
     PayrollRunDB,
     PayrollLineDB,
     FinanceAttentionReviewDB,
-    AttentionReviewDB,
     FinanceSavedReportViewDB,
-    SavedReportViewDB,
     StatutoryObligationDB,
-    FinanceStatutoryObligationDB,
     EmployeeCompensationPlanDB,
-    FinanceEmployeeCompensationPlanDB,
     PayrollSettingsDB,
-    FinancePayrollSettingsDB,
     PayrollTaxSettingsDB,
-    FinancePayrollTaxSettingsDB,
 )
 
 
@@ -78,15 +72,18 @@ class EmployeeDB(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(255), nullable=False)
     email = Column(String(255), unique=True, nullable=False, index=True)
-    role = Column(String(50), default="employee")
     dept = Column(String(100), default="")
     job_role = Column(String(100), default="")
     # Pay is not stored here: it is derived from the compensation plan (D-046, finance/current_pay.py).
     join_date = Column(String(20), default="")
     status = Column(String(50), default="Active")
+    # Archived state: the employee left or is set aside; their records stay. NULL = not archived. The API reports
+    # status "Archived" while this is set and the saved status above comes back when it is cleared.
+    archived_at = Column(DateTime, nullable=True)
+    archived_by = Column(String(255), nullable=True)
+    # Last day of employment (YYYY-MM-DD), entered when archiving; archived_at is only when the record was archived
+    left_date = Column(String(20), nullable=True)
     vac_total = Column(Integer, default=21)
-    vac_used = Column(Integer, default=0)
-    next_raise = Column(String(20), default="")
     employment_state = Column(String(50), default="Full-Time")
     invoice_id = Column(String(20), default="")
     address_line_1 = Column(String(255), default="")
@@ -108,13 +105,10 @@ class EmployeeDB(Base):
     requests = relationship("RequestDB", back_populates="employee", cascade="all, delete-orphan")
     vacations = relationship("VacationHistoryDB", back_populates="employee", cascade="all, delete-orphan")
     salary_payment_docs = relationship("SalaryPaymentDocDB", back_populates="employee", cascade="all, delete-orphan")
-    compensation_plans = relationship("EmployeeCompensationPlanDB", back_populates="employee", cascade="all, delete-orphan")
-    social_insurance = relationship("EmployeeSocialInsuranceDB", back_populates="employee", cascade="all, delete-orphan")
-    tax_methods = relationship("EmployeeTaxMethodDB", back_populates="employee", cascade="all, delete-orphan")
-
-    @property
-    def invoices(self):
-        return self.salary_payment_docs
+    # Pay history is finance data: no ORM delete cascade, the database (RESTRICT) refuses to delete the employee
+    compensation_plans = relationship("EmployeeCompensationPlanDB", back_populates="employee", cascade="save-update, merge", passive_deletes="all")
+    social_insurance = relationship("EmployeeSocialInsuranceDB", back_populates="employee", cascade="save-update, merge", passive_deletes="all")
+    tax_methods = relationship("EmployeeTaxMethodDB", back_populates="employee", cascade="save-update, merge", passive_deletes="all")
 
 
 
@@ -135,7 +129,7 @@ class EmployeeBankAccountDB(Base):
     __tablename__ = "employee_bank_accounts"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), unique=True, nullable=False, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), unique=True, nullable=False)  # the unique constraint is the index
     bank_name = Column(String(255), nullable=False)
     iban = Column(String(100), nullable=False)
     swift_code = Column(String(50), default="")
@@ -167,8 +161,6 @@ class EmployeeDocumentDB(Base):
     name = Column(String(255), nullable=False)
     file_type = Column(String(50), nullable=False)
     drive_file_id = Column(String(255), nullable=False)
-    view_url = Column(Text, default="")
-    download_url = Column(Text, default="")
     uploaded_by = Column(String(255), default="")
     uploaded_at = Column(String(50), default="")
 
@@ -183,8 +175,6 @@ class CompanyDocumentDB(Base):
     file_type = Column(String(50), nullable=False)
     category = Column(String(100), default="General")
     drive_file_id = Column(String(255), nullable=False)
-    view_url = Column(Text, default="")
-    download_url = Column(Text, default="")
     uploaded_by = Column(String(255), default="")
     uploaded_at = Column(String(50), default="")
 
@@ -194,7 +184,7 @@ class InsuranceCategoryDB(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(100), unique=True, nullable=False, index=True)
-    annual_limit = Column(Float, default=0.0)
+    annual_limit = Column(Money, default=0.0)
 
 
 class InsuranceClaimDB(Base):
@@ -205,7 +195,7 @@ class InsuranceClaimDB(Base):
     employee_name = Column(String(255), default="")
     category = Column(String(100), nullable=False)
     provider = Column(String(255), default="")
-    amount = Column(Float, default=0.0)
+    amount = Column(Money, default=0.0)
     date = Column(String(20), nullable=False)
     status = Column(String(50), default="Pending", index=True)
     document_url = Column(Text, default="")
@@ -259,7 +249,7 @@ class SalaryPaymentDocDB(Base):
     payment_year = Column(Integer, nullable=False, index=True)
     payment_month = Column(Integer, nullable=False, index=True)
     invoice_date = Column(String(20), default="")
-    amount_usd = Column(Float, default=0.0)
+    amount_usd = Column(Money, default=0.0)
     currency = Column(String(10), default="USD")
     document_name = Column(String(255), default="")
     drive_file_id = Column(String(255), default="")
@@ -274,10 +264,9 @@ class SalaryPaymentDocDB(Base):
 
     __table_args__ = (
         Index("ix_salary_payment_docs_emp_period", "employee_id", "payment_year", "payment_month"),
+        Index("uq_salary_payment_docs_generated", "employee_id", "payment_year", "payment_month", unique=True,
+              sqlite_where=text("status = 'generated'"), postgresql_where=text("status = 'generated'")),
     )
-
-# Backward compatibility alias
-InvoiceDB = SalaryPaymentDocDB
 
 
 class AuditLogDB(Base):
@@ -296,9 +285,9 @@ class EmployeeSocialInsuranceDB(Base):
     __tablename__ = "employee_social_insurance"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="RESTRICT"), nullable=False, index=True)
     insured_flag = Column(Boolean, default=False, nullable=False)
-    insured_base = Column(Float, nullable=True)
+    insured_base = Column(Money, nullable=True)
     currency = Column(String(10), default="EGP", nullable=False)
     effective_start_date = Column(String(20), nullable=False, index=True)
     effective_end_date = Column(String(20), nullable=True, index=True)  # NULL when active
@@ -311,6 +300,8 @@ class EmployeeSocialInsuranceDB(Base):
 
     __table_args__ = (
         Index("ix_emp_social_ins_lookup", "employee_id", "effective_end_date"),
+        Index("uq_emp_social_ins_open", "employee_id", unique=True,
+              sqlite_where=text("effective_end_date IS NULL"), postgresql_where=text("effective_end_date IS NULL")),
     )
 
 
@@ -318,9 +309,9 @@ class EmployeeTaxMethodDB(Base):
     __tablename__ = "employee_tax_method"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="RESTRICT"), nullable=False, index=True)
     method = Column(String(20), default="progressive", nullable=False)  # progressive / flat
-    flat_rate = Column(Float, nullable=True)  # fraction (0 < rate <= 1); only for flat
+    flat_rate = Column(Rate, nullable=True)  # fraction (0 < rate <= 1); only for flat
     effective_start_date = Column(String(20), nullable=False, index=True)
     effective_end_date = Column(String(20), nullable=True, index=True)  # NULL when active
     notes = Column(Text, default="", nullable=False)
@@ -332,5 +323,11 @@ class EmployeeTaxMethodDB(Base):
 
     __table_args__ = (
         Index("ix_emp_tax_method_lookup", "employee_id", "effective_end_date"),
+        Index("uq_emp_tax_method_open", "employee_id", unique=True,
+              sqlite_where=text("effective_end_date IS NULL"), postgresql_where=text("effective_end_date IS NULL")),
     )
 
+
+# Every YYYY-MM-DD text column is also checked by the database (finance/date_checks.py)
+from finance.date_checks import attach_date_checks  # noqa: E402
+attach_date_checks(Base.metadata)

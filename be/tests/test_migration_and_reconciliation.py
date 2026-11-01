@@ -82,13 +82,18 @@ def test_backfill_dry_run_and_domain_filter(fake_sheets_client):
     with get_db_context() as db:
         assert db.query(EmployeeDB).count() == 0
 
-    # 2. Backfill only bank domain (without employees)
+    # 2. Backfill only bank domain (without employees). The bank row needs its employee to exist (foreign key),
+    # so employee 1 is created by hand; the backfill itself must add none.
+    from conftest import ensure_employee
+    with get_db_context() as db:
+        ensure_employee(db, 1)
+        db.commit()
     stats = backfill_all(client=fake_sheets_client, domain="bank", dry_run=False)
     assert stats["bank_accounts"] == 1
     assert stats["employees"] == 0
     with get_db_context() as db:
         assert db.query(EmployeeBankAccountDB).count() == 1
-        assert db.query(EmployeeDB).count() == 0
+        assert db.query(EmployeeDB).count() == 1
 
 
 def test_backfill_and_reconciliation_full(fake_sheets_client):

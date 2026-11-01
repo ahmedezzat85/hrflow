@@ -16,11 +16,21 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     UniqueConstraint,
+    CheckConstraint,
     text,
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy import func, select
+from sqlalchemy.orm import column_property, relationship
 
 from db import Base
+from finance.bill_status import BILL_STATUSES
+from finance.invoice_status import INVOICE_STATUSES
+from finance.money import Money, Quantity, Rate
+
+
+def _one_of(column: str, values) -> str:
+    """CHECK expression: the column holds one of the listed values (tests/test_value_checks.py keeps these in step)."""
+    return f"{column} IN ({', '.join(repr(v) for v in values)})"
 
 
 class CustomerDB(Base):
@@ -39,7 +49,7 @@ class CustomerDB(Base):
     owner = Column(String(255), nullable=True)
     notes = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
-    withholding_tax_rate = Column(Float, default=0.0, nullable=False, server_default="0")  # percent; default for new invoices (D-024)
+    withholding_tax_rate = Column(Rate, default=0.0, nullable=False, server_default="0")  # percent; default for new invoices (D-024)
     is_intercompany = Column(Boolean, default=False, nullable=False, server_default="0")  # the overseas entity or another group company (D-028)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -63,7 +73,7 @@ class VendorDB(Base):
     category = Column(String(100), default="General")
     default_department = Column(String(100), nullable=True)
     tax_treatment = Column(String(50), default="standard", nullable=True)
-    withholding_tax_rate = Column(Float, default=0.0, nullable=True)
+    withholding_tax_rate = Column(Rate, default=0.0, nullable=True)
     onboarding_status = Column(String(50), default="active", nullable=False)
     default_category_id = Column(Integer, ForeignKey("finance_transaction_categories.id", ondelete="SET NULL"), nullable=True, index=True)
     notes = Column(Text, nullable=True)
@@ -110,11 +120,11 @@ class SalesInvoiceDB(Base):
     due_date = Column(String(20), nullable=False)
     status = Column(String(30), default="draft", nullable=False, index=True)  # draft/sent/partially_paid/paid/void (D-022); overdue is a flag
     currency = Column(String(10), default="USD", nullable=False)
-    subtotal = Column(Float, default=0.0)
-    vat_rate = Column(Float, default=0.0, nullable=False, server_default="0")  # percent (D-023); tax_amount = subtotal * rate / 100
-    withholding_tax_rate = Column(Float, default=0.0, nullable=False, server_default="0")  # percent of the net subtotal (D-024)
-    tax_amount = Column(Float, default=0.0)
-    total = Column(Float, default=0.0)
+    subtotal = Column(Money, default=0.0)
+    vat_rate = Column(Rate, default=0.0, nullable=False, server_default="0")  # percent (D-023); tax_amount = subtotal * rate / 100
+    withholding_tax_rate = Column(Rate, default=0.0, nullable=False, server_default="0")  # percent of the net subtotal (D-024)
+    tax_amount = Column(Money, default=0.0)
+    total = Column(Money, default=0.0)
     expected_bank_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True, index=True)
     revenue_channel = Column(String(50), nullable=True, index=True)  # local_egp | overseas_usd | cash | intercompany_transfer_us | other
     notes = Column(Text, nullable=True)
@@ -123,6 +133,10 @@ class SalesInvoiceDB(Base):
     voided_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     import_batch_id = Column(Integer, ForeignKey("finance_import_batches.id", ondelete="SET NULL"), nullable=True, index=True)  # D-033
+
+    __table_args__ = (
+        CheckConstraint(_one_of("status", INVOICE_STATUSES), name="ck_finance_sales_invoices_status"),
+    )
 
     customer = relationship("CustomerDB", back_populates="invoices")
     expected_bank_account = relationship("FinanceBankAccountDB", foreign_keys=[expected_bank_account_id])
@@ -140,7 +154,7 @@ class ProductDB(Base):
     code = Column(String(50), nullable=False, unique=True, index=True)
     product_type = Column(String(40), default="other", nullable=False)  # saas_subscription | license | implementation_service | support | other
     default_currency = Column(String(10), default="USD", nullable=False)
-    default_price = Column(Float, nullable=True)
+    default_price = Column(Money, nullable=True)
     default_receiving_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -168,12 +182,15 @@ class SalesInvoiceLineDB(Base):
     invoice_id = Column(Integer, ForeignKey("finance_sales_invoices.id", ondelete="CASCADE"), nullable=False, index=True)
     product_id = Column(Integer, ForeignKey("finance_products.id", ondelete="SET NULL"), nullable=True, index=True)
     description = Column(String(255), nullable=False)
-    quantity = Column(Float, default=1.0)
-    unit_price = Column(Float, default=0.0)
-    line_total = Column(Float, default=0.0)
+    quantity = Column(Quantity, default=1.0)
+    unit_price = Column(Money, default=0.0)
+    line_total = Column(Money, default=0.0)
 
     invoice = relationship("SalesInvoiceDB", back_populates="lines")
     product = relationship("ProductDB")
+
+
+_NO_SCAN_NAME = "bill_document"   # stored when a scan has a reference but no name (file_name cannot be empty); read back as no name
 
 
 class BillDB(Base):
@@ -184,14 +201,15 @@ class BillDB(Base):
     vendor_id = Column(Integer, ForeignKey("finance_vendors.id", ondelete="RESTRICT"), nullable=True, index=True)
     bill_number = Column(String(50), nullable=True, index=True)
     category_id = Column(Integer, ForeignKey("finance_transaction_categories.id", ondelete="SET NULL"), nullable=True, index=True)
-    category = Column(String(100), default="Operating Expense")
+    # Raw category text, kept only while no transaction category matched it (data-quality report); category_id is the category
+    imported_category = Column(String(100), nullable=True)
     issue_date = Column(String(20), nullable=True)
     due_date = Column(String(20), nullable=True)
     status = Column(String(30), default="draft", nullable=False, index=True)  # draft | pending_approval | rejected | approved | scheduled | partially_paid | paid | void
     currency = Column(String(10), default="USD", nullable=False)
-    subtotal = Column(Float, default=0.0)
-    tax_amount = Column(Float, default=0.0)
-    total = Column(Float, default=0.0)
+    subtotal = Column(Money, default=0.0)
+    tax_amount = Column(Money, default=0.0)
+    total = Column(Money, default=0.0)
     notes = Column(Text, nullable=True)
     capture_source = Column(String(20), default="manual", nullable=False)  # manual | upload | ocr | import (D-033)
     import_batch_id = Column(Integer, ForeignKey("finance_import_batches.id", ondelete="SET NULL"), nullable=True, index=True)
@@ -199,8 +217,6 @@ class BillDB(Base):
     missing_fields = Column(Text, nullable=True)
     department = Column(String(100), nullable=True)
     legal_entity = Column(String(100), default="Voyance Health Inc", nullable=True)
-    attachment_url = Column(String(500), nullable=True)
-    attachment_name = Column(String(255), nullable=True)
     file_fingerprint = Column(String(128), nullable=True, index=True)
     is_reviewed = Column(Boolean, default=True, nullable=False)
     is_duplicate_override = Column(Boolean, default=False, nullable=False)
@@ -212,7 +228,6 @@ class BillDB(Base):
     approved_at = Column(DateTime, nullable=True)
     approval_comment = Column(Text, nullable=True)
     scheduled_payment_date = Column(String(20), nullable=True)
-    amount_paid = Column(Float, default=0.0, nullable=False)
     vendor_to_confirm = Column(Boolean, default=False, nullable=False)  # upload could not match the vendor with confidence
     suggested_vendor_name = Column(String(255), nullable=True)  # vendor name read from the document; never auto-created
     void_reason = Column(Text, nullable=True)
@@ -220,10 +235,57 @@ class BillDB(Base):
     voided_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    __table_args__ = (
+        # The service refuses a number already in use when a bill leaves Draft, unless it is saved with the duplicate
+        # override; a Draft may hold any number (D-019), so drafts are outside the index
+        Index("uq_bills_number", "bill_number", unique=True,
+              sqlite_where=text("bill_number IS NOT NULL AND is_duplicate_override = 0 AND status <> 'draft'"),
+              postgresql_where=text("bill_number IS NOT NULL AND is_duplicate_override = false AND status <> 'draft'")),
+        CheckConstraint(_one_of("status", BILL_STATUSES), name="ck_finance_bills_status"),
+    )
+
     vendor = relationship("VendorDB", back_populates="bills")
     transaction_category = relationship("TransactionCategoryDB", foreign_keys=[category_id])
     lines = relationship("BillLineDB", back_populates="bill", cascade="all, delete-orphan")
     payments = relationship("PaymentDB", back_populates="bill", foreign_keys="PaymentDB.related_bill_id")
+    # The scanned document: one row of finance_attachments (like cheques, invoices and statements); lazy="selectin" so a list of bills is not N+1
+    scan = relationship("FinanceAttachmentDB", back_populates="bill", uselist=False, lazy="selectin", cascade="all, delete-orphan", passive_deletes=True)
+
+    @property
+    def attachment_url(self):
+        """Storage reference of the scan; None when the bill has none. The API field keeps its name."""
+        return self.scan.storage_ref if self.scan is not None else None
+
+    @attachment_url.setter
+    def attachment_url(self, value):
+        self._write_scan(self.attachment_name, value)
+
+    @property
+    def attachment_name(self):
+        if self.scan is None or self.scan.file_name == _NO_SCAN_NAME:
+            return None
+        return self.scan.file_name
+
+    @attachment_name.setter
+    def attachment_name(self, value):
+        self._write_scan(value, self.attachment_url)
+
+    def _write_scan(self, name, url):
+        """The scan row exists while there is a name or a reference (an upload being processed has a name and an empty reference)."""
+        if not name and not url:
+            self.scan = None
+            return
+        if self.scan is None:
+            self.scan = FinanceAttachmentDB()
+        self.scan.file_name = name or _NO_SCAN_NAME
+        self.scan.storage_ref = url or ""
+
+    @property
+    def category(self) -> str:
+        """Display name: the category row when matched, else the imported text, else empty. Read-only."""
+        if self.transaction_category is not None:
+            return self.transaction_category.name
+        return self.imported_category or ""
 
 
 class BillLineDB(Base):
@@ -232,9 +294,9 @@ class BillLineDB(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     bill_id = Column(Integer, ForeignKey("finance_bills.id", ondelete="CASCADE"), nullable=False, index=True)
     description = Column(String(255), nullable=False)
-    quantity = Column(Float, default=1.0)
-    unit_price = Column(Float, default=0.0)
-    line_total = Column(Float, default=0.0)
+    quantity = Column(Quantity, default=1.0)
+    unit_price = Column(Money, default=0.0)
+    line_total = Column(Money, default=0.0)
 
     bill = relationship("BillDB", back_populates="lines")
 
@@ -300,15 +362,19 @@ class FinanceBankAccountDB(Base):
     bank_name = Column(String(100), nullable=True)  # Nullable for cash accounts
     account_number = Column(String(100), nullable=False)
     currency = Column(String(10), default="USD", nullable=False)
-    opening_balance = Column(Float, default=0.0)
+    opening_balance = Column(Money, default=0.0)
     opening_balance_date = Column(String(20), nullable=True)  # YYYY-MM-DD
-    current_balance = Column(Float, default=0.0)
+    current_balance = Column(Money, default=0.0)
     account_type = Column(String(20), default="bank", nullable=False)  # bank | cash
     country = Column(String(100), default="Egypt", nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     book_id = Column(Integer, ForeignKey("finance_books.id", ondelete="RESTRICT"), nullable=False, index=True, default=_default_book_id)  # D-028; defaults to the default (Local) book
     visibility = Column(String(20), default="full", nullable=False, server_default="full")  # full | partial (D-028)
+
+    __table_args__ = (
+        CheckConstraint(_one_of("account_type", ("bank", "cash")), name="ck_finance_bank_accounts_type"),
+    )
 
     book = relationship("FinanceBookDB")
     payments = relationship("PaymentDB", back_populates="bank_account")
@@ -326,17 +392,13 @@ class FinanceBankAccountDB(Base):
     )
 
 
-# Alias for clean domain referencing
-BankAccountDB = FinanceBankAccountDB
-
-
 class LedgerTransactionDB(Base):
     __tablename__ = "finance_ledger_transactions"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="RESTRICT"), nullable=False, index=True)
     date = Column(String(20), nullable=False, index=True)  # YYYY-MM-DD
-    amount = Column(Float, nullable=False)
+    amount = Column(Money, nullable=False)
     direction = Column(String(20), nullable=False)  # in / out
     currency = Column(String(10), default="USD", nullable=False)
     category_id = Column(Integer, ForeignKey("finance_transaction_categories.id", ondelete="SET NULL"), nullable=True, index=True)
@@ -348,11 +410,11 @@ class LedgerTransactionDB(Base):
     payee_type = Column(String(20), default="none", nullable=True, index=True)  # none | vendor | employee
     payee_id = Column(Integer, nullable=True, index=True)
     payee_name = Column(String(255), nullable=True)
-    tax_amount = Column(Float, default=0.0)
-    base_amount = Column(Float, nullable=True)
+    tax_amount = Column(Money, default=0.0)
+    base_amount = Column(Money, nullable=True)
     reason = Column(Text, nullable=True)
     cheque_number = Column(String(50), nullable=True, index=True)
-    fx_rate = Column(Float, nullable=True)
+    fx_rate = Column(Rate, nullable=True)
     source = Column(String(50), nullable=False, index=True)
     # sources: manual | invoice_payment | bill_payment | transfer | cheque | subscription_charge | statement_import | statutory_remittance
     linked_invoice_id = Column(Integer, ForeignKey("finance_sales_invoices.id", ondelete="SET NULL"), nullable=True, index=True)
@@ -367,11 +429,15 @@ class LedgerTransactionDB(Base):
     revenue_source_id = Column(Integer, ForeignKey("finance_revenue_sources.id", ondelete="SET NULL"), nullable=True, index=True)
     period_start = Column(String(20), nullable=True)  # service period the receipt covers, YYYY-MM-DD
     period_end = Column(String(20), nullable=True)
-    memo_gross_amount = Column(Float, nullable=True)
-    memo_fee_amount = Column(Float, nullable=True)
-    running_balance = Column(Float, default=0.0, nullable=False)
+    memo_gross_amount = Column(Money, nullable=True)
+    memo_fee_amount = Column(Money, nullable=True)
+    running_balance = Column(Money, default=0.0, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(String(255), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint(_one_of("direction", ("in", "out")), name="ck_finance_ledger_direction"),
+    )
 
     account = relationship("FinanceBankAccountDB", foreign_keys=[account_id], back_populates="ledger_transactions")
     category = relationship("TransactionCategoryDB", back_populates="transactions")
@@ -384,10 +450,6 @@ class LedgerTransactionDB(Base):
     destination_cash_account = relationship("FinanceBankAccountDB", foreign_keys=[destination_cash_account_id])
 
 
-# Alias for clean domain referencing
-FinanceLedgerTransactionDB = LedgerTransactionDB
-
-
 class FinanceChequeDB(Base):
     __tablename__ = "finance_cheques"
 
@@ -395,7 +457,7 @@ class FinanceChequeDB(Base):
     cheque_number = Column(String(50), nullable=False)
     account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="RESTRICT"), nullable=False, index=True)
     issue_date = Column(String(20), nullable=False, index=True)  # YYYY-MM-DD
-    amount = Column(Float, nullable=False)
+    amount = Column(Money, nullable=False)
     currency = Column(String(10), default="USD", nullable=False)
     payee = Column(String(255), nullable=False, index=True)
     purpose_type = Column(String(50), default="other", nullable=False, index=True)  # vendor_payment | cash_withdrawal | other
@@ -405,7 +467,6 @@ class FinanceChequeDB(Base):
     posting_policy = Column(String(30), default="at_issue", nullable=False)  # at_issue | at_clearing
     signer_name = Column(String(255), nullable=True)
     authorized_by = Column(String(255), nullable=True)
-    attachment_url = Column(String(500), nullable=True)  # DEPRECATED (D-032, migration 0036): scans live in finance_attachments.cheque_id; no longer written
     exception_reason = Column(Text, nullable=True)
     exception_evidence = Column(String(255), nullable=True)
     replacement_cheque_id = Column(Integer, ForeignKey("finance_cheques.id", ondelete="SET NULL", use_alter=True), nullable=True)
@@ -434,10 +495,6 @@ class FinanceChequeDB(Base):
     attachments = relationship("FinanceAttachmentDB", back_populates="cheque", cascade="all, delete-orphan", passive_deletes=True)
 
 
-# Alias for clean domain referencing
-ChequeDB = FinanceChequeDB
-
-
 class PaymentDB(Base):
     __tablename__ = "finance_payments"
 
@@ -446,8 +503,8 @@ class PaymentDB(Base):
     related_invoice_id = Column(Integer, ForeignKey("finance_sales_invoices.id", ondelete="SET NULL"), nullable=True, index=True)
     related_bill_id = Column(Integer, ForeignKey("finance_bills.id", ondelete="SET NULL"), nullable=True, index=True)
     related_statutory_obligation_id = Column(Integer, ForeignKey("finance_statutory_obligations.id", ondelete="SET NULL"), nullable=True, index=True)
-    amount = Column(Float, nullable=False)
-    withheld_amount = Column(Float, default=0.0, nullable=False, server_default="0")  # customer-withheld tax settled with this receipt; no bank movement (D-024)
+    amount = Column(Money, nullable=False)
+    withheld_amount = Column(Money, default=0.0, nullable=False, server_default="0")  # customer-withheld tax settled with this receipt; no bank movement (D-024)
     currency = Column(String(10), default="USD", nullable=False)
     payment_date = Column(String(20), nullable=False, index=True)  # YYYY-MM-DD
     bank_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="RESTRICT"), nullable=False, index=True)
@@ -457,12 +514,31 @@ class PaymentDB(Base):
     reversed_at = Column(DateTime, nullable=True)
     reversed_by = Column(String(255), nullable=True)
     reversal_reason = Column(Text, nullable=True)
+    # The ledger row this payment posted (one payment, one ledger row); NULL for payments recorded before the link existed
+    ledger_transaction_id = Column(Integer, ForeignKey("finance_ledger_transactions.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    __table_args__ = (
+        Index("uq_finance_payments_ledger_transaction_id", "ledger_transaction_id", unique=True),
+        CheckConstraint(_one_of("direction", ("incoming", "outgoing")), name="ck_finance_payments_direction"),
+    )
+
+    ledger_transaction = relationship("LedgerTransactionDB", foreign_keys=[ledger_transaction_id])
     sales_invoice = relationship("SalesInvoiceDB", back_populates="payments", foreign_keys=[related_invoice_id])
     bill = relationship("BillDB", back_populates="payments", foreign_keys=[related_bill_id])
     bank_account = relationship("FinanceBankAccountDB", back_populates="payments")
     statutory_obligation = relationship("StatutoryObligationDB", back_populates="payments", foreign_keys=[related_statutory_obligation_id])
+
+
+# A bill's paid amount is never stored: it is the sum of its live (not reversed) payments, read in the same query.
+# It is read-only. After adding or reversing a payment in a session, flush and expire it
+# (session.expire(bill, ["amount_paid"])) so the next read re-queries.
+BillDB.amount_paid = column_property(
+    select(func.coalesce(func.sum(PaymentDB.amount), 0.0))
+    .where(PaymentDB.related_bill_id == BillDB.id, PaymentDB.is_reversed == False)  # noqa: E712
+    .correlate_except(PaymentDB)
+    .scalar_subquery()
+)
 
 
 class SubscriptionDB(Base):
@@ -471,7 +547,7 @@ class SubscriptionDB(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     vendor_id = Column(Integer, ForeignKey("finance_vendors.id", ondelete="RESTRICT"), nullable=False, index=True)
     name = Column(String(255), nullable=False)
-    amount = Column(Float, nullable=False)
+    amount = Column(Money, nullable=False)
     currency = Column(String(10), default="USD", nullable=False)
     billing_cycle = Column(String(20), default="monthly")  # monthly/quarterly/yearly
     next_renewal_date = Column(String(20), nullable=False)
@@ -483,7 +559,7 @@ class SubscriptionDB(Base):
     payment_method = Column(String(50), default="card", nullable=True)
     payment_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True)
     seats_count = Column(Integer, nullable=True)
-    monthly_equivalent_amount = Column(Float, nullable=True)
+    monthly_equivalent_amount = Column(Money, nullable=True)
     auto_generate_bill = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -503,18 +579,18 @@ class SubscriptionChargeDB(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     subscription_id = Column(Integer, ForeignKey("finance_subscriptions.id", ondelete="CASCADE"), nullable=False, index=True)
     billing_date = Column(String(20), nullable=False, index=True)  # YYYY-MM-DD
-    amount = Column(Float, nullable=False)
+    amount = Column(Money, nullable=False)
     currency = Column(String(10), default="USD", nullable=False)
     linked_transaction_id = Column(Integer, ForeignKey("finance_ledger_transactions.id", ondelete="SET NULL"), nullable=True, index=True)
     linked_bill_id = Column(Integer, ForeignKey("finance_bills.id", ondelete="SET NULL"), nullable=True, index=True)
-    variance_amount = Column(Float, default=0.0, nullable=False)
+    variance_amount = Column(Money, default=0.0, nullable=False)
     variance_reason = Column(String(255), nullable=True)
     note = Column(Text, default="", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(String(255), nullable=True)
     # Subscriptions v2 (X5, D-031): a generated charge is `expected` until it is settled or skipped
     status = Column(String(20), default="settled", nullable=False, server_default="settled")  # expected | settled | skipped
-    expected_amount = Column(Float, nullable=True)
+    expected_amount = Column(Money, nullable=True)
     proof_status = Column(String(20), default="pending", nullable=False, server_default="pending")  # attached | pending | unavailable
     proof_note = Column(Text, nullable=True)
     settled_at = Column(DateTime, nullable=True)
@@ -542,8 +618,8 @@ class BankStatementImportDB(Base):
     status = Column(String(20), default="needs_review", nullable=False, index=True)  # parsing | needs_review | reconciled
     uploaded_file_ref = Column(String(500), default="", nullable=False)
     file_fingerprint = Column(String(64), nullable=True, index=True)
-    opening_balance = Column(Float, nullable=True)
-    closing_balance = Column(Float, nullable=True)
+    opening_balance = Column(Money, nullable=True)
+    closing_balance = Column(Money, nullable=True)
     encoding = Column(String(20), default="utf-8", nullable=True)
     date_format = Column(String(30), default="auto", nullable=True)
     decimal_separator = Column(String(5), default=".", nullable=True)
@@ -576,7 +652,7 @@ class StatementLineDB(Base):
     row_index = Column(Integer, nullable=True)
     line_fingerprint = Column(String(64), nullable=True, index=True)
     raw_date = Column(String(20), nullable=False, index=True)  # YYYY-MM-DD
-    raw_amount = Column(Float, nullable=False)
+    raw_amount = Column(Money, nullable=False)
     direction = Column(String(10), default="out", nullable=False)  # in | out
     raw_description = Column(String(500), default="", nullable=False)
     raw_reference = Column(String(100), default="", nullable=True)
@@ -630,8 +706,8 @@ class ReconciliationRuleDB(Base):
     # Conditions
     description_pattern = Column(String(255), nullable=True)
     direction = Column(String(10), nullable=True)  # in | out
-    min_amount = Column(Float, nullable=True)
-    max_amount = Column(Float, nullable=True)
+    min_amount = Column(Money, nullable=True)
+    max_amount = Column(Money, nullable=True)
     counterparty = Column(String(255), nullable=True)
     
     # Action
@@ -655,13 +731,6 @@ class ReconciliationRuleDB(Base):
     statement_lines = relationship("StatementLineDB", back_populates="applied_rule")
 
 
-# Aliases for statement models
-FinanceBankStatementImportDB = BankStatementImportDB
-FinanceStatementLineDB = StatementLineDB
-FinanceStatementMappingTemplateDB = StatementMappingTemplateDB
-FinanceReconciliationRuleDB = ReconciliationRuleDB
-
-
 class AccountBalanceCheckpointDB(Base):
     """Owner-entered balance of an account on a date (D-028). Never posts an adjustment."""
     __tablename__ = "finance_account_balance_checkpoints"
@@ -669,7 +738,7 @@ class AccountBalanceCheckpointDB(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="CASCADE"), nullable=False, index=True)
     date = Column(String(20), nullable=False, index=True)  # YYYY-MM-DD
-    balance = Column(Float, nullable=False)
+    balance = Column(Money, nullable=False)
     note = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(String(255), nullable=True)
@@ -686,7 +755,7 @@ class FinanceAccountYearOpeningDB(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="CASCADE"), nullable=False, index=True)
     fiscal_year = Column(Integer, nullable=False)
-    opening_balance = Column(Float, nullable=False)
+    opening_balance = Column(Money, nullable=False)
     note = Column(Text, default="", nullable=False)
     created_by = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -721,6 +790,7 @@ class FinanceAttachmentDB(Base):
     cheque_id = Column(Integer, ForeignKey("finance_cheques.id", ondelete="CASCADE"), nullable=True, index=True)
     checkpoint_id = Column(Integer, ForeignKey("finance_account_balance_checkpoints.id", ondelete="CASCADE"), nullable=True, index=True)
     sales_invoice_id = Column(Integer, ForeignKey("finance_sales_invoices.id", ondelete="CASCADE"), nullable=True, index=True)  # I4 (D-033): invoice scans
+    bill_id = Column(Integer, ForeignKey("finance_bills.id", ondelete="CASCADE"), nullable=True, index=True)  # the bill's scanned document (one per bill)
     file_name = Column(String(255), nullable=False)
     file_size = Column(Integer, default=0, nullable=False)
     mime_type = Column(String(100), default="application/octet-stream", nullable=False)
@@ -728,12 +798,23 @@ class FinanceAttachmentDB(Base):
     uploaded_at = Column(DateTime, default=datetime.utcnow)
     uploaded_by = Column(String(255), nullable=True)
 
+    __table_args__ = (
+        CheckConstraint(
+            "(CASE WHEN subscription_charge_id IS NULL THEN 0 ELSE 1 END + CASE WHEN statement_import_id IS NULL THEN 0 ELSE 1 END"
+            " + CASE WHEN ledger_transaction_id IS NULL THEN 0 ELSE 1 END + CASE WHEN cheque_id IS NULL THEN 0 ELSE 1 END"
+            " + CASE WHEN checkpoint_id IS NULL THEN 0 ELSE 1 END + CASE WHEN sales_invoice_id IS NULL THEN 0 ELSE 1 END"
+            " + CASE WHEN bill_id IS NULL THEN 0 ELSE 1 END) = 1",
+            name="ck_finance_attachments_one_parent",
+        ),
+        Index("uq_finance_attachments_bill_id", "bill_id", unique=True),
+    )
+
     subscription_charge = relationship("SubscriptionChargeDB", back_populates="attachments")
     statement_import = relationship("BankStatementImportDB", back_populates="attachments")
     ledger_transaction = relationship("LedgerTransactionDB")
     cheque = relationship("FinanceChequeDB", back_populates="attachments")
     sales_invoice = relationship("SalesInvoiceDB", back_populates="attachments")
-
+    bill = relationship("BillDB", back_populates="scan")
 
 
 class PayrollRunDB(Base):
@@ -744,14 +825,13 @@ class PayrollRunDB(Base):
     period_start = Column(String(20), nullable=False)
     period_end = Column(String(20), nullable=False)
     status = Column(String(30), default="draft", nullable=False, index=True)  # draft/approved/finalized/paid/partially_paid/cancelled
-    total_gross = Column(Float, default=0.0)
-    total_tax = Column(Float, default=0.0)
-    total_deductions = Column(Float, default=0.0)
-    total_net = Column(Float, default=0.0)
-    total_employer_cost = Column(Float, default=0.0)
+    total_gross = Column(Money, default=0.0)
+    total_tax = Column(Money, default=0.0)
+    total_deductions = Column(Money, default=0.0)
+    total_net = Column(Money, default=0.0)
+    total_employer_cost = Column(Money, default=0.0)
     headcount = Column(Integer, default=0)
     currency = Column(String(10), default="USD")
-    bank_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True, index=True)
     external_funding_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True)
     internal_funding_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -770,18 +850,22 @@ class PayrollRunDB(Base):
     source_version = Column(String(100), nullable=True)
     journal_transaction_id = Column(Integer, ForeignKey("finance_ledger_transactions.id", ondelete="SET NULL"), nullable=True)
     fx_rate_source = Column(String(30), default="first_of_month", nullable=True)  # first_of_month / payment_date
-    fx_rate_value = Column(Float, nullable=True)
+    fx_rate_value = Column(Rate, nullable=True)
     liabilities_summary_json = Column(Text, default="{}")
     exceptions_json = Column(Text, default="[]")
     variance_summary_json = Column(Text, default="{}")
-    total_employee_tax_egp = Column(Float, default=0.0, nullable=True)
-    total_social_insurance_egp = Column(Float, default=0.0, nullable=True)
-    total_flat_tax_egp = Column(Float, default=0.0, nullable=True)  # breakdown of total_employee_tax_egp, not an addition
+    total_employee_tax_egp = Column(Money, default=0.0, nullable=True)
+    total_social_insurance_egp = Column(Money, default=0.0, nullable=True)
+    total_flat_tax_egp = Column(Money, default=0.0, nullable=True)  # breakdown of total_employee_tax_egp, not an addition
     tax_settings_version_id = Column(Integer, ForeignKey("finance_payroll_tax_settings.id", ondelete="SET NULL"), nullable=True)
+
+    __table_args__ = (
+        Index("uq_payroll_runs_period_active", "period_label", unique=True,
+              sqlite_where=text("status <> 'cancelled'"), postgresql_where=text("status <> 'cancelled'")),
+    )
 
     lines = relationship("PayrollLineDB", back_populates="payroll_run", cascade="all, delete-orphan")
     adjustments = relationship("PayrollAdjustmentDB", back_populates="payroll_run", cascade="all, delete-orphan")
-    bank_account = relationship("FinanceBankAccountDB", foreign_keys=[bank_account_id])
     external_funding_account = relationship("FinanceBankAccountDB", foreign_keys=[external_funding_account_id])
     internal_funding_account = relationship("FinanceBankAccountDB", foreign_keys=[internal_funding_account_id])
     journal_transaction = relationship("LedgerTransactionDB", foreign_keys=[journal_transaction_id])
@@ -792,12 +876,12 @@ class PayrollAdjustmentDB(Base):
     __tablename__ = "finance_payroll_adjustments"
 
     id = Column(String(50), primary_key=True)  # e.g. "adj_xxx"
-    employee_id = Column(Integer, nullable=False, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="RESTRICT"), nullable=False, index=True)
     preview_id = Column(String(50), nullable=True, index=True)
     payroll_run_id = Column(Integer, ForeignKey("finance_payroll_runs.id", ondelete="CASCADE"), nullable=True, index=True)
     type = Column(String(30), nullable=False)  # COMMISSION | BONUS
     direction = Column(String(20), default="ADDITION", nullable=False)  # ADDITION
-    amount = Column(Float, nullable=False)  # strictly positive
+    amount = Column(Money, nullable=False)  # strictly positive
     currency = Column(String(10), default="USD", nullable=False)
     payment_source = Column(String(10), default="INT", nullable=False)  # INT | EXT
     effective_period = Column(String(20), nullable=False)  # YYYY-MM
@@ -823,36 +907,33 @@ class PayrollLineDB(Base):
     compensation_type = Column(String(50), default="internal_usd_cash", nullable=True)  # external_usd / internal_usd_cash / commission_sales / commission_support / bonus
     is_taxable_local = Column(Boolean, default=True, nullable=True)
     is_insurable = Column(Boolean, default=True, nullable=True)
-    base_salary = Column(Float, default=0.0)
-    allowances_total = Column(Float, default=0.0)
-    deductions_total = Column(Float, default=0.0)
-    tax_amount = Column(Float, default=0.0)
-    net_pay = Column(Float, default=0.0)
-    employer_cost_extra = Column(Float, default=0.0)
-    insured_base_snapshot = Column(Float, default=0.0, nullable=True)
-    employee_rate_snapshot = Column(Float, default=0.0, nullable=True)
-    employer_rate_snapshot = Column(Float, default=0.0, nullable=True)
+    base_salary = Column(Money, default=0.0)
+    allowances_total = Column(Money, default=0.0)
+    deductions_total = Column(Money, default=0.0)
+    net_pay = Column(Money, default=0.0)
+    employer_cost_extra = Column(Money, default=0.0)
+    insured_base_snapshot = Column(Money, default=0.0, nullable=True)
+    employee_rate_snapshot = Column(Rate, default=0.0, nullable=True)
+    employer_rate_snapshot = Column(Rate, default=0.0, nullable=True)
     salary_basis_snapshot = Column(String(20), nullable=True)
-    configured_internal_salary_usd_snapshot = Column(Float, default=0.0, nullable=True)
-    insured_base_egp_snapshot = Column(Float, default=0.0, nullable=True)
-    fx_rate_snapshot = Column(Float, nullable=True)
-    base_gross_egp = Column(Float, default=0.0, nullable=True)
-    variable_gross_egp = Column(Float, default=0.0, nullable=True)
-    employee_social_insurance_egp = Column(Float, default=0.0, nullable=True)
-    employer_social_insurance_egp = Column(Float, default=0.0, nullable=True)
-    total_social_insurance_egp = Column(Float, default=0.0, nullable=True)
-    employee_tax_egp = Column(Float, default=0.0, nullable=True)
-    employee_social_insurance_usd_equivalent = Column(Float, default=0.0, nullable=True)
-    employee_tax_usd_equivalent = Column(Float, default=0.0, nullable=True)
-    final_internal_net_egp = Column(Float, default=0.0, nullable=True)
-    final_internal_payment_usd = Column(Float, nullable=True)
-    taxable_gross_egp = Column(Float, default=0.0, nullable=True)
-    tax_employee_si_egp = Column(Float, default=0.0, nullable=True)
-    annual_taxed_salary_egp = Column(Float, default=0.0, nullable=True)
-    annual_tax_egp = Column(Float, default=0.0, nullable=True)
-    tax_settings_version_id = Column(Integer, nullable=True)
+    configured_internal_salary_usd_snapshot = Column(Money, default=0.0, nullable=True)
+    insured_base_egp_snapshot = Column(Money, default=0.0, nullable=True)
+    fx_rate_snapshot = Column(Rate, nullable=True)
+    base_gross_egp = Column(Money, default=0.0, nullable=True)
+    variable_gross_egp = Column(Money, default=0.0, nullable=True)
+    employee_social_insurance_egp = Column(Money, default=0.0, nullable=True)
+    employer_social_insurance_egp = Column(Money, default=0.0, nullable=True)
+    employee_tax_egp = Column(Money, default=0.0, nullable=True)
+    employee_social_insurance_usd_equivalent = Column(Money, default=0.0, nullable=True)
+    employee_tax_usd_equivalent = Column(Money, default=0.0, nullable=True)
+    final_internal_net_egp = Column(Money, default=0.0, nullable=True)
+    final_internal_payment_usd = Column(Money, nullable=True)
+    taxable_gross_egp = Column(Money, default=0.0, nullable=True)
+    annual_taxed_salary_egp = Column(Money, default=0.0, nullable=True)
+    annual_tax_egp = Column(Money, default=0.0, nullable=True)
+    tax_settings_version_id = Column(Integer, ForeignKey("finance_payroll_tax_settings.id", ondelete="SET NULL"), nullable=True)
     tax_method_snapshot = Column(String(20), nullable=True)  # NULL = progressive (legacy rows)
-    tax_rate_snapshot = Column(Float, nullable=True)
+    tax_rate_snapshot = Column(Rate, nullable=True)
     bank_name = Column(String(100), nullable=True)
     bank_account_masked = Column(String(50), nullable=True)
     payment_status = Column(String(30), default="pending")  # pending / paid / failed
@@ -862,9 +943,34 @@ class PayrollLineDB(Base):
     paid_at = Column(DateTime, nullable=True)
     linked_payment_id = Column(Integer, ForeignKey("finance_payments.id", ondelete="SET NULL"), nullable=True, index=True)
 
+    __table_args__ = (
+        # The two base pay lines (plan components) appear once per employee and run; commission and bonus lines may
+        # repeat on purpose (several deals or bonuses in one run, FUX-418)
+        Index("uq_payroll_lines_base_pay", "payroll_run_id", "employee_id", "compensation_type", unique=True,
+              sqlite_where=text("compensation_type IN ('external_usd', 'internal_usd_cash')"),
+              postgresql_where=text("compensation_type IN ('external_usd', 'internal_usd_cash')")),
+    )
+
     payroll_run = relationship("PayrollRunDB", back_populates="lines")
     employee = relationship("EmployeeDB")
     linked_payment = relationship("PaymentDB", foreign_keys=[linked_payment_id])
+
+    @property
+    def tax_amount(self):
+        """The employee's income tax on this line in USD (employee_tax_usd_equivalent). Derived: never stored a second time."""
+        return float(self.employee_tax_usd_equivalent or 0.0)
+
+    @property
+    def total_social_insurance_egp(self):
+        """Employee plus employer social insurance (EGP). Derived: never stored a second time."""
+        if self.employee_social_insurance_egp is None and self.employer_social_insurance_egp is None:
+            return None
+        return round(float(self.employee_social_insurance_egp or 0.0) + float(self.employer_social_insurance_egp or 0.0), 2)
+
+    @property
+    def tax_employee_si_egp(self):
+        """The employee's social insurance as it enters the tax base: the same amount as employee_social_insurance_egp."""
+        return self.employee_social_insurance_egp
 
 
 class AccountTransferDB(Base):
@@ -874,16 +980,16 @@ class AccountTransferDB(Base):
     from_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True, index=True)
     to_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True, index=True)
     date = Column(String(20), nullable=False, index=True)  # YYYY-MM-DD
-    from_amount = Column(Float, nullable=False)
+    from_amount = Column(Money, nullable=False)
     from_currency = Column(String(10), default="USD", nullable=False)
-    to_amount = Column(Float, nullable=False)
+    to_amount = Column(Money, nullable=False)
     to_currency = Column(String(10), default="USD", nullable=False)
-    fx_rate = Column(Float, nullable=True)
+    fx_rate = Column(Rate, nullable=True)
     transfer_type = Column(String(30), default="internal", nullable=False, index=True)  # same_bank_fx | internal | external_linked
     exchange_reference = Column(String(100), nullable=True, index=True)
     confirmed_leg = Column(String(20), default="both", nullable=False)  # both | from_only | to_only
     settlement_status = Column(String(30), default="settled", nullable=False, index=True)  # settled | in_transit | awaiting_match
-    fee = Column(Float, default=0.0, nullable=True)
+    fee = Column(Money, default=0.0, nullable=True)
     expected_date = Column(String(20), nullable=True)  # YYYY-MM-DD
     note = Column(Text, default="", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -892,10 +998,6 @@ class AccountTransferDB(Base):
     from_account = relationship("FinanceBankAccountDB", foreign_keys=[from_account_id])
     to_account = relationship("FinanceBankAccountDB", foreign_keys=[to_account_id])
     ledger_transactions = relationship("LedgerTransactionDB", back_populates="linked_transfer")
-
-
-# Alias for clean domain referencing
-FinanceAccountTransferDB = AccountTransferDB
 
 
 class FinanceAttentionReviewDB(Base):
@@ -910,10 +1012,6 @@ class FinanceAttentionReviewDB(Base):
     notes = Column(Text, default="", nullable=False)
 
 
-# Alias for clean domain referencing
-AttentionReviewDB = FinanceAttentionReviewDB
-
-
 class FinanceSavedReportViewDB(Base):
     __tablename__ = "finance_saved_report_views"
 
@@ -924,9 +1022,6 @@ class FinanceSavedReportViewDB(Base):
     created_by = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     is_default = Column(Boolean, default=False, nullable=False)
-
-
-SavedReportViewDB = FinanceSavedReportViewDB
 
 
 class FinanceExportAuditDB(Base):
@@ -940,9 +1035,6 @@ class FinanceExportAuditDB(Base):
     file_name = Column(String(255), nullable=False)
     filters_json = Column(Text, default="{}", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-
-
-ExportAuditDB = FinanceExportAuditDB
 
 
 class FinanceReportScheduleDB(Base):
@@ -960,9 +1052,6 @@ class FinanceReportScheduleDB(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
-ReportScheduleDB = FinanceReportScheduleDB
-
-
 class StatutoryObligationDB(Base):
     __tablename__ = "finance_statutory_obligations"
 
@@ -970,10 +1059,10 @@ class StatutoryObligationDB(Base):
     obligation_type = Column(String(50), nullable=False, index=True)
     # sales_tax | withholding_tax | income_tax | social_insurance_employee | social_insurance_employer | health_insurance | other_statutory
     period = Column(String(20), nullable=False, index=True)  # YYYY-MM
-    amount_estimated = Column(Float, nullable=True)
-    amount_accrued = Column(Float, nullable=False)
-    amount_remitted = Column(Float, default=0.0, nullable=False)
-    variance_amount = Column(Float, default=0.0, nullable=False)
+    amount_estimated = Column(Money, nullable=True)
+    amount_accrued = Column(Money, nullable=False)
+    amount_remitted = Column(Money, default=0.0, nullable=False)
+    variance_amount = Column(Money, default=0.0, nullable=False)
     variance_note = Column(Text, nullable=True)
     currency = Column(String(10), default="EGP", nullable=False)  # statutory obligations are EGP by default (D-025 context, F4)
     status = Column(String(30), default="estimated", nullable=False, index=True)
@@ -990,16 +1079,13 @@ class StatutoryObligationDB(Base):
     payments = relationship("PaymentDB", back_populates="statutory_obligation")
 
 
-FinanceStatutoryObligationDB = StatutoryObligationDB
-
-
 class EmployeeCompensationPlanDB(Base):
     __tablename__ = "finance_employee_compensation_plans"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     employee_id = Column(Integer, ForeignKey("employees.id", ondelete="RESTRICT"), nullable=False, index=True)
     component_type = Column(String(50), nullable=False, index=True)  # external_usd | internal_usd_cash
-    amount = Column(Float, nullable=False)
+    amount = Column(Money, nullable=False)
     currency = Column(String(10), default="USD", nullable=False)
     salary_basis = Column(String(20), default="NET", nullable=False)
     effective_start_date = Column(String(20), nullable=False, index=True)  # YYYY-MM-DD
@@ -1012,18 +1098,17 @@ class EmployeeCompensationPlanDB(Base):
 
     __table_args__ = (
         Index("ix_emp_comp_plan_lookup", "employee_id", "component_type", "effective_end_date"),
+        Index("uq_emp_comp_plan_open", "employee_id", "component_type", unique=True,
+              sqlite_where=text("effective_end_date IS NULL"), postgresql_where=text("effective_end_date IS NULL")),
     )
 
 
-FinanceEmployeeCompensationPlanDB = EmployeeCompensationPlanDB
-
-
 class PayrollSettingsDB(Base):
+    """Default payroll funding accounts (one row, id 1). Social insurance rates live only in the effective-dated
+    PayrollRateSettingsDB."""
     __tablename__ = "finance_payroll_settings"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    employee_rate = Column(Float, default=0.11, nullable=False)
-    employer_rate = Column(Float, default=0.18, nullable=False)
     external_funding_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True)
     internal_funding_account_id = Column(Integer, ForeignKey("finance_bank_accounts.id", ondelete="SET NULL"), nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -1033,26 +1118,20 @@ class PayrollSettingsDB(Base):
     internal_funding_account = relationship("FinanceBankAccountDB", foreign_keys=[internal_funding_account_id])
 
 
-FinancePayrollSettingsDB = PayrollSettingsDB
-
-
 class PayrollRateSettingsDB(Base):
     """Effective-dated employee and employer social insurance rates (SI-1, D-040). Newest row with
-    effective_from <= the period start applies, like PayrollTaxSettingsDB. The global PayrollSettingsDB rates are
-    kept as a readable fallback and mirror the rates in force for the current month."""
+    effective_from <= the period start applies, like PayrollTaxSettingsDB. This table is the only store of the rates;
+    it is seeded with the statutory defaults on first use."""
     __tablename__ = "finance_payroll_rate_settings"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     effective_from = Column(String(20), nullable=False, index=True)  # YYYY-MM-01
-    employee_rate = Column(Float, nullable=False)
-    employer_rate = Column(Float, nullable=False)
+    employee_rate = Column(Rate, nullable=False)
+    employer_rate = Column(Rate, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(String(255), nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     updated_by = Column(String(255), nullable=True)
-
-
-FinancePayrollRateSettingsDB = PayrollRateSettingsDB
 
 
 class PayrollTaxSettingsDB(Base):
@@ -1060,13 +1139,11 @@ class PayrollTaxSettingsDB(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     effective_from = Column(String(20), nullable=False, index=True)  # YYYY-MM-01
-    tax_limit_p_egp = Column(Float, default=20000.0, nullable=False)
+    tax_limit_p_egp = Column(Money, default=20000.0, nullable=False)
     brackets_json = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(String(255), nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     updated_by = Column(String(255), nullable=True)
 
-
-FinancePayrollTaxSettingsDB = PayrollTaxSettingsDB
 

@@ -564,6 +564,12 @@ This document records durable product and architectural decisions approved by th
 - **Rationale:** D-046 left the amounts stored on the history row, so a plan corrected directly in the database conflicted with its history. No payroll data existed yet, so removing the second copy was cheap.
 - **Related References:** `docs/finance-module/pay-single-source-plan.md`; D-046.
 
+### D-049 — Database Redesign: One Source per Fact, Exact Money, Constraints in the Database (DB-1)
+
+- **Decision:** Stages 0 to 6 of `db-redesign-plan.md` (migrations 0050 to 0069): derived values are computed, not stored (employee leave used and next raise, bill paid amount, payroll line totals); money is exact `NUMERIC` in the database and plain floats in Python (`finance/money.py`); the rules the application relied on are database constraints (unique bill number, one open plan row, value sets, 40 date formats, no-overlap pay history on PostgreSQL, foreign keys enforced); employees are archived with a real state and cannot be deleted once they have pay history; a bill's scan is a `finance_attachments` row like every other scan; Alembic is the only way the schema changes.
+- **Rule for migrations:** a migration that meets data it cannot convert safely stops with a list of the rows instead of guessing, and has a downgrade.
+- **Related References:** `docs/project-context/db-redesign-plan.md`; `docs/project-context/db-redesign-release-checklist.md`.
+
 ## Related but Not Decisions
 
 The following items are established architectural baseline rules or future roadmaps rather than standalone decision entries:

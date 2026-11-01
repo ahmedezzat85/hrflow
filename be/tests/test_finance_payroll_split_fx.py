@@ -51,7 +51,6 @@ def _setup_employee_with_plan(name, email, ext_amount=None, int_amount=None, sta
         emp = EmployeeDB(
             name=name,
             email=email,
-            role="employee",
             dept="Engineering",
             job_role="Engineer",
             status=status,
@@ -154,7 +153,6 @@ def test_generate_payroll_run_missing_plan_error(app_client, admin_cookies):
         emp = EmployeeDB(
             name="Charlie NoPlan",
             email="charlie.noplan@hrflow.test",
-            role="employee",
             dept="Support",
             status="Active",
         )

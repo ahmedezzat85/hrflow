@@ -7,7 +7,7 @@ import os
 from contextlib import contextmanager
 from typing import Generator
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
 import config
@@ -16,6 +16,19 @@ Base = declarative_base()
 
 _engine = None
 _SessionFactory = None
+
+
+def enable_sqlite_foreign_keys(engine) -> None:
+    """SQLite ignores foreign keys unless every connection turns them on, so dev and tests would not enforce the
+    RESTRICT / CASCADE / SET NULL rules that PostgreSQL enforces."""
+    if engine.dialect.name != "sqlite":
+        return
+
+    @event.listens_for(engine, "connect")
+    def _foreign_keys_on(dbapi_connection, _record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
 
 
 def get_engine():
@@ -36,6 +49,7 @@ def get_engine():
             db_url,
             **engine_kwargs,
         )
+        enable_sqlite_foreign_keys(_engine)
     return _engine
 
 
@@ -72,25 +86,54 @@ def get_db_context() -> Generator[Session, None, None]:
         db.close()
 
 
+def alembic_head_revision():
+    """The newest Alembic revision in migrations/versions, or None when it cannot be read."""
+    try:
+        from alembic.config import Config as AlembicConfig
+        from alembic.script import ScriptDirectory
+        cfg = AlembicConfig(os.path.join(os.path.dirname(os.path.abspath(__file__)), "alembic.ini"))
+        cfg.set_main_option("script_location", os.path.join(os.path.dirname(os.path.abspath(__file__)), "migrations"))
+        return ScriptDirectory.from_config(cfg).get_current_head()
+    except Exception:  # noqa: BLE001 - a version check must never stop the app from starting
+        return None
+
+
+def check_schema_version(engine) -> str:
+    """'ok', 'behind' (database revision differs from the code's head), 'unstamped' (no alembic_version row) or 'unknown'.
+    Logs an error for the first two: the schema is changed only by `alembic upgrade head`, never by the app."""
+    import logging
+    from sqlalchemy import inspect, text
+    log = logging.getLogger(__name__)
+    head = alembic_head_revision()
+    if head is None:
+        return "unknown"
+    try:
+        if "alembic_version" not in inspect(engine).get_table_names():
+            log.error("The database has no alembic_version table. Run `alembic upgrade head` (or `alembic stamp head` if its schema is already current).")
+            return "unstamped"
+        with engine.connect() as conn:
+            current = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
+    except Exception:  # noqa: BLE001
+        return "unknown"
+    if current != head:
+        log.error("The database schema is at revision %s but the code expects %s. Run `alembic upgrade head`.", current, head)
+        return "behind"
+    return "ok"
+
+
 def init_db():
-    """Creates all tables defined in Base metadata and synchronizes missing columns."""
+    """Prepares the database for the app. The schema is changed only by Alembic migrations (`alembic upgrade head`,
+    which the production container runs on every start): this function never alters an existing table.
+    A brand-new SQLite file (local development and tests) gets its tables from the models so it works without a
+    migration run; every other database is only checked against the Alembic head and an error is logged when behind."""
     import models_db  # noqa: F401 - ensure all models are registered with Base
     import finance.models  # noqa: F401 - ensure finance models are registered with Base
     from sqlalchemy import inspect, text
     engine = get_engine()
-    Base.metadata.create_all(bind=engine)
-    # Sync missing columns on existing tables for local SQLite / dev instances
-    inspector = inspect(engine)
-    existing_tables = set(inspector.get_table_names())
-    with engine.connect() as conn:
-        for t_name, table in Base.metadata.tables.items():
-            if t_name in existing_tables:
-                current_cols = {c['name'] for c in inspector.get_columns(t_name)}
-                for col in table.columns:
-                    if col.name not in current_cols:
-                        type_str = col.type.compile(engine.dialect)
-                        conn.execute(text(f"ALTER TABLE {t_name} ADD COLUMN {col.name} {type_str}"))
-        conn.commit()
+    if engine.dialect.name == "sqlite" and not inspect(engine).get_table_names():
+        Base.metadata.create_all(bind=engine)
+    else:
+        check_schema_version(engine)
 
     # Books (D-028): seed Local/Overseas and put every account without a book in the default one
     try:
@@ -99,7 +142,7 @@ def init_db():
             default_id = _books.default_book_id(db)
             db.execute(text("UPDATE finance_bank_accounts SET book_id = :b WHERE book_id IS NULL"), {"b": default_id})
             db.execute(text("UPDATE finance_bank_accounts SET visibility = 'full' WHERE visibility IS NULL"))
-            db.execute(text("UPDATE finance_customers SET is_intercompany = 0 WHERE is_intercompany IS NULL"))
+            db.execute(text("UPDATE finance_customers SET is_intercompany = :f WHERE is_intercompany IS NULL"), {"f": False})
             db.commit()
     except Exception:
         import logging
@@ -157,6 +200,7 @@ def reset_engine_for_testing(custom_url: str = None):
     if custom_url:
         connect_args = {"check_same_thread": False} if custom_url.startswith("sqlite") else {}
         _engine = create_engine(custom_url, connect_args=connect_args, pool_pre_ping=True)
+        enable_sqlite_foreign_keys(_engine)
     else:
         _engine = None
     _SessionFactory = None

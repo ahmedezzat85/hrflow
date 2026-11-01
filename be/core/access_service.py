@@ -578,7 +578,7 @@ class AccessService:
                 detail="An archived user already exists with this email.",
             )
 
-    def on_employee_create(self, employee_id: int, email: str, name: str, role: str = "employee") -> UserDB:
+    def on_employee_create(self, employee_id: int, email: str, name: str) -> UserDB:
         """
         R12: Provisions linked user for new employee.
         If existing non-archived external user exists with email, links it.

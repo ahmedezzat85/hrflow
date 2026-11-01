@@ -280,8 +280,8 @@ class CashForecastService:
             if curr_filter != "ALL" and curr_filter != "USD":
                 continue
             if scope.restricts:
-                # A run is attributed to its external funding account, else its bank account, else the default book
-                funding = run.external_funding_account_id or run.bank_account_id
+                # A run is attributed to its external funding account, else the default book
+                funding = run.external_funding_account_id
                 if not (scope.owns_account(funding) if funding else scope.owns_unattributed()):
                     continue
             net_total = round(run.total_net or 0.0, 2)

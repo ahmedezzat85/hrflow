@@ -76,14 +76,11 @@ def setup_social_ins_env(db_session):
         db_session.add(pt)
         db_session.flush()
 
-    # Reset default rates
-    settings = db_session.query(PayrollSettingsDB).filter_by(id=1).first()
-    if not settings:
-        settings = PayrollSettingsDB(id=1, employee_rate=0.11, employer_rate=0.18, updated_by="test")
-        db_session.add(settings)
-    else:
-        settings.employee_rate = 0.11
-        settings.employer_rate = 0.18
+    # Reset default rates: the dated table is reseeded with the statutory defaults on first use
+    from finance.models import PayrollRateSettingsDB
+    db_session.query(PayrollRateSettingsDB).delete()
+    if not db_session.query(PayrollSettingsDB).filter_by(id=1).first():
+        db_session.add(PayrollSettingsDB(id=1, updated_by="test"))
 
     import json
     db_session.query(PayrollTaxSettingsDB).filter(PayrollTaxSettingsDB.effective_from != "2026-01-01").delete()
@@ -160,7 +157,6 @@ def test_social_insurance_validation_and_effective_dating(app_client, admin_cook
     emp = EmployeeDB(
         name="Insurance Test Employee",
         email="emp1@insurancetest.com",
-        role="employee",
         status="Active",
     )
     db_session.add(emp)
@@ -236,7 +232,6 @@ def test_finalized_period_guard(app_client, admin_cookies, db_session, setup_soc
     emp = EmployeeDB(
         name="Finalized Guard Emp",
         email="emp_guard@insurancetest.com",
-        role="employee",
         status="Active",
     )
     db_session.add(emp)

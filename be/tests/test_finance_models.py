@@ -131,7 +131,7 @@ def test_vendor_bill_lines_and_subscriptions(db_session):
     bill = BillDB(
         vendor_id=vendor.id,
         bill_number="BILL-AWS-SEP26",
-        category="Cloud Infrastructure",
+        imported_category="Cloud Infrastructure",
         issue_date="2026-09-01",
         due_date="2026-09-15",
         status="approved",
@@ -213,7 +213,6 @@ def test_payroll_run_and_cross_domain_employee_line(db_session):
     emp = EmployeeDB(
         name="Elena Rostova",
         email="elena.rostova@voyance.internal",
-        role="employee",
         dept="Engineering",
     )
     db_session.add(emp)
@@ -239,7 +238,7 @@ def test_payroll_run_and_cross_domain_employee_line(db_session):
         total_deductions=400.0,
         total_net=5000.0,
         total_employer_cost=6500.0,
-        bank_account_id=bank.id,
+        external_funding_account_id=bank.id,
     )
     db_session.add(run)
     db_session.commit()
@@ -251,7 +250,7 @@ def test_payroll_run_and_cross_domain_employee_line(db_session):
         base_salary=6000.0,
         allowances_total=0.0,
         deductions_total=400.0,
-        tax_amount=600.0,
+        employee_tax_usd_equivalent=600.0,
         net_pay=5000.0,
         employer_cost_extra=500.0,
         snapshot_notes="September standard payroll",

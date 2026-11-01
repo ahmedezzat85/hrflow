@@ -76,7 +76,6 @@ class ChequesService:
             posting_policy=cheque.posting_policy or "at_issue",
             signer_name=cheque.signer_name,
             authorized_by=cheque.authorized_by,
-            attachment_url=cheque.attachment_url,
             attachment_count=len(cheque.attachments or []),
             has_scan=bool(cheque.attachments),
             exception_reason=cheque.exception_reason,

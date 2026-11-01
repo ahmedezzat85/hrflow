@@ -21,6 +21,7 @@ from finance.repositories.ledger_repository import LedgerRepository
 from finance.models import (
     BillDB,
     BillLineDB,
+    FinanceAttachmentDB,
     PaymentDB,
     FinanceBankAccountDB,
     VendorDB,
@@ -86,9 +87,9 @@ class BillsRepository:
         if vendor_id is not None:
             query = query.filter(BillDB.vendor_id == vendor_id)
         if has_attachment is True:
-            query = query.filter(BillDB.attachment_url.isnot(None), BillDB.attachment_url != "")
+            query = query.filter(BillDB.scan.has(FinanceAttachmentDB.storage_ref != ""))
         elif has_attachment is False:
-            query = query.filter(or_(BillDB.attachment_url.is_(None), BillDB.attachment_url == ""))
+            query = query.filter(~BillDB.scan.has(FinanceAttachmentDB.storage_ref != ""))
         if search:
             s = f"%{search.strip()}%"
             query = query.join(VendorDB, isouter=True).filter(
@@ -96,7 +97,8 @@ class BillsRepository:
                     BillDB.bill_number.ilike(s),
                     VendorDB.name.ilike(s),
                     BillDB.department.ilike(s),
-                    BillDB.category.ilike(s),
+                    BillDB.imported_category.ilike(s),
+                    BillDB.transaction_category.has(TransactionCategoryDB.name.ilike(s)),
                 )
             )
         return (
@@ -128,8 +130,7 @@ class BillsRepository:
         bill = self.get_by_id(bill_id)
         if not bill:
             return None
-        bill.attachment_name = None
-        bill.attachment_url = None
+        bill.scan = None
         bill.file_fingerprint = None
         self.db.commit()
         self.db.refresh(bill)
@@ -247,21 +248,24 @@ class BillsRepository:
     def create(self, data: dict, lines_data: List[dict], commit: bool = True) -> BillDB:
         """Create a bill with its lines. Totals are computed from lines."""
         category_id = data.get("category_id")
-        category_name = data.get("category", "Operating Expense")
+        category_name = (data.get("category") or "").strip()
+        imported_category = None
         if category_id:
             cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.id == category_id).first()
-            if cat:
-                category_name = cat.name
+            if not cat:
+                category_id = None
         elif category_name:
-            cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.name.ilike(category_name.strip())).first()
+            cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.name.ilike(category_name)).first()
             if cat:
                 category_id = cat.id
+        if not category_id and category_name:
+            imported_category = category_name[:100]
 
         bill = BillDB(
             vendor_id=data.get("vendor_id"),
             bill_number=(data.get("bill_number") or "").strip() or None,
             category_id=category_id,
-            category=category_name,
+            imported_category=imported_category,
             issue_date=data.get("issue_date") or None,
             due_date=data.get("due_date") or None,
             status=data.get("status", bs.DRAFT),
@@ -285,7 +289,6 @@ class BillsRepository:
             approved_at=data.get("approved_at"),
             approval_comment=data.get("approval_comment"),
             scheduled_payment_date=data.get("scheduled_payment_date"),
-            amount_paid=data.get("amount_paid", 0.0),
             vendor_to_confirm=bool(data.get("vendor_to_confirm", False)),
             suggested_vendor_name=data.get("suggested_vendor_name"),
             import_batch_id=data.get("import_batch_id"),
@@ -331,14 +334,12 @@ class BillsRepository:
         if "category_id" in data:
             bill.category_id = data["category_id"]
             if bill.category_id:
-                cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.id == bill.category_id).first()
-                if cat:
-                    bill.category = cat.name
+                bill.imported_category = None
         elif "category" in data and data["category"] is not None:
-            bill.category = data["category"]
-            cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.name.ilike(data["category"].strip())).first()
-            if cat:
-                bill.category_id = cat.id
+            text = data["category"].strip()
+            cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.name.ilike(text)).first() if text else None
+            bill.category_id = cat.id if cat else None
+            bill.imported_category = None if cat or not text else text[:100]
         if "issue_date" in data and data["issue_date"] is not None:
             bill.issue_date = data["issue_date"]
         if "due_date" in data and data["due_date"] is not None:
@@ -383,8 +384,6 @@ class BillsRepository:
             bill.approval_comment = data["approval_comment"]
         if "scheduled_payment_date" in data:
             bill.scheduled_payment_date = data["scheduled_payment_date"]
-        if "amount_paid" in data and data["amount_paid"] is not None:
-            bill.amount_paid = data["amount_paid"]
         if "vendor_to_confirm" in data and data["vendor_to_confirm"] is not None:
             bill.vendor_to_confirm = data["vendor_to_confirm"]
         if "suggested_vendor_name" in data:
@@ -514,6 +513,7 @@ class BillsRepository:
         )
         self.db.add(ledger_tx)
         self.db.flush()
+        payment.ledger_transaction_id = ledger_tx.id
         LedgerRepository(self.db).recalculate_account_running_balances(payment.bank_account_id, commit=False)
 
         if commit:
@@ -575,16 +575,9 @@ class BillsRepository:
         self.db.flush()
         LedgerRepository(self.db).recalculate_account_running_balances(bank_account.id, commit=False)
 
-        # 3. Recalculate bill amount_paid and status
+        # 3. Re-read the paid amount (derived from live payments) and derive the status
         self.db.flush()
-        remaining_payments = [
-            p for p in self.list_payments(bill_id) if not p.is_reversed and p.id != payment.id
-        ]
-        paid_remaining = sum(p.amount for p in remaining_payments)
-        bill.amount_paid = round(paid_remaining, 2)
-
-        if bill.amount_paid <= 0.001:
-            bill.amount_paid = 0.0
+        self.db.expire(bill, ["amount_paid"])
         bill.status = bs.derive_payment_status(bill, amount_paid=bill.amount_paid)
 
         self.db.commit()
@@ -620,7 +613,7 @@ class BillsRepository:
                     "vendor_name": v_name,
                     "category_id": b.category_id,
                     "category_name": cat_name,
-                    "raw_category": b.category,
+                    "raw_category": b.imported_category,
                     "issue_date": b.issue_date,
                     "total": b.total,
                     "status": b.status,

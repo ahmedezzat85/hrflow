@@ -37,7 +37,6 @@ def _employee(db, email, internal=2000.0):
     emp = EmployeeDB(
         name=f"Tax Method {email.split('@')[0]}",
         email=email.replace("@", f"+{uuid.uuid4().hex[:8]}@"),
-        role="employee",
         status="Active",
     )
     db.add(emp)

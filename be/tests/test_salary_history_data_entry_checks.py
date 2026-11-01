@@ -247,7 +247,8 @@ def test_todays_raise_updates_employee_fields_and_plan_together(app_client, admi
         pay = current_pay(db, emp_id)
         assert pay["internal"] == 1200.0 and pay["external"] == 2500.0
         assert pay["total"] == 3700.0
-        assert emp.next_raise == (datetime.strptime(TODAY, "%Y-%m-%d") + timedelta(days=365)).strftime("%Y-%m-%d")
+        from services.employee_derived import next_raise_map
+        assert next_raise_map(db, [emp_id])[emp_id] == (datetime.strptime(TODAY, "%Y-%m-%d") + timedelta(days=365)).strftime("%Y-%m-%d")
         assert _history_count(emp_id) == 1
         h = db.query(SalaryHistoryDB).filter(SalaryHistoryDB.employee_id == emp_id).order_by(SalaryHistoryDB.id.desc()).first()
         from finance.pay_history import history_view

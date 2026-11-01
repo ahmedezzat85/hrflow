@@ -86,7 +86,7 @@ class BillsService:
         ]
         vendor_name = bill.vendor.name if bill.vendor else None
         cat_name = bill.transaction_category.name if getattr(bill, "transaction_category", None) else bill.category
-        paid = bill.amount_paid or 0.0
+        paid = round(bill.amount_paid or 0.0, 2)
         remaining = max(0.0, round((bill.total or 0.0) - paid, 2))
         return BillResponse(
             id=bill.id,

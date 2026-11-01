@@ -47,10 +47,10 @@ _REFRESH_LINE_FIELDS = (
     "insured_base_snapshot", "employee_rate_snapshot", "employer_rate_snapshot",
     "salary_basis_snapshot", "configured_internal_salary_usd_snapshot",
     "insured_base_egp_snapshot", "fx_rate_snapshot", "base_gross_egp", "variable_gross_egp",
-    "employee_social_insurance_egp", "employer_social_insurance_egp", "total_social_insurance_egp",
+    "employee_social_insurance_egp", "employer_social_insurance_egp",
     "employee_tax_egp", "employee_social_insurance_usd_equivalent", "employee_tax_usd_equivalent",
     "final_internal_net_egp", "final_internal_payment_usd", "taxable_gross_egp",
-    "tax_employee_si_egp", "annual_taxed_salary_egp", "annual_tax_egp",
+    "annual_taxed_salary_egp", "annual_tax_egp",
     "tax_settings_version_id", "tax_method_snapshot", "tax_rate_snapshot", "snapshot_notes",
 )
 
@@ -67,8 +67,6 @@ class PayrollService:
         if not settings:
             settings = PayrollSettingsDB(
                 id=1,
-                employee_rate=0.11,
-                employer_rate=0.18,
                 updated_at=datetime.utcnow(),
                 updated_by="system",
             )
@@ -78,15 +76,16 @@ class PayrollService:
         return settings
 
     RATE_SEED_DATE = "2000-01-01"
+    DEFAULT_EMPLOYEE_RATE = 0.11
+    DEFAULT_EMPLOYER_RATE = 0.18
 
     def _ensure_rate_seed(self) -> None:
-        """First use: seed the dated rates from the global row so every earlier period resolves as before."""
+        """First use: seed the dated rates with the statutory defaults so every earlier period resolves."""
         if self.db.query(PayrollRateSettingsDB).count() == 0:
-            g = self.get_payroll_settings()
             self.db.add(PayrollRateSettingsDB(
                 effective_from=self.RATE_SEED_DATE,
-                employee_rate=g.employee_rate,
-                employer_rate=g.employer_rate,
+                employee_rate=self.DEFAULT_EMPLOYEE_RATE,
+                employer_rate=self.DEFAULT_EMPLOYER_RATE,
                 created_by="system",
                 updated_by="system",
             ))
@@ -94,7 +93,7 @@ class PayrollService:
 
     def get_effective_rate_settings(self, period_start: str) -> tuple:
         """Social insurance (employee_rate, employer_rate) for a payroll period.
-        Rule: newest row where effective_from <= the period start; the global row is the fallback."""
+        Rule: newest row where effective_from <= the period start; the seed row dates from 2000-01-01."""
         self._ensure_rate_seed()
         row = (
             self.db.query(PayrollRateSettingsDB)
@@ -104,8 +103,7 @@ class PayrollService:
         )
         if row:
             return float(row.employee_rate), float(row.employer_rate)
-        g = self.get_payroll_settings()
-        return float(g.employee_rate), float(g.employer_rate)
+        return self.DEFAULT_EMPLOYEE_RATE, self.DEFAULT_EMPLOYER_RATE
 
     def current_rates(self) -> tuple:
         """Rates in force for the current calendar month."""
@@ -179,12 +177,6 @@ class PayrollService:
             self.db.add(row)
         self.db.flush()
 
-        # Keep the global row readable: it mirrors the rates in force for the current month
-        g = self.get_payroll_settings()
-        g.employee_rate, g.employer_rate = self.current_rates()
-        g.updated_at = datetime.utcnow()
-        g.updated_by = user_email or "system"
-
         self._log_audit(
             action="payroll.rate_settings.saved",
             target_type="payroll_rate_settings",
@@ -206,8 +198,7 @@ class PayrollService:
     ) -> PayrollSettingsDB:
         """Update organization-wide social insurance rates and the default payroll funding accounts."""
         settings = self.get_payroll_settings()
-        old_emp_rate = settings.employee_rate
-        old_org_rate = settings.employer_rate
+        old_emp_rate, old_org_rate = self.current_rates()
         old_ext_id = settings.external_funding_account_id
         old_int_id = settings.internal_funding_account_id
 
@@ -252,9 +243,9 @@ class PayrollService:
                 target_id="1",
                 details=json.dumps({
                     "old_employee_rate": old_emp_rate,
-                    "new_employee_rate": settings.employee_rate,
+                    "new_employee_rate": self.current_rates()[0],
                     "old_employer_rate": old_org_rate,
-                    "new_employer_rate": settings.employer_rate,
+                    "new_employer_rate": self.current_rates()[1],
                     "old_external_funding_account_id": old_ext_id,
                     "new_external_funding_account_id": settings.external_funding_account_id,
                     "old_internal_funding_account_id": old_int_id,
@@ -318,7 +309,6 @@ class PayrollService:
         ext_account, int_account = self._settings_funding_accounts()
         if not run.external_funding_account_id and ext_account:
             run.external_funding_account_id = ext_account.id
-            run.bank_account_id = ext_account.id
         if not run.internal_funding_account_id and int_account:
             run.internal_funding_account_id = int_account.id
         self.db.flush()
@@ -525,7 +515,7 @@ class PayrollService:
         historical = payroll_eligibility.is_historical_period(period_end)
         candidates = self.db.query(EmployeeDB)
         if not historical:
-            candidates = candidates.filter(EmployeeDB.status.ilike("active"))
+            candidates = candidates.filter(EmployeeDB.status.ilike("active"), EmployeeDB.archived_at.is_(None))
         employees = candidates.order_by(EmployeeDB.name.asc()).all()
 
         comp_repo = CompensationPlanRepository(self.db)
@@ -737,7 +727,6 @@ class PayrollService:
                     "base_salary": amount,
                     "allowances_total": 0.0,
                     "deductions_total": deduction,
-                    "tax_amount": 0.0,
                     "net_pay": net,
                     "amount": net,
                     "employer_cost_extra": cost,
@@ -1242,7 +1231,6 @@ class PayrollService:
         ext_account, int_account = self._resolve_funding_accounts(
             bank_account_id, external_funding_account_id, internal_funding_account_id
         )
-        run.bank_account_id = ext_account.id if ext_account else None
         run.external_funding_account_id = ext_account.id if ext_account else None
         run.internal_funding_account_id = int_account.id if int_account else None
 
@@ -1280,7 +1268,6 @@ class PayrollService:
                 base_salary=line_data["base_salary"],
                 allowances_total=0.0,
                 deductions_total=line_data["deductions_total"],
-                tax_amount=0.0,
                 net_pay=line_data["net_pay"],
                 employer_cost_extra=line_data["employer_cost_extra"],
                 insured_base_snapshot=line_data["insured_base_snapshot"],
@@ -1294,14 +1281,12 @@ class PayrollService:
                 variable_gross_egp=line_data["variable_gross_egp"],
                 employee_social_insurance_egp=line_data["employee_social_insurance_egp"],
                 employer_social_insurance_egp=line_data["employer_social_insurance_egp"],
-                total_social_insurance_egp=line_data["total_social_insurance_egp"],
                 employee_tax_egp=line_data["employee_tax_egp"],
                 employee_social_insurance_usd_equivalent=line_data["employee_social_insurance_usd_equivalent"],
                 employee_tax_usd_equivalent=line_data["employee_tax_usd_equivalent"],
                 final_internal_net_egp=line_data["final_internal_net_egp"],
                 final_internal_payment_usd=line_data["final_internal_payment_usd"],
                 taxable_gross_egp=line_data.get("taxable_gross_egp", 0.0),
-                tax_employee_si_egp=line_data.get("tax_employee_si_egp", 0.0),
                 annual_taxed_salary_egp=line_data.get("annual_taxed_salary_egp", 0.0),
                 annual_tax_egp=line_data.get("annual_tax_egp", 0.0),
                 tax_settings_version_id=line_data.get("tax_settings_version_id"),
@@ -1458,7 +1443,6 @@ class PayrollService:
             total_social_insurance_egp=preview.get("total_social_insurance_egp", 0.0),
             headcount=preview["headcount"],
             currency=currency or "USD",
-            bank_account_id=resolved_ext_id,
             external_funding_account_id=resolved_ext_id,
             internal_funding_account_id=resolved_int_id,
             fx_rate_source=fx_rate_source or "first_of_month",
@@ -1504,7 +1488,6 @@ class PayrollService:
                 base_salary=base_sal,
                 allowances_total=0.0,
                 deductions_total=ded,
-                tax_amount=0.0,
                 net_pay=net,
                 employer_cost_extra=emp_extra,
                 insured_base_snapshot=ins_base,
@@ -1518,14 +1501,12 @@ class PayrollService:
                 variable_gross_egp=pl.get("variable_gross_egp"),
                 employee_social_insurance_egp=pl.get("employee_social_insurance_egp"),
                 employer_social_insurance_egp=pl.get("employer_social_insurance_egp"),
-                total_social_insurance_egp=pl.get("total_social_insurance_egp"),
                 employee_tax_egp=pl.get("employee_tax_egp"),
                 employee_social_insurance_usd_equivalent=pl.get("employee_social_insurance_usd_equivalent"),
                 employee_tax_usd_equivalent=pl.get("employee_tax_usd_equivalent"),
                 final_internal_net_egp=pl.get("final_internal_net_egp"),
                 final_internal_payment_usd=pl.get("final_internal_payment_usd"),
                 taxable_gross_egp=pl.get("taxable_gross_egp", 0.0),
-                tax_employee_si_egp=pl.get("tax_employee_si_egp", 0.0),
                 annual_taxed_salary_egp=pl.get("annual_taxed_salary_egp", 0.0),
                 annual_tax_egp=pl.get("annual_tax_egp", 0.0),
                 tax_settings_version_id=pl.get("tax_settings_version_id"),
@@ -1689,7 +1670,6 @@ class PayrollService:
             base_salary=net,
             allowances_total=0.0,
             deductions_total=0.0,
-            tax_amount=0.0,
             net_pay=net,
             employer_cost_extra=0.0,
             bank_name=bank_name or "Unassigned",
@@ -1782,7 +1762,6 @@ class PayrollService:
             line_db.bank_account_masked = ld["bank_account_masked"]
             line_db.is_taxable_local = True
             line_db.allowances_total = 0.0
-            line_db.tax_amount = 0.0
             self.db.add(line_db)
         self.db.flush()
 
@@ -1914,7 +1893,6 @@ class PayrollService:
         ext_account, int_account = self._settings_funding_accounts()
         if ext_account:
             run.external_funding_account_id = ext_account.id
-            run.bank_account_id = ext_account.id
         if int_account:
             run.internal_funding_account_id = int_account.id
 

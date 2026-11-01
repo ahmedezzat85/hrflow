@@ -92,6 +92,8 @@ def build_document_name(invoice_number: str, employee_name: str) -> str:
 
 
 def check_eligibility(employee: dict) -> str:
+    if employee.get("archived"):
+        raise SalaryPaymentDocEligibilityError("employee is archived")
     ext_salary = employee.get("external_salary_usd")
     if ext_salary is None or ext_salary == "":
         raise SalaryPaymentDocEligibilityError("external salary is zero or missing")

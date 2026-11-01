@@ -91,8 +91,8 @@ class AccountsRepository:
             account.opening_balance_date = data["opening_balance_date"]
         if "opening_balance" in data and data["opening_balance"] is not None:
             account.opening_balance = float(data["opening_balance"])
-            if not self.has_transactions(account_id):
-                account.current_balance = year_openings.current_balance(self.db, account)
+            self.db.flush()
+            self._recalculate(account_id)
         if "is_active" in data and data["is_active"] is not None:
             account.is_active = bool(data["is_active"])
         if data.get("book_id"):
@@ -129,11 +129,14 @@ class AccountsRepository:
         if not account:
             raise ValueError(f"Account {account_id} not found")
 
-        balance = self.compute_balance(account_id)
-        account.current_balance = balance
-        self.db.commit()
+        balance = self._recalculate(account_id, commit=True)
         self.db.refresh(account)
         return balance
+
+    def _recalculate(self, account_id: int, commit: bool = False) -> float:
+        """Rewrite both stored balance copies through their single writer."""
+        from finance.repositories.ledger_repository import LedgerRepository
+        return LedgerRepository(self.db).recalculate_account_running_balances(account_id, commit=commit)
 
     def get_balance_metrics(self, account: FinanceBankAccountDB) -> Dict[str, Any]:
         """

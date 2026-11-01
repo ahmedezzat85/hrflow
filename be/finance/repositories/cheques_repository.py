@@ -194,7 +194,7 @@ class ChequesRepository:
         #    a payment record and amount_paid. Refusals abort the posting (BillPaymentError / ValueError).
         if cheque.linked_bill_id:
             from finance.services.settlement_service import SettlementService
-            SettlementService(self.db).settle_bill(
+            _bill, payment = SettlementService(self.db).settle_bill(
                 bill_id=cheque.linked_bill_id,
                 amount=cheque.amount,
                 payment_date=posting_date,
@@ -203,6 +203,7 @@ class ChequesRepository:
                 reference=f"CHK-{cheque.cheque_number}",
                 cheque_number=cheque.cheque_number,
             )
+            payment.ledger_transaction_id = outflow_tx.id  # the bank outflow leg this cheque posted
 
     def _reverse_cheque_ledger_entries(self, cheque: FinanceChequeDB, reason: Optional[str] = None):
         """
@@ -342,7 +343,6 @@ class ChequesRepository:
             posting_policy=posting_policy,
             signer_name=data.get("signer_name"),
             authorized_by=data.get("authorized_by"),
-            attachment_url=None,  # deprecated (D-032): scans are stored as finance_attachments rows
             replaced_cheque_id=data.get("replaced_cheque_id"),
             clear_date=None,
             fiscal_year=fiscal_year,

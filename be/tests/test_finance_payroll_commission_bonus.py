@@ -48,7 +48,6 @@ def _setup_employee(name, email, ext_amount=None, int_amount=None):
         emp = EmployeeDB(
             name=name,
             email=email,
-            role="employee",
             dept="Sales",
             job_role="Account Exec",
             status="Active",
@@ -165,7 +164,6 @@ def test_add_commission_to_employee_without_plan(app_client, admin_cookies):
         emp2 = EmployeeDB(
             name="Bob CommissionOnly",
             email="bob.commission@hrflow.test",
-            role="employee",
             dept="Sales",
             status="On Leave",
         )

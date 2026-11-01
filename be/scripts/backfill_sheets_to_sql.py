@@ -27,7 +27,7 @@ from models_db import (
     InsuranceClaimDB,
     RequestDB,
     VacationHistoryDB,
-    InvoiceDB,
+    SalaryPaymentDocDB,
     AuditLogDB,
 )
 
@@ -96,14 +96,11 @@ def backfill_all(client=None, domain: str = "all", dry_run: bool = False) -> dic
 
                     emp.name = str(r.get("name") or "").strip()
                     emp.email = str(r.get("email") or "").strip()
-                    emp.role = str(r.get("role") or "employee").strip()
                     emp.dept = str(r.get("dept") or "").strip()
                     emp.job_role = str(r.get("job_role") or "").strip()
                     emp.join_date = str(r.get("join_date") or "").strip()
                     emp.status = str(r.get("status") or "Active").strip()
                     emp.vac_total = _safe_int(r.get("vac_total"), 21)
-                    emp.vac_used = _safe_int(r.get("vac_used"), 0)
-                    emp.next_raise = str(r.get("next_raise") or "").strip()
                     emp.employment_state = str(r.get("employment_state") or "Full-Time").strip()
                     emp.invoice_id = str(r.get("invoice_id") or "").strip()
                     emp.address_line_1 = str(r.get("address_line_1") or "").strip()
@@ -315,9 +312,9 @@ def backfill_all(client=None, domain: str = "all", dry_run: bool = False) -> dic
                     emp_id = _safe_int(r.get("employee_id"))
                     if not row_id or not emp_id:
                         continue
-                    inv = db.query(InvoiceDB).filter(InvoiceDB.id == row_id).first()
+                    inv = db.query(SalaryPaymentDocDB).filter(SalaryPaymentDocDB.id == row_id).first()
                     if not inv:
-                        inv = InvoiceDB(id=row_id)
+                        inv = SalaryPaymentDocDB(id=row_id)
                         db.add(inv)
                     inv.employee_id = emp_id
                     inv.employee_name = str(r.get("employee_name") or "")

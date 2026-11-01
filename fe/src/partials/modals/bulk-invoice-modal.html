@@ -27,9 +27,13 @@
           <input type="checkbox" id="bulkRegenerateExisting" onchange="updateBulkGenerateLabel()">
           <span><strong>Regenerate docs that already exist</strong><span>Overwrites them with current salary and address details</span></span>
         </label>
+        <div id="bulkGenerateProgress" role="status" aria-live="polite" hidden>
+          <span class="btn-spinner" aria-hidden="true"></span>
+          <span>Generating docs. This can take a minute, please keep this window open.</span>
+        </div>
       </div>
       <div class="modal-foot">
-        <button class="btn" onclick="closeModal('bulkInvoiceModal')">Cancel</button>
+        <button class="btn" id="btnCancelBulkGenerate" onclick="closeModal('bulkInvoiceModal')">Cancel</button>
         <button class="btn btn-fill" id="btnConfirmBulkGenerate" onclick="executeBulkGenerateInvoices(event)">Generate docs</button>
       </div>
     </div>

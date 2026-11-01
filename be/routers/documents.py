@@ -64,8 +64,6 @@ def upload_company_document(
             "file_type": payload.file_type,
             "category": payload.category,
             "drive_file_id": uploaded["file_id"],
-            "view_url": uploaded["view_url"],
-            "download_url": uploaded["download_url"],
             "uploaded_by": current_user["email"],
             "uploaded_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M"),
         })

@@ -109,7 +109,6 @@ def seed_payroll_env(db_session):
     e1 = EmployeeDB(
         name="Alice Engineer",
         email="alice@payrolltest.com",
-        role="employee",
         dept="Engineering",
         status="Active",
     )
@@ -136,7 +135,6 @@ def seed_payroll_env(db_session):
     e2 = EmployeeDB(
         name="Bob Designer",
         email="bob@payrolltest.com",
-        role="employee",
         dept="Product",
         status="Active",
     )
@@ -156,7 +154,6 @@ def seed_payroll_env(db_session):
     e3 = EmployeeDB(
         name="Charlie Intern",
         email="charlie@payrolltest.com",
-        role="employee",
         dept="Operations",
         status="Active",
     )

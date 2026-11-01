@@ -2,7 +2,7 @@
 be/repositories/sql/salary.py
 SQLAlchemy-backed implementation of SalaryRepository.
 """
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional, List, Dict, Any, Union
 
 from sqlalchemy.orm import Session
@@ -86,8 +86,7 @@ class SqlSalaryRepository:
                 force_history=True,
             )
 
-            # The single salary_history row is written by apply_pay_change (D-036).
-            emp.next_raise = (datetime.strptime(eff_date, "%Y-%m-%d") + timedelta(days=365)).strftime("%Y-%m-%d")
+            # The single salary_history row is written by apply_pay_change (D-036); next_raise derives from it.
 
             emp_dict = {
                 "id": emp.id,

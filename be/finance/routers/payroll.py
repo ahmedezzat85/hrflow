@@ -349,8 +349,6 @@ def _funding_summary(account):
 def _settings_view(settings) -> dict:
     return {
         "id": settings.id,
-        "employee_rate": settings.employee_rate,
-        "employer_rate": settings.employer_rate,
         "external_funding_account_id": settings.external_funding_account_id,
         "internal_funding_account_id": settings.internal_funding_account_id,
         "external_funding_account": _funding_summary(settings.external_funding_account),

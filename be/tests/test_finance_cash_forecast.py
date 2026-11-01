@@ -190,7 +190,7 @@ def seed_forecast_data(session):
         tax_amount=0.0,
         total=8000.0,
         currency="USD",
-        status="overdue",
+        status="sent",  # overdue is a list filter on a sent invoice past its due date, not a stored status (D-022)
     )
     session.add(inv2)
 

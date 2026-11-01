@@ -13,6 +13,18 @@ from services.employee_personal import normalize_id, normalize_phone
 EmploymentState = Literal["Full-Time", "Part-Time", "Freelance", "Occasional"]
 
 
+def _iso_date_or_empty(value: str) -> str:
+    """Empty, or a real YYYY-MM-DD date (the database refuses anything else)."""
+    text = (value or "").strip()
+    if not text:
+        return ""
+    try:
+        datetime.strptime(text, "%Y-%m-%d")
+    except ValueError:
+        raise ValueError("join_date must be a date in YYYY-MM-DD format")
+    return text
+
+
 class GoogleLoginRequest(BaseModel):
     credential: str
 
@@ -50,9 +62,13 @@ class EmployeeCreate(BaseModel):
     dept: str = ""
     job_role: str = ""
     join_date: str = ""
+
+    @field_validator("join_date")
+    @classmethod
+    def _join_date_is_a_date(cls, v):
+        return _iso_date_or_empty(v)
     status: str = "Active"
     vac_total: int = 21
-    next_raise: str = ""
     employment_state: EmploymentState = "Full-Time"
     invoice_id: Optional[str] = None
     # Personal details (D-036). Legal name, phone and address line 1 are required for a new employee;
@@ -92,12 +108,22 @@ class EmployeeUpdate(BaseModel):
     dept: Optional[str] = None
     job_role: Optional[str] = None
     join_date: Optional[str] = None
+
+    @field_validator("join_date")
+    @classmethod
+    def _join_date_is_a_date(cls, v):
+        return None if v is None else _iso_date_or_empty(v)
     status: Optional[str] = None
     vac_total: Optional[int] = None
-    vac_used: Optional[int] = None
-    next_raise: Optional[str] = None
     employment_state: Optional[EmploymentState] = None
     invoice_id: Optional[str] = None
+
+    @field_validator("status")
+    @classmethod
+    def _status_is_not_archived(cls, v):
+        if v is not None and v.strip().lower() == "archived":
+            raise ValueError("Use the archive action to archive an employee")
+        return v
 
 
 class EmployeePersonalUpdate(BaseModel):
@@ -207,6 +233,11 @@ class RaiseApply(BaseModel):
     new_external_salary_usd: float
     effective_date: Optional[str] = None
     reason: str = "Annual performance raise"
+
+
+class ArchiveEmployeeRequest(BaseModel):
+    """Optional body of POST /api/employees/{id}/archive: the real last day of employment (YYYY-MM-DD, not in the future)."""
+    left_date: Optional[str] = None
 
 
 class EmployeeNoteCreate(BaseModel):

@@ -43,9 +43,6 @@ def db_session(app_client):
 def clean_rates(db_session):
     db_session.query(PayrollRateSettingsDB).delete()
     db_session.commit()
-    g = PayrollService(db_session).get_payroll_settings()
-    g.employee_rate, g.employer_rate = 0.11, 0.18
-    db_session.commit()
     return db_session
 
 
@@ -54,8 +51,7 @@ def insured_employee(clean_rates):
     """One insured internal employee (insured base 5,000 EGP) so SI amounts show the rate in force."""
     db = clean_rates
     seed_usd_egp_rate(50.0)
-    emp = EmployeeDB(name="Rate Employee", email=f"rate+{uuid.uuid4().hex[:8]}@ratetest.com", role="employee",
-                     status="Active")
+    emp = EmployeeDB(name="Rate Employee", email=f"rate+{uuid.uuid4().hex[:8]}@ratetest.com", status="Active")
     bank = FinanceBankAccountDB(account_name="Rate USD", bank_name="Test Bank", account_number=f"RT-{uuid.uuid4().hex[:8]}",
                                 currency="USD", opening_balance=100000.0, current_balance=100000.0, is_active=True)
     db.add_all([emp, bank])
