@@ -35,7 +35,7 @@ def upgrade() -> None:
         return
     op.create_table(
         "holidays",
-        sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
+        sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("start_date", sa.String(10), nullable=False),
         sa.Column("end_date", sa.String(10), nullable=False),
