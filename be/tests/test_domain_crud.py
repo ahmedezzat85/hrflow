@@ -168,6 +168,14 @@ def test_submit_vacation_request_and_action_sync(app_client, employee_cookies, a
     vacs = fake_sheets_client.get_all_records("VacationHistory")
     vac_row = next(v for v in vacs if v["id"] == vac_id)
     assert vac_row["status"] == "Pending"
+    # 2026-09-01 (Tue) to 09-05 (Sat): Friday and Saturday are the weekend, and
+    # the client-sent days=5 is ignored.
+    assert vac_row["days"] == 3
+
+    only_weekend = {**vac_payload, "start_date": "2026-09-04", "end_date": "2026-09-05"}
+    assert app_client.post("/api/vacations/request", json=only_weekend, cookies=employee_cookies).status_code == 422
+    backwards = {**vac_payload, "start_date": "2026-09-05", "end_date": "2026-09-01"}
+    assert app_client.post("/api/vacations/request", json=backwards, cookies=employee_cookies).status_code == 422
 
     requests = fake_sheets_client.get_all_records("Requests")
     req_row = next(r for r in requests if r["employee_id"] == 2 and r["type"] == "Vacation")

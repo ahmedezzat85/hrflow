@@ -188,7 +188,7 @@ class VacationRequestCreate(BaseModel):
     leave_type: str = "Annual Leave"
     start_date: str
     end_date: Optional[str] = None
-    days: int = 1
+    days: Optional[float] = None  # ignored: the server computes working days
     employee_id: Optional[int] = None
     record_date: Optional[str] = None
     status: Optional[Literal["Approved", "Rejected", "Pending"]] = None
