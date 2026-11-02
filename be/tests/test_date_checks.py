@@ -44,14 +44,15 @@ def test_the_list_covers_every_date_column_of_the_models():
 
 def test_every_check_is_attached_to_its_table_and_the_migration_copy_matches():
     mig = _migration()
-    # migration 0067 holds the first 40 columns; later migrations add one each (0070: employees.left_date)
-    later = {"employees": {"left_date": True}}
-    assert {t: {**c, **later.get(t, {})} for t, c in mig.DATE_COLUMNS.items()} == date_checks.DATE_COLUMNS
+    # migration 0067 holds the first 40 columns; later migrations add more (0070: employees.left_date, 0071: the holidays table)
+    later = {"employees": {"left_date": True}, "holidays": {"end_date": False, "start_date": False}}
+    tables = set(mig.DATE_COLUMNS) | set(later)
+    assert {t: {**mig.DATE_COLUMNS.get(t, {}), **later.get(t, {})} for t in tables} == date_checks.DATE_COLUMNS
     for (table, column), (name, expression) in date_checks.all_checks().items():
         assert name == mig._name(table, column)
         assert expression == mig._expression(column, date_checks.DATE_COLUMNS[table][column])
         assert name in {c.name for c in Base.metadata.tables[table].constraints}, name
-    assert len({n for n, _ in date_checks.all_checks().values()}) == 41   # names stay unique after cutting to 63 characters
+    assert len({n for n, _ in date_checks.all_checks().values()}) == 43   # names stay unique after cutting to 63 characters
 
 
 def test_the_database_refuses_malformed_dates(app_client):

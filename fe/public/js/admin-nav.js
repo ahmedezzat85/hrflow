@@ -17,6 +17,7 @@
         'a-salary',
         'a-invoices',
         'a-vacations',
+        'a-holidays',
         'a-insurance',
         'a-dochub',
       ],
