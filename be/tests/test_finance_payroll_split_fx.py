@@ -21,7 +21,7 @@ def usd_egp_rate(app_client):
     """FX-1: payroll has no silent 50.0 fallback, so these tests start with one explicit USD-EGP transfer."""
     seed_usd_egp_rate(50.0)
 
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from db import get_db_context
 from payroll_test_helpers import set_funding_accounts
 from models_db import EmployeeDB, EmployeeBankAccountDB
@@ -159,12 +159,15 @@ def test_generate_payroll_run_missing_plan_error(app_client, admin_cookies):
         db.add(emp)
         db.commit()
 
+    # A future period: past periods are historical and skip employees without a plan (D-045)
+    nxt = (date.today().replace(day=1) + timedelta(days=32)).replace(day=1)
+    end = (nxt + timedelta(days=32)).replace(day=1) - timedelta(days=1)
     resp = app_client.post(
         "/api/finance/payroll/runs/generate",
         json={
-            "period_label": "2026-10",
-            "period_start": "2026-10-01",
-            "period_end": "2026-10-31",
+            "period_label": nxt.strftime("%Y-%m"),
+            "period_start": nxt.isoformat(),
+            "period_end": end.isoformat(),
             "fx_rate_source": "first_of_month",
         },
         cookies=admin_cookies,
