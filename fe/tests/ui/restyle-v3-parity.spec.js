@@ -35,13 +35,13 @@ function normalizeDimension(value) {
 }
 
 // The mocks are static files frozen at one month; the app shows the current one.
-const MONTH_YEAR = /(?:January|February|March|April|May|June|July|August|September|October|November|December) \d{4}/g;
+const MONTH_YEAR = /(?:January|February|March|April|May|June|July|August|September|October|November|December) [0-9]{4}/g;
 function maskMonth(text) {
   return text.replace(MONTH_YEAR, '{Month YYYY}');
 }
 
 function isDataText(text) {
-  return /^(\$|EGP|\d|\b\d{1,2}\s+[A-Za-z]+\s+\d{4}\b)/.test(text)
+  return text === '{Month YYYY}' || /^(\$|EGP|\d|\b\d{1,2}\s+[A-Za-z]+\s+\d{4}\b)/.test(text)
     || /Marcus Vance|Sarah Connor|John Doe|Alex Rivera|Elena Rostova/i.test(text);
 }
 
