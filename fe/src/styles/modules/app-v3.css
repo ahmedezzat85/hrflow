@@ -941,9 +941,16 @@
 
 /* Dialog extras per Dlg-Raise, Dlg-SalaryDocs, Dlg-CompPlan, Dlg-AssignRole */
 #raiseModal .modal-body > .form-section:first-child { margin-bottom: 12px; }
-#raiseModal .fv-dialog-tile {
+#raiseModal .fv-dialog-tile,
+#compensationPlanModal .fv-dialog-tile {
   background: var(--fv-surface-soft);
   border: 0;
+}
+#compensationPlanModal .modal-body > .form-section:first-child { margin-bottom: 12px; }
+.fv-dialog .fv-dialog-tile__meta {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--ink-muted);
 }
 .fv-dialog .fv-dialog-readonly {
   display: flex;
