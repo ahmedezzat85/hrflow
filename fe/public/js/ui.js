@@ -224,6 +224,7 @@ const titles = {
   'a-salary':['Salary and raises',"Review compensation and raise history."],
   'a-invoices':['Salary payment docs',"Generate and manage external-salary payment docs."],
   'a-vacations':['Vacations',"Track balances and leave across the company."],
+  'a-holidays':['Official holidays',"Company holidays that leave requests exclude."],
   'a-insurance':['Medical insurance',"Manage claims, categories and coverage limits."],
   'a-dochub':['Document hub',"Manage company-wide documents and policies."],
   'a-finance-dashboard':['Finance Overview','Executive summary of cash flow, revenue, and operating expenses.'],
@@ -249,6 +250,7 @@ const titles = {
   'e-salary':['Salary and raises','Your compensation history and growth.'],
   'e-payslips':['My payslips','Your monthly payslip history and compensation breakdown.'],
   'e-vacations':['Vacations','Your balance, requests and history.'],
+  'e-holidays':['Official holidays','Company holidays that leave requests exclude.'],
   'e-insurance':['Medical insurance','Your plan, category limits and claims history.'],
   'e-dochub':['Document hub','Company documents and policies.'],
 };
@@ -290,6 +292,8 @@ function showSection(pageId, portal, params){
     let isActive = false;
     if (p === pageId) {
       isActive = true;
+    } else if ((pageId === 'a-holidays' && p === 'a-vacations') || (pageId === 'e-holidays' && p === 'e-vacations')) {
+      isActive = true;
     } else if (p === 'a-finance-payroll' && (pageId === 'a-finance-payroll-runs' || pageId === 'a-finance-payroll-settings')) {
       isActive = true;
     } else if (p === 'a-finance-payroll-runs' && pageId === 'a-finance-payroll') {
@@ -321,6 +325,8 @@ function showSection(pageId, portal, params){
   if (typeof closeTopbarPopovers === 'function') closeTopbarPopovers();
   if (window.Router) Router.record(pageId, portal, params);
   if(pageId === 'a-invoices' && typeof initInvoicesPage === 'function') initInvoicesPage();
+  if((pageId === 'a-holidays' || pageId === 'e-holidays') && typeof renderHolidays === 'function') renderHolidays();
+  if(pageId === 'e-vacations' && typeof ensureHolidayDates === 'function' && typeof onVacationDatesChange === 'function') ensureHolidayDates(onVacationDatesChange);
   if(portal === 'admin') {
     if(typeof PayrollApp !== 'undefined' && PayrollApp.showPage) {
       if(pageId === 'a-finance-payroll' || pageId === 'a-finance-payroll-runs') {

@@ -239,6 +239,18 @@ class VacationHistoryDB(Base):
     employee = relationship("EmployeeDB", back_populates="vacations")
 
 
+class HolidayDB(Base):
+    """Official company holiday. A holiday may span several days (start_date to end_date, both inclusive)."""
+    __tablename__ = "holidays"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(255), nullable=False)
+    start_date = Column(String(10), nullable=False, index=True)
+    end_date = Column(String(10), nullable=False)
+    created_by = Column(String(255), default="")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class SalaryPaymentDocDB(Base):
     __tablename__ = "salary_payment_docs"
 

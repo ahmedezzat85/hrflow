@@ -176,6 +176,21 @@ class VacationRepository(Protocol):
 
 
 @runtime_checkable
+class HolidayRepository(Protocol):
+    def list_overlapping(self, start_date: str, end_date: str) -> List[Dict[str, Any]]:
+        ...
+
+    def create(self, name: str, start_date: str, end_date: str, actor_email: str) -> int:
+        ...
+
+    def update(self, holiday_id: int, name: str, start_date: str, end_date: str) -> bool:
+        ...
+
+    def delete(self, holiday_id: int) -> bool:
+        ...
+
+
+@runtime_checkable
 class SalaryPaymentDocRepository(Protocol):
     def list_all(
         self,

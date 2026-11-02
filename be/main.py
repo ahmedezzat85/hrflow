@@ -29,6 +29,7 @@ from routers import employees as employees_router
 from routers import documents as documents_router
 from routers import requests as requests_router
 from routers import vacations as vacations_router
+from routers import holidays as holidays_router
 from routers import insurance as insurance_router
 from routers import salary as salary_router
 from routers import system as system_router
@@ -168,6 +169,7 @@ app.include_router(employees_router.router)
 app.include_router(documents_router.router)
 app.include_router(requests_router.router)
 app.include_router(vacations_router.router)
+app.include_router(holidays_router.router)
 app.include_router(insurance_router.router)
 app.include_router(salary_router.router)
 app.include_router(system_router.router)

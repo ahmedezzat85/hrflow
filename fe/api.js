@@ -433,6 +433,50 @@ const Api = {
   },
   requestVacation(payload) { return apiRequest("POST", "/api/vacations/request", payload); },
 
+  // Official holidays. Mock mode keeps a small in-memory list so the page and the leave preview can be exercised.
+  getHolidays(year) {
+    if (typeof _isMock === "function" && _isMock()) {
+      window._mockHolidays = window._mockHolidays || [
+        { id: 1, name: "New Year's Day", start_date: "2026-01-01", end_date: "2026-01-01" },
+        { id: 2, name: "Labour Day", start_date: "2026-05-01", end_date: "2026-05-01" },
+        { id: 3, name: "Eid al-Adha", start_date: "2026-05-26", end_date: "2026-05-29" },
+      ];
+      return Promise.resolve(window._mockHolidays
+        .filter(h => h.start_date <= `${year}-12-31` && h.end_date >= `${year}-01-01`)
+        .sort((a, b) => a.start_date.localeCompare(b.start_date)));
+    }
+    return apiRequest("GET", `/api/holidays?year=${encodeURIComponent(year)}`);
+  },
+  createHoliday(payload) {
+    if (typeof _isMock === "function" && _isMock()) {
+      return this.getHolidays(0).then(() => {
+        const id = Math.max(0, ...window._mockHolidays.map(h => h.id)) + 1;
+        window._mockHolidays.push({ id, name: payload.name, start_date: payload.start_date, end_date: payload.end_date || payload.start_date });
+        return { message: "Holiday added", id };
+      });
+    }
+    return apiRequest("POST", "/api/holidays", payload);
+  },
+  updateHoliday(id, payload) {
+    if (typeof _isMock === "function" && _isMock()) {
+      return this.getHolidays(0).then(() => {
+        const h = window._mockHolidays.find(x => x.id === id);
+        if (h) Object.assign(h, { name: payload.name, start_date: payload.start_date, end_date: payload.end_date || payload.start_date });
+        return { message: "Holiday updated" };
+      });
+    }
+    return apiRequest("PUT", `/api/holidays/${id}`, payload);
+  },
+  deleteHoliday(id) {
+    if (typeof _isMock === "function" && _isMock()) {
+      return this.getHolidays(0).then(() => {
+        window._mockHolidays = window._mockHolidays.filter(x => x.id !== id);
+        return { message: "Holiday deleted" };
+      });
+    }
+    return apiRequest("DELETE", `/api/holidays/${id}`);
+  },
+
   getInsuranceCategories() { return apiRequest("GET", "/api/insurance/categories"); },
   createInsuranceCategory(payload) { return apiRequest("POST", "/api/insurance/categories", payload); },
   updateInsuranceCategory(catId, payload) { return apiRequest("PUT", `/api/insurance/categories/${catId}`, payload); },

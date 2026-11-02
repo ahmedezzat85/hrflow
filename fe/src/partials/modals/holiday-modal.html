@@ -1,0 +1,35 @@
+  <div class="modal-overlay fv fv-dialog fv-dialog--w520 fv-area-teal" id="holidayModal">
+    <div class="modal modal-v2">
+      <div class="modal-head">
+        <span class="modal-head-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h12l-2 4 2 4H5"></path></svg></span>
+        <div class="modal-head-text">
+          <h3 id="holidayModalTitle">Add holiday</h3>
+          <p>Leave requests will not count these days</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('holidayModal')" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-section">
+          <div class="form-grid">
+            <div class="form-field full">
+              <label for="holName">Holiday name</label>
+              <input type="text" id="holName" maxlength="255" placeholder="e.g. Revolution Day">
+            </div>
+            <div class="form-field">
+              <label for="holStart">First day</label>
+              <input type="date" id="holStart">
+            </div>
+            <div class="form-field">
+              <label for="holEnd">Last day, optional</label>
+              <input type="date" id="holEnd">
+              <div class="fv-plan-hint">Leave empty for a one-day holiday</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" id="holidayCancelBtn" onclick="closeModal('holidayModal')">Cancel</button>
+        <button class="btn btn-fill" id="holidaySaveBtn" onclick="saveHoliday(event)">Save holiday</button>
+      </div>
+    </div>
+  </div>

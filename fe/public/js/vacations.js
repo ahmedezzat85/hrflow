@@ -122,7 +122,8 @@ function renderVacationBalances() {
 }
 
 // Preview only: the server recomputes the stored days. Keep the weekend in
-// step with WEEKEND_WEEKDAYS in be/services/leave_days.py (Friday, Saturday).
+// step with WEEKEND_WEEKDAYS in be/services/leave_days.py (Friday, Saturday);
+// official holidays come from window.holidayDateSet (holidays.js).
 const VACATION_WEEKEND_DAYS = [5, 6]; // Date.getUTCDay(): Friday=5, Saturday=6
 
 function calculateVacationDays(start, end) {
@@ -132,7 +133,8 @@ function calculateVacationDays(start, end) {
   if (e < s) return 0;
   let days = 0;
   for (let d = new Date(s); d <= e; d.setUTCDate(d.getUTCDate() + 1)) {
-    if (!VACATION_WEEKEND_DAYS.includes(d.getUTCDay())) days += 1;
+    const isHoliday = window.holidayDateSet && window.holidayDateSet.has(d.toISOString().slice(0, 10));
+    if (!VACATION_WEEKEND_DAYS.includes(d.getUTCDay()) && !isHoliday) days += 1;
   }
   return days;
 }

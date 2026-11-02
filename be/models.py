@@ -194,6 +194,12 @@ class VacationRequestCreate(BaseModel):
     status: Optional[Literal["Approved", "Rejected", "Pending"]] = None
 
 
+class HolidayCreate(BaseModel):
+    name: str
+    start_date: str
+    end_date: Optional[str] = None  # a one-day holiday leaves it empty
+
+
 class InsuranceCategoryCreate(BaseModel):
     name: str
     annual_limit: float
