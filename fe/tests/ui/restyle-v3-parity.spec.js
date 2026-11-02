@@ -34,6 +34,12 @@ function normalizeDimension(value) {
   return String(value || '').trim().toLowerCase();
 }
 
+// The mocks are static files frozen at one month; the app shows the current one.
+const MONTH_YEAR = /(?:January|February|March|April|May|June|July|August|September|October|November|December) \d{4}/g;
+function maskMonth(text) {
+  return text.replace(MONTH_YEAR, '{Month YYYY}');
+}
+
 function isDataText(text) {
   return /^(\$|EGP|\d|\b\d{1,2}\s+[A-Za-z]+\s+\d{4}\b)/.test(text)
     || /Marcus Vance|Sarah Connor|John Doe|Alex Rivera|Elena Rostova/i.test(text);
@@ -221,8 +227,8 @@ for (const [sliceId, screenConfigs] of Object.entries(PARITY_MAP)) {
                 appValue: hasAppContainer ? 'present' : 'missing'
               });
             } else {
-              const mockTexts = await collectVisibleLabels(mockContainer);
-              const appTexts = await collectVisibleLabels(appContainer);
+              const mockTexts = (await collectVisibleLabels(mockContainer)).map(maskMonth);
+              const appTexts = (await collectVisibleLabels(appContainer)).map(maskMonth);
               const kept = (config.keptLabels || []).map((label) => label.toLowerCase());
               const unexplained = (label) => !isDataText(label) && !kept.includes(label.toLowerCase());
 
