@@ -309,7 +309,7 @@ function renderCompPlanDeltas() {
 
   const newTotal = Math.round((intNew + extNew) * 100) / 100;
   const curTotal = Math.round((st.internal + st.external) * 100) / 100;
-  let totalText = `New total: ${fmtUSD(newTotal)} / month`;
+  let totalText = `${fmtUSD(newTotal)} / month`;
   if (st.hasPlan && curTotal > 0 && newTotal !== curTotal) {
     const diff = Math.round((newTotal - curTotal) * 100) / 100;
     const sign = diff > 0 ? '+' : '−';
