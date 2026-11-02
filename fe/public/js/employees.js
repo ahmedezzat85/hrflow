@@ -631,7 +631,6 @@ function openBehalfVacationModal(empId = null) {
   document.getElementById('bvType').value = 'Annual Leave';
   document.getElementById('bvStart').value = '';
   document.getElementById('bvEnd').value = '';
-  document.getElementById('bvDays').value = '1';
   document.getElementById('bvStatus').value = 'Approved';
   document.getElementById('bvRecordDate').value = '';
   openModal('behalfVacationModal');
@@ -642,13 +641,12 @@ async function submitBehalfVacation(evt) {
   const leave_type = document.getElementById('bvType').value;
   const start_date = document.getElementById('bvStart').value;
   const end_date = document.getElementById('bvEnd').value || start_date;
-  const days = Number(document.getElementById('bvDays').value) || 1;
   const status = document.getElementById('bvStatus').value;
   const record_date = document.getElementById('bvRecordDate').value || null;
   if (!FinanceForm.validateRequiredFields('behalfVacationModal', [{ id: 'bvStart', message: 'Select a start date.' }])) return;
   setButtonLoading(btn, true, 'Submitting…');
   try {
-    await Api.requestVacation({ employee_name: emp.name, employee_id: emp.id, leave_type, start_date, end_date, days, status, record_date });
+    await Api.requestVacation({ employee_name: emp.name, employee_id: emp.id, leave_type, start_date, end_date, status, record_date });
     closeModal('behalfVacationModal');
     toast(`Vacation/WFH record added for ${emp.name}.`);
     await loadAdminData();

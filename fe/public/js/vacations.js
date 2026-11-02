@@ -121,14 +121,20 @@ function renderVacationBalances() {
   }).join('');
 }
 
-function calculateVacationDays(start, end, durationType) {
+// Preview only: the server recomputes the stored days. Keep the weekend in
+// step with WEEKEND_WEEKDAYS in be/services/leave_days.py (Friday, Saturday).
+const VACATION_WEEKEND_DAYS = [5, 6]; // Date.getUTCDay(): Friday=5, Saturday=6
+
+function calculateVacationDays(start, end) {
   if (!start) return 0;
-  if (durationType === 'Half Day') return 0.5;
   const s = new Date(start);
   const e = new Date(end || start);
-  const diffTime = e - s;
-  if (diffTime < 0) return 0;
-  return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  if (e < s) return 0;
+  let days = 0;
+  for (let d = new Date(s); d <= e; d.setUTCDate(d.getUTCDate() + 1)) {
+    if (!VACATION_WEEKEND_DAYS.includes(d.getUTCDay())) days += 1;
+  }
+  return days;
 }
 
 function onVacationDatesChange() {
@@ -148,7 +154,7 @@ function onVacationDatesChange() {
     end = start;
   }
 
-  const days = calculateVacationDays(start, end, durationType);
+  const days = calculateVacationDays(start, end);
   badgeEl.textContent = days === 1 ? '1 day' : `${days} days`;
 }
 
@@ -167,9 +173,12 @@ async function submitVacation() {
 
   if (!FinanceForm.validateRequiredFields('empVacationForm', [{ id: 'vacStart', message: 'Select a start date.' }])) return;
 
-  const computedDays = calculateVacationDays(start, end, durationType);
-  if (computedDays <= 0) {
+  if (end && new Date(end) < new Date(start)) {
     toast('End date cannot be earlier than start date.', 'fa-solid fa-triangle-exclamation');
+    return;
+  }
+  if (calculateVacationDays(start, end) <= 0) {
+    toast('The selected dates contain no working days.', 'fa-solid fa-triangle-exclamation');
     return;
   }
 
@@ -180,8 +189,7 @@ async function submitVacation() {
       employee_name: currentLoggedInEmployee ? currentLoggedInEmployee.name : '',
       leave_type: reason ? `${type} (${reason})` : type,
       start_date: start,
-      end_date: end || start,
-      days: computedDays
+      end_date: end || start
     };
 
     await Api.requestVacation(payload);
