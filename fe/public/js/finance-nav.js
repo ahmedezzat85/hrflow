@@ -28,6 +28,7 @@ const APP_AREA_BY_PAGE = {
   "a-invoices": { name: "HR · People", hue: "green", icon: "fa-file-lines" },
   "a-vacations": { name: "HR · Benefits and records", hue: "teal", icon: "fa-umbrella-beach" },
   "a-holidays": { name: "HR · Benefits and records", hue: "teal", icon: "fa-flag" },
+  "a-history-import": { name: "HR · Benefits and records", hue: "teal", icon: "fa-inbox" },
   "a-insurance": { name: "HR · Benefits and records", hue: "teal", icon: "fa-briefcase-medical" },
   "a-dochub": { name: "HR · Benefits and records", hue: "ochre", icon: "fa-folder-open" },
 
@@ -60,6 +61,7 @@ const PAGE_TILE_SVG = {
   "a-invoices": "<path d=\"M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h6\"></path>",
   "a-vacations": "<path d=\"M12 3a9 9 0 0 1 9 9H3a9 9 0 0 1 9-9M12 12v7a2 2 0 0 0 4 0\"></path>",
   "a-holidays": "<path d=\"M5 21V4M5 4h12l-2 4 2 4H5\"></path>",
+  "a-history-import": "<path d=\"M3 13l3-8h12l3 8v6H3zM3 13h5l1 3h6l1-3h5\"></path>",
   "a-insurance": "<path d=\"M12 20s-8-5.2-8-10.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5C20 14.8 12 20 12 20z\"></path>",
   "a-dochub": "<path d=\"M3 6h6l2 2h10v11H3z\"></path>",
   "a-finance-payroll": "<path d=\"M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2\"></path>",

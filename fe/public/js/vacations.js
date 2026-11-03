@@ -11,6 +11,8 @@ function filterVacationBalances() {
 }
 
 function renderVacationBalances() {
+  const historyBtn = document.getElementById('btnOpenHistoryImport');
+  if (historyBtn) historyBtn.hidden = !(typeof SessionInfo !== 'undefined' && SessionInfo.hasPermission('hr.history_import.read'));
   const body = document.getElementById('vacationBalanceBody');
   if (!body) return;
 

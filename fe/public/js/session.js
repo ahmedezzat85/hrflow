@@ -47,6 +47,7 @@ const MOCK_PERMISSIONS_EMPLOYEE = [
 
 const MOCK_PERMISSIONS_ALL = [
   "system.users.manage", "system.roles.manage", "system.audit.read",
+  "hr.history_import.read", "hr.history_import.write", "hr.history_import.review",
   ...MOCK_PERMISSIONS_HR,
   ...MOCK_PERMISSIONS_EMPLOYEE.filter(k => !MOCK_PERMISSIONS_HR.includes(k)),
   ...MOCK_PERMISSIONS_FINANCE,

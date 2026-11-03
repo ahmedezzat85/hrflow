@@ -1,0 +1,34 @@
+        <section class="page-section fv" id="a-history-import">
+          <div class="card fv-table-card">
+            <div class="card-head hv-card-head hv-wrap">
+              <div>
+                <h3 class="hv-card-title">Import review</h3>
+                <div class="hv-stat-sub">Leave and work from home found in old emails and scans. Nothing counts until you accept it</div>
+              </div>
+              <div class="hv-row-8">
+                <select aria-label="Batch" id="hiBatchSelect" class="hv-select" onchange="onHistoryBatchChange(this.value)"></select>
+                <select aria-label="Show" id="hiStatusFilter" class="hv-select" onchange="onHistoryFilterChange(this.value)">
+                  <option value="staged">Waiting for review</option>
+                  <option value="all">All items</option>
+                </select>
+                <button type="button" class="btn btn-fill btn-sm" id="hiAcceptSafeBtn" onclick="acceptSafeHistoryItems()">Accept clear items</button>
+              </div>
+            </div>
+            <div class="fv-table-scroll">
+              <table class="responsive-card-table fv-table">
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Leave</th>
+                    <th>Dates</th>
+                    <th>Decision</th>
+                    <th>Source</th>
+                    <th>Check</th>
+                    <th class="hv-right"><span class="sr-only">Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody id="hiItemsBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>

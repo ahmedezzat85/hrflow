@@ -342,7 +342,7 @@ export const PARITY_MAP = {
       mockContainerSelector: 'main',
       appContainerSelector: '#a-vacations',
       // Issue 13 (owner decision 2026-10-19): bare eye icon and bold Remaining applied; the search box is an input placeholder; Official holidays opens the holidays page from here (no sidebar item: the HR nav stays at the designed length)
-      keptLabels: ['Search employees', 'Official holidays'],
+      keptLabels: ['Search employees', 'Official holidays', 'Import review'],
       setup: async (page) => showAdminSection(page, 'a-vacations', '#a-vacations table'),
       pairs: [
         { name: 'vacation stat tile', mockSelector: 'main > div:first-child > div:first-child', appSelector: '#a-vacations .hv-stat-tile:first-child', accepted: { light: { fontSize: '16px', color: 'rgb(20, 30, 48)', borderColor: 'rgba(30, 60, 140, 0.08)', height: '102px' }, dark: { fontSize: '16px', height: '102px' } } },
