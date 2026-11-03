@@ -577,6 +577,13 @@ This document records durable product and architectural decisions approved by th
 - **Not done / follow-ups:** sign-out does not revoke the grant at Google (the grant may be shared by other sessions of the same user); the Google Workspace domain is still only a hint (`hd`) because access is decided by the HRFlow user record (an existing test pins that); the web container still receives `GOOGLE_CLIENT_ID`, which the page no longer uses.
 - **Related References:** `be/auth.py`, `be/google_oauth.py`, `be/token_crypto.py`, `be/routers/auth.py`, `deploy/prod/RUNBOOK.md`.
 
+### D-051 — MCP Server for Historical HR Data: Staged, Reviewed, Key-Protected (MCP-1)
+
+- **Status:** Accepted by owner, November 3, 2026 (plan: [../mcp-server-plan.md](../mcp-server-plan.md)). Slice M1 implemented; M0 spike, M2–M4 pending. Revisits the D-033 rejection of an MCP, for HR leave and work-from-home history only.
+- **Decision:** (1) A separate MCP server process (remote, streamable HTTP) reached from claude.ai through its own Cloudflare tunnel hostname with an API key; no OAuth; switched off by stopping the process. It calls the HRFlow REST API with a personal access token and never touches the database or files. (2) Personal access tokens (`api_tokens`, migration `0073`) are `hrf_` plus 256 random bits, stored as SHA-256, expire in at most 90 days, and are created and revoked only on the host (`be/scripts/manage_api_tokens.py`). A bearer request acts as the token's user with permissions narrowed to the token's scopes. (3) Claude reads documents and emails outside HRFlow; HRFlow receives typed values into staging tables and a human accepts each item (M2/M3). No tool approves, edits or deletes live records, and no finance, payroll, salary or bank data is exposed.
+- **Compatibility:** additive migration; cookie sign-in unchanged. No new permission keys or env variables in M1.
+- **Related References:** `be/api_tokens.py`, `be/auth.py`, `be/scripts/manage_api_tokens.py`, `be/tests/test_api_tokens.py`.
+
 ## Related but Not Decisions
 
 The following items are established architectural baseline rules or future roadmaps rather than standalone decision entries:

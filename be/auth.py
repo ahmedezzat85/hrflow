@@ -24,6 +24,7 @@ from google.auth.transport import requests as google_requests
 from fastapi import Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
+import api_tokens
 import config as config_module
 import google_oauth
 from config import Config
@@ -221,6 +222,7 @@ def revoke_user_sessions(db: Session, user_id: int):
         AuthSessionDB.user_id == user_id, AuthSessionDB.revoked_at.is_(None)
     ).update({"revoked_at": datetime.utcnow(), "refresh_token_enc": None}, synchronize_session=False)
     db.commit()
+    api_tokens.revoke_user_tokens(db, user_id)
 
 
 # One in-process lock per session, so concurrent requests carrying the same due token ask Google once.
@@ -296,6 +298,32 @@ def _check_and_renew_session(db: Session, request: Request, payload: dict, user_
         lock.release()
 
 
+def _authenticate_api_token(request: Request, db: Session, secret: str) -> dict:
+    """A personal access token (api_tokens.py): the token's user, with permissions narrowed to its scopes.
+    No cookie is read or set; the token cannot reach routes beyond what its scopes allow."""
+    from core.permissions import has_admin_surface, resolve_access
+
+    row = api_tokens.lookup_token(db, secret)
+    if row is None:
+        raise _unauthorized("Invalid or expired API token.")
+    ctx = api_tokens.narrow_context(resolve_access(db, {"uid": row.user_id}), row.scopes)
+    request.state.access_context = ctx
+    user_dict = {
+        "user_id": ctx.user_id,
+        "id": ctx.user_id,
+        "email": ctx.email,
+        "employee_id": ctx.employee_id,
+        "name": ctx.email.split("@")[0],
+        "permissions": sorted(ctx.permissions),
+        "roles": ctx.role_names,
+        "portal": "admin" if has_admin_surface(ctx.permissions) else "employee",
+        "is_super_admin": False,
+        "api_token_id": row.id,
+    }
+    request.state.current_user = user_dict
+    return user_dict
+
+
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> dict:
     """
     Reads the session from the HttpOnly cookie (Config.SESSION_COOKIE_NAME).
@@ -304,6 +332,10 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> dict:
     """
     if hasattr(request.state, "current_user") and request.state.current_user:
         return request.state.current_user
+
+    authorization = request.headers.get("authorization", "")
+    if authorization.lower().startswith("bearer " + api_tokens.TOKEN_PREFIX):
+        return _authenticate_api_token(request, db, authorization[7:].strip())
 
     token = request.cookies.get(Config.SESSION_COOKIE_NAME)
     if not token:

@@ -52,6 +52,23 @@ class AuthSessionDB(Base):
     revoked_at = Column(DateTime, nullable=True)
 
 
+class ApiTokenDB(Base):
+    """A personal access token for a non-browser client (the MCP server). Only the SHA-256 of the secret is
+    stored; `scopes` is a comma-separated list of scope names (api_tokens.SCOPES). Created and revoked on the
+    host with scripts/manage_api_tokens.py, never through the API."""
+    __tablename__ = "api_tokens"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(100), nullable=False)
+    token_hash = Column(String(64), nullable=False, unique=True)
+    scopes = Column(String(255), nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=False)
+    last_used_at = Column(DateTime, nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
+
+
 # Import and re-export RBAC models so they are attached to Base.metadata
 from core.rbac_models import PermissionDB, RoleDB, RolePermissionDB, UserRoleDB  # noqa: E402, F401
 
