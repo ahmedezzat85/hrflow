@@ -22,6 +22,8 @@ _LAST_USED_GRANULARITY_SECONDS = 60
 # Scope name -> the permission keys it can use. Effective permissions = the user's permissions ∩ these.
 SCOPES = {
     "mcp:read": frozenset({"hr.employee.read", "hr.vacation.read", "hr.request.read"}),
+    # Staging only. hr.history_import.review (accept/reject/edit) is in no scope: only a signed-in person reviews.
+    "mcp:stage": frozenset({"hr.history_import.read", "hr.history_import.write"}),
 }
 
 
