@@ -582,7 +582,8 @@ This document records durable product and architectural decisions approved by th
 - **Status:** Accepted by owner, November 3, 2026 (plan: [../mcp-server-plan.md](../mcp-server-plan.md)). Slice M1 implemented; M0 spike, M2–M4 pending. Revisits the D-033 rejection of an MCP, for HR leave and work-from-home history only.
 - **Decision:** (1) A separate MCP server process (remote, streamable HTTP) reached from claude.ai through its own Cloudflare tunnel hostname with an API key; no OAuth; switched off by stopping the process. It calls the HRFlow REST API with a personal access token and never touches the database or files. (2) Personal access tokens (`api_tokens`, migration `0073`) are `hrf_` plus 256 random bits, stored as SHA-256, expire in at most 90 days, and are created and revoked only on the host (`be/scripts/manage_api_tokens.py`). A bearer request acts as the token's user with permissions narrowed to the token's scopes. (3) Claude reads documents and emails outside HRFlow; HRFlow receives typed values into staging tables and a human accepts each item (M2/M3). No tool approves, edits or deletes live records, and no finance, payroll, salary or bank data is exposed.
 - **Compatibility:** additive migration; cookie sign-in unchanged. No new permission keys or env variables in M1.
-- **Related References:** `be/api_tokens.py`, `be/auth.py`, `be/scripts/manage_api_tokens.py`, `be/tests/test_api_tokens.py`.
+- **MCP server (M4):** `mcp_server/` runs as its own process on the HRFlow PC (not in the production stack), serves seven tools over streamable HTTP, checks the API key before anything else (bare 404, per-client and overall rate limits, key redacted from logs), and calls HRFlow only through the token. See `mcp_server/README.md`.
+- **Related References:** `mcp_server/`, `be/api_tokens.py`, `be/auth.py`, `be/scripts/manage_api_tokens.py`, `be/tests/test_api_tokens.py`.
 
 ## Related but Not Decisions
 

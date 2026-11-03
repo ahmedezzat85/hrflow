@@ -121,6 +121,8 @@ Item fields: `employee_id` (required; Claude must resolve it with `find_employee
 
 **Document attachment (phase 3, optional).** Attach the scan to the employee's documents through the existing upload service, from a local path chosen by the owner in the MCP client (not a server path), size-capped under the 25 MB limit. Deferred because it adds file-handling risk; the evidence excerpt and source reference are enough to start.
 
+**Built in M4 (differences from the plan above):** the directory is `mcp_server/`, not `mcp/`, because a folder named `mcp` would shadow the SDK package of the same name. `get_leave_balance` and `check_leave_conflicts` were not built: balances are already derived in HRFlow and `validate_history_items` reports overlaps and working days with the server's own code. The server keeps all three key forms (Bearer header, `X-API-Key`, URL path) until the M0 spike shows which claude.ai uses. Limits: 10 wrong keys a minute per client, 120 calls a minute overall. See `mcp_server/README.md`.
+
 ## 6. Data model (one Alembic migration, PostgreSQL-safe)
 
 - `api_tokens` (section 4).
@@ -166,7 +168,7 @@ Item fields: `employee_id` (required; Claude must resolve it with `find_employee
 | **M1** | `api_tokens` migration, bearer path in `get_current_user`, host CLI to create/list/revoke tokens, scope narrowing (`mcp:read` in M1, `mcp:stage` added in M2), tests. No new permission keys or env variables in M1. | Token-auth tests pass; cookie login unchanged; migration verified on PostgreSQL scratch. |
 | **M2** | `import_batches` / `import_items`, validate and stage endpoints, accept/reject service reusing the leave creation path, audit. | Acceptance criteria in section 9 pass at API level. |
 | **M3** | Import review page, mock mode, Playwright specs. | `npm run build` plus the new spec pass. |
-| **M4** | `mcp/` server (streamable HTTP, key middleware, log redaction, start/stop scripts) with read tools, then staging tools; README with claude.ai connector and tunnel steps; contract tests against a test backend, including wrong-key and rate-limit cases. | Owner completes a real session in claude.ai: finds an employee, stages 3 items from a sample email, accepts them in the UI; stopping the server makes the connector fail. |
+| **M4** (built) | `mcp/` server (streamable HTTP, key middleware, log redaction, start/stop scripts) with read tools, then staging tools; README with claude.ai connector and tunnel steps; contract tests against a test backend, including wrong-key and rate-limit cases. | Owner completes a real session in claude.ai: finds an employee, stages 3 items from a sample email, accepts them in the UI; stopping the server makes the connector fail. |
 | **M5 (optional)** | Document attachment tool (file upload through MCP over the tunnel is size-limited, so this needs its own design). | Separate plan before starting. |
 
 Run the pilot on a **copy** of production data, then on production with one real batch of about 10 items, before loading the full history.
