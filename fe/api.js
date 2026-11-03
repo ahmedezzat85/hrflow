@@ -418,6 +418,90 @@ const Api = {
     return apiRequest("DELETE", `/api/holidays/${id}`);
   },
 
+  // Historical leave staged from old emails and scans (D-051). A person reviews each item here; accepting creates the leave.
+  // Mock mode keeps three batches in memory: a clean one, one with a conflict and a low-confidence read, and one blocked by existing leave.
+  _mockHistoryImport() {
+    if (!window._mockHistoryImport) {
+      const item = (id, batch_id, employee_name, leave_type, start_date, end_date, days, decision, source_kind, source_ref, evidence, confidence, extra = {}) => ({
+        id, batch_id, employee_id: id, employee_name, leave_type, start_date, end_date, days, decision, decided_by: "Mona Adel",
+        decided_on: start_date, source_kind, source_ref, evidence_excerpt: evidence, confidence, notes: "", status: "staged",
+        reviewed_by: "", reviewed_at: null, reject_reason: "", result_vacation_id: null, warnings: [], blocked_by: [], ...extra,
+      });
+      window._mockHistoryImport = [
+        { id: 1, label: "2023 leave emails", created_at: "2026-11-03T09:00:00", items: [
+          item(1, 1, "Ahmed Hassan", "Annual Leave", "2023-03-05", "2023-03-09", 5, "Approved", "email", "Re: leave 5-9 March, 2023-02-20", "Approved, enjoy your leave.", "high"),
+          item(2, 1, "Sara Ali", "Work From Home", "2023-04-02", "2023-04-02", 1, "Approved", "email", "WFH Sunday, 2023-03-30", "OK for Sunday.", "high"),
+        ] },
+        { id: 2, label: "Scanned forms 2022", created_at: "2026-11-03T09:30:00", items: [
+          item(3, 2, "Omar Khaled", "Sick Leave", "2022-06-12", "2022-06-14", 3, "Approved", "scan", "form-2022-06-omar.pdf", "Sick leave 3 days, signed by manager.", "low",
+            { warnings: ["Conflicts with staged item 4: Annual Leave 2022-06-13 to 2022-06-13 from Re: leave 13 June."] }),
+          item(4, 2, "Omar Khaled", "Annual Leave", "2022-06-13", "2022-06-13", 1, "Approved", "email", "Re: leave 13 June", "Fine for the 13th.", "medium",
+            { warnings: ["Conflicts with staged item 3: Sick Leave 2022-06-12 to 2022-06-14 from form-2022-06-omar.pdf."] }),
+        ] },
+        { id: 3, label: "Overlap check", created_at: "2026-11-03T10:00:00", items: [
+          item(5, 3, "Nour Samir", "Annual Leave", "2026-02-01", "2026-02-03", 3, "Approved", "manual", "HR note", "", "medium",
+            { blocked_by: ["Overlaps an existing record: Annual Leave 2026-02-01 to 2026-02-02 (Approved)."] }),
+        ] },
+      ];
+    }
+    return window._mockHistoryImport;
+  },
+  _mockHistoryItem(id) {
+    for (const b of this._mockHistoryImport()) {
+      const found = b.items.find(i => i.id === id);
+      if (found) return found;
+    }
+    return null;
+  },
+  getHistoryImportBatches() {
+    if (typeof _isMock === "function" && _isMock()) {
+      return Promise.resolve(this._mockHistoryImport().map(b => {
+        const counts = { staged: 0, accepted: 0, rejected: 0 };
+        b.items.forEach(i => { counts[i.status] += 1; });
+        return { id: b.id, label: b.label, created_at: b.created_at, counts, item_count: b.items.length };
+      }).reverse());
+    }
+    return apiRequest("GET", "/api/history-import/batches");
+  },
+  getHistoryImportBatch(id) {
+    if (typeof _isMock === "function" && _isMock()) {
+      const b = this._mockHistoryImport().find(x => x.id === id);
+      return b ? Promise.resolve(JSON.parse(JSON.stringify(b))) : Promise.reject(new Error("Batch not found."));
+    }
+    return apiRequest("GET", `/api/history-import/batches/${id}`);
+  },
+  editHistoryImportItem(id, payload) {
+    if (typeof _isMock === "function" && _isMock()) {
+      const it = this._mockHistoryItem(id);
+      if (!it || it.status !== "staged") return Promise.reject(new Error("Only staged items can be edited."));
+      if (payload.end_date && payload.start_date && payload.end_date < payload.start_date) return Promise.reject(new Error("End date cannot be earlier than start date."));
+      Object.assign(it, payload, { blocked_by: [] });
+      it.end_date = payload.end_date || payload.start_date || it.end_date;
+      it.days = Math.max(1, Math.round((new Date(it.end_date) - new Date(it.start_date)) / 86400000) + 1);
+      return Promise.resolve(it);
+    }
+    return apiRequest("PATCH", `/api/history-import/items/${id}`, payload);
+  },
+  acceptHistoryImportItem(id) {
+    if (typeof _isMock === "function" && _isMock()) {
+      const it = this._mockHistoryItem(id);
+      if (!it || it.status !== "staged") return Promise.reject(new Error("Only staged items can be accepted."));
+      if (it.blocked_by.length) return Promise.reject(new Error(it.blocked_by[0]));
+      it.status = "accepted"; it.reviewed_by = "admin@hrflow.test"; it.result_vacation_id = 900 + id;
+      return Promise.resolve(it);
+    }
+    return apiRequest("POST", `/api/history-import/items/${id}/accept`);
+  },
+  rejectHistoryImportItem(id, reason) {
+    if (typeof _isMock === "function" && _isMock()) {
+      const it = this._mockHistoryItem(id);
+      if (!it || it.status !== "staged") return Promise.reject(new Error("Only staged items can be rejected."));
+      it.status = "rejected"; it.reviewed_by = "admin@hrflow.test"; it.reject_reason = reason || "";
+      return Promise.resolve(it);
+    }
+    return apiRequest("POST", `/api/history-import/items/${id}/reject`, { reason: reason || "" });
+  },
+
   getInsuranceCategories() { return apiRequest("GET", "/api/insurance/categories"); },
   createInsuranceCategory(payload) { return apiRequest("POST", "/api/insurance/categories", payload); },
   updateInsuranceCategory(catId, payload) { return apiRequest("PUT", `/api/insurance/categories/${catId}`, payload); },

@@ -18,6 +18,7 @@
         'a-invoices',
         'a-vacations',
         'a-holidays',
+        'a-history-import',
         'a-insurance',
         'a-dochub',
       ],
