@@ -115,7 +115,7 @@ All tool names, descriptions and argument schemas are fixed in the MCP server; d
 | `stage_history_items(batch_label, items[], idempotency_key)` | Creates one `import_batch` with `import_items` in status `staged`. Re-sending the same key returns the same batch. Max 100 items per call. |
 | `get_import_batch(batch_id)` | Status and per-item review state, so Claude can tell the owner what is left. |
 
-Item fields: `employee_id` (required; Claude must resolve it with `find_employee`, never guess by name), `kind` (`vacation` | `work_from_home` | `sick_leave` per the confirmed type list), `leave_type`, `start_date`, `end_date`, `decision` (`approved` | `rejected`), `decided_by` (name as written in the source), `decided_on`, `source_kind`, `source_ref`, `source_sha256?`, `evidence_excerpt` (max 500 chars), `confidence` (`high` | `medium` | `low`), `notes`.
+Item fields: `employee_id` (required; Claude must resolve it with `find_employee`, never guess by name), `leave_type` (`Annual Leave` | `Sick Leave` | `Work From Home` | `Unpaid Leave`; in the app all four are `vacation_history` types, so there is no separate kind), `start_date`, `end_date`, `decision` (`approved` | `rejected`), `decided_by` (name as written in the source), `decided_on`, `source_kind`, `source_ref`, `source_sha256?`, `evidence_excerpt` (max 500 chars), `confidence` (`high` | `medium` | `low`), `notes`.
 
 **Deliberately absent in phase 1:** create/approve/reject/delete live leave, upload documents, anything finance or payroll, anything that returns personal or bank details.
 
@@ -126,8 +126,8 @@ Item fields: `employee_id` (required; Claude must resolve it with `find_employee
 ## 6. Data model (one Alembic migration, PostgreSQL-safe)
 
 - `api_tokens` (section 4).
-- `import_batches`: id, `label`, `created_by_user_id`, `token_id`, `idempotency_key` (unique per user), `status` (`open`, `completed`), `created_at`.
-- `import_items`: id, `batch_id`, `employee_id`, the item fields above, computed `days`, `status` (`staged`, `accepted`, `rejected`, `duplicate`), `reviewed_by`, `reviewed_at`, `result_vacation_id` / `result_request_id` once accepted, `reject_reason`. Unique index on a natural key (`employee_id`, `kind`, `start_date`, `end_date`) among non-rejected items to stop double staging.
+- `history_import_batches` (named so to avoid the finance `import_batches`): id, `label`, `created_by_user_id`, `token_id`, `idempotency_key` (unique per user), `status` (`open`, `completed`), `created_at`.
+- `history_import_items`: id, `batch_id`, `employee_id`, the item fields above, computed `days`, `status` (`staged`, `accepted`, `rejected`, `duplicate`), `reviewed_by`, `reviewed_at`, `result_vacation_id` / `result_request_id` once accepted, `reject_reason`. Double staging is blocked in the service (same employee, type and dates already staged); overlap with a live record blocks staging and accepting.
 - Use `sa.true()`/`sa.false()` for any Boolean default (the integer-default problem noted in the project start-here doc). Test on the PostgreSQL scratch container and keep `tests/test_schema_drift.py` green.
 - No change to `vacation_history` or `requests` columns. Accepted historical items are created through the existing back-dated admin path (status as decided, `record_date` = decision date, `submitted_by` = reviewer), with an audit row `history_import.accept` linking item id, batch id and source reference.
 
@@ -166,7 +166,7 @@ Item fields: `employee_id` (required; Claude must resolve it with `find_employee
 | :--- | :--- | :--- |
 | **M0** | Decision entry (D-051) and answers to the open questions below. **Spike:** a throwaway "hello" MCP server behind the tunnel, connected in claude.ai with the API key, to confirm where claude.ai accepts the key (header vs URL) and that tools are listed and callable. No HRFlow code. | Spike works end to end; owner approves this plan. |
 | **M1** | `api_tokens` migration, bearer path in `get_current_user`, host CLI to create/list/revoke tokens, scope narrowing (`mcp:read` in M1, `mcp:stage` added in M2), tests. No new permission keys or env variables in M1. | Token-auth tests pass; cookie login unchanged; migration verified on PostgreSQL scratch. |
-| **M2** | `import_batches` / `import_items`, validate and stage endpoints, accept/reject service reusing the leave creation path, audit. | Acceptance criteria in section 9 pass at API level. |
+| **M2** (built) | `history_import_batches` / `history_import_items` (migration 0074), `/api/history-import` validate, stage, list, edit, accept, reject; permissions `hr.history_import.read/write/review` (granted to no seeded role; Super-Admin has them; `review` is in no token scope); token scope `mcp:stage`; audit; evidence purge on listing. Accept writes the same `vacation_history` + `requests` rows as the back-dated admin path, in one transaction. | Acceptance criteria in section 9 pass at API level. |
 | **M3** | Import review page, mock mode, Playwright specs. | `npm run build` plus the new spec pass. |
 | **M4** (built) | `mcp/` server (streamable HTTP, key middleware, log redaction, start/stop scripts) with read tools, then staging tools; README with claude.ai connector and tunnel steps; contract tests against a test backend, including wrong-key and rate-limit cases. | Owner completes a real session in claude.ai: finds an employee, stages 3 items from a sample email, accepts them in the UI; stopping the server makes the connector fail. |
 | **M5 (optional)** | Document attachment tool (file upload through MCP over the tunnel is size-limited, so this needs its own design). | Separate plan before starting. |
