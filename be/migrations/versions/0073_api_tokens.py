@@ -20,7 +20,7 @@ def upgrade() -> None:
         return
     op.create_table(
         "api_tokens",
-        sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
+        sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
         sa.Column("name", sa.String(100), nullable=False),
         sa.Column("token_hash", sa.String(64), nullable=False, unique=True),
