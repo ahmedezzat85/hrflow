@@ -25,8 +25,8 @@ C="docker compose --env-file D:/services/hrflow-prod/.env -f deploy/prod/docker-
 ```
 
 ## First install
-1. Copy `.env.prod.example` (repo root) to `D:/services/hrflow-prod/.env`; create `D:/services/hrflow-prod/data/secrets/` (put `google-credentials.json` there if Drive or Sheets export is used); fill `SECRET_KEY`, both Postgres passwords (letters/digits only), `GOOGLE_OAUTH_CLIENT_ID`, `BACKUP_PASSPHRASE`. Save `BACKUP_PASSPHRASE` in a password manager.
-2. In Google Cloud Console add `http://localhost` to the OAuth client's Authorized JavaScript origins.
+1. Copy `.env.prod.example` (repo root) to `D:/services/hrflow-prod/.env`; create `D:/services/hrflow-prod/data/secrets/` (put `google-credentials.json` there if Drive or Sheets export is used); fill `SECRET_KEY`, both Postgres passwords (letters/digits only), `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `TOKEN_ENCRYPTION_KEY`, `BACKUP_PASSPHRASE`. Save `BACKUP_PASSPHRASE` and `TOKEN_ENCRYPTION_KEY` in a password manager.
+2. In Google Cloud Console the OAuth client must be a **Web application** whose consent screen is **Internal** (an External app in Testing makes refresh tokens expire after 7 days). Add `http://localhost/api/auth/google/callback` (and, with the tunnel, `https://<public hostname>/api/auth/google/callback`) to its Authorized redirect URIs, and copy its secret into `GOOGLE_OAUTH_CLIENT_SECRET`. The public URL must be on port 80/443 (nginx passes the host without the port). Generate the encryption key: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`.
 3. `$C up -d --build` (migrations run automatically at app start).
 4. Create the first admin: `docker exec hrflow-prod-app-1 python scripts/bootstrap_admin.py --email you@voyance.health`.
 5. Browse to `http://localhost` (always `localhost`; the secure session cookie is not accepted on other hostnames over HTTP, and Safari does not accept it at all).
@@ -47,6 +47,8 @@ Rollback: set `HRFLOW_VERSION` to the previous tag and `$C up -d`; if a migratio
 ## Operations
 - Logs: `D:/services/hrflow-prod/data/logs/hrflow.log`, `$C logs -f app`.
 - Rotate `SECRET_KEY`: edit `.env`, `$C up -d` (all users must sign in again).
+- Rotate `TOKEN_ENCRYPTION_KEY`: put the new key first, comma-separated, before the old one (`NEW,OLD`), `$C up -d`; remove the old key once no session older than `SESSION_MAX_AGE_DAYS` can remain. Removing it earlier makes those stored tokens unreadable, which signs those users out.
+- Sign everyone out without touching secrets: `UPDATE auth_sessions SET revoked_at = now(), refresh_token_enc = NULL WHERE revoked_at IS NULL;`. Sessions are listed in `auth_sessions` (no token is readable without `TOKEN_ENCRYPTION_KEY`).
 - Stop: `$C down` (data is kept). **Never** run `down -v` in production: it deletes the database volume.
 - Windows: set Docker Desktop to start at sign-in and keep the PC from sleeping.
 

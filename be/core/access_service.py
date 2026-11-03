@@ -552,6 +552,8 @@ class AccessService:
         user.archived_at = datetime.utcnow()
         user.archived_by = actor_email
         self.db.commit()
+        from auth import revoke_user_sessions
+        revoke_user_sessions(self.db, user.id)
 
         if self.audit_repo:
             audit_log(
