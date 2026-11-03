@@ -38,6 +38,20 @@ class UserDB(Base):
     user_roles = relationship("UserRoleDB", back_populates="user", cascade="all, delete-orphan")
 
 
+class AuthSessionDB(Base):
+    """One Google sign-in. The session JWT carries `id` (claim `sid`); `refresh_token_enc` is the user's Google
+    refresh token, encrypted (token_crypto) and cleared when the session is revoked."""
+    __tablename__ = "auth_sessions"
+
+    id = Column(String(32), primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    refresh_token_enc = Column(Text, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    last_refreshed_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    absolute_expires_at = Column(DateTime, nullable=False)
+    revoked_at = Column(DateTime, nullable=True)
+
+
 # Import and re-export RBAC models so they are attached to Base.metadata
 from core.rbac_models import PermissionDB, RoleDB, RolePermissionDB, UserRoleDB  # noqa: E402, F401
 

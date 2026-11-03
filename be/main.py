@@ -21,6 +21,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from auth import set_session_cookie
 from config import Config
 from logging_config import setup_logging, get_logger
 
@@ -140,6 +141,17 @@ async def security_headers(request: Request, call_next):
     if Config.IS_PRODUCTION:
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
+
+@app.middleware("http")
+async def renew_session_cookie(request: Request, call_next):
+    """get_current_user leaves a renewed session token on request.state when Google confirmed the session;
+    it is handed to the browser here so it also reaches streamed and file responses."""
+    response = await call_next(request)
+    renewed = getattr(request.state, "refreshed_session_token", None)
+    if renewed:
+        set_session_cookie(response, renewed[0], renewed[1])
+    return response
+
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):

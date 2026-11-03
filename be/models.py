@@ -25,10 +25,6 @@ def _iso_date_or_empty(value: str) -> str:
     return text
 
 
-class GoogleLoginRequest(BaseModel):
-    credential: str
-
-
 class PasswordLoginRequest(BaseModel):
     email: EmailStr
     password: str

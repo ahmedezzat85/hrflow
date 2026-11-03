@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 // Login page (Brand Panel): blue brand panel + form on desktop; on tablet and phone the blue becomes the page and
-// the form sits in one card with the white logo top-centre. Google draws its own button; we only choose theme and width.
+// the form sits in one card with the white logo top-centre. The Google button is our own link to the backend sign-in route.
 
 async function openLogin(page, theme, size) {
   await page.setViewportSize(size);
@@ -108,26 +108,33 @@ test.describe('login page', () => {
     });
   }
 
-  test('Google button uses the outline theme in both themes and follows the container width', async ({ page }) => {
-    // Stand-in for Google Identity Services: record how the button is asked to be drawn.
-    await page.addInitScript(() => {
-      window.__gis = { init: 0, renders: [] };
-      window.google = { accounts: { id: {
-        initialize: () => { window.__gis.init += 1; },
-        renderButton: (el, opts) => { window.__gis.renders.push(opts); el.innerHTML = '<div id="gis-stub" style="height:40px"></div>'; },
-      } } };
-    });
+  test('the Google button is a link to the backend sign-in route, white in both themes', async ({ page }) => {
     await openLogin(page, 'light', { width: 1440, height: 900 });
-    await expect.poll(() => page.evaluate(() => window.__gis.renders.length)).toBeGreaterThan(0);
-    const first = await page.evaluate(() => window.__gis.renders.at(-1));
-    expect(first).toMatchObject({ theme: 'outline', type: 'standard', size: 'large', shape: 'rectangular', text: 'signin_with', logo_alignment: 'left' });
-    expect(first.width).toBeGreaterThanOrEqual(200);
-    expect(first.width).toBeLessThanOrEqual(400);
-
-    // The dark card keeps the white outline button: filled_black has no visible edge on it.
+    const link = page.locator('#googleSignInButton a.login-google-btn');
+    await expect(link).toHaveText('Sign in with Google');
+    const href = await link.getAttribute('href');
+    expect(href).toContain('/api/auth/google/start?return_to=');
+    expect(decodeURIComponent(href.split('return_to=')[1])).toBe(new URL(page.url()).origin);
+    await expect(link).toHaveCSS('background-color', 'rgb(255, 255, 255)');
     await page.locator('#loginThemeToggle').click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-    expect((await page.evaluate(() => window.__gis.renders.at(-1))).theme).toBe('outline');
-    expect(await page.evaluate(() => window.__gis.init)).toBe(1);
+    await expect(link).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+  });
+
+  test('a refused sign-in shows its reason once and the code leaves the address bar', async ({ page }) => {
+    await page.route('**/api/**', (route) => route.fulfill({ status: 401, contentType: 'application/json', body: '{}' }));
+    await page.goto('/?login_error=not_registered', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('#loginErr')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('#loginErr span')).toContainText('not registered in HRFlow');
+    expect(page.url()).not.toContain('login_error');
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(page.locator('#login-screen')).toBeVisible();
+    await expect(page.locator('#loginErr')).toBeHidden();
+  });
+
+  test('an unknown login_error code falls back to a generic message', async ({ page }) => {
+    await page.route('**/api/**', (route) => route.fulfill({ status: 401, contentType: 'application/json', body: '{}' }));
+    await page.goto('/?login_error=<script>alert(1)</script>', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('#loginErr span')).toHaveText('Sign-in failed. Please try again.');
   });
 });
