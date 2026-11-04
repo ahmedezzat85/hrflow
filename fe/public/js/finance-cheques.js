@@ -13,7 +13,10 @@ const _CHEQUE_STATUSES = [
   ["bounced", "Bounced"], ["stopped", "Stopped"], ["voided", "Voided"], ["replaced", "Replaced"],
 ];
 
-async function loadFinanceCheques() {
+const _CHEQUE_PAGE_SIZE = 200;
+let _chequeHasMore = false;
+
+async function loadFinanceCheques(append = false) {
   const bar = document.getElementById("financeChequesLoadingBar");
   if (bar) bar.style.display = "block";
 
@@ -27,20 +30,26 @@ async function loadFinanceCheques() {
 
     // Status is filtered on the client so the pills can show a count for every status.
     // The API default is 50 newest-first, which hides older (imported) cheques; ask for the maximum page.
-    const params = { limit: 200 };
+    const offset = append ? (FinanceState.cheques || []).length : 0;
+    const params = { limit: _CHEQUE_PAGE_SIZE, offset };
     if (fy) params.fiscal_year = fy;
     if (search) params.search = search;
     if (hasScan) params.has_scan = hasScan;
 
-    const items = await FinanceApi.getCheques(params);
-    FinanceState.cheques = items;
-    renderFinanceCheques(items);
+    const page = await FinanceApi.getCheques(params);
+    _chequeHasMore = page.length >= _CHEQUE_PAGE_SIZE;
+    FinanceState.cheques = append ? (FinanceState.cheques || []).concat(page) : page;
+    renderFinanceCheques(FinanceState.cheques);
   } catch (err) {
     console.error("Failed to load cheques:", err);
     toast("Failed to load cheques: " + (err.message || err), "fa-solid fa-triangle-exclamation");
   } finally {
     if (bar) bar.style.display = "none";
   }
+}
+
+function loadMoreFinanceCheques() {
+  return loadFinanceCheques(true);
 }
 
 function filterFinanceCheques() {
@@ -112,7 +121,7 @@ function renderFinanceCheques(all) {
     });
     const openText = Object.entries(open).map(([cur, v]) => `<span class="fv-foot__total">${FinanceUI.moneyHtml(v, cur)}</span>`).join(" + ");
     footer.style.display = "";
-    footer.innerHTML = `<span>Showing <b>1&ndash;${items.length}</b> of <b>${items.length}</b> ${items.length === 1 ? "cheque" : "cheques"}${openText ? ` &middot; ${openText} not yet cleared` : ""}</span>`;
+    footer.innerHTML = `<span>Showing <b>1&ndash;${items.length}</b> of <b>${items.length}</b> ${items.length === 1 ? "cheque" : "cheques"}${openText ? ` &middot; ${openText} not yet cleared` : ""}</span>${_chequeHasMore ? ` <button type="button" class="btn btn-outline btn-sm" id="financeChequesLoadMore" onclick="loadMoreFinanceCheques()">Load more</button>` : ""}`;
   }
 
   const esc = FinanceUI.esc;
@@ -783,6 +792,7 @@ window.executeChequeAction = executeChequeAction;
 window.openChequeReplaceModal = openChequeReplaceModal;
 window.closeChequeReplaceModal = closeChequeReplaceModal;
 window.executeChequeReplace = executeChequeReplace;
+window.loadMoreFinanceCheques = loadMoreFinanceCheques;
 window.openIssueChequeModal = openIssueChequeModal;
 window.closeIssueChequeModal = closeIssueChequeModal;
 window.onChequeAccountSelected = onChequeAccountSelected;
