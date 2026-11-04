@@ -19,7 +19,7 @@ function renderVacationBalances() {
   const totalAllotted = employees.reduce((s, e) => s + (e.vacTotal || 21), 0);
   const totalUsed = employees.reduce((s, e) => s + (e.vacUsed || 0), 0);
   const usedPct = totalAllotted ? Math.round((totalUsed / totalAllotted) * 100) : 0;
-  const onLeaveCount = employees.filter(e => e.status === 'On Leave').length;
+  const onLeaveCount = employees.filter(isOnLeaveToday).length;
 
   const elAllotted = document.getElementById('statVacAllotted');
   const elUsed = document.getElementById('statVacUsed');
@@ -43,7 +43,7 @@ function renderVacationBalances() {
   if (elDashOnLeave) elDashOnLeave.textContent = onLeaveCount;
   const elOnLeaveSub = document.getElementById('statEmployeesOnLeaveSub');
   if (elOnLeaveSub) {
-    const onLeaveEmps = employees.filter(e => e.status === 'On Leave');
+    const onLeaveEmps = employees.filter(isOnLeaveToday);
     const waitingReqs = (typeof requests !== 'undefined' && Array.isArray(requests)) ? requests.filter(r => r.status === 'Pending').length : 0;
     if (onLeaveEmps.length > 0) {
       elOnLeaveSub.textContent = `${onLeaveEmps.map(e => e.name).join(', ')}${waitingReqs ? ` · ${waitingReqs} request${waitingReqs === 1 ? '' : 's'} waiting` : ''}`;
@@ -86,7 +86,7 @@ function renderVacationBalances() {
     const used = e.vacUsed || 0;
     const remaining = total - used;
     const pct = total ? Math.round((used / total) * 100) : 0;
-    const onLeaveBadge = e.status === 'On Leave'
+    const onLeaveBadge = isOnLeaveToday(e)
       ? `<span class="badge-pill pill-info" style="margin-left:6px;font-size:11px;">On leave today</span>`
       : '';
     const roleDept = [e.job_role || e.role, e.dept || e.department].filter(Boolean).join(' · ');

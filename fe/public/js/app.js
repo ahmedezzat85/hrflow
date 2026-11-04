@@ -28,9 +28,11 @@ async function loadAdminData() {
   showTableSkeleton('employeesTableBody', 8, 5);
   showSectionLoadingBar('empTableLoadingBar');
   try {
-    const [rawEmployees, rawRequests, rawClaims, rawSalaryHistory, rawCategories, rawConsumption] = await Promise.all([
-      Api.getEmployees(), Api.getRequests(), Api.getInsuranceClaims(), Api.getSalaryHistory(), Api.getInsuranceCategories(), Api.getInsuranceConsumption()
+    const [rawEmployees, rawRequests, rawClaims, rawSalaryHistory, rawCategories, rawConsumption, rawVacations] = await Promise.all([
+      Api.getEmployees(), Api.getRequests(), Api.getInsuranceClaims(), Api.getSalaryHistory(), Api.getInsuranceCategories(), Api.getInsuranceConsumption(),
+      Api.getVacationHistory().catch(() => [])
     ]);
+    allVacationHistory = Array.isArray(rawVacations) ? rawVacations : [];
     allSalaryHistory = rawSalaryHistory;
     employees = rawEmployees.map(e => normalizeEmployee(e, rawSalaryHistory.filter(h => String(h.employee_id) === String(e.id))));
     requests = rawRequests.map(normalizeRequest);
@@ -87,7 +89,7 @@ function renderAdminPortal() {
 
   // 1. Headcount: Total active employees
   const activeCount = employees.filter(e => e.status === 'Active').length;
-  const onLeaveCount = employees.filter(e => e.status === 'On Leave').length;
+  const onLeaveCount = employees.filter(isOnLeaveToday).length;
   const elEmp = document.getElementById('statEmployees');
   if (elEmp) elEmp.textContent = activeCount;
   const elEmpSub = document.getElementById('statEmployeesSub');
@@ -113,7 +115,7 @@ function renderAdminPortal() {
   if (elOnLeave) elOnLeave.textContent = onLeaveCount;
   const elOnLeaveSub = document.getElementById('statOnLeaveSub');
   if (elOnLeaveSub) {
-    const onLeaveEmps = employees.filter(e => e.status === 'On Leave');
+    const onLeaveEmps = employees.filter(isOnLeaveToday);
     elOnLeaveSub.textContent = onLeaveEmps.length
       ? onLeaveEmps.map(e => e.name).join(', ')
       : 'None today';
