@@ -2529,8 +2529,8 @@
 .fv .fv-dropzone__icon { font-size: 22px; color: var(--brand-text); }
 .fv .fv-dropzone__title { font-weight: 600; font-size: 13.5px; color: var(--ink-strong); }
 .fv .fv-dropzone__hint { font-size: 12px; color: var(--ink-muted); }
-.fv .fv-dropzone .fv-scan-input {
-  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); border: 0;
+.fv .fv-dropzone input.fv-scan-input {
+  position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; opacity: 0; cursor: pointer;
 }
 .fv .fv-lines__prod { width: 20%; }
 
@@ -2575,3 +2575,31 @@
 .fv .fv-import-msg--warning { color: var(--warning); }
 .fv .fv-import-msg--duplicate { color: var(--ink-label); }
 .fv .fv-import-msg__code { font-family: monospace; font-size: 11px; color: var(--ink-faint); margin-right: 4px; }
+
+/* Styled popup for native selects (FinanceSelectMenu in finance-core.js); sits above every dialog */
+.fv.fv-select-pop {
+  position: fixed;
+  z-index: 10050;
+  overflow-y: auto;
+  padding: 4px;
+  background: var(--fv-surface);
+  border: 1px solid var(--fv-line-strong);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  font-size: 13px;
+}
+.fv-select-pop__opt {
+  padding: 7px 10px;
+  border-radius: 7px;
+  color: var(--ink-body);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fv-select-pop__opt.is-grouped { padding-left: 20px; }
+.fv-select-pop__opt.is-active { background: var(--brand-wash); }
+.fv-select-pop__opt.is-selected { color: var(--brand-text); font-weight: 600; background: var(--brand-tint); }
+.fv-select-pop__opt.is-selected.is-active { background: var(--brand-tint); box-shadow: inset 0 0 0 1px var(--brand); }
+.fv-select-pop__opt.is-disabled { opacity: .45; cursor: not-allowed; }
+.fv-select-pop__group { padding: 8px 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-muted); }

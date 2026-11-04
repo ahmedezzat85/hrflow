@@ -1859,3 +1859,142 @@ const FinanceBookView = {
 };
 window.FinanceBookView = FinanceBookView;
 
+
+// ==========================================
+// FinanceSelectMenu: styled popup for native <select> inside the Finance scope (.fv / .fv-dialog).
+// The <select> stays the visible, styled control and the source of truth (value, change events,
+// programmatic changes, test hooks all keep working); only the browser-drawn list is replaced.
+// Opt out with data-native-select. Touch devices keep the native picker.
+// ==========================================
+const FinanceSelectMenu = (() => {
+  let pop = null;
+  let sel = null;
+  let items = []; // [{ opt, el }]
+  let active = -1;
+
+  const eligible = (el) =>
+    el && el.tagName === "SELECT" && !el.multiple && !(el.size > 1) && !el.disabled &&
+    !el.hasAttribute("data-native-select") && !!el.closest(".fv, .fv-dialog");
+  const coarse = () => !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+
+  function setActive(i, scroll = true) {
+    if (!items.length) return;
+    active = Math.max(0, Math.min(items.length - 1, i));
+    items.forEach((it, idx) => it.el.classList.toggle("is-active", idx === active));
+    if (scroll) items[active].el.scrollIntoView({ block: "nearest" });
+  }
+  function step(dir) {
+    let i = active;
+    do { i += dir; } while (i >= 0 && i < items.length && items[i].opt.disabled);
+    if (i >= 0 && i < items.length) setActive(i);
+  }
+  function choose(i) {
+    const it = items[i];
+    if (!it || it.opt.disabled || !sel) return;
+    const el = sel;
+    close();
+    if (el.selectedIndex !== it.opt.index) {
+      el.selectedIndex = it.opt.index;
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    el.focus();
+  }
+  function position() {
+    if (!pop || !sel) return;
+    const r = sel.getBoundingClientRect();
+    pop.style.minWidth = `${Math.max(r.width, 140)}px`;
+    pop.style.maxHeight = "280px";
+    const below = window.innerHeight - r.bottom - 8;
+    const above = r.top - 8;
+    const h = Math.min(pop.scrollHeight, 280);
+    const up = h > below && above > below;
+    pop.style.maxHeight = `${Math.max(120, Math.min(280, up ? above : below))}px`;
+    pop.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - pop.offsetWidth - 8))}px`;
+    pop.style.top = up ? `${Math.max(8, r.top - pop.offsetHeight - 4)}px` : `${r.bottom + 4}px`;
+  }
+  function open(select) {
+    close();
+    sel = select;
+    pop = document.createElement("div");
+    pop.className = "fv fv-select-pop";
+    pop.setAttribute("role", "listbox");
+    items = [];
+    const addOption = (opt, parent, indent) => {
+      const el = document.createElement("div");
+      el.className = "fv-select-pop__opt" + (opt.selected ? " is-selected" : "") + (opt.disabled ? " is-disabled" : "") + (indent ? " is-grouped" : "");
+      el.setAttribute("role", "option");
+      el.setAttribute("aria-selected", String(opt.selected));
+      if (opt.disabled) el.setAttribute("aria-disabled", "true");
+      el.textContent = opt.textContent;
+      const idx = items.length;
+      el.addEventListener("mousedown", (e) => { e.preventDefault(); e.stopPropagation(); choose(idx); });
+      el.addEventListener("mousemove", () => { if (!opt.disabled && active !== idx) setActive(idx, false); });
+      parent.appendChild(el);
+      items.push({ opt, el });
+    };
+    Array.from(select.children).forEach((child) => {
+      if (child.tagName === "OPTGROUP") {
+        const g = document.createElement("div");
+        g.className = "fv-select-pop__group";
+        g.textContent = child.label;
+        pop.appendChild(g);
+        Array.from(child.children).forEach((o) => addOption(o, pop, true));
+      } else if (child.tagName === "OPTION") {
+        addOption(child, pop, false);
+      }
+    });
+    if (!items.length) { pop = null; sel = null; return; }
+    document.body.appendChild(pop);
+    select.setAttribute("aria-expanded", "true");
+    position();
+    const cur = items.findIndex((it) => it.opt.selected);
+    setActive(cur >= 0 ? cur : items.findIndex((it) => !it.opt.disabled));
+  }
+  function close() {
+    if (pop) pop.remove();
+    if (sel) sel.removeAttribute("aria-expanded");
+    pop = null; sel = null; items = []; active = -1;
+  }
+
+  document.addEventListener("mousedown", (e) => {
+    if (pop && !pop.contains(e.target)) {
+      const same = e.target === sel;
+      close();
+      if (same) { e.preventDefault(); return; } // a second click on the select just closes the list
+    }
+    const t = e.target;
+    if (e.button === 0 && !coarse() && eligible(t)) {
+      e.preventDefault();
+      t.focus({ preventScroll: true });
+      open(t);
+    }
+  }, true);
+  // window + capture runs before the modal controller's Escape handler, so Escape closes only the list
+  window.addEventListener("keydown", (e) => {
+    if (pop) {
+      if (e.key === "Escape") { e.preventDefault(); e.stopImmediatePropagation(); const s = sel; close(); if (s) s.focus(); }
+      else if (e.key === "ArrowDown") { e.preventDefault(); step(1); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); step(-1); }
+      else if (e.key === "Home") { e.preventDefault(); setActive(0); }
+      else if (e.key === "End") { e.preventDefault(); setActive(items.length - 1); }
+      else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); choose(active); }
+      else if (e.key === "Tab") { close(); }
+      return;
+    }
+    if (!coarse() && eligible(e.target) && (e.key === "Enter" || e.key === " " || (e.altKey && e.key === "ArrowDown"))) {
+      e.preventDefault();
+      open(e.target);
+    }
+  }, true);
+  window.addEventListener("resize", close);
+  // Keep the list attached to its select while an ancestor scrolls (focus() itself can scroll a dialog)
+  document.addEventListener("scroll", (e) => {
+    if (!pop || pop.contains(e.target)) return;
+    const r = sel.getBoundingClientRect();
+    if (r.bottom < 0 || r.top > window.innerHeight) close(); else position();
+  }, true);
+
+  return { open, close, isOpen: () => !!pop };
+})();
+window.FinanceSelectMenu = FinanceSelectMenu;
