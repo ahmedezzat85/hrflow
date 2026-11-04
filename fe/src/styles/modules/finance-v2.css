@@ -2503,6 +2503,35 @@
 }
 .fv .fv-scan-item__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fv .fv-scan-item__size { color: var(--ink-muted); font-size: 12px; }
+.fv .fv-scan-item__open {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px;
+  padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.fv .fv-scan-item__open:hover .fv-scan-item__name { color: var(--brand-text); text-decoration: underline; }
+.fv .fv-scan-item__open:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 4px; }
+
+/* Upload dropzone (click or drop); the real file input stays in the DOM, visually hidden */
+.fv .fv-dropzone {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 16px 12px;
+  border: 1.5px dashed var(--border2);
+  border-radius: 10px;
+  background: var(--surface2);
+  color: var(--ink-body);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.fv .fv-dropzone:hover,
+.fv .fv-dropzone.is-dragover,
+.fv .fv-dropzone:focus-within { border-color: var(--brand); background: var(--brand-wash); }
+.fv .fv-dropzone__icon { font-size: 22px; color: var(--brand-text); }
+.fv .fv-dropzone__title { font-weight: 600; font-size: 13.5px; color: var(--ink-strong); }
+.fv .fv-dropzone__hint { font-size: 12px; color: var(--ink-muted); }
+.fv .fv-dropzone .fv-scan-input {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); border: 0;
+}
 .fv .fv-lines__prod { width: 20%; }
 
 /* Book view switcher (X2, D-028) */

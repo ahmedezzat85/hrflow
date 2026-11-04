@@ -538,12 +538,56 @@ async function _renderChequeScansList() {
   if (!list || _chequeScansId == null) return;
   try {
     const atts = await FinanceApi.getChequeAttachments(_chequeScansId);
-    list.innerHTML = atts.map((a) => `<li class="fv-scan-item" data-attachment-id="${a.id}"><i class="fa-solid fa-file" aria-hidden="true"></i><span class="fv-scan-item__name">${FinanceUI.esc(a.file_name)}</span><span class="fv-scan-item__size">${_formatScanSize(a.file_size)}</span><button type="button" class="fv-icon-btn btn-scan-download" title="Download ${FinanceUI.esc(a.file_name)}" aria-label="Download ${FinanceUI.esc(a.file_name)}" onclick="downloadChequeScan(${_chequeScansId}, ${a.id}, '${encodeURIComponent(a.file_name)}')"><i class="fa-solid fa-download" aria-hidden="true"></i></button><button type="button" class="fv-icon-btn fv-icon-btn--danger btn-scan-delete" title="Delete ${FinanceUI.esc(a.file_name)}" aria-label="Delete ${FinanceUI.esc(a.file_name)}" onclick="deleteChequeScan(${_chequeScansId}, ${a.id})"><i class="fa-solid fa-trash" aria-hidden="true"></i></button></li>`).join("");
+    list.innerHTML = atts.map((a) => `<li class="fv-scan-item" data-attachment-id="${a.id}"><button type="button" class="fv-scan-item__open btn-scan-preview" title="Preview ${FinanceUI.esc(a.file_name)}" aria-label="Preview ${FinanceUI.esc(a.file_name)}" onclick="previewChequeScan(${_chequeScansId}, ${a.id}, '${encodeURIComponent(a.file_name)}')"><i class="fa-solid fa-file" aria-hidden="true"></i><span class="fv-scan-item__name">${FinanceUI.esc(a.file_name)}</span><span class="fv-scan-item__size">${_formatScanSize(a.file_size)}</span></button><button type="button" class="fv-icon-btn btn-scan-download" title="Download ${FinanceUI.esc(a.file_name)}" aria-label="Download ${FinanceUI.esc(a.file_name)}" onclick="downloadChequeScan(${_chequeScansId}, ${a.id}, '${encodeURIComponent(a.file_name)}')"><i class="fa-solid fa-download" aria-hidden="true"></i></button><button type="button" class="fv-icon-btn fv-icon-btn--danger btn-scan-delete" title="Delete ${FinanceUI.esc(a.file_name)}" aria-label="Delete ${FinanceUI.esc(a.file_name)}" onclick="deleteChequeScan(${_chequeScansId}, ${a.id})"><i class="fa-solid fa-trash" aria-hidden="true"></i></button></li>`).join("");
     if (empty) empty.style.display = atts.length ? "none" : "block";
   } catch (err) {
     toast("Failed to load scans: " + (err.message || err), "fa-solid fa-triangle-exclamation");
   }
 }
+
+async function previewChequeScan(chequeId, attId, encodedName) {
+  const modal = document.getElementById("documentPreviewModal");
+  const container = document.getElementById("docPreviewContainer");
+  if (!modal || !container) { toast("Preview is not available here.", "fa-solid fa-triangle-exclamation"); return; }
+  const fileName = decodeURIComponent(encodedName);
+  const title = document.getElementById("docPreviewTitle");
+  if (title) title.textContent = fileName;
+  container.innerHTML = '<div style="color:var(--text3); padding:20px; font-size:14px;"><i class="fa-solid fa-spinner fa-spin"></i> Loading preview...</div>';
+  openModal("documentPreviewModal");
+  try {
+    const url = await FinanceApi.getChequeAttachmentBlobUrl(chequeId, attId);
+    const dl = document.getElementById("docPreviewDownloadBtn");
+    if (dl) { dl.href = url; dl.download = fileName; }
+    if (!modal.classList.contains("active")) { URL.revokeObjectURL(url); return; } // closed while loading
+    if (/\.pdf$/i.test(fileName)) {
+      container.innerHTML = `<iframe src="${url}" title="${FinanceUI.esc(fileName)}" style="width:100%; height:75vh; border:none; background:var(--surface);"></iframe>`;
+    } else {
+      container.innerHTML = `<img src="${url}" alt="${FinanceUI.esc(fileName)}" style="max-width:100%; max-height:75vh; object-fit:contain;">`;
+    }
+  } catch (err) {
+    closeModal("documentPreviewModal");
+    toast("Preview failed: " + (err.message || err), "fa-solid fa-triangle-exclamation");
+  }
+}
+
+// Drag and drop onto any .fv-dropzone: hand the files to its file input as if chosen
+(function initFvDropzones() {
+  if (window._fvDropzonesReady) return;
+  window._fvDropzonesReady = true;
+  const zoneOf = (e) => (e.target && e.target.closest ? e.target.closest(".fv-dropzone") : null);
+  document.addEventListener("dragover", (e) => { const z = zoneOf(e); if (z) { e.preventDefault(); z.classList.add("is-dragover"); } });
+  document.addEventListener("dragleave", (e) => { const z = zoneOf(e); if (z) z.classList.remove("is-dragover"); });
+  document.addEventListener("drop", (e) => {
+    const z = zoneOf(e);
+    if (!z) return;
+    e.preventDefault();
+    z.classList.remove("is-dragover");
+    const input = z.querySelector('input[type="file"]');
+    if (!input || !e.dataTransfer || !e.dataTransfer.files.length) return;
+    input.files = e.dataTransfer.files;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+})();
 
 async function downloadChequeScan(chequeId, attId, encodedName) {
   try {
@@ -804,6 +848,7 @@ window.removeQueuedChequeScan = removeQueuedChequeScan;
 window.openChequeScansModal = openChequeScansModal;
 window.closeChequeScansModal = closeChequeScansModal;
 window.downloadChequeScan = downloadChequeScan;
+window.previewChequeScan = previewChequeScan;
 window.deleteChequeScan = deleteChequeScan;
 window.uploadChequeScansFromModal = uploadChequeScansFromModal;
 window.saveIssueCheque = saveIssueCheque;

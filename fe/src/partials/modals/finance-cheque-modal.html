@@ -118,10 +118,12 @@
 
           <div class="form-field full" id="chequeScanGroup">
             <label for="chequeScanInput">Cheque scans</label>
-            <input type="file" id="chequeScanInput" class="fv-scan-input" multiple accept="application/pdf,image/*" aria-describedby="chequeScanHint" onchange="onChequeScansSelected(this)">
-            <small id="chequeScanHint" style="color:var(--text3); font-size: 11.5px; margin-top: 4px; display: block;">
-              <i class="fa-solid fa-paperclip"></i> Optional. PDF or image, up to 15 MB each. Files are uploaded when the cheque is saved.
-            </small>
+            <label class="fv-dropzone" for="chequeScanInput">
+              <i class="fa-solid fa-cloud-arrow-up fv-dropzone__icon" aria-hidden="true"></i>
+              <span class="fv-dropzone__title">Drop scans here or click to browse</span>
+              <span class="fv-dropzone__hint" id="chequeScanHint">Optional. PDF or image, up to 15 MB each. Uploaded when the cheque is saved.</span>
+              <input type="file" id="chequeScanInput" class="fv-scan-input" multiple accept="application/pdf,image/*" aria-describedby="chequeScanHint" onchange="onChequeScansSelected(this)">
+            </label>
             <ul id="chequeScanQueue" class="fv-scan-list" aria-label="Scans queued for upload"></ul>
           </div>
         </div>
@@ -249,7 +251,12 @@
       <div id="chequeScansEmpty" class="fv-sub" style="display:none;">No scans uploaded for this cheque yet.</div>
       <div class="form-field full" id="chequeScansAddGroup" style="margin-top: 14px;">
         <label for="chequeScansAddInput">Add scans</label>
-        <input type="file" id="chequeScansAddInput" class="fv-scan-input" multiple accept="application/pdf,image/*" onchange="uploadChequeScansFromModal(this)">
+        <label class="fv-dropzone" for="chequeScansAddInput">
+          <i class="fa-solid fa-cloud-arrow-up fv-dropzone__icon" aria-hidden="true"></i>
+          <span class="fv-dropzone__title">Drop scans here or click to browse</span>
+          <span class="fv-dropzone__hint">PDF or image, up to 15 MB each</span>
+          <input type="file" id="chequeScansAddInput" class="fv-scan-input" multiple accept="application/pdf,image/*" onchange="uploadChequeScansFromModal(this)">
+        </label>
       </div>
     </div>
     <div class="modal-foot">
