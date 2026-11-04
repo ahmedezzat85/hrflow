@@ -21,6 +21,8 @@ const APP_SCRIPT_ORDER = [
   'salary.js',
   'invoices.js',
   'vacations.js',
+  'holidays.js',
+  'history-import.js',
   'insurance.js',
   'dochub.js',
   'charts.js',

@@ -13,6 +13,7 @@ from repositories.interfaces import (
     InsuranceRepository,
     RequestRepository,
     VacationRepository,
+    HolidayRepository,
     SalaryPaymentDocRepository,
     InvoiceRepository,
     AuditRepository,
@@ -26,6 +27,7 @@ from repositories.sql.documents import SqlCompanyDocumentRepository
 from repositories.sql.insurance import SqlInsuranceRepository
 from repositories.sql.requests import SqlRequestRepository
 from repositories.sql.vacations import SqlVacationRepository
+from repositories.sql.holidays import SqlHolidayRepository
 from repositories.sql.salary_payment_docs import SqlSalaryPaymentDocRepository, SqlInvoiceRepository
 from repositories.sql.audit import SqlAuditRepository
 from repositories.sql.auth import SqlUserRepository
@@ -60,6 +62,10 @@ def get_request_repo() -> RequestRepository:
 
 def get_vacation_repo() -> VacationRepository:
     return SqlVacationRepository()
+
+
+def get_holiday_repo() -> HolidayRepository:
+    return SqlHolidayRepository()
 
 
 def get_salary_payment_doc_repo() -> SalaryPaymentDocRepository:

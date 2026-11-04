@@ -38,6 +38,87 @@ class UserDB(Base):
     user_roles = relationship("UserRoleDB", back_populates="user", cascade="all, delete-orphan")
 
 
+class AuthSessionDB(Base):
+    """One Google sign-in. The session JWT carries `id` (claim `sid`); `refresh_token_enc` is the user's Google
+    refresh token, encrypted (token_crypto) and cleared when the session is revoked."""
+    __tablename__ = "auth_sessions"
+
+    id = Column(String(32), primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    refresh_token_enc = Column(Text, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    last_refreshed_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    absolute_expires_at = Column(DateTime, nullable=False)
+    revoked_at = Column(DateTime, nullable=True)
+
+
+class ApiTokenDB(Base):
+    """A personal access token for a non-browser client (the MCP server). Only the SHA-256 of the secret is
+    stored; `scopes` is a comma-separated list of scope names (api_tokens.SCOPES). Created and revoked on the
+    host with scripts/manage_api_tokens.py, never through the API."""
+    __tablename__ = "api_tokens"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(100), nullable=False)
+    token_hash = Column(String(64), nullable=False, unique=True)
+    scopes = Column(String(255), nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=False)
+    last_used_at = Column(DateTime, nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
+
+
+class HistoryImportBatchDB(Base):
+    """A group of historical leave items staged together, usually by the MCP server (docs/mcp-server-plan.md)."""
+    __tablename__ = "history_import_batches"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    label = Column(String(200), nullable=False)
+    created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True)
+    token_id = Column(Integer, nullable=True)
+    idempotency_key = Column(String(100), nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    items = relationship("HistoryImportItemDB", back_populates="batch", cascade="all, delete-orphan", order_by="HistoryImportItemDB.id")
+
+    __table_args__ = (
+        Index("uq_history_import_batches_user_key", "created_by_user_id", "idempotency_key", unique=True),
+    )
+
+
+class HistoryImportItemDB(Base):
+    """One leave decision found in a source document, waiting for a person to accept it. Nothing here counts as leave
+    until it is accepted; accepting creates the vacation_history and requests rows. `evidence_excerpt` is erased
+    EVIDENCE_RETENTION_DAYS after review."""
+    __tablename__ = "history_import_items"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    batch_id = Column(Integer, ForeignKey("history_import_batches.id", ondelete="CASCADE"), nullable=False, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False, index=True)
+    leave_type = Column(String(100), nullable=False)
+    start_date = Column(String(10), nullable=False)
+    end_date = Column(String(10), nullable=False)
+    days = Column(Integer, nullable=False, default=0)
+    decision = Column(String(20), nullable=False)            # Approved | Rejected
+    decided_by = Column(String(255), default="")
+    decided_on = Column(String(10), default="")
+    source_kind = Column(String(20), nullable=False)         # email | scan | manual
+    source_ref = Column(String(255), nullable=False)
+    source_sha256 = Column(String(64), default="")
+    evidence_excerpt = Column(Text, nullable=True)
+    confidence = Column(String(10), nullable=False)          # high | medium | low
+    notes = Column(Text, default="")
+    status = Column(String(20), nullable=False, default="staged", index=True)    # staged | accepted | rejected
+    reviewed_by = Column(String(255), default="")
+    reviewed_at = Column(DateTime, nullable=True)
+    reject_reason = Column(String(255), default="")
+    result_vacation_id = Column(Integer, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    batch = relationship("HistoryImportBatchDB", back_populates="items")
+
+
 # Import and re-export RBAC models so they are attached to Base.metadata
 from core.rbac_models import PermissionDB, RoleDB, RolePermissionDB, UserRoleDB  # noqa: E402, F401
 
@@ -237,6 +318,18 @@ class VacationHistoryDB(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     employee = relationship("EmployeeDB", back_populates="vacations")
+
+
+class HolidayDB(Base):
+    """Official company holiday. A holiday may span several days (start_date to end_date, both inclusive)."""
+    __tablename__ = "holidays"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(255), nullable=False)
+    start_date = Column(String(10), nullable=False, index=True)
+    end_date = Column(String(10), nullable=False)
+    created_by = Column(String(255), default="")
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 class SalaryPaymentDocDB(Base):

@@ -3,6 +3,7 @@ be/tests/test_finance_subscriptions.py
 Unit and integration tests for Phase 6: Subscription Charges & Finance Attachments.
 """
 import io
+from datetime import date, timedelta
 import pytest
 
 
@@ -173,7 +174,8 @@ def test_subscription_governance_and_monthly_equivalent(app_client, admin_cookie
     assert v_resp.status_code == 201
     vendor_id = v_resp.json()["id"]
 
-    # 2. Create yearly subscription with governance attributes
+    # 2. Create yearly subscription with governance attributes (renewal far enough ahead to be outside the notice window)
+    renewal = date.today() + timedelta(days=400)
     sub_resp = app_client.post(
         "/api/finance/subscriptions",
         json={
@@ -182,7 +184,7 @@ def test_subscription_governance_and_monthly_equivalent(app_client, admin_cookie
             "amount": 24000.0,
             "currency": "USD",
             "billing_cycle": "yearly",
-            "next_renewal_date": "2026-12-31",
+            "next_renewal_date": renewal.isoformat(),
             "owner": "Alex Morgan",
             "department": "Operations",
             "notice_period_days": 60,
@@ -200,7 +202,7 @@ def test_subscription_governance_and_monthly_equivalent(app_client, admin_cookie
     assert sub["department"] == "Operations"
     assert sub["notice_period_days"] == 60
     assert sub["seats_count"] == 80
-    assert sub["notice_deadline_date"] == "2026-11-01"  # 2026-12-31 - 60 days
+    assert sub["notice_deadline_date"] == (renewal - timedelta(days=60)).isoformat()
     assert sub["is_renewal_imminent"] is False
 
 

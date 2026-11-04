@@ -138,38 +138,36 @@ def test_security_headers_present_on_every_response(app_client):
     assert "content-security-policy" in response.headers
 
 
-def test_login_response_never_contains_a_token_field(app_client, monkeypatch):
-    def fake_login_with_google(credential, user_repo=None):
-        return {"token": "fake.jwt.token", "role": "admin", "employee_id": 1, "name": "Admin", "email": "admin@hrflow.test"}
+ADMIN_GOOGLE_IDENTITY = {"email": "admin@hrflow.test", "name": "Admin", "email_verified": True}
 
-    monkeypatch.setattr("routers.auth.login_with_google", fake_login_with_google)
 
-    response = app_client.post("/api/auth/google", json={"credential": "whatever"})
-    assert response.status_code == 200
-    assert "token" not in response.json()
-    assert app_client.cookies.get("hrflow_session") is not None
+def test_login_never_exposes_the_session_token_to_the_page(app_client, monkeypatch):
+    from oauth_helpers import fake_google, google_sign_in, login_error
+    fake_google(monkeypatch, ADMIN_GOOGLE_IDENTITY)
+
+    response = google_sign_in(app_client)
+    assert response.status_code == 302 and login_error(response) is None
+    token = app_client.cookies.get("hrflow_session")
+    assert token
+    # The token travels only in the HttpOnly cookie: not in the redirect URL or the body.
+    assert token not in response.headers["location"]
+    assert token not in response.text
 
 
 def test_login_sets_httponly_session_cookie_with_correct_flags(app_client, monkeypatch):
     """
-    Regression test for finding #10: the Set-Cookie header issued by
-    /api/auth/google must actually carry HttpOnly and SameSite=lax (and,
-    in production, Secure) - not just have the right value in
-    Config.COOKIE_SECURE/COOKIE_SAMESITE, but be reflected in the real
-    HTTP response header sent to the browser.
+    Regression test for finding #10: the Set-Cookie header issued at the end of the Google sign-in must
+    actually carry HttpOnly and SameSite=lax (and, in production, Secure) - not just have the right value in
+    Config.COOKIE_SECURE/COOKIE_SAMESITE, but be reflected in the real HTTP response header sent to the browser.
     """
-    def fake_login_with_google(credential, user_repo=None):
-        return {"token": "fake.jwt.token", "role": "admin", "employee_id": 1, "name": "Admin", "email": "admin@hrflow.test"}
+    from oauth_helpers import fake_google, google_sign_in
+    fake_google(monkeypatch, ADMIN_GOOGLE_IDENTITY)
 
-    monkeypatch.setattr("routers.auth.login_with_google", fake_login_with_google)
-
-    response = app_client.post("/api/auth/google", json={"credential": "whatever"})
-    assert response.status_code == 200
-
-    set_cookie_header = response.headers.get("set-cookie", "")
-    assert "hrflow_session=" in set_cookie_header
-    assert "httponly" in set_cookie_header.lower()
-    assert "samesite=lax" in set_cookie_header.lower()
+    response = google_sign_in(app_client)
+    cookies = response.headers.get_list("set-cookie")
+    session_cookie = next(c for c in cookies if c.startswith("hrflow_session="))
+    assert "httponly" in session_cookie.lower()
+    assert "samesite=lax" in session_cookie.lower()
 
 
 def test_cookie_secure_flag_is_reflected_in_production_response(monkeypatch, fake_sheets_client, fake_drive_client):
@@ -195,6 +193,9 @@ def test_cookie_secure_flag_is_reflected_in_production_response(monkeypatch, fak
     monkeypatch.setenv("SECRET_KEY", "a-real-random-secret-value")
     monkeypatch.setenv("ALLOWED_ORIGINS", "https://app.hrflow.example.com")
     monkeypatch.setenv("ALLOWED_WORKSPACE_DOMAIN", "hrflow.example.com")
+    monkeypatch.setenv("GOOGLE_OAUTH_CLIENT_SECRET", "a-client-secret")
+    from cryptography.fernet import Fernet
+    monkeypatch.setenv("TOKEN_ENCRYPTION_KEY", Fernet.generate_key().decode())
 
     import config as config_module
     original_config_cls = config_module.Config  # carries the conftest overrides (cache TTL, DB URL)
@@ -212,26 +213,23 @@ def test_cookie_secure_flag_is_reflected_in_production_response(monkeypatch, fak
     monkeypatch.setattr(sheets_client, "get_client", lambda: fake_sheets_client)
     monkeypatch.setattr(drive_client, "get_drive_client", lambda: fake_drive_client)
 
-    def fake_login_with_google(credential, user_repo=None):
-        return {"token": "fake.jwt.token", "role": "admin", "employee_id": 1, "name": "Admin", "email": "admin@hrflow.test"}
-    monkeypatch.setattr(auth_router_module, "login_with_google", fake_login_with_google)
-    # The login route resolves the access context from the database right after the cookie is set;
-    # this test only checks the cookie flags, so use a fixed context instead of seeding a user.
-    class _Ctx:
-        portal = "admin"
-        role_names = ["Super-Admin"]
-        employee_id = 1
-        permissions = set()
-    monkeypatch.setattr(auth_router_module, "resolve_access", lambda db, user_payload: _Ctx())
+    # Sign in through the real routes with the sign-in itself stubbed: only the cookie flags are under test.
+    def fake_sign_in(code, redirect_uri, verifier, db, user_repo=None):
+        return {"token": "fake.jwt.token", "max_age": 3600, "employee_id": 1, "name": "Admin", "email": "admin@hrflow.test"}
+    monkeypatch.setattr(auth_router_module, "sign_in_with_google_code", fake_sign_in)
 
     from fastapi.testclient import TestClient
-    prod_client = TestClient(main_module.app)
+    from urllib.parse import parse_qs, urlparse
+    prod_client = TestClient(main_module.app, base_url="https://testserver")
 
-    response = prod_client.post("/api/auth/google", json={"credential": "whatever"})
-    assert response.status_code == 200
-    set_cookie_header = response.headers.get("set-cookie", "")
-    assert "secure" in set_cookie_header.lower()
-    assert "httponly" in set_cookie_header.lower()
+    start = prod_client.get("/api/auth/google/start", follow_redirects=False)
+    assert start.status_code == 302
+    state = parse_qs(urlparse(start.headers["location"]).query)["state"][0]
+    response = prod_client.get("/api/auth/google/callback", params={"code": "c", "state": state}, follow_redirects=False)
+    assert response.status_code == 302
+    session_cookie = next(c for c in response.headers.get_list("set-cookie") if c.startswith("hrflow_session="))
+    assert "secure" in session_cookie.lower()
+    assert "httponly" in session_cookie.lower()
 
     # monkeypatch auto-reverts os.environ on test teardown, but the
     # already-imported config/routers.auth/main modules would otherwise

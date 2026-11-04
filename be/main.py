@@ -21,6 +21,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from auth import set_session_cookie
 from config import Config
 from logging_config import setup_logging, get_logger
 
@@ -29,6 +30,8 @@ from routers import employees as employees_router
 from routers import documents as documents_router
 from routers import requests as requests_router
 from routers import vacations as vacations_router
+from routers import holidays as holidays_router
+from routers import history_import as history_import_router
 from routers import insurance as insurance_router
 from routers import salary as salary_router
 from routers import system as system_router
@@ -141,6 +144,17 @@ async def security_headers(request: Request, call_next):
     return response
 
 @app.middleware("http")
+async def renew_session_cookie(request: Request, call_next):
+    """get_current_user leaves a renewed session token on request.state when Google confirmed the session;
+    it is handed to the browser here so it also reaches streamed and file responses."""
+    response = await call_next(request)
+    renewed = getattr(request.state, "refreshed_session_token", None)
+    if renewed:
+        set_session_cookie(response, renewed[0], renewed[1])
+    return response
+
+
+@app.middleware("http")
 async def log_requests(request: Request, call_next):
     """Logs every request with a correlation id, status code and duration.
     Propagates client correlation IDs across logging and diagnostics.
@@ -168,6 +182,8 @@ app.include_router(employees_router.router)
 app.include_router(documents_router.router)
 app.include_router(requests_router.router)
 app.include_router(vacations_router.router)
+app.include_router(holidays_router.router)
+app.include_router(history_import_router.router)
 app.include_router(insurance_router.router)
 app.include_router(salary_router.router)
 app.include_router(system_router.router)

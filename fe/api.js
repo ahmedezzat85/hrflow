@@ -5,7 +5,6 @@ if (typeof window.HRFLOW_CONFIG === "undefined") {
 }
 
 const API_BASE_URL = window.HRFLOW_CONFIG.API_BASE_URL;
-const GOOGLE_CLIENT_ID = window.HRFLOW_CONFIG.GOOGLE_CLIENT_ID;
 
 const SessionInfo = {
   _portal: null,
@@ -50,9 +49,6 @@ function forceSessionExpiredLogout() {
   _sessionExpiredHandled = true;
 
   SessionInfo.clear();
-  if (window.google && window.google.accounts && window.google.accounts.id) {
-    try { google.accounts.id.disableAutoSelect(); } catch (_) { }
-  }
 
   const evt = new CustomEvent("hrflow:session-expired", { cancelable: true });
   const handledByListener = !window.dispatchEvent(evt);
@@ -234,109 +230,57 @@ async function _downloadDocumentViaFetch(path, suggestedName) {
   setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
 }
 
-let _onGoogleLoginSuccess = null;
-let _onGoogleLoginError = null;
+// Google sign-in is a full-page redirect handled by the backend (OAuth authorization-code flow): the button
+// below only navigates to /api/auth/google/start. Google sends the browser back to the backend, which sets the
+// session cookie and redirects here, so the page boots with a session (restoreSession) or with ?login_error=<code>.
+const LOGIN_ERROR_MESSAGES = {
+  not_registered: "This Google account is not registered in HRFlow. Ask your HR admin to add you as an employee first.",
+  archived: "This user account is archived. Contact your administrator.",
+  no_access: "No access assigned. Contact your administrator.",
+  unverified: "Your Google email address is not verified.",
+  denied: "Sign-in was cancelled. Try again when you are ready.",
+  unavailable: "Could not reach Google. Check your connection and try again.",
+  not_configured: "Google sign-in is not set up on this server. Contact your administrator.",
+  failed: "Sign-in failed. Please try again.",
+};
 
-function handleGoogleCredentialResponse(response) {
-  if (typeof showAppLoader === 'function') {
-    showAppLoader('Signing you in', 'Authenticating with Google...');
-  }
-  Api.loginWithGoogle(response.credential)
-    .then(data => {
-      if (_onGoogleLoginSuccess) _onGoogleLoginSuccess(data);
-    })
-    .catch(err => {
-      if (typeof hideAppLoader === 'function') {
-        hideAppLoader();
-      }
-      if (_onGoogleLoginError) _onGoogleLoginError(err);
-    });
+const GOOGLE_G_LOGO = '<svg class="login-google-logo" width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">'
+  + '<path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>'
+  + '<path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>'
+  + '<path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>'
+  + '<path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
+
+function _googleSignInUrl() {
+  return `${API_BASE_URL}/api/auth/google/start?return_to=${encodeURIComponent(window.location.origin)}`;
 }
 
-let _googleInitialized = false;
-let _googleContainerId = null;
-let _googleRenderedWidth = 0;
-
-// Google draws and styles this button itself. Only its theme and width are ours to choose. The "outline" theme
-// (white with a grey border) is used in both app themes: it is the one Google theme that stays clearly visible
-// on the dark card, where "filled_black" has no visible edge. Width follows the container within Google's 200-400px range.
-function _googleButtonWidth(container) {
-  const available = Math.round(container.clientWidth) || 320;
-  return Math.min(400, Math.max(200, available));
+// Shows the reason of a refused sign-in carried back in ?login_error=, once, and removes it from the address bar.
+function _consumeLoginError(onError) {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get("login_error");
+  if (!code) return;
+  params.delete("login_error");
+  const rest = params.toString();
+  window.history.replaceState(null, "", window.location.pathname + (rest ? `?${rest}` : "") + window.location.hash);
+  if (typeof onError === "function") onError(new Error(LOGIN_ERROR_MESSAGES[code] || LOGIN_ERROR_MESSAGES.failed));
 }
 
-function _renderGoogleButton(containerId) {
+// onSuccess is unused (the page reloads after Google redirects back); the argument is kept for the call sites.
+function initGoogleSignIn(containerId, onSuccess, onError) {
   const container = document.getElementById(containerId);
   if (!container) return;
-  if (!_googleInitialized) {
-    google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
-      callback: handleGoogleCredentialResponse,
-    });
-    _googleInitialized = true;
-  }
-  _googleContainerId = containerId;
-  _googleRenderedWidth = _googleButtonWidth(container);
-  google.accounts.id.renderButton(
-    container,
-    { type: "standard", size: "large", theme: "outline", text: "signin_with", shape: "rectangular", logo_alignment: "left", width: _googleRenderedWidth }
-  );
-}
-
-// Redraw the button after a resize changes the container width. Does nothing until the button exists or while the login screen is hidden.
-function refreshGoogleButton() {
-  if (!_googleContainerId || !(window.google && window.google.accounts && window.google.accounts.id)) return;
-  const container = document.getElementById(_googleContainerId);
-  if (!container || container.offsetParent === null || !container.firstElementChild) return;
-  _renderGoogleButton(_googleContainerId);
-}
-
-let _googleResizeTimer = null;
-window.addEventListener("resize", () => {
-  clearTimeout(_googleResizeTimer);
-  _googleResizeTimer = setTimeout(() => {
-    const container = _googleContainerId && document.getElementById(_googleContainerId);
-    if (!container || container.offsetParent === null) return;
-    if (Math.abs(_googleButtonWidth(container) - _googleRenderedWidth) >= 4) refreshGoogleButton();
-  }, 250);
-});
-
-function initGoogleSignIn(containerId, onSuccess, onError) {
-  _onGoogleLoginSuccess = onSuccess;
-  _onGoogleLoginError = onError;
-
-  const maxWaitMs = 10000;
-  const intervalMs = 100;
-  let waited = 0;
-
-  const tryRender = () => {
-    if (window.google && window.google.accounts && window.google.accounts.id) {
-      _renderGoogleButton(containerId);
-      return;
-    }
-    waited += intervalMs;
-    if (waited >= maxWaitMs) {
-      console.error("Google Identity Services failed to load within 10s.");
-      const container = document.getElementById(containerId);
-      if (container) {
-        container.innerHTML = '<p style="color:#888; font-size:13px; text-align:center;">Google Sign-In unavailable - please refresh the page and try again.</p>';
-      }
-      return;
-    }
-    setTimeout(tryRender, intervalMs);
-  };
-
-  tryRender();
+  container.innerHTML = "";
+  const link = document.createElement("a");
+  link.className = "login-google-btn";
+  link.href = _googleSignInUrl();
+  link.innerHTML = `${GOOGLE_G_LOGO}<span>Sign in with Google</span>`;
+  container.appendChild(link);
+  _consumeLoginError(onError);
 }
 
 const EMPLOYMENT_STATES = ["Full-Time", "Part-Time", "Freelance", "Occasional"];
 
 const Api = {
-  async loginWithGoogle(credential) {
-    const data = await apiRequest("POST", "/api/auth/google", { credential }, false);
-    SessionInfo.set(data);
-    return data;
-  },
   async restoreSession() {
     try {
       const data = await apiRequest("GET", "/api/auth/me", null, false);
@@ -350,9 +294,6 @@ const Api = {
   async logout() {
     try { await apiRequest("POST", "/api/auth/logout", null, false); } catch (_) { }
     SessionInfo.clear();
-    if (window.google && window.google.accounts) {
-      google.accounts.id.disableAutoSelect();
-    }
   },
   isLoggedIn() { return SessionInfo.isKnown(); },
   getEmployees() { return apiRequest("GET", "/api/employees"); },
@@ -432,6 +373,134 @@ const Api = {
     return apiRequest("GET", `/api/vacations/history${q}`);
   },
   requestVacation(payload) { return apiRequest("POST", "/api/vacations/request", payload); },
+
+  // Official holidays. Mock mode keeps a small in-memory list so the page and the leave preview can be exercised.
+  getHolidays(year) {
+    if (typeof _isMock === "function" && _isMock()) {
+      window._mockHolidays = window._mockHolidays || [
+        { id: 1, name: "New Year's Day", start_date: "2026-01-01", end_date: "2026-01-01" },
+        { id: 2, name: "Labour Day", start_date: "2026-05-01", end_date: "2026-05-01" },
+        { id: 3, name: "Eid al-Adha", start_date: "2026-05-26", end_date: "2026-05-29" },
+      ];
+      return Promise.resolve(window._mockHolidays
+        .filter(h => h.start_date <= `${year}-12-31` && h.end_date >= `${year}-01-01`)
+        .sort((a, b) => a.start_date.localeCompare(b.start_date)));
+    }
+    return apiRequest("GET", `/api/holidays?year=${encodeURIComponent(year)}`);
+  },
+  createHoliday(payload) {
+    if (typeof _isMock === "function" && _isMock()) {
+      return this.getHolidays(0).then(() => {
+        const id = Math.max(0, ...window._mockHolidays.map(h => h.id)) + 1;
+        window._mockHolidays.push({ id, name: payload.name, start_date: payload.start_date, end_date: payload.end_date || payload.start_date });
+        return { message: "Holiday added", id };
+      });
+    }
+    return apiRequest("POST", "/api/holidays", payload);
+  },
+  updateHoliday(id, payload) {
+    if (typeof _isMock === "function" && _isMock()) {
+      return this.getHolidays(0).then(() => {
+        const h = window._mockHolidays.find(x => x.id === id);
+        if (h) Object.assign(h, { name: payload.name, start_date: payload.start_date, end_date: payload.end_date || payload.start_date });
+        return { message: "Holiday updated" };
+      });
+    }
+    return apiRequest("PUT", `/api/holidays/${id}`, payload);
+  },
+  deleteHoliday(id) {
+    if (typeof _isMock === "function" && _isMock()) {
+      return this.getHolidays(0).then(() => {
+        window._mockHolidays = window._mockHolidays.filter(x => x.id !== id);
+        return { message: "Holiday deleted" };
+      });
+    }
+    return apiRequest("DELETE", `/api/holidays/${id}`);
+  },
+
+  // Historical leave staged from old emails and scans (D-051). A person reviews each item here; accepting creates the leave.
+  // Mock mode keeps three batches in memory: a clean one, one with a conflict and a low-confidence read, and one blocked by existing leave.
+  _mockHistoryImport() {
+    if (!window._mockHistoryImport) {
+      const item = (id, batch_id, employee_name, leave_type, start_date, end_date, days, decision, source_kind, source_ref, evidence, confidence, extra = {}) => ({
+        id, batch_id, employee_id: id, employee_name, leave_type, start_date, end_date, days, decision, decided_by: "Mona Adel",
+        decided_on: start_date, source_kind, source_ref, evidence_excerpt: evidence, confidence, notes: "", status: "staged",
+        reviewed_by: "", reviewed_at: null, reject_reason: "", result_vacation_id: null, warnings: [], blocked_by: [], ...extra,
+      });
+      window._mockHistoryImport = [
+        { id: 1, label: "2023 leave emails", created_at: "2026-11-03T09:00:00", items: [
+          item(1, 1, "Ahmed Hassan", "Annual Leave", "2023-03-05", "2023-03-09", 5, "Approved", "email", "Re: leave 5-9 March, 2023-02-20", "Approved, enjoy your leave.", "high"),
+          item(2, 1, "Sara Ali", "Work From Home", "2023-04-02", "2023-04-02", 1, "Approved", "email", "WFH Sunday, 2023-03-30", "OK for Sunday.", "high"),
+        ] },
+        { id: 2, label: "Scanned forms 2022", created_at: "2026-11-03T09:30:00", items: [
+          item(3, 2, "Omar Khaled", "Sick Leave", "2022-06-12", "2022-06-14", 3, "Approved", "scan", "form-2022-06-omar.pdf", "Sick leave 3 days, signed by manager.", "low",
+            { warnings: ["Conflicts with staged item 4: Annual Leave 2022-06-13 to 2022-06-13 from Re: leave 13 June."] }),
+          item(4, 2, "Omar Khaled", "Annual Leave", "2022-06-13", "2022-06-13", 1, "Approved", "email", "Re: leave 13 June", "Fine for the 13th.", "medium",
+            { warnings: ["Conflicts with staged item 3: Sick Leave 2022-06-12 to 2022-06-14 from form-2022-06-omar.pdf."] }),
+        ] },
+        { id: 3, label: "Overlap check", created_at: "2026-11-03T10:00:00", items: [
+          item(5, 3, "Nour Samir", "Annual Leave", "2026-02-01", "2026-02-03", 3, "Approved", "manual", "HR note", "", "medium",
+            { blocked_by: ["Overlaps an existing record: Annual Leave 2026-02-01 to 2026-02-02 (Approved)."] }),
+        ] },
+      ];
+    }
+    return window._mockHistoryImport;
+  },
+  _mockHistoryItem(id) {
+    for (const b of this._mockHistoryImport()) {
+      const found = b.items.find(i => i.id === id);
+      if (found) return found;
+    }
+    return null;
+  },
+  getHistoryImportBatches() {
+    if (typeof _isMock === "function" && _isMock()) {
+      return Promise.resolve(this._mockHistoryImport().map(b => {
+        const counts = { staged: 0, accepted: 0, rejected: 0 };
+        b.items.forEach(i => { counts[i.status] += 1; });
+        return { id: b.id, label: b.label, created_at: b.created_at, counts, item_count: b.items.length };
+      }).reverse());
+    }
+    return apiRequest("GET", "/api/history-import/batches");
+  },
+  getHistoryImportBatch(id) {
+    if (typeof _isMock === "function" && _isMock()) {
+      const b = this._mockHistoryImport().find(x => x.id === id);
+      return b ? Promise.resolve(JSON.parse(JSON.stringify(b))) : Promise.reject(new Error("Batch not found."));
+    }
+    return apiRequest("GET", `/api/history-import/batches/${id}`);
+  },
+  editHistoryImportItem(id, payload) {
+    if (typeof _isMock === "function" && _isMock()) {
+      const it = this._mockHistoryItem(id);
+      if (!it || it.status !== "staged") return Promise.reject(new Error("Only staged items can be edited."));
+      if (payload.end_date && payload.start_date && payload.end_date < payload.start_date) return Promise.reject(new Error("End date cannot be earlier than start date."));
+      Object.assign(it, payload, { blocked_by: [] });
+      it.end_date = payload.end_date || payload.start_date || it.end_date;
+      it.days = Math.max(1, Math.round((new Date(it.end_date) - new Date(it.start_date)) / 86400000) + 1);
+      return Promise.resolve(it);
+    }
+    return apiRequest("PATCH", `/api/history-import/items/${id}`, payload);
+  },
+  acceptHistoryImportItem(id) {
+    if (typeof _isMock === "function" && _isMock()) {
+      const it = this._mockHistoryItem(id);
+      if (!it || it.status !== "staged") return Promise.reject(new Error("Only staged items can be accepted."));
+      if (it.blocked_by.length) return Promise.reject(new Error(it.blocked_by[0]));
+      it.status = "accepted"; it.reviewed_by = "admin@hrflow.test"; it.result_vacation_id = 900 + id;
+      return Promise.resolve(it);
+    }
+    return apiRequest("POST", `/api/history-import/items/${id}/accept`);
+  },
+  rejectHistoryImportItem(id, reason) {
+    if (typeof _isMock === "function" && _isMock()) {
+      const it = this._mockHistoryItem(id);
+      if (!it || it.status !== "staged") return Promise.reject(new Error("Only staged items can be rejected."));
+      it.status = "rejected"; it.reviewed_by = "admin@hrflow.test"; it.reject_reason = reason || "";
+      return Promise.resolve(it);
+    }
+    return apiRequest("POST", `/api/history-import/items/${id}/reject`, { reason: reason || "" });
+  },
 
   getInsuranceCategories() { return apiRequest("GET", "/api/insurance/categories"); },
   createInsuranceCategory(payload) { return apiRequest("POST", "/api/insurance/categories", payload); },

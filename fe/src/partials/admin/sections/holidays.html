@@ -1,0 +1,27 @@
+        <section class="page-section fv" id="a-holidays">
+          <div class="card fv-table-card">
+            <div class="card-head hv-card-head hv-wrap">
+              <div>
+                <h3 class="hv-card-title">Official holidays</h3>
+                <div class="hv-stat-sub">Leave requests exclude these days, together with Friday and Saturday</div>
+              </div>
+              <div class="hv-row-8">
+                <select aria-label="Year" id="adminHolidayYear" class="hv-select" onchange="onHolidayYearChange(this.value)"></select>
+                <button type="button" class="btn btn-fill btn-sm" id="btnAddHoliday" onclick="openHolidayModal()">Add holiday</button>
+              </div>
+            </div>
+            <div class="fv-table-scroll">
+              <table class="responsive-card-table fv-table">
+                <thead>
+                  <tr>
+                    <th>Holiday</th>
+                    <th>Dates</th>
+                    <th class="hv-right">Days</th>
+                    <th class="hv-right"><span class="sr-only">Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody id="adminHolidaysBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>

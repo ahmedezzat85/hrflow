@@ -57,11 +57,15 @@ def test_validate_raises_in_production_with_wildcard_cors(monkeypatch):
         Config.validate()
 
 
+_FERNET_KEY = "".join("A" for _ in range(43)) + "="
+
+
 def test_validate_passes_in_production_without_workspace_domain(monkeypatch):
     """Per D-013, production start no longer requires ALLOWED_WORKSPACE_DOMAIN."""
     Config = _fresh_config(
         monkeypatch, SECRET_KEY="a-real-random-secret-value", ENVIRONMENT="production",
         ALLOWED_ORIGINS="https://app.hrflow.example.com",
+        GOOGLE_OAUTH_CLIENT_SECRET="a-client-secret", TOKEN_ENCRYPTION_KEY=_FERNET_KEY,
     )
     Config.validate()
 
@@ -70,6 +74,7 @@ def test_validate_passes_in_production_with_all_settings_correct(monkeypatch):
     Config = _fresh_config(
         monkeypatch, SECRET_KEY="a-real-random-secret-value", ENVIRONMENT="production",
         ALLOWED_ORIGINS="https://app.hrflow.example.com", ALLOWED_WORKSPACE_DOMAIN="hrflow.example.com",
+        GOOGLE_OAUTH_CLIENT_SECRET="a-client-secret", TOKEN_ENCRYPTION_KEY=_FERNET_KEY,
     )
     Config.validate()
 

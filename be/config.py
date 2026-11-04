@@ -46,8 +46,12 @@ class Config:
     # without a real one.
     SECRET_KEY = os.getenv("SECRET_KEY", "")
 
-    # Token lifetime in hours
-    TOKEN_EXPIRY_HOURS = int(os.getenv("TOKEN_EXPIRY_HOURS", "12"))
+    # ---- Session lifetime ----
+    # The session JWT is short-lived: when it is about to expire (or has expired) the server renews it by
+    # exchanging the user's stored Google refresh token. Google refusing the token ends the session.
+    SESSION_ACCESS_MINUTES = int(os.getenv("SESSION_ACCESS_MINUTES", "60"))
+    # Absolute limit since the Google sign-in; after this the user signs in with Google again.
+    SESSION_MAX_AGE_DAYS = int(os.getenv("SESSION_MAX_AGE_DAYS", "30"))
 
     # ---- Session cookie settings ----
     # The session token lives in an HttpOnly cookie (never in localStorage and
@@ -77,6 +81,16 @@ class Config:
     # ---- Google Sign-In (Sign In With Google) settings ----
     # OAuth 2.0 Web Client ID from Google Cloud Console (Credentials page)
     GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "")
+
+    # The client's secret, used only by the backend to exchange the sign-in code and to renew sessions.
+    # Never sent to the browser. Required when ENVIRONMENT=production.
+    GOOGLE_OAUTH_CLIENT_SECRET = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", "")
+
+    # Encrypts the stored Google refresh tokens. One or more comma-separated Fernet keys; the first encrypts,
+    # all decrypt (put a new key first to rotate). Generate one:
+    #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    # Required when ENVIRONMENT=production; in development a key is derived from SECRET_KEY.
+    TOKEN_ENCRYPTION_KEY = os.getenv("TOKEN_ENCRYPTION_KEY", "")
 
     # Your Google Workspace domain, e.g. "hrflow.com". Only accounts with this
     # domain (checked via the token's "hd" claim) will be allowed to log in.
@@ -213,6 +227,15 @@ class Config:
             )
 
         if cls.IS_PRODUCTION:
+            if not cls.GOOGLE_OAUTH_CLIENT_SECRET:
+                errors.append("GOOGLE_OAUTH_CLIENT_SECRET is not set while ENVIRONMENT=production.")
+            if not cls.TOKEN_ENCRYPTION_KEY:
+                errors.append("TOKEN_ENCRYPTION_KEY is not set while ENVIRONMENT=production.")
+            else:
+                from token_crypto import validate_keys
+                key_error = validate_keys(cls.TOKEN_ENCRYPTION_KEY)
+                if key_error:
+                    errors.append(f"TOKEN_ENCRYPTION_KEY is invalid: {key_error}")
             if cls.ALLOWED_ORIGINS == "*":
                 errors.append(
                     "ALLOWED_ORIGINS is '*' while ENVIRONMENT=production. Set an "

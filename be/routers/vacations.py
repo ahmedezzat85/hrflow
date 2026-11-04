@@ -3,7 +3,7 @@ routers/vacations.py
 Vacation/leave request endpoints. Moved from main.py during the
 router-decomposition refactor - pure structural move, no behavior change.
 """
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -12,8 +12,9 @@ from auth import get_current_user
 from core.permissions import require_permission
 from deps import resolve_target_employee, permission_scope, Scope
 from models import VacationRequestCreate
-from repositories.interfaces import VacationRepository, EmployeeRepository
-from repositories.deps import get_vacation_repo, get_employee_repo
+from repositories.interfaces import VacationRepository, EmployeeRepository, HolidayRepository
+from repositories.deps import get_vacation_repo, get_employee_repo, get_holiday_repo
+from services.leave_days import count_leave_days, holiday_dates
 
 router = APIRouter(prefix="/api/vacations", tags=["Vacations"])
 
@@ -37,6 +38,7 @@ def request_vacation(
     current_user: dict = Depends(get_current_user),
     vacation_repo: VacationRepository = Depends(get_vacation_repo),
     employee_repo: EmployeeRepository = Depends(get_employee_repo),
+    holiday_repo: HolidayRepository = Depends(get_holiday_repo),
 ):
     emp_id, employee_name, submitted_by_admin = resolve_target_employee(
         employee_repo, current_user, payload.employee_id, payload.employee_name,
@@ -44,6 +46,18 @@ def request_vacation(
     )
 
     end_date = payload.end_date or payload.start_date
+    try:
+        start = date.fromisoformat(payload.start_date)
+        end = date.fromisoformat(end_date)
+        holidays = holiday_dates(holiday_repo.list_overlapping(payload.start_date, end_date))
+        days = count_leave_days(start, end, holidays)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    if days == 0:
+        raise HTTPException(
+            status_code=422,
+            detail="The selected dates contain no working days (weekends and official holidays are excluded).",
+        )
     record_date = payload.record_date or datetime.utcnow().strftime("%Y-%m-%d")
     status = payload.status if (submitted_by_admin and payload.status) else "Pending"
     reviewed = status != "Pending"
@@ -53,7 +67,7 @@ def request_vacation(
         "type": payload.leave_type,
         "start_date": payload.start_date,
         "end_date": end_date,
-        "days": payload.days,
+        "days": days,
         "status": status,
         "submitted_by": current_user["email"] if submitted_by_admin else "",
     }

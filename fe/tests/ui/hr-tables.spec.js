@@ -64,6 +64,25 @@ test.describe('U7 HR tables and cross-links', () => {
     await expect(page.locator('#empSearchChips .filter-chip')).toContainText('Engineering');
   });
 
+  test('dashboard upcoming raises skip archived employees and past dates', async ({ page }) => {
+    await ready(page);
+    await page.evaluate(() => {
+      const iso = (days) => { const d = new Date(); d.setDate(d.getDate() + days); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+      employees = [
+        { id: 1, name: 'Past Pat', role: 'Dev', status: 'Active', nextRaise: iso(-30) },
+        { id: 2, name: 'Archived Ann', role: 'Dev', status: 'Active', archived: true, nextRaise: iso(10) },
+        { id: 3, name: 'Today Tom', role: 'Dev', status: 'Active', nextRaise: iso(0) },
+        { id: 4, name: 'Later Lea', role: 'Dev', status: 'Active', nextRaise: iso(40) },
+      ];
+      renderAdminPortal();
+    });
+    const list = page.locator('#upcomingRaisesList');
+    await expect(list).toContainText('Today Tom');
+    await expect(list).toContainText('Later Lea');
+    await expect(list).not.toContainText('Past Pat');
+    await expect(list).not.toContainText('Archived Ann');
+  });
+
   test('payroll screen 4: names link to the profile, missing-bank badge opens the bank section, Back returns to the run', async ({ page }) => {
     await ready(page);
     await openAdminPage(page, 'a-finance-payroll-runs');

@@ -29,6 +29,7 @@ email_validator.TEST_ENVIRONMENT = True
 
 os.environ["SECRET_KEY"] = "test-secret-key-for-pytest-only-do-not-use-in-prod"
 os.environ["GOOGLE_OAUTH_CLIENT_ID"] = "test-client-id.apps.googleusercontent.com"
+os.environ["GOOGLE_OAUTH_CLIENT_SECRET"] = "test-client-secret"
 os.environ["ALLOWED_ORIGINS"] = "*"
 os.environ["ENVIRONMENT"] = "development"
 os.environ["STORAGE_ENGINE"] = "sql"

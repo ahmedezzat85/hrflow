@@ -43,7 +43,6 @@
                   Duration
                   <select id="vacDuration" onchange="onVacationDatesChange()" style="height: 36px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; background: var(--fv-surface); color: var(--ink-strong);">
                     <option value="Full Day(s)">Full Day(s)</option>
-                    <option value="Half Day">Half Day (0.5 day)</option>
                   </select>
                 </label>
                 <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
@@ -64,6 +63,7 @@
                   <span style="color: var(--ink-label);">Calculated duration</span>
                   <strong id="vacComputedDays" style="color: var(--ink-strong);">0 days</strong>
                 </div>
+                <button type="button" class="btn btn-sm" id="empOpenHolidays" onclick="showSection('e-holidays','employee')" style="align-self: flex-start;">View official holidays</button>
                 <button type="button" class="btn btn-fill" id="btnSubmitVacation" onclick="submitVacation()" style="align-self: flex-end; display: inline-flex; align-items: center; height: 34px; padding: 0 16px; border-radius: 9px; font-weight: 600; font-size: 13px;">Submit request</button>
               </div>
             </section>

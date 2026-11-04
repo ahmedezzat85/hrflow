@@ -263,3 +263,7 @@ be/.env
 be/credentials.json
 # Secret files (Google service account key, etc.) live here; never committed
 secrets/
+
+# MCP server: local secrets and process id
+mcp_server/.env
+mcp_server/.mcp.pid

@@ -170,6 +170,25 @@ CATALOG: Tuple[PermissionDef, ...] = (
         implies=("hr.request.read",),
     ),
 
+    # HR / Historical leave import (D-051)
+    PermissionDef(
+        key="hr.history_import.read",
+        group="HR / Historical leave import",
+        description="View staged historical leave and work-from-home items",
+    ),
+    PermissionDef(
+        key="hr.history_import.write",
+        group="HR / Historical leave import",
+        description="Validate and stage historical leave items (used by the MCP token); cannot accept them",
+        implies=("hr.history_import.read",),
+    ),
+    PermissionDef(
+        key="hr.history_import.review",
+        group="HR / Historical leave import",
+        description="Edit, accept or reject staged historical items, which creates the leave records",
+        implies=("hr.history_import.read",),
+    ),
+
     # HR / Medical insurance
     PermissionDef(
         key="hr.insurance.read",

@@ -70,7 +70,7 @@ def test_rbac_models_and_seed_data(app_client):
 
         # Super-Admin has all 63 catalog keys
         sa_perm_keys = {p.key for p in super_admin.permissions}
-        assert len(sa_perm_keys) == 70
+        assert len(sa_perm_keys) == 73
         assert "system.users.manage" in sa_perm_keys
         assert "hr.employee.write" in sa_perm_keys
         assert "finance.payroll.prepare" in sa_perm_keys
@@ -142,7 +142,7 @@ def test_get_user_permissions_resolution(app_client):
         admin_user = db.query(UserDB).filter(UserDB.email == "admin@hrflow.test").first()
         assert admin_user is not None
         admin_perms = get_user_permissions(admin_user.id, db)
-        assert len(admin_perms) == 70
+        assert len(admin_perms) == 73
         assert "hr.employee.write" in admin_perms
         assert "hr.employee.read" in admin_perms
         assert "self.profile.read" in admin_perms
@@ -2248,23 +2248,22 @@ def test_slice6_verified_google_account_any_domain_signs_in(app_client, monkeypa
         )
 
     # Mock Google verification returning uppercase email and verified
-    monkeypatch.setattr(
-        auth_module.google_id_token,
-        "verify_oauth2_token",
-        lambda cred, req, aud: {
+    from oauth_helpers import fake_google, google_sign_in, login_error
+    fake_google(monkeypatch, {
             "email": "CONTRACTOR.EXTERNAL@GMAIL.COM",
             "name": "External Contractor",
             "email_verified": True,
             "hd": "gmail.com",
-        },
-    )
+        })
 
-    resp = app_client.post("/api/auth/google", json={"credential": "valid_token_any_domain"})
-    assert resp.status_code == 200
-    data = resp.json()
+    resp = google_sign_in(app_client)
+    assert resp.status_code == 302 and login_error(resp) is None
+    assert resp.cookies.get("hrflow_session") is not None
+    me = app_client.get("/api/auth/me")
+    assert me.status_code == 200
+    data = me.json()
     assert data["name"] == "External Contractor"
     assert "finance.invoice.read" in data["permissions"]
-    assert resp.cookies.get("hrflow_session") is not None
 
 
 def test_slice6_unverified_email_rejected(app_client, monkeypatch):
@@ -2277,19 +2276,16 @@ def test_slice6_unverified_email_rejected(app_client, monkeypatch):
         sync_catalog(db)
         _create_test_user_with_roles(db, email="unverified@somecorp.org", system_keys=["hr_admin"])
 
-    monkeypatch.setattr(
-        auth_module.google_id_token,
-        "verify_oauth2_token",
-        lambda cred, req, aud: {
+    from oauth_helpers import fake_google, google_sign_in, login_error
+    fake_google(monkeypatch, {
             "email": "unverified@somecorp.org",
             "name": "Unverified User",
             "email_verified": False,
-        },
-    )
+        })
 
-    resp = app_client.post("/api/auth/google", json={"credential": "unverified_token"})
-    assert resp.status_code == 401
-    assert "not verified" in resp.text
+    resp = google_sign_in(app_client)
+    assert login_error(resp) == "unverified"
+    assert resp.cookies.get("hrflow_session") is None
 
 
 def test_slice6_unknown_email_rejected(app_client, monkeypatch):
@@ -2298,19 +2294,16 @@ def test_slice6_unknown_email_rejected(app_client, monkeypatch):
     """
     import auth as auth_module
 
-    monkeypatch.setattr(
-        auth_module.google_id_token,
-        "verify_oauth2_token",
-        lambda cred, req, aud: {
+    from oauth_helpers import fake_google, google_sign_in, login_error
+    fake_google(monkeypatch, {
             "email": "stranger_unknown@unknowncompany.com",
             "name": "Stranger",
             "email_verified": True,
-        },
-    )
+        })
 
-    resp = app_client.post("/api/auth/google", json={"credential": "unknown_user_token"})
-    assert resp.status_code == 403
-    assert "not registered in HRFlow" in resp.text
+    resp = google_sign_in(app_client)
+    assert login_error(resp) == "not_registered"
+    assert resp.cookies.get("hrflow_session") is None
 
 
 def test_slice6_archived_user_rejected_at_signin(app_client, monkeypatch):
@@ -2328,19 +2321,16 @@ def test_slice6_archived_user_rejected_at_signin(app_client, monkeypatch):
         db_u.archived_at = datetime.datetime.utcnow()
         db.commit()
 
-    monkeypatch.setattr(
-        auth_module.google_id_token,
-        "verify_oauth2_token",
-        lambda cred, req, aud: {
+    from oauth_helpers import fake_google, google_sign_in, login_error
+    fake_google(monkeypatch, {
             "email": "departed_employee@voyance.health",
             "name": "Departed Employee",
             "email_verified": True,
-        },
-    )
+        })
 
-    resp = app_client.post("/api/auth/google", json={"credential": "archived_user_token"})
-    assert resp.status_code == 403
-    assert "archived" in resp.text.lower()
+    resp = google_sign_in(app_client)
+    assert login_error(resp) == "archived"
+    assert resp.cookies.get("hrflow_session") is None
 
 
 def test_slice6_user_without_effective_access_rejected_at_signin(app_client, monkeypatch):
@@ -2361,19 +2351,16 @@ def test_slice6_user_without_effective_access_rejected_at_signin(app_client, mon
         db.query(UserRoleDB).filter_by(user_id=u.id).delete()
         db.commit()
 
-    monkeypatch.setattr(
-        auth_module.google_id_token,
-        "verify_oauth2_token",
-        lambda cred, req, aud: {
+    from oauth_helpers import fake_google, google_sign_in, login_error
+    fake_google(monkeypatch, {
             "email": "empty_access@vendor.com",
             "name": "No Access",
             "email_verified": True,
-        },
-    )
+        })
 
-    resp = app_client.post("/api/auth/google", json={"credential": "no_access_token"})
-    assert resp.status_code == 403
-    assert "no access assigned" in resp.text.lower()
+    resp = google_sign_in(app_client)
+    assert login_error(resp) == "no_access"
+    assert resp.cookies.get("hrflow_session") is None
 
 
 def test_slice8_drop_users_role_and_compatibility():
@@ -2429,7 +2416,7 @@ def test_slice8_drop_users_role_and_compatibility():
 
 
 GUARD_MARKERS = ("hrflow_permission", "hrflow_permission_all", "hrflow_permission_self", "hrflow_permission_any")
-PUBLIC_ALLOW_LIST = {"/api/auth/google", "/api/auth/logout", "/api/auth/me", "/api/health"}
+PUBLIC_ALLOW_LIST = {"/api/auth/google/start", "/api/auth/google/callback", "/api/auth/logout", "/api/auth/me", "/api/health"}
 
 
 def _dependency_guard_keys(dependant):
@@ -2458,7 +2445,7 @@ def _unguarded_routes(app, allow_list=PUBLIC_ALLOW_LIST):
 def test_all_routes_guard_coverage_walker():
     """
     Every route on the FastAPI app has a catalog permission marker in its dependency tree
-    or is on the named allow-list: {'/api/auth/google', '/api/auth/logout', '/api/auth/me', '/api/health'}.
+    or is on the named allow-list: {'/api/auth/google/start', '/api/auth/google/callback', '/api/auth/logout', '/api/auth/me', '/api/health'}.
     Markers set on the endpoint function do not count: the marker and the enforcement must be the same object.
     """
     from main import app

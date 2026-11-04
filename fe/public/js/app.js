@@ -134,8 +134,11 @@ function renderAdminPortal() {
   // 5. Upcoming Annual Raises (sorted by nearest valid nextRaise)
   const raisesList = document.getElementById('upcomingRaisesList');
   if (raisesList) {
+    // Upcoming means today or later, for employees who still work here.
+    const now = new Date();
+    const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const upcoming = employees
-      .filter(e => e.nextRaise && e.nextRaise !== '—' && !isNaN(new Date(e.nextRaise).getTime()))
+      .filter(e => !e.archived && e.nextRaise && e.nextRaise !== '—' && !isNaN(new Date(e.nextRaise).getTime()) && String(e.nextRaise).slice(0, 10) >= todayIso)
       .sort((a, b) => new Date(a.nextRaise) - new Date(b.nextRaise))
       .slice(0, 5);
     raisesList.innerHTML = upcoming.length ? upcoming.map(e => {

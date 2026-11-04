@@ -72,6 +72,6 @@ test.describe('v3 dialog frame (fixes slice 1)', () => {
     await page.evaluate(() => openModal('behalfVacationModal'));
     await expect(page.locator('#behalfVacationSaveBtn')).toHaveText('Record leave');
     const order = await page.evaluate(() => [...document.querySelectorAll('#behalfVacationModal .form-field label')].map((l) => l.textContent.trim()));
-    expect(order).toEqual(['Type', 'Status', 'Start date', 'End date', 'Days', 'Record date, optional']);
+    expect(order).toEqual(['Type', 'Status', 'Start date', 'End date', 'Record date, optional']);
   });
 });

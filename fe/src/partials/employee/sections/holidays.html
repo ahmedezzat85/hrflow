@@ -1,0 +1,25 @@
+        <section class="page-section fv" id="e-holidays">
+          <div class="card fv-table-card">
+            <div class="card-head hv-card-head hv-wrap">
+              <div>
+                <h3 class="hv-card-title">Official holidays</h3>
+                <div class="hv-stat-sub">These days are not counted when you request leave</div>
+              </div>
+              <div class="hv-row-8">
+                <select aria-label="Year" id="empHolidayYear" class="hv-select" onchange="onHolidayYearChange(this.value)"></select>
+              </div>
+            </div>
+            <div class="fv-table-scroll">
+              <table class="responsive-card-table fv-table">
+                <thead>
+                  <tr>
+                    <th>Holiday</th>
+                    <th>Dates</th>
+                    <th class="hv-right">Days</th>
+                  </tr>
+                </thead>
+                <tbody id="empHolidaysBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>

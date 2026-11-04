@@ -25,10 +25,6 @@ def _iso_date_or_empty(value: str) -> str:
     return text
 
 
-class GoogleLoginRequest(BaseModel):
-    credential: str
-
-
 class PasswordLoginRequest(BaseModel):
     email: EmailStr
     password: str
@@ -188,10 +184,16 @@ class VacationRequestCreate(BaseModel):
     leave_type: str = "Annual Leave"
     start_date: str
     end_date: Optional[str] = None
-    days: int = 1
+    days: Optional[float] = None  # ignored: the server computes working days
     employee_id: Optional[int] = None
     record_date: Optional[str] = None
     status: Optional[Literal["Approved", "Rejected", "Pending"]] = None
+
+
+class HolidayCreate(BaseModel):
+    name: str
+    start_date: str
+    end_date: Optional[str] = None  # a one-day holiday leaves it empty
 
 
 class InsuranceCategoryCreate(BaseModel):

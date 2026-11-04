@@ -40,6 +40,8 @@ DATE_COLUMNS: Dict[str, Dict[str, bool]] = {
     "finance_subscription_charges": {"billing_date": False},
     "finance_subscriptions": {"contract_end_date": True, "contract_start_date": True, "next_renewal_date": False},
     "finance_vendor_payment_instructions": {"effective_date": True},
+    "holidays": {"end_date": False, "start_date": False},
+    "history_import_items": {"end_date": False, "start_date": False},
     "insurance_claims": {"date": False},
     "requests": {"date": False},
     "salary_history": {"date": False},
