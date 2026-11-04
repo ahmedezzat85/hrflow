@@ -58,6 +58,33 @@ test.describe('X1: Cheque scans and entry shortcuts (D-032)', () => {
     await expect(row2.locator('.btn-cheque-scans')).toContainText('Scan missing');
   });
 
+  test('a scan previews in place and the dropzone accepts a dropped file', async ({ page }) => {
+    const row1 = page.locator('#financeChequesTableBody tr:has-text("001011")');
+    await row1.locator('.btn-cheque-scans').click();
+    await expect(page.locator('#financeChequeScansModal')).toBeVisible();
+
+    // Clicking the scan opens the preview (no download)
+    await page.locator('#chequeScansList .btn-scan-preview').first().click();
+    await expect(page.locator('#documentPreviewModal')).toBeVisible();
+    await expect(page.locator('#docPreviewContainer iframe')).toBeVisible();
+    await page.click('#documentPreviewModal button:has-text("Close")');
+    await expect(page.locator('#documentPreviewModal')).not.toBeVisible();
+
+    // Drop a file on the dropzone
+    const before = await page.locator('#chequeScansList li').count();
+    const dt = await page.evaluateHandle(() => {
+      const d = new DataTransfer();
+      d.items.add(new File(['%PDF-1.4 dropped'], 'dropped.pdf', { type: 'application/pdf' }));
+      return d;
+    });
+    await page.dispatchEvent('#financeChequeScansModal .fv-dropzone', 'drop', { dataTransfer: dt });
+    await expect(page.locator('#chequeScansList li')).toHaveCount(before + 1);
+    await expect(page.locator('#chequeScansList')).toContainText('dropped.pdf');
+
+    await page.click('#financeChequeScansModal button:has-text("Close")');
+    await expect(page.locator('#financeChequeScansModal')).not.toBeVisible();
+  });
+
   test('issue dialog suggests the next number and uploads queued scans after save', async ({ page }) => {
     await page.click('button:has-text("Issue cheque")');
     await expect(page.locator('#financeChequeModal')).toBeVisible();
