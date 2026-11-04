@@ -26,7 +26,8 @@ async function loadFinanceCheques() {
     const hasScan = scanFilter ? scanFilter.value : "";
 
     // Status is filtered on the client so the pills can show a count for every status.
-    const params = {};
+    // The API default is 50 newest-first, which hides older (imported) cheques; ask for the maximum page.
+    const params = { limit: 200 };
     if (fy) params.fiscal_year = fy;
     if (search) params.search = search;
     if (hasScan) params.has_scan = hasScan;
