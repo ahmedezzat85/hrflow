@@ -118,6 +118,7 @@ class ImportService:
         archive_file: UploadFile,
         actor: ImportActor,
         commit: bool,
+        confirm_posting: bool = False,
     ) -> ImportReport:
         if kind not in cfg.KINDS:
             raise HTTPException(status_code=404, detail=f"Unknown import kind '{kind}'")
@@ -136,6 +137,7 @@ class ImportService:
             archive_bytes=archive_bytes,
             actor=actor,
             commit=commit,
+            confirm_posting=confirm_posting,
         )
 
     # ------------------------------------------------------------------
@@ -150,6 +152,7 @@ class ImportService:
         archive_bytes: bytes,
         actor: ImportActor,
         commit: bool,
+        confirm_posting: bool = False,
     ) -> ImportReport:
         report = ImportReport(kind=kind, dry_run=not commit, manifest_name=manifest_name, archive_name=archive_name)
 
@@ -198,6 +201,19 @@ class ImportService:
         if not importable:
             self._count(report)
             return report
+
+        # Rows that post to the ledger need an explicit confirmation (D-052): the dry run showed them, the commit
+        # must say it knows. Nothing is created without it.
+        posting = sum(1 for _, r in importable if any(f.code == cfg.POSTING_CODE for f in r.findings))
+        if posting and not confirm_posting:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "posting_confirmation_required",
+                    "message": f"{posting} row(s) will post to the ledger and change account balances. Confirm the posting and send the package again.",
+                    "rows": posting,
+                },
+            )
 
         batch = ImportBatchDB(
             kind=kind,
@@ -335,6 +351,10 @@ class ImportService:
         report.rows_warning = sum(1 for r in report.rows if r.status == ROW_WARNING)
         report.rows_error = sum(1 for r in report.rows if r.status == ROW_ERROR)
         report.rows_duplicate = sum(1 for r in report.rows if r.status == ROW_DUPLICATE)
+        report.rows_posting = sum(
+            1 for r in report.rows
+            if r.status in (ROW_OK, ROW_WARNING) and any(f.code == cfg.POSTING_CODE for f in r.findings)
+        )
 
     def _audit_batch(self, batch: ImportBatchDB, actor: ImportActor) -> None:
         if not self.audit:

@@ -122,7 +122,7 @@ test.describe('Finance Import screen (I2)', () => {
     const [tpl] = await Promise.all([page.waitForEvent('download'), page.click('#financeImportTemplateBtn')]);
     expect(tpl.suggestedFilename()).toBe('import-template-bills.csv');
     const tplText = await (await import('fs')).promises.readFile(await tpl.path(), 'utf-8');
-    expect(tplText.replace('﻿', '').trim()).toBe(HEADER);
+    expect(tplText.replace('﻿', '').trim()).toBe(HEADER + ',paid_date,paid_from_account,payment_type,payment_reference,subscription');
 
     await chooseFiles(page, csv(GOOD, 'B-0009,x.pdf,,,,"=HYPERLINK(""http://x"")",IMP-9,2026-04-10,2026-05-10,USD,,5.00,x'));
     await page.click('#financeImportDryRunBtn');
@@ -220,5 +220,59 @@ test.describe('Finance Import screen (I4) - sales invoices', () => {
     await expect(page.locator('#financeImportResult')).toContainText('2 drafts created, 2 rows not created');
     const created = await page.evaluate(() => FinanceMockState.invoices.filter((i) => i.import_batch_id).map((i) => ({ n: i.invoice_number, s: i.status, paid: i.amount_paid, scan: i.has_scan })));
     expect(created).toEqual([{ n: 'HIST-0001', s: 'draft', paid: 0, scan: true }, { n: 'HIST-0004', s: 'draft', paid: 0, scan: false }]);
+  });
+});
+
+// D-052: rows that post to the ledger (paid bills, transfers). Mock mode mirrors the backend's marking and its
+// confirmation rule; the real posting, balances and books are covered by backend tests.
+const PAID_HEADER = 'row_ref,source_file,confidence,review_flags,notes,vendor_name,bill_number,issue_date,due_date,currency,category,total_amount,description,paid_date,paid_from_account,payment_type,payment_reference,subscription';
+const TRANSFER_HEADER = 'row_ref,source_file,confidence,review_flags,notes,from_account,to_account,date,from_amount,to_amount,fx_rate,fee,exchange_reference';
+
+test.describe('Finance Import screen: rows that post (D-052)', () => {
+  test('a paid bill row is marked, needs the posting confirmation, and is created paid', async ({ page }) => {
+    await openImport(page);
+    const account = await page.evaluate(() => FinanceMockState.accounts[0]);
+    const paid = `P-0001,bill-0001.pdf,,,,Amazon Web Services,PD-001,2023-03-05,2023-03-05,${account.currency},,100.00,Hosting,2023-03-06,${account.account_name},,,`;
+    const unpaid = `P-0002,bill-0002.pdf,,,,Amazon Web Services,PD-002,2023-03-05,2023-03-05,${account.currency},,50.00,Hosting,,,,,`;
+    await chooseFiles(page, Buffer.from([PAID_HEADER, paid, unpaid].join('\n')));
+    await page.click('#financeImportDryRunBtn');
+    const rows = page.locator('#financeImportReportBody tr');
+    await expect(rows).toHaveCount(2);
+    await expect(rows.filter({ hasText: 'P-0001' })).toContainText('posts one outflow to the ledger');
+    await expect(rows.filter({ hasText: 'P-0002' })).not.toContainText('will_post_ledger');
+    await expect(page.locator('#financeImportCommitBtn')).toContainText('1 posts to the ledger');
+
+    await page.click('#financeImportCommitBtn');
+    await expect(page.locator('#financeConfirmModal')).toContainText('will post to the ledger');
+    await confirmDialog(page);
+    await expect(page.locator('#financeImportResult')).toContainText('2 records created');
+
+    const bills = await page.evaluate(() => FinanceMockState.bills.filter((b) => b.capture_source === 'import').map((b) => ({ n: b.bill_number, s: b.status })));
+    expect(bills).toEqual([{ n: 'PD-001', s: 'paid' }, { n: 'PD-002', s: 'draft' }]);
+  });
+
+  test('payment columns are validated: both or neither', async ({ page }) => {
+    await openImport(page);
+    const row = 'P-0001,bill-0001.pdf,,,,Amazon Web Services,PD-001,2023-03-05,2023-03-05,USD,,100.00,Hosting,2023-03-06,,,,';
+    await chooseFiles(page, Buffer.from([PAID_HEADER, row].join('\n')));
+    await page.click('#financeImportDryRunBtn');
+    await expect(page.locator('#financeImportReportBody tr').first()).toContainText('paid_date and paid_from_account must both be filled');
+    await expect(page.locator('#financeImportCommitBtn')).toBeDisabled();
+  });
+
+  test('transfers kind: marked as posting, created without a draft link', async ({ page }) => {
+    await openImport(page);
+    await page.selectOption('#financeImportKind', 'transfers');
+    const accounts = await page.evaluate(() => FinanceMockState.accounts.slice(0, 2).map((a) => ({ n: a.account_name, c: a.currency })));
+    test.skip(accounts.length < 2 || accounts[0].c !== accounts[1].c, 'needs two accounts in one currency in the mock data');
+    const row = `T-0001,doc-0001.pdf,,,,${accounts[0].n},${accounts[1].n},2023-04-10,1000.00,,,,WIRE-1`;
+    await chooseFiles(page, Buffer.from([TRANSFER_HEADER, row].join('\n')));
+    await page.click('#financeImportDryRunBtn');
+    await expect(page.locator('#financeImportReportBody tr').first()).toContainText('posts the ledger legs to both accounts');
+    await page.click('#financeImportCommitBtn');
+    await confirmDialog(page);
+    await expect(page.locator('#financeImportResult')).toContainText('1 record created');
+    await expect(page.locator('.btn-import-open')).toHaveCount(0);
+    expect(await page.evaluate(() => FinanceMockState.transfers.filter((t) => String(t.note).includes('import batch')).length)).toBe(1);
   });
 });
