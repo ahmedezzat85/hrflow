@@ -1425,6 +1425,17 @@
 .fv .fv-table--subs th:nth-child(7) { width: 11%; }
 .fv .fv-table--subs th:nth-child(8) { width: 225px; }
 
+/* Wide finance registers: below this width the .fv-table-scroll wrapper scrolls sideways instead of the
+   percentage columns squeezing buttons and badges over their neighbours. Phones use the card layout. */
+@media (min-width: 769px) {
+  .fv .fv-table--invoices,
+  .fv .fv-table--bills,
+  .fv .fv-table--ledger,
+  .fv .fv-table--cheques,
+  .fv .fv-table--statutory,
+  .fv .fv-table--statements { min-width: 1150px; }
+}
+
 .fv .fv-table--statutory { table-layout: fixed; }
 .fv .fv-table--statutory th:nth-child(1) { width: 25%; }
 .fv .fv-table--statutory th:nth-child(2) { width: 9%; }
