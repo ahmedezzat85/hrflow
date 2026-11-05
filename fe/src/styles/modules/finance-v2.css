@@ -1412,13 +1412,18 @@
   gap: 12px;
 }
 
+/* Rate and Actions each need a real width: the Log Charge button plus two icons is ~215px and must not
+   spill over the Rate amount. The wrapper (.fv-table-scroll) scrolls sideways on narrow screens. */
 .fv .fv-table--subs { table-layout: fixed; }
-.fv .fv-table--subs th:nth-child(1) { width: 22%; }
-.fv .fv-table--subs th:nth-child(2) { width: 12%; }
-.fv .fv-table--subs th:nth-child(3) { width: 13%; }
-.fv .fv-table--subs th:nth-child(4) { width: 15%; }
-.fv .fv-table--subs th:nth-child(5) { width: 9%; }
-.fv .fv-table--subs th:nth-child(6) { width: 10%; }
+@media (min-width: 769px) { .fv .fv-table--subs { min-width: 1100px; } }
+.fv .fv-table--subs th:nth-child(1) { width: 20%; }
+.fv .fv-table--subs th:nth-child(2) { width: 11%; }
+.fv .fv-table--subs th:nth-child(3) { width: 12%; }
+.fv .fv-table--subs th:nth-child(4) { width: 13%; }
+.fv .fv-table--subs th:nth-child(5) { width: 11%; }
+.fv .fv-table--subs th:nth-child(6) { width: 9%; }
+.fv .fv-table--subs th:nth-child(7) { width: 11%; }
+.fv .fv-table--subs th:nth-child(8) { width: 225px; }
 
 .fv .fv-table--statutory { table-layout: fixed; }
 .fv .fv-table--statutory th:nth-child(1) { width: 25%; }
