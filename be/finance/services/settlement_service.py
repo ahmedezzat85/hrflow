@@ -125,8 +125,9 @@ class SettlementService:
                 f"Payment amount (${payment_amount:.2f}) exceeds remaining balance (${remaining:.2f})."
             )
 
-        # No overdraft on any account
-        if round(float(account.current_balance or 0.0), 4) + 0.0001 < payment_amount:
+        # No overdraft, except on a partial-visibility account (D-028): its balance is only the movements known to
+        # HRFlow, not the real balance, so it cannot prove that a payment is uncovered.
+        if (account.visibility or "full") != "partial" and round(float(account.current_balance or 0.0), 4) + 0.0001 < payment_amount:
             raise rules.BillPaymentError(
                 "insufficient_balance",
                 f"Account '{account.account_name}' balance ({float(account.current_balance or 0.0):,.2f} {account.currency}) is below the payment ({payment_amount:,.2f}).",
