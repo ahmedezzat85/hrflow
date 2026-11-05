@@ -11,7 +11,7 @@ three keys for the route-coverage walker, and the per-kind check below is the en
 """
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from sqlalchemy.orm import Session
 
 from auth import get_current_user
@@ -23,6 +23,7 @@ from finance.services.import_service import ImportActor, ImportService
 from finance.services import bills_importer  # noqa: F401  (registers the bills importer)
 from finance.services import cheques_importer  # noqa: F401  (registers the cheques importer)
 from finance.services import invoices_importer  # noqa: F401  (registers the invoices importer)
+from finance.services import transfers_importer  # noqa: F401  (registers the transfers importer)
 
 router = APIRouter(prefix="/api/finance/imports", tags=["Finance - Bulk Import"])
 
@@ -100,9 +101,11 @@ async def commit_import(
     kind: str,
     manifest: UploadFile = File(...),
     archive: UploadFile = File(...),
+    confirm_posting: bool = Form(False),
     current_user: dict = Depends(require_import_permission),
     access: AccessContext = Depends(get_access_context),
     service: ImportService = Depends(get_import_service),
 ):
-    """Re-validate the same package and create Draft records, one transaction per row."""
-    return await service.run(kind, manifest, archive, _actor(access), commit=True)
+    """Re-validate the same package and create the records, one transaction per row. Bills, cheques and invoices
+    are Drafts; rows that pay a bill or move money post to the ledger and need `confirm_posting` (D-052)."""
+    return await service.run(kind, manifest, archive, _actor(access), commit=True, confirm_posting=confirm_posting)

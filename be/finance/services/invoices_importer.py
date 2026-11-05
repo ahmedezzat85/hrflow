@@ -16,11 +16,11 @@ from finance import import_config as cfg
 from finance.import_archive import detect_content_type
 from finance.import_manifest import parse_amount, parse_iso_date
 from finance.import_report import LEVEL_DUPLICATE, LEVEL_ERROR, LEVEL_WARNING, Finding
-from finance.models import CustomerDB
+from finance.models import CustomerDB, FinanceBankAccountDB
 from finance.repositories.invoices_repository import InvoicesRepository
 from finance.schemas import SalesInvoiceCreate, SalesInvoiceLineCreate
 from finance.services.import_service import ImportActor, RowContext, finding, register_importer
-from finance.services.invoices_service import InvoicesService
+from finance.services.invoices_service import VALID_REVENUE_CHANNELS, InvoicesService
 from finance.services.subscriptions_service import FINANCE_UPLOADS_DIR
 import file_layout
 
@@ -122,13 +122,37 @@ class InvoicesImporter:
             except ValueError as e:
                 err("vat_rate_invalid", f"vat_rate: {e}")
 
+        # Routing (D-052): where the money is expected and through which channel. This decides the book an invoice
+        # is reported in (the book of its expected receiving account); blank keeps today's behaviour.
+        expected_account_id = None
+        account_ref = row.get("expected_account")
+        if account_ref:
+            accounts = self.db.query(FinanceBankAccountDB).all()
+            hits = [a for a in accounts if (a.account_name or "").strip().lower() == account_ref.lower()]
+            if not hits and account_ref.isdigit():
+                hits = [a for a in accounts if a.id == int(account_ref)]
+            if not hits:
+                err("expected_account_unknown", f"Account '{account_ref}' does not exist (use its exact name or id)")
+            elif len(hits) > 1:
+                err("expected_account_ambiguous", f"More than one account is named '{account_ref}'; use its id")
+            elif not hits[0].is_active:
+                err("expected_account_inactive", f"Account '{hits[0].account_name}' is inactive")
+            else:
+                expected_account_id = hits[0].id
+                if currency and (hits[0].currency or "").upper() != currency:
+                    warn("expected_account_currency", f"The expected account is in {hits[0].currency} but the invoice is in {currency}")
+        channel = (row.get("revenue_channel") or "").strip().lower() or None
+        if channel and channel not in VALID_REVENUE_CHANNELS:
+            err("revenue_channel_invalid", f"revenue_channel '{row.get('revenue_channel')}' must be one of: {', '.join(sorted(VALID_REVENUE_CHANNELS))}")
+
         if ctx.entry is None:
             warn("no_scan", "No source file: the Draft has no scan attached")
 
         if any(f.level == LEVEL_ERROR for f in findings):
             return None, findings
         return {"customer": customer, "invoice_number": number, "issue_date": dates["issue_date"], "due_date": dates["due_date"],
-                "currency": currency, "amount": amount, "vat_rate": vat_rate, "description": row.get("description")}, findings
+                "currency": currency, "amount": amount, "vat_rate": vat_rate, "description": row.get("description"),
+                "expected_bank_account_id": expected_account_id, "revenue_channel": channel}, findings
 
     # ------------------------------------------------------------------
     def check_row(self, ctx: RowContext) -> List[Finding]:
@@ -182,6 +206,8 @@ class InvoicesImporter:
             due_date=data["due_date"],
             currency=data["currency"],
             vat_rate=data["vat_rate"],
+            expected_bank_account_id=data["expected_bank_account_id"],
+            revenue_channel=data["revenue_channel"],
             notes=notes,
             lines=lines,
         )

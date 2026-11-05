@@ -180,7 +180,8 @@ class SubscriptionsRepository:
         linked_bill_id = None
         # Link or create bill if requested or if auto_generate_bill is True
         if getattr(data, "create_bill", False) or sub.auto_generate_bill:
-            bill_num = f"SUB-{sub.id}-{data.billing_date.replace('-', '')}"
+            from finance.subscription_naming import subscription_bill_number
+            bill_num = subscription_bill_number(sub.id, sub.name, data.billing_date)
             bill = BillDB(
                 vendor_id=sub.vendor_id,
                 bill_number=bill_num,

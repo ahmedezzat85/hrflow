@@ -346,6 +346,19 @@ Decision D-046. Plan: `docs/finance-module/pay-single-source-plan.md`. Branch `r
 
 ---
 
+## 3O. Import of Paid Bills, Subscription Charges and Transfers (D-052 accepted November 5, 2026; built, awaiting review)
+
+Decision D-052. Plan: `docs/finance-module/import-paid-bills-and-transfers-plan.md`. Branch `feat/import-paid-bills-transfers`. Risk class high (the import now posts ledger rows when a row says so), no migration, no new permission.
+
+| Slice | Scope | Size | Depends on |
+| :--- | :--- | :--- | :--- |
+| P1 | Paid-bill columns in the bills importer; posting marker and commit confirmation in the engine | M | I1 |
+| P2 | `subscription` column: settled charge, proof, one bill-number rule for all subscription routes | M | P1 |
+| P3 | `transfers` kind: two ledger legs, document on both legs | M | I0 |
+| P4 | Invoice `expected_account` and `revenue_channel` | S | I4 |
+| P5 | Import screen, templates, mock handlers, Playwright | S | P1-P3 |
+| Later | Finance staging tools in `mcp_server/` (documents uploaded to the app locally, matched by `source_file`) | M | P1-P3 |
+
 ## 4. Deferred Until Decision
 
 The following initiatives remain on hold until formally decided in [04-decision-log.md](04-decision-log.md):

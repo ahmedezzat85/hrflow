@@ -18,14 +18,26 @@ from finance import import_config as cfg
 COMMON_COLUMNS = ("row_ref", "source_file", "confidence", "review_flags", "notes")
 
 KIND_COLUMNS: Dict[str, tuple] = {
-    "bills": ("vendor_name", "bill_number", "issue_date", "due_date", "currency", "category", "total_amount", "description"),
+    # paid_date, paid_from_account (+ optional payment_type, payment_reference) turn a bill row into an already-paid
+    # bill; subscription (exact name) records it as that subscription's charge. All five are optional (D-052).
+    "bills": ("vendor_name", "bill_number", "issue_date", "due_date", "currency", "category", "total_amount", "description",
+              "paid_date", "paid_from_account", "payment_type", "payment_reference", "subscription"),
     "cheques": ("account", "cheque_number", "payee", "amount", "currency", "issue_date"),
-    "invoices": ("customer_name", "invoice_number", "issue_date", "due_date", "currency", "description", "amount", "vat_rate"),
+    "invoices": ("customer_name", "invoice_number", "issue_date", "due_date", "currency", "description", "amount", "vat_rate",
+                 "expected_account", "revenue_channel"),
+    # Money moving between two company accounts (D-028 inter-book transfer when the books differ); source_file is the
+    # supporting document and is attached to both ledger legs.
+    "transfers": ("from_account", "to_account", "date", "from_amount", "to_amount", "fx_rate", "fee", "exchange_reference"),
 }
 
 # Headers that must be present. Cells may still be blank where a Draft allows it; whether a blank cell is
 # acceptable is decided per kind by the importer. Optional headers are treated as blank when absent.
-OPTIONAL_HEADERS = ("source_file", "confidence", "review_flags", "notes", "vat_rate")
+OPTIONAL_HEADERS = (
+    "source_file", "confidence", "review_flags", "notes", "vat_rate",
+    "paid_date", "paid_from_account", "payment_type", "payment_reference", "subscription",  # bills
+    "expected_account", "revenue_channel",  # invoices
+    "to_amount", "fx_rate", "fee", "exchange_reference",  # transfers
+)
 
 _ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _XLSX_MAGIC = b"PK\x03\x04"

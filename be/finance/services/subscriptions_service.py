@@ -414,7 +414,8 @@ class SubscriptionsService:
                 raise HTTPException(status_code=400, detail={"code": "payment_type_not_allowed", "message": "Choose a payment type for this account."})
             payment_type_id = pt.id
         bill_service = BillsService(BillsRepository(self.repo.db))
-        number = f"SUB-{sub.id}-{charge.billing_date.replace('-', '')}"
+        from finance.subscription_naming import subscription_bill_number
+        number = subscription_bill_number(sub.id, sub.name, charge.billing_date)
         create = BillCreate(
             vendor_id=sub.vendor_id,
             bill_number=number,

@@ -218,3 +218,26 @@ def test_migration_0042_adds_and_removes_the_invoice_scan_column(tmp_path):
     assert "sales_invoice_id" not in {c["name"] for c in sa.inspect(engine).get_columns("finance_attachments")}
     with engine.begin() as conn:
         assert conn.execute(sa.text("SELECT file_name FROM finance_attachments")).scalar() == "keep.pdf"
+
+
+# ── D-052: routing columns ──────────────────────────────────────────────────
+def test_expected_account_and_channel_route_the_invoice_to_its_book(app_client, admin_cookies):
+    from test_finance_books import _account
+    from import_test_helpers import build_zip, manifest_csv, post_import
+
+    over = _account(app_client, admin_cookies, "Overseas USD", "USD", book="overseas")
+    cust = app_client.post("/api/finance/customers", json={"name": "Routing Customer Co", "default_currency": "USD"}, cookies=admin_cookies)
+    assert cust.status_code == 201, cust.text
+    row = {"row_ref": "I-0001", "source_file": "", "customer_name": "Routing Customer Co", "invoice_number": "RT-001",
+           "issue_date": "2023-03-01", "due_date": "2023-03-31", "currency": "USD", "description": "Services", "amount": "500.00",
+           "expected_account": over["account_name"], "revenue_channel": "overseas_usd"}
+    resp = post_import(app_client, admin_cookies, "invoices", manifest_csv("invoices", [row]), build_zip({}), commit=True)
+    assert resp.status_code == 200, resp.text
+    report = resp.json()
+    assert report["rows_created"] == 1, report
+    inv = app_client.get(f"/api/finance/invoices/{report['rows'][0]['created_id']}", cookies=admin_cookies).json()
+    assert inv["expected_bank_account_id"] == over["id"] and inv["revenue_channel"] == "overseas_usd" and inv["status"] == "draft"
+
+    bad = dict(row, row_ref="I-0002", invoice_number="RT-002", expected_account="No Such Account", revenue_channel="moon")
+    codes = [f["code"] for f in post_import(app_client, admin_cookies, "invoices", manifest_csv("invoices", [bad]), build_zip({})).json()["rows"][0]["findings"]]
+    assert "expected_account_unknown" in codes and "revenue_channel_invalid" in codes

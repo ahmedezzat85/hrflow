@@ -283,14 +283,16 @@ def test_unauthenticated_and_wrong_permission_callers(app_client, admin_cookies,
     invoices_only = make_user("invoices-only@hrflow.test", ["finance.invoice.write"])
     expect = {"bills": bills_only, "cheques": cheques_only, "invoices": invoices_only}
     for kind, cookies in expect.items():
+        # kinds that share a permission (cheques and transfers: finance.account.write) are open together
+        allowed = [k for k in cfg.KINDS if cfg.KIND_PERMISSIONS[k] == cfg.KIND_PERMISSIONS[kind]]
         for other_kind in cfg.KINDS:
             code = post_import(app_client, cookies, other_kind, manifest, archive).status_code
-            if other_kind == kind:
-                assert code == 200, (kind, code)
+            if other_kind in allowed:
+                assert code == 200, (kind, other_kind, code)
             else:
                 assert code == 403, (kind, other_kind, code)
         limits = app_client.get("/api/finance/imports/limits", cookies=cookies).json()
-        assert limits["kinds"] == [kind]
+        assert limits["kinds"] == allowed
     # reading bills is not enough to import them
     reader = make_user("bill-reader@hrflow.test", ["finance.bill.read"])
     assert post_import(app_client, reader, "bills", manifest, archive).status_code == 403

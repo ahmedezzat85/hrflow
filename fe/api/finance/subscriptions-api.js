@@ -284,7 +284,7 @@
           id: linkedBillId,
           vendor_id: sub ? sub.vendor_id : 1,
           vendor_name: sub ? sub.vendor_name : "Vendor",
-          bill_number: `SUB-${sub ? sub.id : 1}-${billingDate.replace(/-/g, "")}`,
+          bill_number: `SUB-${sub ? sub.id : 1}${sub && sub.name ? "-" + String(sub.name).trim().replace(/\s+/g, "_") : ""}-${billingDate.replace(/-/g, "")}`,
           category: "SaaS",
           department: sub ? sub.department || "Operations" : "Operations",
           legal_entity: "Voyance Health Inc",

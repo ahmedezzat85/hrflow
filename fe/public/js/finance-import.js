@@ -7,9 +7,9 @@
  */
 
 // Kinds the screen offers. Each slice enables its kind here once its importer exists on the backend.
-const FINANCE_IMPORT_ENABLED_KINDS = ["bills", "cheques", "invoices"];
-const FINANCE_IMPORT_LABELS = { bills: "Vendor bills", cheques: "Cheques", invoices: "Sales invoices" };
-const FINANCE_IMPORT_DRAWER_TYPES = { bills: "bill", cheques: "cheque", invoices: "invoice" };
+const FINANCE_IMPORT_ENABLED_KINDS = ["bills", "cheques", "invoices", "transfers"];
+const FINANCE_IMPORT_LABELS = { bills: "Vendor bills", cheques: "Cheques", invoices: "Sales invoices", transfers: "Transfers between accounts" };
+const FINANCE_IMPORT_DRAWER_TYPES = { bills: "bill", cheques: "cheque", invoices: "invoice" }; // transfers have no drawer
 const FINANCE_IMPORT_STATUS = {
   ok: { label: "Ready", group: "settled" },
   warning: { label: "Warning", group: "waiting" },
@@ -82,7 +82,12 @@ function _financeImportRefreshButtons() {
   const importable = r && r.dry_run && !(r.file_errors || []).length ? (r.rows_ok || 0) + (r.rows_warning || 0) : 0;
   if (commit) {
     commit.disabled = FinanceImportState.busy || importable === 0;
-    commit.textContent = importable ? `Create ${importable} draft${importable === 1 ? "" : "s"}` : "Create drafts";
+    const posting = r && r.dry_run ? r.rows_posting || 0 : 0;
+    commit.textContent = !importable
+      ? "Create drafts"
+      : posting
+        ? `Create ${importable} record${importable === 1 ? "" : "s"} (${posting} post${posting === 1 ? "s" : ""} to the ledger)`
+        : `Create ${importable} draft${importable === 1 ? "" : "s"}`;
   }
   const dl = document.getElementById("financeImportDownloadReportBtn");
   if (dl) dl.disabled = !r;
@@ -154,13 +159,13 @@ async function runFinanceImportDryRun() {
   await _financeImportRun(false, manifest, archive);
 }
 
-async function _financeImportRun(commit, manifest, archive) {
+async function _financeImportRun(commit, manifest, archive, confirmPosting = false) {
   FinanceImportState.busy = true;
   _financeImportRefreshButtons();
   const kind = _financeImportKind();
   try {
     const report = commit
-      ? await FinanceApi.commitImport(kind, manifest, archive)
+      ? await FinanceApi.commitImport(kind, manifest, archive, confirmPosting)
       : await FinanceApi.dryRunImport(kind, manifest, archive);
     FinanceImportState.report = report;
     FinanceImportState.filter = "all";
@@ -183,22 +188,25 @@ async function commitFinanceImport() {
   const { manifest, archive } = _financeImportFiles();
   if (!r || !r.dry_run || !manifest || !archive || FinanceImportState.busy) return;
   const n = (r.rows_ok || 0) + (r.rows_warning || 0);
+  const posting = r.rows_posting || 0;
   const answer = await FinanceCommand.confirmAction({
-    title: "Create drafts",
+    title: posting ? "Create records and post to the ledger" : "Create drafts",
     summary: `<strong>${FinanceUI.esc(FINANCE_IMPORT_LABELS[r.kind] || r.kind)}</strong> · ${n} document${n === 1 ? "" : "s"}`,
-    consequence: `${n} Draft${n === 1 ? "" : "s"} will be created with their documents attached. Rows with errors or duplicates are skipped. Nothing is approved, paid or posted to the ledger.`,
-    actionLabel: "Create drafts",
+    consequence: posting
+      ? `${posting} of ${n} row${n === 1 ? "" : "s"} will post to the ledger and change account balances (paid bills and transfers). The other rows are created as Drafts. Rows with errors or duplicates are skipped. Confirm only if the cashbooks do not already hold these movements.`
+      : `${n} Draft${n === 1 ? "" : "s"} will be created with their documents attached. Rows with errors or duplicates are skipped. Nothing is approved, paid or posted to the ledger.`,
+    actionLabel: posting ? "Create and post" : "Create drafts",
     actionClass: "btn btn-fill",
     requireReason: false,
-    severity: "warning",
+    severity: posting ? "danger" : "warning",
   });
   if (!answer || !answer.confirmed) return;
-  await _financeImportRun(true, manifest, archive);
+  await _financeImportRun(true, manifest, archive, posting > 0);
   const done = FinanceImportState.report;
   const result = document.getElementById("financeImportResult");
   if (result && done) {
     if (done.committed) {
-      result.textContent = `Batch #${done.batch_id}: ${done.rows_created} draft${done.rows_created === 1 ? "" : "s"} created, ${done.rows_failed} row${done.rows_failed === 1 ? "" : "s"} not created. Review the Drafts before submitting them.`;
+      result.textContent = `Batch #${done.batch_id}: ${done.rows_created} ${posting ? "record" : "draft"}${done.rows_created === 1 ? "" : "s"} created, ${done.rows_failed} row${done.rows_failed === 1 ? "" : "s"} not created. Review the Drafts before submitting them.`;
     } else {
       result.textContent = "Nothing was created.";
     }
@@ -245,7 +253,7 @@ function renderFinanceImportReport() {
       const msgs = (row.findings || [])
         .map((f) => `<div class="fv-import-msg fv-import-msg--${esc(f.level)}"><span class="fv-import-msg__code">${esc(f.code)}</span> ${esc(f.message)}</div>`)
         .join("");
-      const created = row.created_id
+      const created = row.created_id && drawerType
         ? `<button type="button" class="btn btn-outline btn-import-open" onclick="FinanceDrawer.open('${drawerType}', ${Number(row.created_id)}, this)">Open draft</button>`
         : "";
       return `<tr data-row-ref="${esc(row.row_ref)}" data-status="${esc(row.status)}">

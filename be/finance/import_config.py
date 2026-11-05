@@ -6,14 +6,19 @@ The nginx request limit (25 MB) is not changed; these limits keep a run inside i
 timeout. Everything here is a plain constant so tests can monkeypatch it.
 """
 
-KINDS = ("bills", "cheques", "invoices")
+KINDS = ("bills", "cheques", "invoices", "transfers")
 
 # Permission that the target entity already requires (D-033): no new permission
 KIND_PERMISSIONS = {
     "bills": "finance.bill.write",
     "cheques": "finance.account.write",
     "invoices": "finance.invoice.write",
+    "transfers": "finance.account.write",  # the same key the transfer route requires
 }
+
+# Warning code that marks a row which will post to the ledger on commit (paid bills, transfers). A commit that
+# contains such rows must carry an explicit confirmation (D-052).
+POSTING_CODE = "will_post_ledger"
 
 MAX_DOCUMENTS_PER_RUN = 50
 MAX_REQUEST_BYTES = 24 * 1024 * 1024  # nginx allows 25 MB
