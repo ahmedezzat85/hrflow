@@ -456,10 +456,12 @@ class BillsImporter:
                 return [finding(LEVEL_DUPLICATE, "duplicate_existing", f"Subscription '{sub.name}' already has a {charge.status} charge for {data['issue_date']} (charge #{charge.id})")]
 
         # No overdraft on any account (the settlement rule), counted across the paid rows of this run
-        balance = self._projected.get(account.id, float(account.current_balance or 0.0))
-        if round(balance, 4) + 0.0001 < total:
-            return [finding(LEVEL_ERROR, "insufficient_balance", f"Account '{account.account_name}' would hold {balance:,.2f} {account.currency} when this row is paid, below {total:,.2f}")]
-        self._projected[account.id] = balance - total
+        # (skipped for a partial-visibility account, whose balance is not the real one: D-028)
+        if (account.visibility or "full") != "partial":
+            balance = self._projected.get(account.id, float(account.current_balance or 0.0))
+            if round(balance, 4) + 0.0001 < total:
+                return [finding(LEVEL_ERROR, "insufficient_balance", f"Account '{account.account_name}' would hold {balance:,.2f} {account.currency} when this row is paid, below {total:,.2f}")]
+            self._projected[account.id] = balance - total
 
         from finance.models import LedgerTransactionDB
 

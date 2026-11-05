@@ -234,3 +234,21 @@ def test_subscription_row_errors(app_client, admin_cookies):
     assert "currency_mismatch_subscription" in _codes(wrong_currency)
     no_date = _post(app_client, admin_cookies, [dict(base, issue_date="")], {}).json()
     assert "issue_date_required" in _codes(no_date)
+
+
+def test_a_partial_visibility_account_is_not_held_to_the_overdraft_rule(app_client, admin_cookies):
+    """An account the owner cannot see (D-028) only knows the movements entered; its recorded balance says nothing
+    about what it really holds, so a payment from it is recorded even when the known balance is below it."""
+    make_vendor(app_client, admin_cookies, "Paid Vendor Co")
+    partial = _account(app_client, admin_cookies, "Hidden USD", "USD", book="overseas", visibility="partial", opening=0.0)
+    full = _account(app_client, admin_cookies, "Visible USD", "USD", book="overseas", opening=0.0)
+
+    refused = _post(app_client, admin_cookies, [_row(1, full["account_name"])], _pdfs(1)).json()
+    assert "insufficient_balance" in _codes(refused)
+
+    rows = [_row(1, partial["account_name"]), _row(2, partial["account_name"], total_amount="120.00")]
+    report = _post(app_client, admin_cookies, rows, _pdfs(1, 2)).json()
+    assert [r["status"] for r in report["rows"]] == ["warning", "warning"] and report["rows_posting"] == 2
+    done = _post(app_client, admin_cookies, rows, _pdfs(1, 2), commit=True, confirm=True)
+    assert done.status_code == 200 and done.json()["rows_created"] == 2, done.text
+    assert _balance(app_client, admin_cookies, partial["id"]) == -220.0  # shown as the known movements; checkpoints cover the gap
