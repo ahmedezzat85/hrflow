@@ -27,6 +27,8 @@ test.describe('X2: Books, visibility, checkpoints and the view switcher (D-028)'
     // A past year-end is selectable and keeps the page usable
     await page.locator('#financeAccountAsOfSelect').selectOption({ index: 1 });
     await expect(page.locator('#financeAccountsTableBody tr').first()).toBeVisible();
+    const asOfRequested = await page.evaluate(() => FinanceState.accountsView !== null && FinanceState.accountsView !== undefined);
+    expect(asOfRequested).toBe(true);
     await page.locator('#financeAccountAsOfSelect').selectOption('');
     await page.locator('#financeBookSwitcherAccounts [data-book="consolidated"]').click();
   });
