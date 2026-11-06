@@ -29,6 +29,24 @@
   const _isMock = () => typeof window !== "undefined" && window.location && window.location.search.includes("mock=");
   root._isMock = _isMock;
 
+  // List endpoints cap one response (limit default 50 to 100, max 100 to 500), and the pages filter, sort and
+  // paginate on the client. Reading only the first response silently dropped every row after the cap.
+  // This follows limit/offset until a short page. A caller that sets its own limit or offset gets exactly that page.
+  async function _getAllPages(path, params, pageSize) {
+    const base = { ...(params || {}) };
+    const urlFor = (p) => { const qs = new URLSearchParams(p).toString(); return qs ? `${path}?${qs}` : path; };
+    if (base.limit !== undefined || base.offset !== undefined) return apiRequest("GET", urlFor(base));
+    const all = [];
+    for (let page = 0; page < 200; page++) { // 200 pages is a runaway guard, far above any real list
+      const rows = await apiRequest("GET", urlFor({ ...base, limit: pageSize, offset: page * pageSize }));
+      if (!Array.isArray(rows)) return rows;
+      all.push(...rows);
+      if (rows.length < pageSize) break;
+    }
+    return all;
+  }
+  root._getAllPages = _getAllPages;
+
   function round(val, decimals = 2) {
     return Math.round((Number(val || 0) + Number.EPSILON) * Math.pow(10, decimals)) / Math.pow(10, decimals);
   }
@@ -218,12 +236,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       }
       return list;
     }
-    let url = "/api/finance/customers";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages("/api/finance/customers", params, 100);
   },
 
   // Invoices
@@ -249,12 +262,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       }
       return list;
     }
-    let url = "/api/finance/invoices";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages("/api/finance/invoices", params, 100);
   },
   async getInvoice(id) {
     if (_isMock()) {
@@ -496,12 +504,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       }
       return list.map(_withReceivables);
     }
-    let url = "/api/finance/customers";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages("/api/finance/customers", params, 100);
   },
   async getCustomer(id) {
     if (_isMock()) {
@@ -853,9 +856,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
         if (params && params.book && params.book !== "consolidated") list = list.filter((r) => r.book_code === params.book);
         return list.sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
       }
-      let url = "/api/finance/revenue-receipts";
-      if (params) { const qs = new URLSearchParams(params).toString(); if (qs) url += `?${qs}`; }
-      return apiRequest("GET", url);
+      return _getAllPages("/api/finance/revenue-receipts", params, 500);
     },
     async createRevenueReceipt(payload) {
       if (_isMock()) {
@@ -1132,12 +1133,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       }
       return list;
     }
-    let url = "/api/finance/bills";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages("/api/finance/bills", params, 100);
   },
   async getBillQueueCounts(params) {
     if (_isMock()) {
@@ -1733,7 +1729,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
   },
 
   getPayrollRuns() {
-    return apiRequest("GET", "/api/finance/payroll/runs");
+    return _getAllPages("/api/finance/payroll/runs", undefined, 100);
   },
   getMyPayslips() {
     return apiRequest("GET", "/api/finance/payroll/payslips/my");
@@ -1763,12 +1759,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
         return { ...v, payables: Object.values(byCurrency) };
       });
     }
-    let url = "/api/finance/vendors";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages("/api/finance/vendors", params, 100);
   },
   async getVendor(id) {
     if (_isMock()) {
@@ -2132,12 +2123,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       }
       return list;
     }
-    let url = "/api/finance/accounts";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages("/api/finance/accounts", params, 100);
   },
   async listAccounts(params) {
     return this.getAccounts(params);
@@ -2428,12 +2414,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       }
       return list.sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
     }
-    let url = `/api/finance/accounts/${accountId}/transactions`;
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages(`/api/finance/accounts/${accountId}/transactions`, params, 500);
   },
 
   async createTransaction(accountId, payload) {
@@ -2824,12 +2805,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       if (params && params.date_to) list = list.filter((t) => t.date <= params.date_to);
       return list.sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
     }
-    let url = "/api/finance/transfers";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages("/api/finance/transfers", params, 200);
   },
 
   async getTransfer(id) {
@@ -3179,12 +3155,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       }
       return list.map(_chequeView);
     }
-    let url = "/api/finance/cheques";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages("/api/finance/cheques", params, 200);
   },
   async getCheque(id) {
     if (_isMock()) {
@@ -7449,8 +7420,7 @@ async getEntityActivity(entityType, entityId) {
         }
         return list;
       }
-      const qs = new URLSearchParams(params).toString();
-      return apiRequest("GET", `/api/finance/payroll/runs${qs ? "?" + qs : ""}`);
+      return _getAllPages("/api/finance/payroll/runs", params, 100);
     },
 
     async getPayrollRun(id) {
@@ -8671,12 +8641,7 @@ async getEntityActivity(entityType, entityId) {
         remaining_balance: Math.max(0, round(o.amount_accrued - (o.amount_remitted || 0))),
       }));
     }
-    let url = "/api/finance/statutory-obligations";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages("/api/finance/statutory-obligations", params, 200);
   },
 
   async getStatutoryObligation(id) {
