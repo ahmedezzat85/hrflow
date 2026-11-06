@@ -46,8 +46,12 @@ class AccountsService:
             return f"******{clean}"
         return f"{'*' * (len(clean) - 4)}{clean[-4:]}"
 
-    def to_response(self, account: FinanceBankAccountDB, reveal: bool = False) -> BankAccountResponse:
+    def to_response(self, account: FinanceBankAccountDB, reveal: bool = False, as_of: Optional[str] = None) -> BankAccountResponse:
         metrics = self.repo.get_balance_metrics(account)
+        if as_of:
+            # Read-only historical view: the posted balance on that date (D-043); nothing is stored
+            past = self.repo.compute_balance(account.id, as_of_date=as_of)
+            metrics = {**metrics, "book_balance": past, "available_balance": past, "balance_as_of": as_of}
         account_num = account.account_number if reveal else self.mask_account_number(account.account_number)
         book = account.book
         latest = None
@@ -69,7 +73,7 @@ class AccountsService:
             currency=account.currency,
             opening_balance=account.opening_balance,
             opening_balance_date=account.opening_balance_date,
-            current_balance=account.current_balance,
+            current_balance=metrics["book_balance"] if as_of else account.current_balance,
             account_type=getattr(account, "account_type", "bank"),
             country=getattr(account, "country", "Egypt"),
             is_active=account.is_active,
@@ -92,9 +96,10 @@ class AccountsService:
         limit: int = 50,
         offset: int = 0,
         book: Optional[str] = None,
+        as_of: Optional[str] = None,
     ) -> List[BankAccountResponse]:
         accounts = self.repo.list_all(is_active=is_active, limit=limit, offset=offset, book=book)
-        return [self.to_response(acc) for acc in accounts]
+        return [self.to_response(acc, as_of=as_of) for acc in accounts]
 
     def get_account(self, account_id: int, reveal: bool = False) -> BankAccountResponse:
         account = self.repo.get_by_id(account_id)

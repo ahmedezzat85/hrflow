@@ -79,7 +79,14 @@ async function loadFinanceAccounts() {
     let cheques = [];
     try { cheques = (await FinanceApi.getCheques()) || []; } catch (_) { /* the cheque card shows zero */ }
     FinanceState.chequesForCards = cheques;
-    renderFinanceAccounts(items);
+    _fillAccountAsOfSelect();
+    // A past year-end is a read-only view; FinanceState.accounts stays the live list the ledger and dialogs use
+    FinanceState.accountsView = null;
+    if (_accountAsOf) {
+      try { FinanceState.accountsView = await FinanceApi.getAccounts({ as_of: _accountAsOf }); }
+      catch (e) { toast("Could not load balances for that date: " + (e.message || e), "fa-solid fa-triangle-exclamation"); }
+    }
+    renderFinanceAccounts(FinanceState.accountsView || items);
   } catch (err) {
     console.error("Failed to load company accounts:", err);
     toast("Failed to load company accounts: " + (err.message || err), "fa-solid fa-triangle-exclamation");
@@ -89,6 +96,30 @@ async function loadFinanceAccounts() {
 }
 
 let _accountCurrencyFilter = "";
+let _accountAsOf = ""; // "" = today, else the last day of a past year (YYYY-12-31)
+
+function _accountsForView() { return FinanceState.accountsView || FinanceState.accounts || []; }
+
+// "Balances today" plus the last day of each of the previous years (the current year is "today")
+function _fillAccountAsOfSelect() {
+  const sel = document.getElementById("financeAccountAsOfSelect");
+  if (!sel || sel.options.length > 1) return;
+  const current = new Date().getFullYear();
+  for (let y = current - 1; y >= current - 6; y--) {
+    const opt = document.createElement("option");
+    opt.value = `${y}-12-31`;
+    opt.textContent = `Balances at end of ${y}`;
+    sel.appendChild(opt);
+  }
+}
+
+function onAccountAsOfChange(value) {
+  _accountAsOf = value || "";
+  loadFinanceAccounts();
+}
+
+// The book switcher only changes what is shown, so it re-renders the loaded list
+function refreshFinanceAccountsView() { renderFinanceAccounts(_accountsForView()); }
 
 function filterCompanyBankAccounts(filterType, btn) {
   _currentBankAccountFilter = filterType;
@@ -97,12 +128,12 @@ function filterCompanyBankAccounts(filterType, btn) {
     p.classList.toggle("active", on);
     p.setAttribute("aria-pressed", on ? "true" : "false");
   });
-  renderFinanceAccounts(FinanceState.accounts || []);
+  renderFinanceAccounts(_accountsForView());
 }
 
 function onAccountCurrencyFilterChange(cur) {
   _accountCurrencyFilter = cur || "";
-  renderFinanceAccounts(FinanceState.accounts || []);
+  renderFinanceAccounts(_accountsForView());
 }
 
 // Summary cards (doc 21 section 6.8): one per currency present (never mixed), uncleared cheques, statement lines to match.
@@ -113,15 +144,23 @@ function _renderAccountCards(all) {
   const byCur = {};
   all.filter((a) => a.is_active).forEach((a) => {
     const c = (a.currency || "USD").toUpperCase();
-    const row = byCur[c] || (byCur[c] = { total: 0, bank: 0, cash: 0 });
-    row.total += Number(a.book_balance !== undefined ? a.book_balance : a.current_balance || 0);
+    const row = byCur[c] || (byCur[c] = { total: 0, bank: 0, cash: 0, books: {} });
+    const bal = Number(a.book_balance !== undefined ? a.book_balance : a.current_balance || 0);
+    row.total += bal;
+    const bk = a.book_code === "overseas" ? "overseas" : "local";
+    row.books[bk] = (row.books[bk] || 0) + bal;
     if (a.account_type === "cash") row.cash += 1; else row.bank += 1;
   });
   const hues = ["sky", "teal", "violet", "green"];
   Object.entries(byCur).forEach(([cur, row], i) => {
     const parts = [];
-    if (row.bank) parts.push(`${row.bank} bank ${row.bank === 1 ? "account" : "accounts"}`);
-    if (row.cash) parts.push(`${row.cash} cash ${row.cash === 1 ? "drawer" : "drawers"}`);
+    if (row.books.local !== undefined && row.books.overseas !== undefined) {
+      // Consolidated: show where the total sits, so the two books are never read as one pot
+      parts.push(`Local ${FinanceUI.plainNumber(row.books.local, cur)}`, `Overseas ${FinanceUI.plainNumber(row.books.overseas, cur)}`);
+    } else {
+      if (row.bank) parts.push(`${row.bank} bank ${row.bank === 1 ? "account" : "accounts"}`);
+      if (row.cash) parts.push(`${row.cash} cash ${row.cash === 1 ? "drawer" : "drawers"}`);
+    }
     cards.push(`
       <a class="fv-card" href="javascript:void(0)" onclick="document.getElementById('financeAccountCurrencyFilter').value='${cur}'; onAccountCurrencyFilterChange('${cur}')">
         <div class="fv-card__top"><span>${FinanceUI.esc(cur)} accounts</span><span class="fv-tile fv-hue-${hues[i % hues.length]}" aria-hidden="true"><i class="fa-solid fa-building-columns"></i></span></div>
@@ -130,7 +169,8 @@ function _renderAccountCards(all) {
       </a>`);
   });
 
-  const unc = (FinanceState.chequesForCards || []).filter((c) => c.status === "issued" || c.status === "outstanding");
+  const shownIds = new Set(all.map((a) => a.id));
+  const unc = (FinanceState.chequesForCards || []).filter((c) => (c.status === "issued" || c.status === "outstanding") && shownIds.has(c.account_id));
   const uncBy = {};
   unc.forEach((c) => { const k = (c.currency || "USD").toUpperCase(); uncBy[k] = (uncBy[k] || 0) + Number(c.amount || 0); });
   const uncHtml = Object.keys(uncBy).length
@@ -162,7 +202,9 @@ function renderFinanceAccounts(allItems) {
   const footer = document.getElementById("financeAccountsFooter");
   if (!tbody) return;
 
-  const all = allItems || [];
+  // The book switcher scopes the cards, pill counts, currency list and table together
+  const view = (typeof FinanceBookView !== "undefined") ? FinanceBookView.get("accounts") : "consolidated";
+  const all = (allItems || []).filter((a) => view === "consolidated" || (a.book_code || "local") === view);
   _renderAccountCards(all);
 
   // pill counts and the currency list come from the whole list

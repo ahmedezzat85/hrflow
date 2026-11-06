@@ -1821,7 +1821,7 @@ window.sumColumn = sumColumn;
 const FinanceBookView = {
   VIEWS: [["local", "Local"], ["overseas", "Overseas"], ["consolidated", "Consolidated"]],
   // First defaults per D-028: dashboard, reports (P&L, cash flow) = Local; subscriptions = Consolidated
-  DEFAULTS: { dashboard: "local", reports: "local", subscriptions: "consolidated", revenue: "consolidated" },
+  DEFAULTS: { dashboard: "local", reports: "local", subscriptions: "consolidated", revenue: "consolidated", accounts: "consolidated" },
   _mem: {},
   _key(page) { return `hrflow_finance_book_${page}`; },
   get(page) {

@@ -41,12 +41,13 @@ def list_company_bank_accounts(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     book: Optional[str] = Query(None, description="local | overseas | consolidated; omitted lists every account"),
+    as_of: Optional[str] = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$", description="YYYY-MM-DD; balances as of that date (read-only view)"),
     current_user: dict = Depends(require_permission("finance.account.read")),
     service: AccountsService = Depends(get_accounts_service),
 ):
     """Lists company bank accounts with masked account numbers and balance metrics."""
     from finance import books as _books
-    return service.list_accounts(is_active=is_active, limit=limit, offset=offset, book=_books.validate_view(book))
+    return service.list_accounts(is_active=is_active, limit=limit, offset=offset, book=_books.validate_view(book), as_of=as_of)
 
 
 @router.get("/books", response_model=List[BookResponse])
