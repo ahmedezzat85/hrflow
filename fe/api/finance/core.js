@@ -6,6 +6,24 @@
   const _isMock = () => typeof window !== "undefined" && window.location && window.location.search.includes("mock=");
   root._isMock = _isMock;
 
+  // List endpoints cap one response (limit default 50 to 100, max 100 to 500), and the pages filter, sort and
+  // paginate on the client. Reading only the first response silently dropped every row after the cap.
+  // This follows limit/offset until a short page. A caller that sets its own limit or offset gets exactly that page.
+  async function _getAllPages(path, params, pageSize) {
+    const base = { ...(params || {}) };
+    const urlFor = (p) => { const qs = new URLSearchParams(p).toString(); return qs ? `${path}?${qs}` : path; };
+    if (base.limit !== undefined || base.offset !== undefined) return apiRequest("GET", urlFor(base));
+    const all = [];
+    for (let page = 0; page < 200; page++) { // 200 pages is a runaway guard, far above any real list
+      const rows = await apiRequest("GET", urlFor({ ...base, limit: pageSize, offset: page * pageSize }));
+      if (!Array.isArray(rows)) return rows;
+      all.push(...rows);
+      if (rows.length < pageSize) break;
+    }
+    return all;
+  }
+  root._getAllPages = _getAllPages;
+
   function round(val, decimals = 2) {
     return Math.round((Number(val || 0) + Number.EPSILON) * Math.pow(10, decimals)) / Math.pow(10, decimals);
   }

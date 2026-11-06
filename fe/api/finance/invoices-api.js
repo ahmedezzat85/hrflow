@@ -89,12 +89,7 @@
       }
       return list;
     }
-    let url = "/api/finance/customers";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages("/api/finance/customers", params, 100);
   },
 
   // Invoices
@@ -120,12 +115,7 @@
       }
       return list;
     }
-    let url = "/api/finance/invoices";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages("/api/finance/invoices", params, 100);
   },
   async getInvoice(id) {
     if (_isMock()) {
@@ -367,12 +357,7 @@
       }
       return list.map(_withReceivables);
     }
-    let url = "/api/finance/customers";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages("/api/finance/customers", params, 100);
   },
   async getCustomer(id) {
     if (_isMock()) {

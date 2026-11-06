@@ -60,9 +60,7 @@
         if (params && params.book && params.book !== "consolidated") list = list.filter((r) => r.book_code === params.book);
         return list.sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
       }
-      let url = "/api/finance/revenue-receipts";
-      if (params) { const qs = new URLSearchParams(params).toString(); if (qs) url += `?${qs}`; }
-      return apiRequest("GET", url);
+      return _getAllPages("/api/finance/revenue-receipts", params, 500);
     },
     async createRevenueReceipt(payload) {
       if (_isMock()) {

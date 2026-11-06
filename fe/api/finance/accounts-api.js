@@ -207,12 +207,7 @@
       }
       return list;
     }
-    let url = "/api/finance/accounts";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages("/api/finance/accounts", params, 100);
   },
   async listAccounts(params) {
     return this.getAccounts(params);
@@ -503,12 +498,7 @@
       }
       return list.sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
     }
-    let url = `/api/finance/accounts/${accountId}/transactions`;
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages(`/api/finance/accounts/${accountId}/transactions`, params, 500);
   },
 
   async createTransaction(accountId, payload) {
@@ -899,12 +889,7 @@
       if (params && params.date_to) list = list.filter((t) => t.date <= params.date_to);
       return list.sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
     }
-    let url = "/api/finance/transfers";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages("/api/finance/transfers", params, 200);
   },
 
   async getTransfer(id) {

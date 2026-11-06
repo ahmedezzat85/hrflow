@@ -175,12 +175,7 @@
       }
       return list;
     }
-    let url = "/api/finance/bills";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages("/api/finance/bills", params, 100);
   },
   async getBillQueueCounts(params) {
     if (_isMock()) {
@@ -776,7 +771,7 @@
   },
 
   getPayrollRuns() {
-    return apiRequest("GET", "/api/finance/payroll/runs");
+    return _getAllPages("/api/finance/payroll/runs", undefined, 100);
   },
   getMyPayslips() {
     return apiRequest("GET", "/api/finance/payroll/payslips/my");
@@ -806,12 +801,7 @@
         return { ...v, payables: Object.values(byCurrency) };
       });
     }
-    let url = "/api/finance/vendors";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages("/api/finance/vendors", params, 100);
   },
   async getVendor(id) {
     if (_isMock()) {

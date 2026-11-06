@@ -83,12 +83,7 @@
       }
       return list.map(_chequeView);
     }
-    let url = "/api/finance/cheques";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages("/api/finance/cheques", params, 200);
   },
   async getCheque(id) {
     if (_isMock()) {
