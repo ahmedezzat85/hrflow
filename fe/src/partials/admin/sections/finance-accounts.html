@@ -59,6 +59,10 @@
                 <button class="filter-tab fv-pill fv-pill--closed" aria-pressed="false" data-filter="inactive" onclick="filterCompanyBankAccounts('inactive', this)"><span class="fv-pill__dot" aria-hidden="true"></span>Inactive <span class="fv-pill__count" id="accPillCountInactive">0</span></button>
               </div>
               <div class="fv-pills-selects">
+                <div id="financeBookSwitcherAccounts"></div>
+                <select id="financeAccountAsOfSelect" class="fv-select" aria-label="Balance as of" onchange="onAccountAsOfChange(this.value)">
+                  <option value="">Balances today</option>
+                </select>
                 <select id="financeAccountCurrencyFilter" class="fv-select" aria-label="Currency" onchange="onAccountCurrencyFilterChange(this.value)">
                   <option value="">All currencies</option>
                 </select>

@@ -7,6 +7,32 @@ test.describe('X2: Books, visibility, checkpoints and the view switcher (D-028)'
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 15000 });
   });
 
+  test('Banking cards follow the book switcher and the balance-as-of select', async ({ page }) => {
+    await openAdminPage(page, 'a-finance-accounts');
+    const cards = page.locator('#financeAccountsCards');
+    await expect(page.locator('#financeAccountsTableBody tr').first()).toBeVisible({ timeout: 10000 });
+
+    // Consolidated (default): both books present, the USD card says where its total sits
+    await expect(page.locator('#financeBookSwitcherAccounts [data-book="consolidated"]')).toHaveAttribute('aria-pressed', 'true');
+    await expect(cards).toContainText('Overseas');
+
+    await page.locator('#financeBookSwitcherAccounts [data-book="local"]').click();
+    await expect(page.locator('#financeAccountsTableBody tr:has-text("Voyance Overseas USD")')).toHaveCount(0);
+    await expect(cards).not.toContainText('Overseas');
+
+    await page.locator('#financeBookSwitcherAccounts [data-book="overseas"]').click();
+    await expect(page.locator('#financeAccountsTableBody tr:has-text("CIB EGP Operating")')).toHaveCount(0);
+    await expect(page.locator('#financeAccountsTableBody tr:has-text("Voyance Overseas USD")')).toBeVisible();
+
+    // A past year-end is selectable and keeps the page usable
+    await page.locator('#financeAccountAsOfSelect').selectOption({ index: 1 });
+    await expect(page.locator('#financeAccountsTableBody tr').first()).toBeVisible();
+    const asOfRequested = await page.evaluate(() => FinanceState.accountsView !== null && FinanceState.accountsView !== undefined);
+    expect(asOfRequested).toBe(true);
+    await page.locator('#financeAccountAsOfSelect').selectOption('');
+    await page.locator('#financeBookSwitcherAccounts [data-book="consolidated"]').click();
+  });
+
   test('accounts are grouped by book and a partial account shows its unrecorded difference', async ({ page }) => {
     await openAdminPage(page, 'a-finance-accounts');
     const rows = page.locator('#financeAccountsTableBody tr');

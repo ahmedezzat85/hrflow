@@ -169,7 +169,13 @@
       let list = [...FinanceMockState.accounts]
         .filter((a) => !(params && params.book) || params.book === "consolidated" || a.book_code === params.book)
         .map((a) => {
-        const book = Number(a.current_balance || a.opening_balance || 0);
+        let book = Number(a.current_balance || a.opening_balance || 0);
+        if (params && params.as_of) {
+          // balance on that date = today's balance minus the movements after it
+          book = (FinanceMockState.transactions || [])
+            .filter((t) => t.account_id === a.id && String(t.date || t.transaction_date || "") > params.as_of)
+            .reduce((bal, t) => bal - (t.direction === "in" ? 1 : -1) * Number(t.amount || 0), book);
+        }
         const hasPostings = (FinanceMockState.transactions || []).some((t) => t.account_id === a.id) || (FinanceMockState.cheques || []).some((c) => c.account_id === a.id);
         const uncleared = (FinanceMockState.cheques || [])
           .filter((c) => c.account_id === a.id && (c.status === "issued" || c.status === "outstanding"))
