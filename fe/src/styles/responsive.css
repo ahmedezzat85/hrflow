@@ -542,3 +542,48 @@
     align-items: center;
   }
 }
+
+
+/* Phone toolbars: let search + buttons wrap instead of clipping the last button */
+@media (max-width: 768px) {
+  .fv .hv-row-8 { flex-wrap: wrap; }
+  .fv .hv-w-230 { flex: 1 1 100%; width: 100%; max-width: none; }
+}
+
+@media (max-width: 768px) {
+  /* Status pill rows wrap rather than run off the screen */
+  #a-requests .hv-statuspills { flex-wrap: wrap; }
+
+  /* Finance filter selects sit under the pills and stay inside the card */
+  .fv .fv-pills-selects { flex-wrap: wrap; margin-left: 0; width: 100%; }
+  .fv .fv-pills-selects .fv-select { flex: 1 1 140px; min-width: 0; max-width: 100%; }
+
+  /* Footer lines on summary cards: let the text wrap instead of clipping */
+  .fv .hv-between-meta,
+  .hero-card-foot { flex-wrap: wrap; gap: 2px 8px; }
+}
+
+@media (max-width: 640px) {
+  .fv .hv-dash-ins-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .fv .hv-dash-insurance-card { flex-direction: column; align-items: stretch; gap: 12px; }
+}
+
+/* Finance controls: comfortable touch targets on phones and touch tablets */
+@media (max-width: 768px), (max-width: 1024px) and (pointer: coarse) {
+  .fv .fv-icon-btn,
+  .fv .pagination-btn,
+  .fv .fv-table-card .pagination-btn { min-width: 44px; min-height: 44px; }
+  .fv .fv-pill { min-height: 40px; }
+  .fv .filter-tab { min-height: 44px; }
+  .fv .fv-name-btn,
+  .fv .fv-card__link,
+  .fv .fv-info-btn { display: inline-flex; align-items: center; min-height: 40px; }
+  .fv .fv-info-btn { justify-content: center; min-width: 40px; }
+}
+
+@media (max-width: 768px) {
+  .fv .pagination-controls { flex-wrap: wrap; justify-content: center; }
+}
