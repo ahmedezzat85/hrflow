@@ -576,12 +576,12 @@
   .fv .fv-icon-btn,
   .fv .pagination-btn,
   .fv .fv-table-card .pagination-btn { min-width: 44px; min-height: 44px; }
-  .fv .fv-pill { min-height: 40px; }
+  .fv .fv-pill { min-height: 44px; }
   .fv .filter-tab { min-height: 44px; }
   .fv .fv-name-btn,
   .fv .fv-card__link,
-  .fv .fv-info-btn { display: inline-flex; align-items: center; min-height: 40px; }
-  .fv .fv-info-btn { justify-content: center; min-width: 40px; }
+  .fv .fv-info-btn { display: inline-flex; align-items: center; min-height: 44px; }
+  .fv .fv-info-btn { justify-content: center; min-width: 44px; }
 }
 
 @media (max-width: 768px) {
