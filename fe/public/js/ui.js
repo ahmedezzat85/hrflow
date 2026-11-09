@@ -230,7 +230,7 @@ const titles = {
   'a-dochub':['Document hub',"Manage company-wide documents and policies."],
   'a-finance-dashboard':['Finance Overview','Executive summary of cash flow, revenue, and operating expenses.'],
   'a-finance-sales':['Sales & Receivables','Manage customer invoices, receivables, and customer accounts.'],
-  'a-finance-spend':['Spend & Payables','Track vendor bills, payments, and recurring subscriptions.'],
+  'a-finance-spend':['Bills','Track vendor bills, payments, and recurring subscriptions.'],
   'a-finance-banking':['Banking & Cash Management','Manage company treasury, continuous ledger, cheques, and reconciliation.'],
   'a-finance-payroll':['Payroll runs','Review and execute company payroll cycles.'],
   'a-finance-payroll-runs':['Payroll runs','Review and execute company payroll cycles.'],
