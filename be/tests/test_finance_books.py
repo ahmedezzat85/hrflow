@@ -105,6 +105,23 @@ def test_books_seeded_and_accounts_default_to_local(app_client, admin_cookies, e
     assert bad_book.status_code == 404
 
 
+def test_account_list_as_of_shows_a_past_balance_without_storing_it(app_client, admin_cookies):
+    acc = _account(app_client, admin_cookies, "As Of", "USD", opening=100.0)
+    _tx(app_client, admin_cookies, acc["id"], "in", 50.0, "USD")
+
+    def row(path):
+        return next(a for a in app_client.get(path, cookies=admin_cookies).json() if a["id"] == acc["id"])
+
+    assert row("/api/finance/accounts")["book_balance"] == 150.0
+    past = row("/api/finance/accounts?as_of=2020-12-31")
+    assert past["book_balance"] == 100.0 and past["current_balance"] == 100.0
+    # read-only: the live balance is untouched, and the book filter still applies
+    assert row("/api/finance/accounts")["book_balance"] == 150.0
+    only_overseas = app_client.get("/api/finance/accounts?book=overseas&as_of=2020-12-31", cookies=admin_cookies).json()
+    assert acc["id"] not in {a["id"] for a in only_overseas}
+    assert app_client.get("/api/finance/accounts?as_of=not-a-date", cookies=admin_cookies).status_code == 422
+
+
 def test_book_cannot_change_after_postings(app_client, admin_cookies):
     acc = _account(app_client, admin_cookies, "Move Me", "USD")
     overseas_id = _books(app_client, admin_cookies)["overseas"]["id"]

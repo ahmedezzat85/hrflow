@@ -107,13 +107,15 @@ function _mockPersonalView(empId, reveal) {
 async function apiRequest(method, path, body = null, auth = true, extraHeaders = {}) {
   const correlationId = (extraHeaders && extraHeaders["X-Correlation-ID"]) || generateCorrelationId();
   _lastCorrelationId = correlationId;
-  const headers = { 
-    "Content-Type": "application/json",
+  // A FormData body is sent as multipart: the browser must set Content-Type (with the boundary).
+  const isForm = typeof FormData !== "undefined" && body instanceof FormData;
+  const headers = {
+    ...(isForm ? {} : { "Content-Type": "application/json" }),
     "X-Correlation-ID": correlationId,
-    ...(extraHeaders || {}) 
+    ...(extraHeaders || {})
   };
   const opts = { method, headers, credentials: "include" };
-  if (body !== null) opts.body = JSON.stringify(body);
+  if (body !== null) opts.body = isForm ? body : JSON.stringify(body);
 
   let res;
   try {

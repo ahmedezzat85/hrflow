@@ -169,7 +169,13 @@
       let list = [...FinanceMockState.accounts]
         .filter((a) => !(params && params.book) || params.book === "consolidated" || a.book_code === params.book)
         .map((a) => {
-        const book = Number(a.current_balance || a.opening_balance || 0);
+        let book = Number(a.current_balance || a.opening_balance || 0);
+        if (params && params.as_of) {
+          // balance on that date = today's balance minus the movements after it
+          book = (FinanceMockState.transactions || [])
+            .filter((t) => t.account_id === a.id && String(t.date || t.transaction_date || "") > params.as_of)
+            .reduce((bal, t) => bal - (t.direction === "in" ? 1 : -1) * Number(t.amount || 0), book);
+        }
         const hasPostings = (FinanceMockState.transactions || []).some((t) => t.account_id === a.id) || (FinanceMockState.cheques || []).some((c) => c.account_id === a.id);
         const uncleared = (FinanceMockState.cheques || [])
           .filter((c) => c.account_id === a.id && (c.status === "issued" || c.status === "outstanding"))
@@ -201,12 +207,7 @@
       }
       return list;
     }
-    let url = "/api/finance/accounts";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages("/api/finance/accounts", params, 100);
   },
   async listAccounts(params) {
     return this.getAccounts(params);
@@ -497,12 +498,7 @@
       }
       return list.sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
     }
-    let url = `/api/finance/accounts/${accountId}/transactions`;
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages(`/api/finance/accounts/${accountId}/transactions`, params, 500);
   },
 
   async createTransaction(accountId, payload) {
@@ -893,12 +889,7 @@
       if (params && params.date_to) list = list.filter((t) => t.date <= params.date_to);
       return list.sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
     }
-    let url = "/api/finance/transfers";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages("/api/finance/transfers", params, 200);
   },
 
   async getTransfer(id) {

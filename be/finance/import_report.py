@@ -48,6 +48,7 @@ class ImportReport(BaseModel):
     rows_warning: int = 0
     rows_error: int = 0
     rows_duplicate: int = 0
+    rows_posting: int = Field(0, description="Importable rows that will post to the ledger on commit (paid bills, transfers)")
     rows_created: int = 0
     rows_failed: int = 0
     file_errors: List[str] = Field(default_factory=list)

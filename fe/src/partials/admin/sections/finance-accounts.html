@@ -59,6 +59,10 @@
                 <button class="filter-tab fv-pill fv-pill--closed" aria-pressed="false" data-filter="inactive" onclick="filterCompanyBankAccounts('inactive', this)"><span class="fv-pill__dot" aria-hidden="true"></span>Inactive <span class="fv-pill__count" id="accPillCountInactive">0</span></button>
               </div>
               <div class="fv-pills-selects">
+                <div id="financeBookSwitcherAccounts"></div>
+                <select id="financeAccountAsOfSelect" class="fv-select" aria-label="Balance as of" onchange="onAccountAsOfChange(this.value)">
+                  <option value="">Balances today</option>
+                </select>
                 <select id="financeAccountCurrencyFilter" class="fv-select" aria-label="Currency" onchange="onAccountCurrencyFilterChange(this.value)">
                   <option value="">All currencies</option>
                 </select>
@@ -456,9 +460,12 @@
                   <option value="true">Has scan</option>
                 </select>
                 <select id="financeChequeFiscalYearFilter" class="fv-select" aria-label="Fiscal year" onchange="loadFinanceCheques()">
-                  <option value="">All Fiscal Years</option>
-                  <option value="2026" selected>FY 2026</option>
+                  <option value="" selected>All Fiscal Years</option>
+                  <option value="2026">FY 2026</option>
                   <option value="2025">FY 2025</option>
+                  <option value="2024">FY 2024</option>
+                  <option value="2023">FY 2023</option>
+                  <option value="2022">FY 2022</option>
                 </select>
               </div>
             </div>

@@ -173,7 +173,8 @@
           <div id="financeSettingsPaneImport" style="display:none;">
             <div class="fv-callout fv-callout--warn fv-import-notice" id="financeImportNotice" role="note">
               <div class="fv-callout__title fv-callout__title--ink">Imported historical documents stay Drafts</div>
-              Importing never approves, pays or issues anything and never posts to the ledger. Approving or paying an imported bill, or issuing an imported cheque, posts a ledger entry and changes the account balance. Do that only when the ledger does not already hold that movement, or it will be counted twice.
+              Bills, cheques and sales invoices are created as Drafts: nothing is approved, paid or issued, and nothing is posted to the ledger. Approving or paying an imported bill, or issuing an imported cheque, posts a ledger entry and changes the account balance. Do that only when the ledger does not already hold that movement, or it will be counted twice.
+              Two kinds of row do post. A bill row with <strong>paid_date</strong> and <strong>paid_from_account</strong> is created already paid (one outflow in that account, so an overseas account's payment belongs to the Overseas cashbook only), and a <strong>Transfers</strong> row moves money between two accounts (both cashbooks). The dry run marks them, and the commit asks you to confirm.
             </div>
 
             <div class="fv-table-card fv-settings-card fv-import-card">

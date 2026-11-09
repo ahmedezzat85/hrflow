@@ -29,6 +29,24 @@
   const _isMock = () => typeof window !== "undefined" && window.location && window.location.search.includes("mock=");
   root._isMock = _isMock;
 
+  // List endpoints cap one response (limit default 50 to 100, max 100 to 500), and the pages filter, sort and
+  // paginate on the client. Reading only the first response silently dropped every row after the cap.
+  // This follows limit/offset until a short page. A caller that sets its own limit or offset gets exactly that page.
+  async function _getAllPages(path, params, pageSize) {
+    const base = { ...(params || {}) };
+    const urlFor = (p) => { const qs = new URLSearchParams(p).toString(); return qs ? `${path}?${qs}` : path; };
+    if (base.limit !== undefined || base.offset !== undefined) return apiRequest("GET", urlFor(base));
+    const all = [];
+    for (let page = 0; page < 200; page++) { // 200 pages is a runaway guard, far above any real list
+      const rows = await apiRequest("GET", urlFor({ ...base, limit: pageSize, offset: page * pageSize }));
+      if (!Array.isArray(rows)) return rows;
+      all.push(...rows);
+      if (rows.length < pageSize) break;
+    }
+    return all;
+  }
+  root._getAllPages = _getAllPages;
+
   function round(val, decimals = 2) {
     return Math.round((Number(val || 0) + Number.EPSILON) * Math.pow(10, decimals)) / Math.pow(10, decimals);
   }
@@ -218,12 +236,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       }
       return list;
     }
-    let url = "/api/finance/customers";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages("/api/finance/customers", params, 100);
   },
 
   // Invoices
@@ -249,12 +262,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       }
       return list;
     }
-    let url = "/api/finance/invoices";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages("/api/finance/invoices", params, 100);
   },
   async getInvoice(id) {
     if (_isMock()) {
@@ -496,12 +504,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       }
       return list.map(_withReceivables);
     }
-    let url = "/api/finance/customers";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages("/api/finance/customers", params, 100);
   },
   async getCustomer(id) {
     if (_isMock()) {
@@ -853,9 +856,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
         if (params && params.book && params.book !== "consolidated") list = list.filter((r) => r.book_code === params.book);
         return list.sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
       }
-      let url = "/api/finance/revenue-receipts";
-      if (params) { const qs = new URLSearchParams(params).toString(); if (qs) url += `?${qs}`; }
-      return apiRequest("GET", url);
+      return _getAllPages("/api/finance/revenue-receipts", params, 500);
     },
     async createRevenueReceipt(payload) {
       if (_isMock()) {
@@ -1132,12 +1133,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       }
       return list;
     }
-    let url = "/api/finance/bills";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages("/api/finance/bills", params, 100);
   },
   async getBillQueueCounts(params) {
     if (_isMock()) {
@@ -1733,7 +1729,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
   },
 
   getPayrollRuns() {
-    return apiRequest("GET", "/api/finance/payroll/runs");
+    return _getAllPages("/api/finance/payroll/runs", undefined, 100);
   },
   getMyPayslips() {
     return apiRequest("GET", "/api/finance/payroll/payslips/my");
@@ -1763,12 +1759,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
         return { ...v, payables: Object.values(byCurrency) };
       });
     }
-    let url = "/api/finance/vendors";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages("/api/finance/vendors", params, 100);
   },
   async getVendor(id) {
     if (_isMock()) {
@@ -2094,7 +2085,13 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       let list = [...FinanceMockState.accounts]
         .filter((a) => !(params && params.book) || params.book === "consolidated" || a.book_code === params.book)
         .map((a) => {
-        const book = Number(a.current_balance || a.opening_balance || 0);
+        let book = Number(a.current_balance || a.opening_balance || 0);
+        if (params && params.as_of) {
+          // balance on that date = today's balance minus the movements after it
+          book = (FinanceMockState.transactions || [])
+            .filter((t) => t.account_id === a.id && String(t.date || t.transaction_date || "") > params.as_of)
+            .reduce((bal, t) => bal - (t.direction === "in" ? 1 : -1) * Number(t.amount || 0), book);
+        }
         const hasPostings = (FinanceMockState.transactions || []).some((t) => t.account_id === a.id) || (FinanceMockState.cheques || []).some((c) => c.account_id === a.id);
         const uncleared = (FinanceMockState.cheques || [])
           .filter((c) => c.account_id === a.id && (c.status === "issued" || c.status === "outstanding"))
@@ -2126,12 +2123,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       }
       return list;
     }
-    let url = "/api/finance/accounts";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages("/api/finance/accounts", params, 100);
   },
   async listAccounts(params) {
     return this.getAccounts(params);
@@ -2422,12 +2414,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       }
       return list.sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
     }
-    let url = `/api/finance/accounts/${accountId}/transactions`;
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages(`/api/finance/accounts/${accountId}/transactions`, params, 500);
   },
 
   async createTransaction(accountId, payload) {
@@ -2818,12 +2805,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       if (params && params.date_to) list = list.filter((t) => t.date <= params.date_to);
       return list.sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
     }
-    let url = "/api/finance/transfers";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages("/api/finance/transfers", params, 200);
   },
 
   async getTransfer(id) {
@@ -3173,12 +3155,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       }
       return list.map(_chequeView);
     }
-    let url = "/api/finance/cheques";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages("/api/finance/cheques", params, 200);
   },
   async getCheque(id) {
     if (_isMock()) {
@@ -3698,7 +3675,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
           id: linkedBillId,
           vendor_id: sub ? sub.vendor_id : 1,
           vendor_name: sub ? sub.vendor_name : "Vendor",
-          bill_number: `SUB-${sub ? sub.id : 1}-${billingDate.replace(/-/g, "")}`,
+          bill_number: `SUB-${sub ? sub.id : 1}${sub && sub.name ? "-" + String(sub.name).trim().replace(/\s+/g, "_") : ""}-${billingDate.replace(/-/g, "")}`,
           category: "SaaS",
           department: sub ? sub.department || "Operations" : "Operations",
           legal_entity: "Voyance Health Inc",
@@ -7443,8 +7420,7 @@ async getEntityActivity(entityType, entityId) {
         }
         return list;
       }
-      const qs = new URLSearchParams(params).toString();
-      return apiRequest("GET", `/api/finance/payroll/runs${qs ? "?" + qs : ""}`);
+      return _getAllPages("/api/finance/payroll/runs", params, 100);
     },
 
     async getPayrollRun(id) {
@@ -8665,12 +8641,7 @@ async getEntityActivity(entityType, entityId) {
         remaining_balance: Math.max(0, round(o.amount_accrued - (o.amount_remitted || 0))),
       }));
     }
-    let url = "/api/finance/statutory-obligations";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages("/api/finance/statutory-obligations", params, 200);
   },
 
   async getStatutoryObligation(id) {
@@ -8841,11 +8812,13 @@ async getEntityActivity(entityType, entityId) {
   // Column lists mirror be/finance/import_manifest.py (plan 25, section 5)
   const COMMON = ["row_ref", "source_file", "confidence", "review_flags", "notes"];
   const KIND_COLUMNS = {
-    bills: ["vendor_name", "bill_number", "issue_date", "due_date", "currency", "category", "total_amount", "description"],
+    bills: ["vendor_name", "bill_number", "issue_date", "due_date", "currency", "category", "total_amount", "description", "paid_date", "paid_from_account", "payment_type", "payment_reference", "subscription"],
     cheques: ["account", "cheque_number", "payee", "amount", "currency", "issue_date"],
-    invoices: ["customer_name", "invoice_number", "issue_date", "due_date", "currency", "description", "amount", "vat_rate"],
+    invoices: ["customer_name", "invoice_number", "issue_date", "due_date", "currency", "description", "amount", "vat_rate", "expected_account", "revenue_channel"],
+    transfers: ["from_account", "to_account", "date", "from_amount", "to_amount", "fx_rate", "fee", "exchange_reference"],
   };
-  const IMPORT_PERMISSIONS = { bills: "finance.bill.write", cheques: "finance.account.write", invoices: "finance.invoice.write" };
+  const OPTIONAL_COLUMNS = ["source_file", "confidence", "review_flags", "notes", "vat_rate", "paid_date", "paid_from_account", "payment_type", "payment_reference", "subscription", "expected_account", "revenue_channel", "to_amount", "fx_rate", "fee", "exchange_reference"];
+  const IMPORT_PERMISSIONS = { bills: "finance.bill.write", cheques: "finance.account.write", invoices: "finance.invoice.write", transfers: "finance.account.write" };
   const LIMITS = {
     max_documents_per_run: 50,
     max_request_bytes: 24 * 1024 * 1024,
@@ -8887,17 +8860,17 @@ async getEntityActivity(entityType, entityId) {
     return "ok";
   };
 
-  const _mockReport = async (kind, manifestFile, archiveFile, commit) => {
+  const _mockReport = async (kind, manifestFile, archiveFile, commit, confirmPosting = false) => {
     const report = {
       kind, dry_run: !commit, committed: false, manifest_name: manifestFile && manifestFile.name, archive_name: archiveFile && archiveFile.name,
-      batch_id: null, rows_total: 0, rows_ok: 0, rows_warning: 0, rows_error: 0, rows_duplicate: 0, rows_created: 0, rows_failed: 0,
+      batch_id: null, rows_total: 0, rows_ok: 0, rows_warning: 0, rows_error: 0, rows_duplicate: 0, rows_posting: 0, rows_created: 0, rows_failed: 0,
       file_errors: [], file_warnings: [], unreferenced_files: [], rows: [],
     };
     if (!/\.zip$/i.test((archiveFile && archiveFile.name) || "")) { report.file_errors.push("The archive is not a ZIP file."); return report; }
     const table = _parseCsv(await manifestFile.text()).filter((r) => r.some((c) => String(c).trim()));
     if (!table.length) { report.file_errors.push("The manifest has no header row."); return report; }
     const headers = table[0].map((h) => h.trim());
-    const required = COMMON.concat(KIND_COLUMNS[kind] || []).filter((c) => !["source_file", "confidence", "review_flags", "notes", "vat_rate"].includes(c));
+    const required = COMMON.concat(KIND_COLUMNS[kind] || []).filter((c) => !OPTIONAL_COLUMNS.includes(c));
     const missing = required.filter((c) => !headers.includes(c));
     if (missing.length) { report.file_errors.push(`The manifest is missing required column(s) for '${kind}': ${missing.join(", ")}.`); return report; }
     if (table.length === 1) { report.file_errors.push("The manifest has a header but no document rows."); return report; }
@@ -8958,6 +8931,37 @@ async getEntityActivity(entityType, entityId) {
           else findings.push(_finding("warning", "vendor_unknown", `Vendor '${v.vendor_name}' does not exist; it was not created. Choose a vendor in the Draft`));
         }
         if (/^DUP/i.test(v.bill_number)) findings.push(_finding("duplicate", "duplicate_existing", "Vendor and bill number already exist as bill #3"));
+        if (!v.paid_date !== !v.paid_from_account) findings.push(_finding("error", "payment_incomplete", "paid_date and paid_from_account must both be filled, or both left blank for a Draft"));
+        else if (v.paid_date && v.paid_from_account) {
+          const acct = (FinanceMockState.accounts || []).find((a) => String(a.account_name || "").toLowerCase() === v.paid_from_account.toLowerCase() || String(a.id) === v.paid_from_account);
+          if (!acct) findings.push(_finding("error", "account_unknown", `Account '${v.paid_from_account}' does not exist (use its exact name or id)`));
+          else {
+            if (v.currency && acct.currency && v.currency.toUpperCase() !== acct.currency.toUpperCase()) findings.push(_finding("error", "currency_mismatch", `currency ${v.currency.toUpperCase()} differs from the paying account's currency ${acct.currency}: a bill is paid from an account in its own currency`));
+            findings.push(_finding("warning", "will_post_ledger", `Will pay ${Number(v.total_amount || 0).toFixed(2)} ${acct.currency} from '${acct.account_name}' on ${v.paid_date}: posts one outflow to the ledger`));
+          }
+        }
+        if (v.subscription && !v.paid_date) findings.push(_finding("error", "subscription_needs_payment", "A subscription charge is recorded as paid: fill paid_date and paid_from_account"));
+      }
+      if (kind === "transfers") {
+        const find = (ref) => (FinanceMockState.accounts || []).find((a) => String(a.account_name || "").toLowerCase() === String(ref).toLowerCase() || String(a.id) === ref);
+        const blank = ["from_account", "to_account", "date", "from_amount"].filter((f) => !v[f]);
+        if (blank.length) findings.push(_finding("error", "required_missing", `${blank.join(", ")} is required for a transfer`));
+        const src = v.from_account ? find(v.from_account) : null;
+        const dst = v.to_account ? find(v.to_account) : null;
+        if (v.from_account && !src) findings.push(_finding("error", "from_account_unknown", `from_account '${v.from_account}' does not exist (use its exact name or id); accounts are never created by an import`));
+        if (v.to_account && !dst) findings.push(_finding("error", "to_account_unknown", `to_account '${v.to_account}' does not exist (use its exact name or id); accounts are never created by an import`));
+        if (src && dst && src.id === dst.id) findings.push(_finding("error", "same_account", "from_account and to_account are the same account"));
+        if (v.date && !_isoDate(v.date)) findings.push(_finding("error", "date_invalid", `date: '${v.date}' is not an ISO date (YYYY-MM-DD)`));
+        if (v.from_amount && !(Number(v.from_amount) > 0)) findings.push(_finding("error", "from_amount_not_positive", "from_amount must be greater than 0"));
+        if (src && dst && src.currency !== dst.currency && !v.to_amount && !v.fx_rate) findings.push(_finding("error", "fx_required", `The accounts are in different currencies (${src.currency} to ${dst.currency}): fill to_amount or fx_rate`));
+        if (!v.source_file) findings.push(_finding("warning", "no_document", "No source file: the transfer has no supporting document attached"));
+        if (src && dst && !findings.some((f) => f.level === "error")) findings.push(_finding("warning", "will_post_ledger", `Will move ${Number(v.from_amount).toFixed(2)} ${src.currency} from '${src.account_name}' to '${dst.account_name}' on ${v.date}: posts the ledger legs to both accounts`));
+      }
+      if (kind === "invoices" && v.revenue_channel && !["local_egp", "overseas_usd", "cash", "intercompany_transfer_us", "other"].includes(v.revenue_channel.toLowerCase())) {
+        findings.push(_finding("error", "revenue_channel_invalid", `revenue_channel '${v.revenue_channel}' must be one of: cash, intercompany_transfer_us, local_egp, other, overseas_usd`));
+      }
+      if (kind === "invoices" && v.expected_account && !(FinanceMockState.accounts || []).some((a) => String(a.account_name || "").toLowerCase() === v.expected_account.toLowerCase() || String(a.id) === v.expected_account)) {
+        findings.push(_finding("error", "expected_account_unknown", `Account '${v.expected_account}' does not exist (use its exact name or id)`));
       }
       report.rows.push({
         row_number: i + 1, line: i + 2, row_ref: v.row_ref, source_file: v.source_file || null,
@@ -8967,8 +8971,15 @@ async getEntityActivity(entityType, entityId) {
     });
 
     const count = (s) => report.rows.filter((r) => r.status === s).length;
+    const posts = (r) => (r.status === "ok" || r.status === "warning") && r.findings.some((f) => f.code === "will_post_ledger");
+    report.rows_posting = report.rows.filter(posts).length;
     if (commit) {
       const importable = report.rows.filter((r) => r.status === "ok" || r.status === "warning");
+      if (report.rows_posting && !confirmPosting) {
+        const e = new Error(`${report.rows_posting} row(s) will post to the ledger and change account balances. Confirm the posting and send the package again.`);
+        e.status = 409;
+        throw e;
+      }
       if (importable.length) {
         const batchId = FinanceMockState.importBatches.length + 1;
         FinanceMockState.importBatches.push({ id: batchId, kind, rows_created: importable.length });
@@ -8987,6 +8998,7 @@ async getEntityActivity(entityType, entityId) {
               issue_date: v.issue_date || null, due_date: v.due_date || null, status: "draft", currency: v.currency || "EGP",
               subtotal: Number(v.total_amount) || 0, tax_amount: 0, total: Number(v.total_amount) || 0, amount_paid: 0,
               capture_source: "import", is_reviewed: false, import_batch_id: batchId,
+              ...(v.paid_date && v.paid_from_account ? { status: "paid", amount_paid: Number(v.total_amount) || 0 } : {}),
               attachment_name: v.source_file || null, notes: `Imported (batch ${batchId}, row ${v.row_ref}).`,
               created_by: "admin@voyance.health", created_at: new Date().toISOString(), lines: [],
             });
@@ -9022,6 +9034,21 @@ async getEntityActivity(entityType, entityId) {
               lines: amount ? [{ id: id * 10, invoice_id: id, description: v.description || "Invoice total", quantity: 1, unit_price: amount, line_total: amount }] : [],
             });
             r.created_id = id;
+          } else if (kind === "transfers") {
+            const src = table.slice(1)[r.row_number - 1];
+            const v = {};
+            headers.forEach((h, k) => { v[h] = String(src[k] || "").trim(); });
+            const find = (ref) => (FinanceMockState.accounts || []).find((a) => String(a.account_name || "").toLowerCase() === ref.toLowerCase() || String(a.id) === ref);
+            const from = find(v.from_account), to = find(v.to_account);
+            if (!FinanceMockState.transfers) FinanceMockState.transfers = [];
+            const id = Math.max(0, ...FinanceMockState.transfers.map((t) => t.id || 0)) + 1;
+            FinanceMockState.transfers.unshift({
+              id, date: v.date, from_account_id: from.id, to_account_id: to.id, from_account_name: from.account_name, to_account_name: to.account_name,
+              from_amount: Number(v.from_amount), from_currency: from.currency, to_amount: Number(v.to_amount) || Number(v.from_amount),
+              to_currency: to.currency, transfer_type: from.currency === to.currency ? "internal" : "same_bank_fx", settlement_status: "settled",
+              exchange_reference: v.exchange_reference || null, note: `Imported transfer [import batch ${batchId}, row ${v.row_ref}]`,
+            });
+            r.created_id = id;
           } else {
             r.created_id = 9000 + idx;
           }
@@ -9038,10 +9065,11 @@ async getEntityActivity(entityType, entityId) {
     return report;
   };
 
-  const _post = (kind, suffix, manifestFile, archiveFile) => {
+  const _post = (kind, suffix, manifestFile, archiveFile, confirmPosting = false) => {
     const formData = new FormData();
     formData.append("manifest", manifestFile);
     formData.append("archive", archiveFile);
+    if (confirmPosting) formData.append("confirm_posting", "true");
     return apiRequest("POST", `/api/finance/imports/${encodeURIComponent(kind)}${suffix}`, formData);
   };
 
@@ -9064,9 +9092,9 @@ async getEntityActivity(entityType, entityId) {
       if (_isMock()) return _mockReport(kind, manifestFile, archiveFile, false);
       return _post(kind, "/dry-run", manifestFile, archiveFile);
     },
-    async commitImport(kind, manifestFile, archiveFile) {
-      if (_isMock()) return _mockReport(kind, manifestFile, archiveFile, true);
-      return _post(kind, "", manifestFile, archiveFile);
+    async commitImport(kind, manifestFile, archiveFile, confirmPosting = false) {
+      if (_isMock()) return _mockReport(kind, manifestFile, archiveFile, true, confirmPosting);
+      return _post(kind, "", manifestFile, archiveFile, confirmPosting);
     },
   };
 

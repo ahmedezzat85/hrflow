@@ -322,8 +322,7 @@
         }
         return list;
       }
-      const qs = new URLSearchParams(params).toString();
-      return apiRequest("GET", `/api/finance/payroll/runs${qs ? "?" + qs : ""}`);
+      return _getAllPages("/api/finance/payroll/runs", params, 100);
     },
 
     async getPayrollRun(id) {

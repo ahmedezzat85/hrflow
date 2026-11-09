@@ -1412,13 +1412,29 @@
   gap: 12px;
 }
 
+/* Rate and Actions each need a real width: the Log Charge button plus two icons is ~215px and must not
+   spill over the Rate amount. The wrapper (.fv-table-scroll) scrolls sideways on narrow screens. */
 .fv .fv-table--subs { table-layout: fixed; }
-.fv .fv-table--subs th:nth-child(1) { width: 22%; }
-.fv .fv-table--subs th:nth-child(2) { width: 12%; }
-.fv .fv-table--subs th:nth-child(3) { width: 13%; }
-.fv .fv-table--subs th:nth-child(4) { width: 15%; }
-.fv .fv-table--subs th:nth-child(5) { width: 9%; }
-.fv .fv-table--subs th:nth-child(6) { width: 10%; }
+@media (min-width: 769px) { .fv .fv-table--subs { min-width: 1100px; } }
+.fv .fv-table--subs th:nth-child(1) { width: 20%; }
+.fv .fv-table--subs th:nth-child(2) { width: 11%; }
+.fv .fv-table--subs th:nth-child(3) { width: 12%; }
+.fv .fv-table--subs th:nth-child(4) { width: 13%; }
+.fv .fv-table--subs th:nth-child(5) { width: 11%; }
+.fv .fv-table--subs th:nth-child(6) { width: 9%; }
+.fv .fv-table--subs th:nth-child(7) { width: 11%; }
+.fv .fv-table--subs th:nth-child(8) { width: 225px; }
+
+/* Wide finance registers: below this width the .fv-table-scroll wrapper scrolls sideways instead of the
+   percentage columns squeezing buttons and badges over their neighbours. Phones use the card layout. */
+@media (min-width: 769px) {
+  .fv .fv-table--invoices,
+  .fv .fv-table--bills,
+  .fv .fv-table--ledger,
+  .fv .fv-table--cheques,
+  .fv .fv-table--statutory,
+  .fv .fv-table--statements { min-width: 1150px; }
+}
 
 .fv .fv-table--statutory { table-layout: fixed; }
 .fv .fv-table--statutory th:nth-child(1) { width: 25%; }
@@ -2503,6 +2519,35 @@
 }
 .fv .fv-scan-item__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fv .fv-scan-item__size { color: var(--ink-muted); font-size: 12px; }
+.fv .fv-scan-item__open {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px;
+  padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.fv .fv-scan-item__open:hover .fv-scan-item__name { color: var(--brand-text); text-decoration: underline; }
+.fv .fv-scan-item__open:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 4px; }
+
+/* Upload dropzone (click or drop); the real file input stays in the DOM, visually hidden */
+.fv .fv-dropzone {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 16px 12px;
+  border: 1.5px dashed var(--border2);
+  border-radius: 10px;
+  background: var(--surface2);
+  color: var(--ink-body);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.fv .fv-dropzone:hover,
+.fv .fv-dropzone.is-dragover,
+.fv .fv-dropzone:focus-within { border-color: var(--brand); background: var(--brand-wash); }
+.fv .fv-dropzone__icon { font-size: 22px; color: var(--brand-text); }
+.fv .fv-dropzone__title { font-weight: 600; font-size: 13.5px; color: var(--ink-strong); }
+.fv .fv-dropzone__hint { font-size: 12px; color: var(--ink-muted); }
+.fv .fv-dropzone input.fv-scan-input {
+  position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; opacity: 0; cursor: pointer;
+}
 .fv .fv-lines__prod { width: 20%; }
 
 /* Book view switcher (X2, D-028) */
@@ -2546,3 +2591,31 @@
 .fv .fv-import-msg--warning { color: var(--warning); }
 .fv .fv-import-msg--duplicate { color: var(--ink-label); }
 .fv .fv-import-msg__code { font-family: monospace; font-size: 11px; color: var(--ink-faint); margin-right: 4px; }
+
+/* Styled popup for native selects (FinanceSelectMenu in finance-core.js); sits above every dialog */
+.fv.fv-select-pop {
+  position: fixed;
+  z-index: 10050;
+  overflow-y: auto;
+  padding: 4px;
+  background: var(--fv-surface);
+  border: 1px solid var(--fv-line-strong);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  font-size: 13px;
+}
+.fv-select-pop__opt {
+  padding: 7px 10px;
+  border-radius: 7px;
+  color: var(--ink-body);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fv-select-pop__opt.is-grouped { padding-left: 20px; }
+.fv-select-pop__opt.is-active { background: var(--brand-wash); }
+.fv-select-pop__opt.is-selected { color: var(--brand-text); font-weight: 600; background: var(--brand-tint); }
+.fv-select-pop__opt.is-selected.is-active { background: var(--brand-tint); box-shadow: inset 0 0 0 1px var(--brand); }
+.fv-select-pop__opt.is-disabled { opacity: .45; cursor: not-allowed; }
+.fv-select-pop__group { padding: 8px 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-muted); }

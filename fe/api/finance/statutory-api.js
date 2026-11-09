@@ -143,12 +143,7 @@
         remaining_balance: Math.max(0, round(o.amount_accrued - (o.amount_remitted || 0))),
       }));
     }
-    let url = "/api/finance/statutory-obligations";
-    if (params) {
-      const qs = new URLSearchParams(params).toString();
-      if (qs) url += `?${qs}`;
-    }
-    return apiRequest("GET", url);
+    return _getAllPages("/api/finance/statutory-obligations", params, 200);
   },
 
   async getStatutoryObligation(id) {
