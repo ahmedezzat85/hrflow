@@ -2643,3 +2643,14 @@
 @media (pointer: coarse), (max-width: 1100px) {
   .fv .fv-card__link--btn { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; }
 }
+
+/* Bills: a visible note while a search narrows the list */
+.fv .fv-filter-note { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 14px; border-bottom: 1px solid var(--fv-line-row); background: var(--fv-surface-soft); }
+.fv .fv-filter-note[hidden] { display: none; }
+.fv .fv-filter-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 10px; border-radius: var(--radius-full); background: var(--brand-tint); color: var(--brand-ink); font-size: 12.5px; }
+.fv .fv-filter-chip strong { font-weight: 700; }
+.fv .fv-filter-chip__clear { width: 22px; height: 22px; border: 0; border-radius: 50%; background: transparent; color: inherit; font-size: 16px; line-height: 1; cursor: pointer; }
+.fv .fv-filter-chip__clear:hover { background: var(--brand-wash); }
+@media (pointer: coarse), (max-width: 1100px) {
+  .fv .fv-filter-chip__clear { width: 44px; height: 44px; }
+}

@@ -81,6 +81,12 @@
           <!-- 1. Bills Sub-View -->
           <div class="fv-table-card" id="financeBillsContainer">
             <div class="section-loading-bar" id="financeBillsLoadingBar"><span></span></div>
+            <div class="fv-filter-note" id="financeBillFilterNote" role="status" hidden>
+              <span class="fv-filter-chip">Search: <strong id="financeBillFilterText"></strong>
+                <button type="button" class="fv-filter-chip__clear" id="financeBillFilterClear" aria-label="Clear search" onclick="clearBillSearch()">&times;</button>
+              </span>
+              <span class="fv-muted" id="financeBillFilterCount"></span>
+            </div>
             <div class="fv-table-scroll">
               <table class="fv-table fv-table--bills responsive-card-table sticky-actions" id="financeBillsTable">
                 <thead>

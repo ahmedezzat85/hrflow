@@ -234,6 +234,7 @@ function applyAndRenderBills() {
 
   let items = FinanceState.bills || [];
 
+  const loadedCount = items.length;
   if (currentSearch) {
     const q = currentSearch.toLowerCase();
     items = items.filter((bill) =>
@@ -253,6 +254,7 @@ function applyAndRenderBills() {
   state.pageSize = meta.pageSize;
   FinanceTable.saveState("finance_bills", state);
 
+  _renderBillFilterNote(currentSearch, items.length, loadedCount);
   renderFinanceBills(meta.items, items.length);
 
   FinanceTable.bindSortHeaders("financeBillsTable", (col, dir) => {
@@ -497,6 +499,25 @@ function _billPrimaryAction(bill, status) {
     default:
       return null;
   }
+}
+
+// A search narrows the list without touching the pills or cards, and it is remembered for the browser tab,
+// so while one is active the page says so, how many bills it leaves, and offers one click to clear it.
+function _renderBillFilterNote(search, shown, loaded) {
+  const note = document.getElementById("financeBillFilterNote");
+  if (!note) return;
+  note.hidden = !search;
+  if (!search) return;
+  const text = document.getElementById("financeBillFilterText");
+  if (text) text.textContent = search;
+  const count = document.getElementById("financeBillFilterCount");
+  if (count) count.textContent = `${shown} of ${loaded} ${loaded === 1 ? "bill" : "bills"} match`;
+}
+
+function clearBillSearch() {
+  const input = document.getElementById("financeBillSearch");
+  if (input) { input.value = ""; input.focus(); }
+  filterFinanceBills("");
 }
 
 function filterFinanceBills(query) {
@@ -2402,6 +2423,7 @@ window.setBillWorkQueue = setBillWorkQueue;
 window.onBillStatusFilterChange = onBillStatusFilterChange;
 window.onBillKindFilterChange = onBillKindFilterChange;
 window.onBillGroupToggle = onBillGroupToggle;
+window.clearBillSearch = clearBillSearch;
 window.loadFinanceBillQueueCounts = loadFinanceBillQueueCounts;
 window.openCaptureBillModal = openCaptureBillModal;
 window.toggleBillMore = toggleBillMore;
