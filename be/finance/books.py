@@ -163,6 +163,51 @@ def bill_account_map(db: Session) -> Dict[int, int]:
     return out
 
 
+def bill_placements(db: Session, bills: list) -> Dict[int, dict]:
+    """Where each bill sits for the Bills page (D-028, Bills redesign D1): bill id -> {book, source, account_id, account_name}.
+
+    - source "paid": the account of the bill's first outgoing payment decides the book.
+    - source "inferred": an unpaid bill takes the book of the account that made the vendor's most recent payment.
+    - source "default": no payment history for the vendor, so the default (Local) book.
+    Reports keep using filter_bills, where an unpaid bill is always in the default book.
+    """
+    from finance.models import BillDB, PaymentDB
+
+    scope = resolve(db, None)
+    names = {aid: name for aid, name in db.query(FinanceBankAccountDB.id, FinanceBankAccountDB.account_name).all()}
+    rows = (
+        db.query(PaymentDB.id, PaymentDB.related_bill_id, PaymentDB.bank_account_id, BillDB.vendor_id)
+        .join(BillDB, BillDB.id == PaymentDB.related_bill_id)
+        .filter(PaymentDB.related_bill_id.isnot(None), PaymentDB.direction == "outgoing")
+        .order_by(PaymentDB.id.asc())
+        .all()
+    )
+    first_account: Dict[int, int] = {}
+    last_by_vendor: Dict[int, int] = {}
+    for _pid, bill_id, account_id, vendor_id in rows:
+        first_account.setdefault(bill_id, account_id)
+        if vendor_id is not None:
+            last_by_vendor[vendor_id] = account_id
+
+    def place(source: str, account_id: Optional[int]) -> dict:
+        return {
+            "book": scope.book_of(account_id),
+            "source": source,
+            "account_id": account_id,
+            "account_name": names.get(account_id) if account_id else None,
+        }
+
+    out: Dict[int, dict] = {}
+    for b in bills:
+        if b.id in first_account:
+            out[b.id] = place("paid", first_account[b.id])
+        elif b.vendor_id in last_by_vendor:
+            out[b.id] = place("inferred", last_by_vendor[b.vendor_id])
+        else:
+            out[b.id] = place("default", None)
+    return out
+
+
 def filter_bills(db: Session, scope: BookScope, bills: list) -> list:
     """A bill belongs to the book of the account that paid it; an unpaid bill belongs to the default book."""
     if not scope.restricts:

@@ -19,6 +19,7 @@ from finance.schemas import (
     BillDuplicateCheckRequest,
     BillDuplicateCheckResponse,
     BillQueueCountsResponse,
+    BillSummaryResponse,
     BillApprovalRequest,
     BillScheduleRequest,
     BillVoidRequest,
@@ -83,11 +84,22 @@ def get_bill_category_quality_report(
 @router.get("/queue-counts", response_model=BillQueueCountsResponse)
 def get_bill_queue_counts(
     vendor_id: Optional[int] = Query(None, description="Optional vendor filter"),
+    book: Optional[str] = Query(None, description="local | overseas | consolidated; by the book the bill sits in. Omitted = all"),
     current_user: dict = Depends(require_permission("finance.bill.read")),
     service: BillsService = Depends(get_bills_service),
 ):
     """Return counts for each AP Inbox queue tab."""
-    return service.get_queue_counts(vendor_id=vendor_id)
+    return service.get_queue_counts(vendor_id=vendor_id, book=book)
+
+
+@router.get("/summary", response_model=BillSummaryResponse)
+def get_bill_summary(
+    book: Optional[str] = Query(None, description="local | overseas | consolidated. Omitted = all"),
+    current_user: dict = Depends(require_permission("finance.bill.read")),
+    service: BillsService = Depends(get_bills_service),
+):
+    """Totals for the Bills page cards: to pay, overdue, paid this month (per currency) and bills awaiting approval."""
+    return service.get_summary(book=book)
 
 
 @router.post("/check-duplicate", response_model=BillDuplicateCheckResponse)
@@ -103,7 +115,9 @@ def check_bill_duplicate(
 @router.get("", response_model=List[BillResponse])
 def list_vendor_bills(
     status: Optional[str] = Query(None, description="Filter by status: draft|pending_approval|rejected|approved|scheduled|partially_paid|paid|void"),
-    queue: Optional[str] = Query(None, description="Status queue: one of the eight statuses, or all (everything except void)"),
+    queue: Optional[str] = Query(None, description="Status queue: one of the eight statuses, all (everything except void), attention (draft, pending, rejected or overdue), to_pay (approved, scheduled, partially paid) or overdue"),
+    book: Optional[str] = Query(None, description="local | overseas | consolidated; by the book the bill sits in. Omitted = all"),
+    kind: Optional[str] = Query(None, description="subscription | one_off"),
     overdue: Optional[bool] = Query(None, description="true: only open bills whose due date has passed"),
     vendor_id: Optional[int] = Query(None, description="Filter by vendor ID"),
     search: Optional[str] = Query(None, description="Search by bill number, vendor name, or department"),
@@ -123,6 +137,8 @@ def list_vendor_bills(
         limit=limit,
         offset=offset,
         overdue=overdue,
+        book=book,
+        kind=kind,
     )
 
 

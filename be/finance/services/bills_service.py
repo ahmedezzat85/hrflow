@@ -23,6 +23,9 @@ from finance.schemas import (
     BillDuplicateCheckResponse,
     BillDuplicateCandidate,
     BillQueueCountsResponse,
+    BillMoney,
+    BillSummaryBucket,
+    BillSummaryResponse,
     BillUploadResponse,
     BillUploadResult,
     BillApprovalRequest,
@@ -37,6 +40,7 @@ from finance.schemas import (
 from finance.models import BillDB, PaymentDB, VendorDB
 from finance.services.bill_extractor import BillPdfExtractor
 from finance import bill_status as bs
+from finance import books
 from finance.bill_payment_rules import BillPaymentError
 from finance.bill_status import VALID_BILL_STATUSES, InvalidBillTransition
 
@@ -72,7 +76,8 @@ class BillsService:
     # ------------------------------------------------------------------
     # Serialization helpers
     # ------------------------------------------------------------------
-    def _bill_to_response(self, bill: BillDB) -> BillResponse:
+    def _bill_to_response(self, bill: BillDB, placement: Optional[dict] = None, subscription_name: Optional[str] = None) -> BillResponse:
+        """`placement` and `subscription_name` are given by the list and single-read paths (Bills page); actions leave them empty."""
         lines = [
             BillLineResponse(
                 id=ln.id,
@@ -133,7 +138,18 @@ class BillsService:
             suggested_vendor_name=bill.suggested_vendor_name,
             created_at=bill.created_at,
             lines=lines,
+            book=placement["book"] if placement else None,
+            book_source=placement["source"] if placement else None,
+            paid_from_account_name=placement["account_name"] if placement else None,
+            is_subscription=subscription_name is not None,
+            subscription_name=subscription_name,
         )
+
+    def _bill_responses(self, bills: List[BillDB]) -> List[BillResponse]:
+        """Responses with book placement and subscription link, built from two lookups for the whole list."""
+        placements = books.bill_placements(self.repo.db, bills)
+        sub_names = self.repo.subscription_names_by_bill()
+        return [self._bill_to_response(b, placements.get(b.id), sub_names.get(b.id)) for b in bills]
 
     def _payment_to_response(self, payment: PaymentDB) -> PaymentResponse:
         bank_name = (
@@ -173,27 +189,76 @@ class BillsService:
         limit: int = 50,
         offset: int = 0,
         overdue: Optional[bool] = None,
+        book: Optional[str] = None,
+        kind: Optional[str] = None,
     ) -> List[BillResponse]:
         if status and status not in VALID_BILL_STATUSES:
             raise HTTPException(
                 status_code=400,
                 detail=f"Invalid status '{status}'. Must be one of: {', '.join(bs.BILL_STATUSES)}",
             )
+        if kind is not None and kind not in ("subscription", "one_off"):
+            raise HTTPException(status_code=400, detail="Invalid kind. Must be one of: subscription, one_off")
+        view = books.validate_view(book)
+        restricts = view in (books.LOCAL, books.OVERSEAS)
         bills = self.repo.list_all(
             status=status,
             queue=queue,
             vendor_id=vendor_id,
             search=search,
             has_attachment=has_attachment,
-            limit=limit,
-            offset=offset,
+            # a book is decided from payments, not a column, so it is applied before paging
+            limit=None if restricts else limit,
+            offset=0 if restricts else offset,
             overdue=overdue,
+            kind=kind,
         )
-        return [self._bill_to_response(b) for b in bills]
+        if restricts:
+            placements = books.bill_placements(self.repo.db, bills)
+            bills = [b for b in bills if placements[b.id]["book"] == view][offset:offset + limit]
+        return self._bill_responses(bills)
 
-    def get_queue_counts(self, vendor_id: Optional[int] = None) -> BillQueueCountsResponse:
-        counts = self.repo.get_queue_counts(vendor_id=vendor_id)
+    def get_queue_counts(self, vendor_id: Optional[int] = None, book: Optional[str] = None) -> BillQueueCountsResponse:
+        view = books.validate_view(book)
+        only_ids = None
+        if view in (books.LOCAL, books.OVERSEAS):
+            all_bills = self.repo.all_bills()
+            placements = books.bill_placements(self.repo.db, all_bills)
+            only_ids = {b.id for b in all_bills if placements[b.id]["book"] == view}
+        counts = self.repo.get_queue_counts(vendor_id=vendor_id, only_ids=only_ids)
         return BillQueueCountsResponse(**counts)
+
+    def get_summary(self, book: Optional[str] = None) -> BillSummaryResponse:
+        """Totals for the four cards. Money is grouped by currency and never converted or added across currencies."""
+        view = books.validate_view(book)
+        bills = self.repo.all_bills()
+        placements = books.bill_placements(self.repo.db, bills)
+        in_view = lambda bill_id: view not in (books.LOCAL, books.OVERSEAS) or placements[bill_id]["book"] == view  # noqa: E731
+        scoped = [b for b in bills if in_view(b.id)]
+
+        def bucket(items) -> BillSummaryBucket:
+            totals: dict = {}
+            for currency, amount in items:
+                totals[currency] = round(totals.get(currency, 0.0) + amount, 2)
+            return BillSummaryBucket(
+                count=len(items),
+                totals=[BillMoney(currency=c, amount=a) for c, a in sorted(totals.items())],
+            )
+
+        def remaining(b: BillDB) -> float:
+            return max(0.0, round(float(b.total or 0.0) - float(b.amount_paid or 0.0), 2))
+
+        open_bills = [b for b in scoped if b.status in bs.OPEN_STATUSES]
+        late = [b for b in open_bills if bs.is_overdue(b.status, b.due_date)]
+        month = datetime.utcnow().strftime("%Y-%m")
+        paid = [p for p in self.repo.live_bill_payments_in_month(month) if in_view(p.related_bill_id)]
+        return BillSummaryResponse(
+            book=view or books.CONSOLIDATED,
+            to_pay=bucket([(b.currency, remaining(b)) for b in open_bills]),
+            overdue=bucket([(b.currency, remaining(b)) for b in late]),
+            paid_this_month=bucket([(p.currency, float(p.amount or 0.0)) for p in paid]),
+            awaiting_approval=sum(1 for b in scoped if b.status == bs.PENDING_APPROVAL),
+        )
 
     def check_duplicates(self, req: BillDuplicateCheckRequest) -> BillDuplicateCheckResponse:
         raw_candidates = self.repo.find_duplicate_candidates(
@@ -211,7 +276,7 @@ class BillsService:
         bill = self.repo.get_by_id(bill_id)
         if not bill:
             raise HTTPException(status_code=404, detail=f"Bill {bill_id} not found")
-        return self._bill_to_response(bill)
+        return self._bill_responses([bill])[0]
 
     def _audit(self, action: str, bill_id: int, actor: BillActor, from_status: Optional[str], to_status: Optional[str], reason: Optional[str] = None) -> None:
         """One activity entry per bill action: who, when (timestamp), from/to status, reason."""
