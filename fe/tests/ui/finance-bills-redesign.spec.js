@@ -45,6 +45,32 @@ test.describe('Bills redesign', () => {
     expect(clipped).toEqual([]);
   });
 
+  test('a search shows a Search chip with how many bills match, and Clear brings every bill back', async ({ page }) => {
+    await page.click('#tabBillQueueAll');
+    const all = await page.locator('#financeBillsTableBody tr').count();
+    await expect(page.locator('#financeBillFilterNote')).toBeHidden();
+    await page.fill('#financeBillSearch', 'Slack');
+    await expect(page.locator('#financeBillFilterNote')).toBeVisible();
+    await expect(page.locator('#financeBillFilterText')).toHaveText('Slack');
+    await expect(page.locator('#financeBillFilterCount')).toContainText(`of ${all} bills match`);
+    await expect(page.locator('#financeBillsTableBody tr:has-text("Amazon")')).toHaveCount(0);
+    await page.click('#financeBillFilterClear');
+    await expect(page.locator('#financeBillFilterNote')).toBeHidden();
+    await expect(page.locator('#financeBillSearch')).toHaveValue('');
+    await expect(page.locator('#financeBillsTableBody tr')).toHaveCount(all);
+  });
+
+  test('a search left over from earlier in the tab session still shows its chip when the page reopens', async ({ page }) => {
+    await page.click('#tabBillQueueAll');
+    await page.fill('#financeBillSearch', 'Google');
+    await expect(page.locator('#financeBillFilterNote')).toBeVisible();
+    await openAdminPage(page, 'a-finance-dashboard');
+    await openAdminPage(page, 'a-finance-bills');
+    await expect(page.locator('#financeBillSearch')).toHaveValue('Google');
+    await expect(page.locator('#financeBillFilterText')).toHaveText('Google');
+    await expect(page.locator('#financeBillFilterNote')).toBeVisible();
+  });
+
   test('the book switch has Local, Overseas and Consolidated, and opens on Consolidated', async ({ page }) => {
     await expect(page.locator('#financeBookSwitcherBills .fv-book-switch__btn')).toHaveText(['Local', 'Overseas', 'Consolidated']);
     await expect(book(page, 'consolidated')).toHaveAttribute('aria-pressed', 'true');
