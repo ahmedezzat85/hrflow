@@ -33,6 +33,18 @@ test.describe('Bills redesign', () => {
     await expect(page.locator('#financeBookSwitcherBills')).toBeVisible();
   });
 
+  test('the page heading reads Bills, matching the tab', async ({ page }) => {
+    await expect(page.locator('.topbar h1').first()).toContainText('Bills');
+  });
+
+  test('the Source column is wide enough to show an account name in full', async ({ page }) => {
+    await book(page, 'overseas').click();
+    await page.click('#tabBillQueueAll');
+    const clipped = await page.evaluate(() => [...document.querySelectorAll('#financeBillsTableBody .fv-source > span:first-child')]
+      .filter((el) => el.scrollWidth > el.clientWidth + 1).map((el) => el.textContent));
+    expect(clipped).toEqual([]);
+  });
+
   test('the book switch has Local, Overseas and Consolidated, and opens on Consolidated', async ({ page }) => {
     await expect(page.locator('#financeBookSwitcherBills .fv-book-switch__btn')).toHaveText(['Local', 'Overseas', 'Consolidated']);
     await expect(book(page, 'consolidated')).toHaveAttribute('aria-pressed', 'true');

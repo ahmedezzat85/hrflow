@@ -1075,10 +1075,10 @@
 }
 
 .fv .fv-table--bills th:nth-child(1) { width: 29%; }
-.fv .fv-table--bills th:nth-child(2) { width: 12.5%; }
-.fv .fv-table--bills th:nth-child(3) { width: 13.5%; }
-.fv .fv-table--bills th:nth-child(4) { width: 14%; }
-.fv .fv-table--bills th:nth-child(5) { width: 10.5%; }
+.fv .fv-table--bills th:nth-child(2) { width: 11.5%; }
+.fv .fv-table--bills th:nth-child(3) { width: 18%; } /* Source: account names such as "Voyance Overseas USD" stay readable */
+.fv .fv-table--bills th:nth-child(4) { width: 12.5%; }
+.fv .fv-table--bills th:nth-child(5) { width: 10%; }
 
 .fv .fv-table--vendors th:nth-child(1) { width: 27%; }
 .fv .fv-table--vendors th:nth-child(2) { width: 14%; }
