@@ -2640,3 +2640,6 @@
 .fv .fv-group-child .fv-avatar { opacity: .7; }
 @media (prefers-reduced-motion: reduce) { .fv .fv-group-row__chev { transition: none; } }
 .fv .fv-source > span { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (pointer: coarse), (max-width: 1100px) {
+  .fv .fv-card__link--btn { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; }
+}
