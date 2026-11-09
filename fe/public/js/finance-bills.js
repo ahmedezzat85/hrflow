@@ -38,9 +38,22 @@ function _canBill(key) {
   return typeof SessionInfo === "undefined" || typeof SessionInfo.hasPermission !== "function" || SessionInfo.hasPermission(key);
 }
 
+// Queues shown as pills. Any of the eight statuses is also a valid queue, chosen from the Status menu.
+const BILL_PILL_QUEUES = ["attention", "overdue", "to_pay", "paid", "all"];
+const BILL_STATUS_QUEUES = ["draft", "pending_approval", "rejected", "approved", "scheduled", "partially_paid", "paid", "void"];
+let _billKind = ""; // "" | subscription | one_off
+let _billGroup = false;
+const _billOpenGroups = new Set();
+
+// The book chosen on Bills or Subscriptions ("spend" view). Consolidated sends no filter.
+function _billBookParam() {
+  const view = typeof FinanceBookView !== "undefined" ? FinanceBookView.get("spend") : "consolidated";
+  return view === "local" || view === "overseas" ? view : "";
+}
+
 function setBillWorkQueue(queue) {
   const state = FinanceTable.getState("finance_bills");
-  state.queue = queue || "all";
+  state.queue = queue || "attention";
   state.page = 1;
   FinanceTable.saveState("finance_bills", state);
 
@@ -48,19 +61,32 @@ function setBillWorkQueue(queue) {
   loadFinanceBills();
 }
 
+function onBillStatusFilterChange(value) {
+  setBillWorkQueue(value || "all");
+}
+
+function onBillKindFilterChange(value) {
+  _billKind = value || "";
+  const state = FinanceTable.getState("finance_bills");
+  state.page = 1;
+  FinanceTable.saveState("finance_bills", state);
+  loadFinanceBills();
+}
+
+function onBillGroupToggle(on) {
+  _billGroup = !!on;
+  applyAndRenderBills();
+}
+
 function _updateBillQueueTabs(activeQueue) {
   const queueMap = {
-    all: "tabBillQueueAll",
-    draft: "tabBillQueueDraft",
-    pending_approval: "tabBillQueuePendingApproval",
-    rejected: "tabBillQueueRejected",
-    approved: "tabBillQueueApproved",
-    scheduled: "tabBillQueueScheduled",
-    partially_paid: "tabBillQueuePartiallyPaid",
+    attention: "tabBillQueueAttention",
+    overdue: "tabBillQueueOverdue",
+    to_pay: "tabBillQueueToPay",
     paid: "tabBillQueuePaid",
-    void: "tabBillQueueVoid",
+    all: "tabBillQueueAll",
   };
-  const current = activeQueue || "all";
+  const current = activeQueue || "attention";
   Object.entries(queueMap).forEach(([q, tabId]) => {
     const tabEl = document.getElementById(tabId);
     if (!tabEl) return;
@@ -68,11 +94,14 @@ function _updateBillQueueTabs(activeQueue) {
     tabEl.classList.toggle("active", isActive);
     tabEl.setAttribute("aria-selected", isActive ? "true" : "false");
   });
+  const statusSel = document.getElementById("financeBillStatusFilter");
+  if (statusSel) statusSel.value = BILL_STATUS_QUEUES.includes(current) ? current : "";
 }
 
 async function loadFinanceBillQueueCounts() {
   try {
-    const counts = await FinanceApi.getBillQueueCounts();
+    const book = _billBookParam();
+    const counts = await FinanceApi.getBillQueueCounts(book ? { book } : undefined);
     if (!counts) return;
     _currentBillQueueCounts = {
       all: counts.all ?? 0,
@@ -85,19 +114,15 @@ async function loadFinanceBillQueueCounts() {
       paid: counts.paid ?? 0,
       void: counts.void ?? 0,
       overdue: counts.overdue ?? 0,
+      attention: counts.attention ?? 0,
+      to_pay: counts.to_pay ?? 0,
     };
-    const overdueCountEl = document.getElementById("financeBillOverdueCount");
-    if (overdueCountEl) overdueCountEl.textContent = _currentBillQueueCounts.overdue;
     const badgeMap = {
-      badgeBillQueueAll: _currentBillQueueCounts.all,
-      badgeBillQueueDraft: _currentBillQueueCounts.draft,
-      badgeBillQueuePendingApproval: _currentBillQueueCounts.pending_approval,
-      badgeBillQueueRejected: _currentBillQueueCounts.rejected,
-      badgeBillQueueApproved: _currentBillQueueCounts.approved,
-      badgeBillQueueScheduled: _currentBillQueueCounts.scheduled,
-      badgeBillQueuePartiallyPaid: _currentBillQueueCounts.partially_paid,
+      badgeBillQueueAttention: _currentBillQueueCounts.attention,
+      badgeBillQueueOverdue: _currentBillQueueCounts.overdue,
+      badgeBillQueueToPay: _currentBillQueueCounts.to_pay,
       badgeBillQueuePaid: _currentBillQueueCounts.paid,
-      badgeBillQueueVoid: _currentBillQueueCounts.void,
+      badgeBillQueueAll: _currentBillQueueCounts.all,
     };
     Object.entries(badgeMap).forEach(([id, count]) => {
       const el = document.getElementById(id);
@@ -106,14 +131,47 @@ async function loadFinanceBillQueueCounts() {
       const pill = el.closest(".fv-pill");
       if (pill) pill.classList.toggle("fv-pill--zero", !count);
     });
-    const state = FinanceTable.getState("finance_bills");
   } catch (err) {
     console.warn("Failed to load bill queue counts:", err);
   }
 }
 
-function onBillOverdueOnlyChange() {
-  loadFinanceBills();
+// Summary cards: one line of money per currency, never added across currencies.
+function _billCardMoney(totals) {
+  const rows = (totals || []).filter((t) => Number(t.amount) > 0);
+  if (!rows.length) return `<span class="fv-muted">None</span>`;
+  return rows.map((t) => `<span>${FinanceFormat.escapeHtml(FinanceFormat.formatMoney(t.amount, t.currency))}</span>`).join("");
+}
+
+function renderFinanceBillCards(summary) {
+  if (!summary) return;
+  const set = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+  const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  const multi = (b) => (b.totals || []).filter((t) => Number(t.amount) > 0).length > 1;
+  const view = summary.book === "local" ? "Local book" : summary.book === "overseas" ? "Overseas book" : "All books";
+  set("cardBillToPayValue", _billCardMoney(summary.to_pay.totals));
+  set("cardBillToPayNote", plural(summary.to_pay.count, "bill", "bills") + " approved or scheduled");
+  set("cardBillOverdueValue", _billCardMoney(summary.overdue.totals));
+  set("cardBillOverdueNote", plural(summary.overdue.count, "bill", "bills") + " past due date");
+  set("cardBillPaidValue", _billCardMoney(summary.paid_this_month.totals));
+  set("cardBillPaidNote", view);
+  set("cardBillApprovalValue", `<span>${Number(summary.awaiting_approval) || 0}</span>`);
+  set("cardBillApprovalNote", (Number(summary.awaiting_approval) === 1 ? "bill" : "bills") + " pending approval");
+  [["cardBillToPay", summary.to_pay], ["cardBillOverdue", summary.overdue], ["cardBillPaid", summary.paid_this_month]].forEach(([id, b]) => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle("fv-card--multi", multi(b));
+  });
+  const overdueCard = document.getElementById("cardBillOverdue");
+  if (overdueCard) overdueCard.classList.toggle("fv-card--late", summary.overdue.count > 0);
+}
+
+async function loadFinanceBillCards() {
+  try {
+    const book = _billBookParam();
+    renderFinanceBillCards(await FinanceApi.getBillsSummary(book ? { book } : undefined));
+  } catch (err) {
+    console.warn("Failed to load bill summary:", err);
+  }
 }
 
 async function loadFinanceBills(incomingParams) {
@@ -142,17 +200,19 @@ async function loadFinanceBills(incomingParams) {
       }
       _billTableInitialized = true;
     }
-    _updateBillQueueTabs(cachedState.queue || "all");
+    // Saved or linked queues that no longer exist fall back to the default queue (Needs attention)
+    if (!BILL_PILL_QUEUES.includes(cachedState.queue) && !BILL_STATUS_QUEUES.includes(cachedState.queue)) cachedState.queue = "attention";
+    _updateBillQueueTabs(cachedState.queue);
 
-    const params = {};
-    const overdueOnly = document.getElementById("financeBillOverdueOnly");
-    if (overdueOnly && overdueOnly.checked) params.overdue = true;
-    if (cachedState.queue && cachedState.queue !== "all") params.queue = cachedState.queue;
-    else params.queue = "all"; // "All" excludes Void, matching the tab counts
+    const params = { queue: cachedState.queue }; // "all" excludes Void, matching the pill counts
+    const book = _billBookParam();
+    if (book) params.book = book;
+    if (_billKind) params.kind = _billKind;
 
     const [items] = await Promise.all([
-      FinanceApi.getBills(Object.keys(params).length ? params : undefined),
+      FinanceApi.getBills(params),
       loadFinanceBillQueueCounts(),
+      loadFinanceBillCards(),
       FinanceUI.loadCategories(),
     ]);
     FinanceState.bills = items || [];
@@ -286,13 +346,85 @@ function renderFinanceBills(items, totalFiltered = items ? items.length : 0) {
 
   if (!items || items.length === 0) {
     tbody.innerHTML = "";
+    const emptyText = document.getElementById("financeBillsEmptyText");
+    const queue = FinanceTable.getState("finance_bills").queue;
+    if (emptyText) emptyText.textContent = queue === "attention" ? "No bills need attention right now." : "No bills match these filters.";
     if (empty) empty.style.display = "block";
     if (pagination && totalFiltered === 0) pagination.style.display = "none";
     return;
   }
   if (empty) empty.style.display = "none";
 
-  tbody.innerHTML = items.map((bill) => {
+  // Group by vendor: a vendor with several bills on this page folds into one line that opens to its bills
+  const groups = new Map();
+  if (_billGroup) {
+    items.forEach((bill) => {
+      const key = String(bill.vendor_id ?? bill.suggested_vendor_name ?? bill.vendor_name ?? "none");
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(bill);
+    });
+  }
+  const renderOne = (bill, child) => _renderBillRow(bill, child);
+  if (_billGroup) {
+    tbody.innerHTML = Array.from(groups.entries()).map(([key, list]) => {
+      if (list.length < 2) return renderOne(list[0], false);
+      const open = _billOpenGroups.has(key);
+      return _renderBillGroupRow(key, list, open) + (open ? list.map((b) => renderOne(b, true)).join("") : "");
+    }).join("");
+  } else {
+    tbody.innerHTML = items.map((bill) => renderOne(bill, false)).join("");
+  }
+  _bindBillRowClicks(tbody);
+}
+
+function _renderBillGroupRow(key, list, open) {
+  const first = list[0];
+  const vendorText = first.vendor_name || first.suggested_vendor_name || "—";
+  const hue = FinanceUI.hueForId(first.vendor_id);
+  const totals = {};
+  list.forEach((b) => { const c = b.currency || "USD"; totals[c] = (totals[c] || 0) + (Number(b.total) || 0); });
+  const money = Object.keys(totals).sort().map((c) => `<span>${FinanceFormat.escapeHtml(FinanceFormat.formatMoney(totals[c], c))}</span>`).join(" · ");
+  const dates = list.map((b) => b.issue_date).filter(Boolean).sort();
+  const range = dates.length ? `${_billDate(dates[0])} – ${_billDate(dates[dates.length - 1])}` : "";
+  const statuses = Array.from(new Set(list.map((b) => (FinanceFormat.STATUS_MAP.bill[FinanceFormat.getDerivedBillStatus(b)] || {}).label || b.status))).join(", ");
+  const safeKey = FinanceFormat.escapeHtml(key);
+  return `
+    <tr class="fv-group-row${open ? " is-open" : ""}" data-group="${safeKey}" tabindex="0">
+      <td><div class="fv-cell-main"><i class="fa-solid fa-chevron-right fv-group-row__chev" aria-hidden="true"></i>${FinanceUI.avatar(vendorText, hue)}<div class="fv-cell-main__text"><span class="fv-name-btn">${FinanceFormat.escapeHtml(vendorText)}</span><span class="fv-link">${list.length} bills${list.every((b) => b.is_subscription) ? ' <span class="fv-recurring-tag">↻ Monthly</span>' : ""}</span></div></div></td>
+      <td><div class="fv-date"><span>${FinanceFormat.escapeHtml(range)}</span></div></td>
+      <td>${FinanceUI.sourceCell(first.paid_from_account_name, first.book, first.book_source !== "paid")}</td>
+      <td><span class="fv-muted">${FinanceFormat.escapeHtml(statuses)}</span></td>
+      <td class="cell-money fv-num">${money}</td>
+      <td></td>
+    </tr>`;
+}
+
+function _bindBillRowClicks(tbody) {
+  if (tbody.dataset.rowClickBound) return;
+  tbody.dataset.rowClickBound = "1";
+  const toggle = (tr) => {
+    const key = tr.dataset.group;
+    if (_billOpenGroups.has(key)) _billOpenGroups.delete(key); else _billOpenGroups.add(key);
+    applyAndRenderBills();
+  };
+  tbody.addEventListener("click", (e) => {
+    if (e.target.closest("button, a, input, select, label")) return;
+    const g = e.target.closest("tr[data-group]");
+    if (g) { toggle(g); return; }
+    const tr = e.target.closest("tr[data-record-id]");
+    if (!tr) return;
+    const viewBtn = tr.querySelector(".btn-view-bill");
+    if (window.FinanceDrawer) FinanceDrawer.open("bill", Number(tr.dataset.recordId), viewBtn || tr);
+  });
+  tbody.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const g = e.target.closest && e.target.closest("tr[data-group]");
+    if (g && e.target === g) { e.preventDefault(); toggle(g); }
+  });
+}
+
+function _renderBillRow(bill, child) {
+  {
     const derivedStatus = FinanceFormat.getDerivedBillStatus(bill);
     const owed = ["approved", "scheduled", "partially_paid"].includes(derivedStatus);
     const rel = owed ? _billDueNote(bill.due_date) : "";
@@ -313,26 +445,15 @@ function renderFinanceBills(items, totalFiltered = items ? items.length : 0) {
       : { slot: true };
 
     return `
-    <tr data-record-id="${bill.id}" class="is-clickable">
-      <td><div class="fv-cell-main">${FinanceUI.avatar(vendorText, hue)}<div class="fv-cell-main__text"><button type="button" class="fv-name-btn btn-view-bill" onclick="FinanceDrawer.open('bill', ${bill.id}, this)" title="View Details & Timeline" aria-label="View Bill ${billNo} details">${vendor}</button><span class="fv-link">${FinanceFormat.escapeHtml(num)}</span></div></div></td>
+    <tr data-record-id="${bill.id}" class="is-clickable${child ? " fv-group-child" : ""}">
+      <td><div class="fv-cell-main">${FinanceUI.avatar(vendorText, hue)}<div class="fv-cell-main__text"><button type="button" class="fv-name-btn btn-view-bill" onclick="FinanceDrawer.open('bill', ${bill.id}, this)" title="View Details & Timeline" aria-label="View Bill ${billNo} details">${vendor}</button><span class="fv-link">${FinanceFormat.escapeHtml(num)}${bill.is_subscription ? ' <span class="fv-recurring-tag" title="' + FinanceFormat.escapeHtml(bill.subscription_name || "Subscription") + '">↻ Monthly</span>' : ""}</span></div></div></td>
       <td>${FinanceUI.dateCell(bill.issue_date, rel, bill.is_overdue ? "late" : "info", { title: rel ? `Due ${_billDate(bill.due_date)}` : "", extraHtml: _billFlags(bill, false) })}</td>
-      <td>${FinanceUI.categoryCell(bill.category)}</td>
+      <td>${FinanceUI.sourceCell(bill.paid_from_account_name, bill.book, bill.book_source !== "paid")}</td>
       <td>${_billStatusPill(derivedStatus)}</td>
       <td class="cell-money fv-num">${FinanceUI.amountCell(bill.total, currency, paidSub, paidPct)}</td>
       <td>${FinanceUI.rowActions({ primary: _billPrimaryAction(bill, derivedStatus), icons: [edit, attach] })}</td>
     </tr>
   `;
-  }).join("");
-
-  if (!tbody.dataset.rowClickBound) {
-    tbody.dataset.rowClickBound = "1";
-    tbody.addEventListener("click", (e) => {
-      if (e.target.closest("button, a, input, select, label")) return;
-      const tr = e.target.closest("tr[data-record-id]");
-      if (!tr) return;
-      const viewBtn = tr.querySelector(".btn-view-bill");
-      if (window.FinanceDrawer) FinanceDrawer.open("bill", Number(tr.dataset.recordId), viewBtn || tr);
-    });
   }
 }
 
@@ -1449,7 +1570,7 @@ async function onBillDraftFilesChosen(input) {
     if (toConfirm) msg += `, ${toConfirm} need${toConfirm === 1 ? "s" : ""} the vendor confirmed`;
     if (failed.length) msg += `; ${failed.length} not created (${failed.map((f) => `${f.filename}: ${f.error}`).join("; ")})`;
     showToast(msg, failed.length ? "warning" : "success");
-    setBillWorkQueue("draft");
+    setBillWorkQueue("draft"); // a status is a valid queue; the Status menu then shows Draft
   } catch (err) {
     showToast("Upload failed: " + (err.message || JSON.stringify(err)), "error");
   }
@@ -1815,6 +1936,8 @@ function switchBillSubTab(subTab) {
   const conVend = document.getElementById("financeVendorsContainer");
   const addVendBtn = document.getElementById("financeAddVendorBtn");
   const recordBillBtn = document.getElementById("financeRecordBillBtn");
+  const uploadBtn = document.getElementById("financeUploadDraftsBtn");
+  const bookSwitch = document.getElementById("financeBookSwitcherBills");
 
   if (subTab === "vendors") {
     if (tabBill) {
@@ -1833,10 +1956,12 @@ function switchBillSubTab(subTab) {
     if (conBill) conBill.style.display = "none";
     if (conVend) conVend.style.display = "block";
     if (addVendBtn) {
-      addVendBtn.style.display = "inline-flex";
+      addVendBtn.style.display = "inline-flex"; // Add Vendor only lives on the Vendors tab
       addVendBtn.className = "btn btn-fill"; // the primary of the Vendors view
     }
     if (recordBillBtn) recordBillBtn.style.display = "none";
+    if (uploadBtn) uploadBtn.style.display = "none";
+    if (bookSwitch) bookSwitch.style.display = "none"; // vendors are not split by book
     loadFinanceVendors();
   } else {
     if (tabBill) {
@@ -1850,15 +1975,14 @@ function switchBillSubTab(subTab) {
       tabVend.setAttribute("tabindex", "-1");
     }
     if (boxBill) boxBill.style.display = "block";
-    if (statusRow) statusRow.style.display = "flex";
+    if (statusRow) statusRow.style.display = "block";
     if (boxVend) boxVend.style.display = "none";
     if (conBill) conBill.style.display = "block";
     if (conVend) conVend.style.display = "none";
-    if (addVendBtn) {
-      addVendBtn.style.display = "inline-flex";
-      addVendBtn.className = "btn btn-outline";
-    }
+    if (addVendBtn) addVendBtn.style.display = "none";
     if (recordBillBtn) recordBillBtn.style.display = "inline-flex";
+    if (uploadBtn) uploadBtn.style.display = "inline-flex";
+    if (bookSwitch) bookSwitch.style.display = "";
     loadFinanceBills();
   }
 }
@@ -2275,6 +2399,9 @@ async function toggleVendorActive(id, currentlyActive) {
 window.loadFinanceBills = loadFinanceBills;
 window.filterFinanceBills = filterFinanceBills;
 window.setBillWorkQueue = setBillWorkQueue;
+window.onBillStatusFilterChange = onBillStatusFilterChange;
+window.onBillKindFilterChange = onBillKindFilterChange;
+window.onBillGroupToggle = onBillGroupToggle;
 window.loadFinanceBillQueueCounts = loadFinanceBillQueueCounts;
 window.openCaptureBillModal = openCaptureBillModal;
 window.toggleBillMore = toggleBillMore;

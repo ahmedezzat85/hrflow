@@ -8,14 +8,18 @@ test.describe('Bills header and toolbar, direction A', () => {
     await page.goto('/?mock=admin', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 15000 });
     await openAdminPage(page, 'a-finance-bills');
+    await page.click('#tabBillQueueAll');
     await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible();
   });
 
   test('action buttons and sub-nav tabs carry no icons; search keeps its icon; no Filters or Upload / Capture button', async ({ page }) => {
-    for (const id of ['financeAddVendorBtn', 'financeUploadDraftsBtn', 'financeRecordBillBtn']) {
+    for (const id of ['financeUploadDraftsBtn', 'financeRecordBillBtn']) {
       await expect(page.locator(`#${id}`)).toBeVisible();
       await expect(page.locator(`#${id} i`)).toHaveCount(0);
     }
+    // Add Vendor lives on the Vendors tab only
+    await expect(page.locator('#financeAddVendorBtn')).toBeHidden();
+    await expect(page.locator('#financeBookSwitcherBills .fv-book-switch__btn')).toHaveCount(3);
     await expect(page.locator('#financeBillSubNav .filter-tab')).toHaveCount(4);
     await expect(page.locator('#financeBillSubNav .filter-tab i')).toHaveCount(0);
     await expect(page.locator('#financeBillSearchBox i')).toHaveCount(1);
@@ -51,10 +55,10 @@ test.describe('Bills header and toolbar, direction A', () => {
   test('search sits in the right-hand group next to the buttons, not beside the tabs', async ({ page }) => {
     const m = await page.evaluate(() => {
       const r = (id) => document.getElementById(id).getBoundingClientRect();
-      return { tabsRight: r('financeBillSubNav').right, searchLeft: r('financeBillSearchBox').left, searchRight: r('financeBillSearchBox').right, addLeft: r('financeAddVendorBtn').left };
+      return { tabsRight: r('financeBillSubNav').right, searchLeft: r('financeBillSearchBox').left, searchRight: r('financeBillSearchBox').right, uploadLeft: r('financeUploadDraftsBtn').left };
     });
     expect(m.searchLeft).toBeGreaterThan(m.tabsRight + 100);
-    expect(m.searchRight).toBeLessThanOrEqual(m.addLeft);
+    expect(m.searchRight).toBeLessThanOrEqual(m.uploadLeft);
   });
 
   test('toolbar wraps cleanly when narrow (no horizontal overflow)', async ({ page }) => {

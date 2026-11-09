@@ -68,7 +68,7 @@ test.describe('Admin Dual-Rail Navigation Shell (Slice 1)', () => {
     await expect(finBtn).toHaveClass(/active|on/);
     await expect(page.locator('#adminNavPanelTitle')).toHaveText('Finance');
 
-    // Click Vendor Bills in Finance
+    // Click Bills in Finance
     await openAdminPage(page, 'a-finance-bills');
     await expect(page.locator('#a-finance-bills')).toBeVisible();
     await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible({ timeout: 10000 });
@@ -258,8 +258,8 @@ test.describe('Slice 2 — Finance Simplification', () => {
     await expect(group.locator('a[data-page="a-finance-settings"] .nav-label')).toHaveText('Finance Settings');
   });
 
-  test('AC 6: Spend tab bar is identical in labels and order across Vendor Bills, Subscriptions, and Statutory', async ({ page }) => {
-    const expectedLabels = ['Vendor Bills', 'Vendors', 'Subscriptions', 'Statutory'];
+  test('AC 6: Spend tab bar is identical in labels and order across Bills, Subscriptions, and Statutory', async ({ page }) => {
+    const expectedLabels = ['Bills', 'Vendors', 'Subscriptions', 'Statutory'];
 
     // 1. Check Spend (Bills page)
     await openAdminPage(page, 'a-finance-spend');
@@ -291,7 +291,7 @@ test.describe('Slice 2 — Finance Simplification', () => {
     }
     await expect(page.locator('#subtabSpendStatStatutory')).toHaveClass(/active/);
 
-    // 4. Click Vendor Bills tab from statutory to return
+    // 4. Click Bills tab from statutory to return
     await page.locator('#subtabSpendStatBills').click();
     await expect(page.locator('#a-finance-bills')).toBeVisible();
     await expect(page.locator('#tabFinanceBills')).toHaveClass(/active/);

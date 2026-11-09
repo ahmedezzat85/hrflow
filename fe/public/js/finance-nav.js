@@ -306,12 +306,12 @@ window.loadFinanceDisplaySettings = loadFinanceDisplaySettings;
 
 
 // ============================================================================
-// SpendTabs: the one Spend tab bar (Vendor Bills / Vendors / Subscriptions / Statutory)
+// SpendTabs: the one Spend tab bar (Bills / Vendors / Subscriptions / Statutory)
 // shown on the three Spend pages. Ids per page are kept for existing links and tests.
 // ============================================================================
 const SpendTabs = {
   TABS: [
-    { key: 'bills', icon: 'fa-receipt', label: 'Vendor Bills', page: 'a-finance-bills', sub: 'bills' },
+    { key: 'bills', icon: 'fa-receipt', label: 'Bills', page: 'a-finance-bills', sub: 'bills' },
     { key: 'vendors', icon: 'fa-truck-field', label: 'Vendors', page: 'a-finance-bills', sub: 'vendors' },
     { key: 'subscriptions', icon: 'fa-repeat', label: 'Subscriptions', page: 'a-finance-subscriptions' },
     { key: 'statutory', icon: 'fa-landmark', label: 'Statutory', page: 'a-finance-statutory' },
@@ -352,7 +352,12 @@ else SpendTabs.render();
     FinanceBookView.mount("dashboard", "financeBookSwitcherDashboard", () => { if (typeof refreshFinanceDashboard === "function") refreshFinanceDashboard(); });
     FinanceBookView.mount("reports", "financeBookSwitcherReports", () => { if (typeof refreshActiveReport === "function") refreshActiveReport(); });
     FinanceBookView.mount("accounts", "financeBookSwitcherAccounts", () => { if (typeof refreshFinanceAccountsView === "function") refreshFinanceAccountsView(); });
-    FinanceBookView.mount("subscriptions", "financeBookSwitcherSubscriptions", () => { if (typeof loadFinanceSubscriptions === "function") loadFinanceSubscriptions(); });
+    // Bills and Subscriptions share one "spend" view; changing it on one page updates the other page's switch too
+    const mountSpend = () => {
+      FinanceBookView.mount("spend", "financeBookSwitcherBills", () => { mountSpend(); if (typeof loadFinanceBills === "function") loadFinanceBills(); });
+      FinanceBookView.mount("spend", "financeBookSwitcherSubscriptions", () => { mountSpend(); if (typeof loadFinanceSubscriptions === "function") loadFinanceSubscriptions(); });
+    };
+    mountSpend();
   };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", go);
   else go();

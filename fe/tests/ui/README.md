@@ -30,7 +30,7 @@ npm --prefix fe test
 
 - `playwright.config.js`: Central configuration (port 8080 dev server integration, headless Chrome channel).
 - `sanity.spec.js`: Smoke test verifying application bootstrap and admin navigation under mock mode.
-- `finance.spec.js`: Test cases for Finance modules (Overview layout, Sales Invoices toolbar and modal, Vendor Bills tabs & filter dropdown, Bank Accounts modals, dark/light theme toggle).
+- `finance.spec.js`: Test cases for Finance modules (Overview layout, Sales Invoices toolbar and modal, Bills tabs & filter dropdown, Bank Accounts modals, dark/light theme toggle).
 
 ## Adding New Test Cases
 

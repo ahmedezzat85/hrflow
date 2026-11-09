@@ -2,9 +2,11 @@ import { test, expect } from '@playwright/test';
 import { confirmDialog } from './helpers/confirm.js';
 import { openAdminPage } from './helpers/admin-nav.js';
 
+// Bills redesign: queues are pills; an exact status comes from the Status menu
+const STATUS_BY_TAB = { '#tabBillQueuePendingApproval': 'pending_approval', '#tabBillQueueApproved': 'approved' };
 async function selectBillQueue(page, tabSelector) {
-  // Direction A (D-021): the status row is always visible
-  await page.click(tabSelector);
+  if (STATUS_BY_TAB[tabSelector]) await page.selectOption('#financeBillStatusFilter', STATUS_BY_TAB[tabSelector]);
+  else await page.click(tabSelector);
 }
 
 test.describe('Story 4.2 — Bill approval and payment', () => {
@@ -16,6 +18,7 @@ test.describe('Story 4.2 — Bill approval and payment', () => {
 
     // Navigate to Vendor Bills
     await openAdminPage(page, 'a-finance-bills');
+    await page.click('#tabBillQueueAll');
     await expect(page.locator('#a-finance-bills')).toBeVisible();
     await expect(page.locator('#financeBillsContainer')).toBeVisible();
     await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible({ timeout: 10000 });

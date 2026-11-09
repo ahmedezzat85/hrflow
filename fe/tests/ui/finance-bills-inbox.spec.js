@@ -16,6 +16,7 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
 
     // Navigate to Vendor Bills section
     await openAdminPage(page, 'a-finance-bills');
+    await page.click('#tabBillQueueAll');
     await expect(page.locator('#a-finance-bills')).toBeVisible();
     await expect(page.locator('#financeBillsContainer')).toBeVisible();
     await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible({ timeout: 10000 });
@@ -140,7 +141,7 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
     // Verify AP Inbox Work Queue tabs are present
     await expect(page.locator('#financeBillWorkQueueTabs')).toBeVisible();
     await expect(page.locator('#tabBillQueueAll')).toBeVisible();
-    for (const id of ['Draft', 'PendingApproval', 'Rejected', 'Approved', 'Scheduled', 'PartiallyPaid', 'Paid', 'Void']) {
+    for (const id of ['Attention', 'Overdue', 'ToPay', 'Paid']) {
       await expect(page.locator(`#tabBillQueue${id}`)).toBeVisible();
     }
 
@@ -151,8 +152,8 @@ test.describe('Story 4.1 — Bill capture and AP inbox', () => {
     expect(allCount).toBeGreaterThan(0);
 
     // Filter by "Draft" queue tab (status row stays visible, selection is reflected via aria-selected)
-    await page.click('#tabBillQueueDraft');
-    await expect(page.locator('#tabBillQueueDraft')).toHaveAttribute('aria-selected', 'true');
+    await page.selectOption('#financeBillStatusFilter', 'draft');
+    await expect(page.locator('#financeBillStatusFilter')).toHaveValue('draft');
     await expect(page.locator('#tabBillQueueAll')).toHaveAttribute('aria-selected', 'false');
 
     // Switch back to "All"

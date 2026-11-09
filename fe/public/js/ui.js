@@ -238,7 +238,7 @@ const titles = {
   'a-finance-reports':['Financial Reports & Export','Category spend rollups, annual spend matrix, point-in-time balances, and Excel downloads.'],
   'a-finance-settings':['Finance Settings','Configure transaction categories and payment method rules.'],
   'a-finance-invoices':['Sales Invoices','Manage customer invoices and accounts receivable.'],
-  'a-finance-bills':['Vendor Bills','Track supplier bills and accounts payable.'],
+  'a-finance-bills':['Bills','Track supplier bills and accounts payable.'],
   'a-finance-accounts':['Company Bank Accounts','Manage company treasury and operating accounts.'],
   'a-finance-transfers':['Account Transfers','Manage transfers between company bank and cash accounts.'],
   'a-finance-cheques':['Cheque Register','Track issued and received bank cheques.'],

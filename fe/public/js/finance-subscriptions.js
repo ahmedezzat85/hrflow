@@ -10,7 +10,7 @@ let _currentLoggingSub = null;
 let _subChargeFilter = "expected";
 
 function _subscriptionBookView() {
-  return typeof FinanceBookView !== "undefined" ? FinanceBookView.get("subscriptions") : "consolidated";
+  return typeof FinanceBookView !== "undefined" ? FinanceBookView.get("spend") : "consolidated";
 }
 
 async function loadFinanceSubscriptions() {

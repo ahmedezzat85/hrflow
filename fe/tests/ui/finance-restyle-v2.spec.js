@@ -105,6 +105,7 @@ test.describe('Finance restyle v2: Bills and Vendors (S2)', () => {
     test(`Bills table chrome in ${theme}`, async ({ page }) => {
       await openAdmin(page, theme);
       await openAdminPage(page, 'a-finance-bills');
+      await page.click('#tabBillQueueAll');
       await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible();
       const surface = await rgb(page, 'var(--fv-surface)');
       const ink = await rgb(page, 'var(--ink-strong)');
@@ -124,14 +125,14 @@ test.describe('Finance restyle v2: Bills and Vendors (S2)', () => {
       expect(await css(page, '#financeBillsTableBody .fv-amount__value', 'color')).toBe(ink);
 
       // selected status pill is brand filled; the row of pills has dots
-      expect(await css(page, '#tabBillQueueAll', 'backgroundColor')).toBe(brand);
+      await expect.poll(() => css(page, '#tabBillQueueAll', 'backgroundColor')).toBe(brand); // the pill fades in after the click
       expect(await css(page, '#tabBillQueueAll', 'height')).toBe('28px');
       expect(await css(page, '#tabBillQueueAll', 'borderRadius')).not.toBe('0px');
 
       // no icons in the sub-nav, the pills or any text button of the header
       await expect(page.locator('#financeBillSubNav .fa-solid')).toHaveCount(0);
       await expect(page.locator('#financeBillWorkQueueTabs .fa-solid')).toHaveCount(0);
-      for (const id of ['financeAddVendorBtn', 'financeUploadDraftsBtn', 'financeRecordBillBtn']) {
+      for (const id of ['financeUploadDraftsBtn', 'financeRecordBillBtn']) {
         await expect(page.locator(`#${id} .fa-solid`)).toHaveCount(0);
       }
       // sub-nav: active tab 2px brand underline
@@ -183,7 +184,7 @@ test.describe('Finance restyle v2: Bills and Vendors (S2)', () => {
 
     // approval: decision bar drives the existing select and the primary label follows it
     await page.evaluate(() => { FinanceState.bills = FinanceState.bills || []; });
-    await page.click('#tabBillQueuePendingApproval');
+    await page.selectOption('#financeBillStatusFilter', 'pending_approval');
     await page.locator('#financeBillsTableBody .btn-approve-bill').first().click();
     await expect(page.locator('#billApprovalModal')).toBeVisible();
     await expect(page.locator('#billApprovalSubmitBtn')).toHaveText('Approve bill');
