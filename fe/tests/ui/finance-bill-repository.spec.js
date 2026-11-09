@@ -10,6 +10,7 @@ test.describe('FUX-407 — Bill document storage and repository view', () => {
 
     // Navigate to Vendor Bills section
     await openAdminPage(page, 'a-finance-bills');
+    await page.click('#tabBillQueueAll');
     await expect(page.locator('#a-finance-bills')).toBeVisible();
     await expect(page.locator('#financeBillsContainer')).toBeVisible();
     await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible({ timeout: 10000 });

@@ -971,6 +971,8 @@ if (typeof window !== "undefined") window._withBook = _withBook;
   };
 
   const FinanceMockState = root.FinanceMockState || (root.FinanceMockState = {});
+  // YYYY-MM-DD for today plus n days (mock data that must stay "recent" for the Bills page cards)
+  const _mockIsoDay = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
 
   // Vendor Bill Workflow v2 (D-016): mirrors be/finance/bill_status.py
   const BILL_STATUSES = ["draft", "pending_approval", "rejected", "approved", "scheduled", "partially_paid", "paid", "void"];
@@ -1052,7 +1054,32 @@ if (typeof window !== "undefined") window._withBook = _withBook;
     err.detail = errors;
     return err;
   };
-  const _withFlags = (b) => ({ ...b, is_overdue: _billIsOverdue(b), allowed_actions: _billAllowedActions(b.status) });
+  // Where a bill sits for the Bills page (mirrors be/finance/books.py bill_placements, Bills redesign D1):
+  // paid -> the paying account's book; unpaid -> the vendor's most recent payment's book; else the default (Local) book.
+  const _billPlacement = (b) => {
+    const accounts = FinanceMockState.accounts || [];
+    const payments = FinanceMockState.billPayments || [];
+    const bills = FinanceMockState.bills || [];
+    const place = (source, p) => {
+      const acc = p ? accounts.find((a) => a.id === p.bank_account_id) : null;
+      return { book: (acc && acc.book_code) || "local", book_source: source, paid_from_account_name: acc ? acc.account_name : null };
+    };
+    const own = payments.filter((p) => p.related_bill_id === b.id).sort((x, y) => x.id - y.id);
+    if (own.length) return place("paid", own[0]);
+    const vendorPays = payments
+      .filter((p) => { const pb = bills.find((x) => x.id === p.related_bill_id); return pb && pb.vendor_id === b.vendor_id; })
+      .sort((x, y) => y.id - x.id);
+    if (vendorPays.length) return place("inferred", vendorPays[0]);
+    return { book: "local", book_source: "default", paid_from_account_name: null };
+  };
+  const _withFlags = (b) => ({ ...b, ..._billPlacement(b), is_subscription: !!b.subscription_name, is_overdue: _billIsOverdue(b), allowed_actions: _billAllowedActions(b.status) });
+  const _billInAttention = (b) => ["draft", "pending_approval", "rejected"].includes(b.status) || _billIsOverdue(b);
+  const _billRemaining = (b) => Math.max(0, round((b.total || 0) - (b.amount_paid || 0), 2));
+  const _sumByCurrency = (items) => {
+    const totals = {};
+    items.forEach(([cur, amt]) => { totals[cur] = round((totals[cur] || 0) + amt, 2); });
+    return Object.keys(totals).sort().map((currency) => ({ currency, amount: totals[currency] }));
+  };
   const _billNext = (action, bill) => {
     const target = (BILL_TRANSITIONS[action] || {})[bill.status];
     if (!target) {
@@ -1100,12 +1127,16 @@ if (typeof window !== "undefined") window._withBook = _withBook;
     { id: 6, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-006", category_id: 9, category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: "2026-09-03", due_date: "2026-09-18", status: "rejected", currency: "USD", subtotal: 320.0, tax_amount: 0.0, total: 320.0, amount_paid: 0.0, requires_approval: false, capture_source: "upload", extraction_confidence: 0.70, file_fingerprint: "sha256-slack-dup-10", attachment_name: "slack_renewal_receipt.pdf", attachment_url: "/api/finance/bills/6/attachment", is_reviewed: false, approval_status: "rejected", approval_comment: "Duplicate of BILL-2026-002", notes: "Suspected duplicate of BILL-2026-002", created_at: "2026-09-03T10:00:00", created_by: "ap@voyance.health", lines: [{ id: 6, bill_id: 6, description: "Slack duplicate upload", quantity: 1, unit_price: 320.0, line_total: 320.0 }] },
     { id: 7, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-007", category_id: 8, category: "Infrastructure", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-20", due_date: "2026-11-20", status: "scheduled", scheduled_payment_date: "2026-11-15", currency: "USD", subtotal: 640.0, tax_amount: 0.0, total: 640.0, amount_paid: 0.0, approval_status: "approved", capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "Scheduled support plan", created_at: "2026-09-20T09:00:00", created_by: "ap@voyance.health", lines: [{ id: 7, bill_id: 7, description: "Support plan", quantity: 1, unit_price: 640.0, line_total: 640.0 }] },
     { id: 8, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-008", category_id: 9, category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: "2026-09-02", due_date: "2026-09-30", status: "void", void_reason: "Duplicate", voided_by: "admin@voyance.health", currency: "USD", subtotal: 99.0, tax_amount: 0.0, total: 99.0, amount_paid: 0.0, capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "Cancelled add-on", created_at: "2026-09-02T09:00:00", created_by: "ap@voyance.health", lines: [{ id: 8, bill_id: 8, description: "Add-on", quantity: 1, unit_price: 99.0, line_total: 99.0 }] },
+    // Overseas book demo (Bills redesign): a subscription bill paid from the Overseas account, and a later unpaid bill of the same vendor that inherits that book
+    { id: 9, vendor_id: 3, vendor_name: "Google Workspace", bill_number: "SUB-3-Google_Workspace-" + _mockIsoDay(-12).replace(/-/g, ""), category_id: 9, category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: _mockIsoDay(-12), due_date: _mockIsoDay(-2), status: "paid", currency: "USD", subtotal: 412.6, tax_amount: 0.0, total: 412.6, amount_paid: 412.6, requires_approval: false, capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, subscription_name: "Google Workspace", notes: "Monthly workspace charge", created_at: "2026-09-12T09:00:00", created_by: "ap@voyance.health", lines: [{ id: 9, bill_id: 9, description: "Workspace Business Plus", quantity: 1, unit_price: 412.6, line_total: 412.6 }] },
+    { id: 10, vendor_id: 3, vendor_name: "Google Workspace", bill_number: "SUB-3-Google_Workspace-" + _mockIsoDay(-40).replace(/-/g, ""), category_id: 9, category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: _mockIsoDay(-40), due_date: _mockIsoDay(-6), status: "approved", currency: "USD", subtotal: 398.2, tax_amount: 0.0, total: 398.2, amount_paid: 0.0, requires_approval: false, approval_status: "approved", capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, subscription_name: "Google Workspace", notes: "Awaiting payment", created_at: "2026-09-12T09:30:00", created_by: "ap@voyance.health", lines: [{ id: 10, bill_id: 10, description: "Workspace Business Plus", quantity: 1, unit_price: 398.2, line_total: 398.2 }] },
   ];
   }
 
   if (!FinanceMockState.billPayments) {
     FinanceMockState.billPayments = [
     { id: 1, related_bill_id: 2, amount: 320.0, currency: "USD", payment_date: "2026-09-04", bank_account_id: 1, method: "bank_transfer", reference: "ACH-SLACK-01", is_reversed: false, created_at: "2026-09-04T10:00:00" },
+    { id: 2, related_bill_id: 9, amount: 412.6, currency: "USD", payment_date: _mockIsoDay(0), bank_account_id: 5, method: "bank_transfer", reference: "WIRE-GW-01", is_reversed: false, created_at: "2026-09-12T10:00:00" },
   ];
   }
 
@@ -1118,9 +1149,15 @@ if (typeof window !== "undefined") window._withBook = _withBook;
         const q = params.queue.toLowerCase().trim();
         if (BILL_STATUSES.includes(q)) list = list.filter((b) => b.status === q);
         else if (q === "all") list = list.filter((b) => b.status !== "void");
+        else if (q === "to_pay") list = list.filter((b) => BILL_OPEN_STATUSES.includes(b.status));
+        else if (q === "overdue") list = list.filter((b) => b.is_overdue);
+        else if (q === "attention") list = list.filter((b) => _billInAttention(b));
       } else if (params && params.status) {
         list = list.filter((b) => b.status === params.status);
       }
+      if (params && params.book && params.book !== "consolidated") list = list.filter((b) => b.book === params.book);
+      if (params && params.kind === "subscription") list = list.filter((b) => b.is_subscription);
+      if (params && params.kind === "one_off") list = list.filter((b) => !b.is_subscription);
       if (params && String(params.overdue) === "true") list = list.filter((b) => b.is_overdue);
       if (params && params.vendor_id) list = list.filter((b) => b.vendor_id === parseInt(params.vendor_id, 10));
       if (params && params.has_attachment !== undefined && params.has_attachment !== null && params.has_attachment !== "") {
@@ -1139,7 +1176,8 @@ if (typeof window !== "undefined") window._withBook = _withBook;
     if (_isMock()) {
       let list = FinanceMockState.bills || [];
       if (params && params.vendor_id) list = list.filter((b) => b.vendor_id === parseInt(params.vendor_id, 10));
-      const counts = { overdue: 0, all: 0 };
+      if (params && params.book && params.book !== "consolidated") list = list.filter((b) => _billPlacement(b).book === params.book);
+      const counts = { overdue: 0, all: 0, attention: 0, to_pay: 0 };
       BILL_STATUSES.forEach((st) => { counts[st] = 0; });
       for (const b of list) {
         const st = (b.status || "").toLowerCase();
@@ -1148,10 +1186,37 @@ if (typeof window !== "undefined") window._withBook = _withBook;
         if (st === "void") continue;
         counts.all++;
         if (_billIsOverdue(b)) counts.overdue++;
+        if (BILL_OPEN_STATUSES.includes(st)) counts.to_pay++;
+        if (_billInAttention(b)) counts.attention++;
       }
       return counts;
     }
     let url = "/api/finance/bills/queue-counts";
+    if (params) {
+      const qs = new URLSearchParams(params).toString();
+      if (qs) url += `?${qs}`;
+    }
+    return apiRequest("GET", url);
+  },
+  // Cards on the Bills page: money per currency (never added across currencies), plus bills awaiting approval
+  async getBillsSummary(params) {
+    if (_isMock()) {
+      const book = params && params.book && params.book !== "consolidated" ? params.book : null;
+      const scoped = (FinanceMockState.bills || []).filter((b) => !book || _billPlacement(b).book === book);
+      const open = scoped.filter((b) => BILL_OPEN_STATUSES.includes(b.status));
+      const late = open.filter((b) => _billIsOverdue(b));
+      const month = new Date().toISOString().slice(0, 7);
+      const paid = (FinanceMockState.billPayments || []).filter((p) => !p.is_reversed && String(p.payment_date || "").startsWith(month) && scoped.some((b) => b.id === p.related_bill_id));
+      const bucket = (rows) => ({ count: rows.length, totals: _sumByCurrency(rows) });
+      return {
+        book: book || "consolidated",
+        to_pay: bucket(open.map((b) => [b.currency, _billRemaining(b)])),
+        overdue: bucket(late.map((b) => [b.currency, _billRemaining(b)])),
+        paid_this_month: bucket(paid.map((p) => [p.currency, Number(p.amount || 0)])),
+        awaiting_approval: scoped.filter((b) => b.status === "pending_approval").length,
+      };
+    }
+    let url = "/api/finance/bills/summary";
     if (params) {
       const qs = new URLSearchParams(params).toString();
       if (qs) url += `?${qs}`;

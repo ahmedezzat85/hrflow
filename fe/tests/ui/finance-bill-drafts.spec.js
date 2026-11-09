@@ -7,6 +7,7 @@ test.describe('Vendor Bill Workflow v2 (B4) — drafts and multi-file upload', (
     await page.goto('/?mock=admin');
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 15000 });
     await openAdminPage(page, 'a-finance-bills');
+    await page.click('#tabBillQueueAll');
     await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible({ timeout: 10000 });
   });
 
@@ -18,7 +19,7 @@ test.describe('Vendor Bill Workflow v2 (B4) — drafts and multi-file upload', (
     ]);
 
     // The list opens filtered to Drafts and shows the three new drafts
-    await expect(page.locator('#tabBillQueueDraft')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('#financeBillStatusFilter')).toHaveValue('draft');
     const rows = page.locator('#financeBillsTableBody tr');
     await expect(rows.filter({ hasText: 'Amazon Web Services' }).filter({ hasText: '(no number yet)' })).toHaveCount(1);
     const unmatched = rows.filter({ hasText: 'Vendor to confirm' });

@@ -2619,3 +2619,27 @@
 .fv-select-pop__opt.is-selected.is-active { background: var(--brand-tint); box-shadow: inset 0 0 0 1px var(--brand); }
 .fv-select-pop__opt.is-disabled { opacity: .45; cursor: not-allowed; }
 .fv-select-pop__group { padding: 8px 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-muted); }
+
+/* ---------- Bills page redesign: summary cards, filters beside the queue pills, recurring tag, vendor groups ---------- */
+.fv .fv-pills-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-left: auto; }
+.fv .fv-card__value--lines { display: flex; flex-direction: column; gap: 2px; white-space: normal; }
+.fv .fv-card__value--lines > span { white-space: nowrap; }
+.fv .fv-card--multi .fv-card__value { font-size: 19px; }
+.fv .fv-card--late .fv-card__value { color: var(--danger); }
+.fv .fv-card__link--btn { border: 0; background: none; padding: 0; font: inherit; font-weight: 600; cursor: pointer; }
+.fv .fv-card__link--btn:hover { text-decoration: underline; }
+.fv .fv-recurring-tag {
+  display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; padding: 1px 7px; border-radius: var(--radius-full);
+  font-size: 11px; font-weight: 600; color: var(--id-violet-ink);
+  background: color-mix(in srgb, var(--id-violet) var(--fv-status-tint-pct), transparent);
+}
+.fv .fv-group-row { cursor: pointer; background: var(--fv-surface-soft); }
+.fv .fv-group-row__chev { width: 14px; color: var(--ink-muted); font-size: 11px; transition: transform .15s ease; }
+.fv .fv-group-row.is-open .fv-group-row__chev { transform: rotate(90deg); }
+.fv .fv-group-child td:first-child { padding-left: 38px; }
+.fv .fv-group-child .fv-avatar { opacity: .7; }
+@media (prefers-reduced-motion: reduce) { .fv .fv-group-row__chev { transition: none; } }
+.fv .fv-source > span { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (pointer: coarse), (max-width: 1100px) {
+  .fv .fv-card__link--btn { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; }
+}

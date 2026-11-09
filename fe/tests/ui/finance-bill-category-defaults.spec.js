@@ -10,6 +10,7 @@ test.describe('Story FUX-411 — Bill category dropdown and default category per
 
     // Navigate to Vendor Bills section
     await openAdminPage(page, 'a-finance-bills');
+    await page.click('#tabBillQueueAll');
     await expect(page.locator('#a-finance-bills')).toBeVisible();
     await expect(page.locator('#financeBillsContainer')).toBeVisible();
     await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible({ timeout: 10000 });
@@ -79,7 +80,8 @@ test.describe('Story FUX-411 — Bill category dropdown and default category per
   });
 
   test('AC 4: Vendor modal displays Default Bill Category dropdown', async ({ page }) => {
-    // Open Add Vendor Modal
+    // Add Vendor lives on the Vendors tab; open it, then the Add Vendor modal
+    await page.click('#tabFinanceVendors');
     const addVendorBtn = page.locator('button:has-text("Add Vendor"), #btnAddVendor, #financeAddVendorBtn');
     if (await addVendorBtn.count() > 0) {
       await addVendorBtn.first().click();

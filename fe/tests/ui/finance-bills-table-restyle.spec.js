@@ -10,20 +10,22 @@ test.describe('Bills table, direction A', () => {
     await page.goto('/?mock=admin', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 15000 });
     await openAdminPage(page, 'a-finance-bills');
+    await page.click('#tabBillQueueAll');
     await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible();
   });
 
-  test('columns are Bill, Bill date, Category, Status, Amount, Actions; category shows no department', async ({ page }) => {
+  test('columns are Bill, Bill date, Source, Status, Amount, Actions; source shows the book, not the department', async ({ page }) => {
     // Sortable headers carry a sort arrow (Bill date is the default sort), so compare the labels without it
     const heads = (await page.locator('#financeBillsTable thead th').allInnerTexts()).map((t) => t.replace(/[\s↑↓⇅]+$/, '').trim());
-    expect(heads).toEqual(['Bill', 'Bill date', 'Category', 'Status', 'Amount', 'Actions']);
+    expect(heads).toEqual(['Bill', 'Bill date', 'Source', 'Status', 'Amount', 'Actions']);
     const row = page.locator('#financeBillsTableBody tr:has-text("BILL-2026-001")').first();
     const cells = row.locator('td');
     await expect(cells.nth(0)).toContainText('Amazon Web Services');
     await expect(cells.nth(0)).toContainText('BILL-2026-001');
     await expect(cells.nth(1)).toContainText('1 Sep 2026');
     await expect(cells.nth(1).locator('.fv-note--late')).toHaveAttribute('title', 'Due 30 Sep 2026');
-    await expect(cells.nth(2)).toHaveText('Infrastructure');
+    // AWS has no payment history in the mock data, so the unpaid bill sits in the default book and says so
+    await expect(cells.nth(2)).toHaveText('Local (expected)');
     await expect(cells.nth(2)).not.toContainText('Engineering');
     await expect(cells.nth(3)).toContainText('Approved');
     await expect(cells.nth(4)).toContainText('$4,200.00');

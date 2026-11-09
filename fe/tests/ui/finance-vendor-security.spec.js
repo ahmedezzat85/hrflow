@@ -83,6 +83,7 @@ test.describe('Story 4.3 — Vendor profile and payment-data security', () => {
     // Switch to Bills sub-tab
     await page.click('#tabFinanceBills');
     await expect(page.locator('#financeBillsContainer')).toBeVisible();
+    await page.click('#tabBillQueueAll');
 
     // Historical bills for Slack Technologies still show vendor name
     const histBill = page.locator('#financeBillsTableBody tr:has-text("BILL-2026-002")');

@@ -10,6 +10,7 @@ test.describe('Story FUX-408 — Combined create-and-pay bill action with settle
 
     // Navigate to Vendor Bills section
     await openAdminPage(page, 'a-finance-bills');
+    await page.click('#tabBillQueueAll');
     await expect(page.locator('#a-finance-bills')).toBeVisible();
     await expect(page.locator('#financeBillsContainer')).toBeVisible();
     await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible({ timeout: 10000 });
@@ -59,6 +60,7 @@ test.describe('Story FUX-408 — Combined create-and-pay bill action with settle
     await page.goto('/?mock=finance');
     await expect(page.locator('#adminSidebar')).toBeVisible({ timeout: 15000 });
     await openAdminPage(page, 'a-finance-bills');
+    await page.click('#tabBillQueueAll');
     await expect(page.locator('#financeBillsTableBody tr').first()).toBeVisible({ timeout: 10000 });
     await page.click('#financeRecordBillBtn');
     await expect(page.locator('#billModal')).toBeVisible();

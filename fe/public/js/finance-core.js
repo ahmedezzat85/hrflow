@@ -362,6 +362,15 @@ const FinanceUI = {
     return `<span class="fv-with-dot">${this.dot(this.categoryHueByName(label))}<span>${this.esc(label)}</span></span>`;
   },
 
+  // Paid-from account with its book underneath, the same look as "Paid from" on Subscriptions.
+  // `expected` marks a book that was inferred (the bill is not paid yet) rather than read from a payment.
+  sourceCell(accountName, bookCode, expected) {
+    const book = bookCode === "overseas" ? "overseas" : "local";
+    const label = (book === "overseas" ? "Overseas" : "Local") + (expected ? " (expected)" : "");
+    const name = accountName ? `<span>${this.esc(accountName)}</span>` : "";
+    return `<div class="fv-date fv-source">${name}<span class="fv-book-chip fv-book-chip--${book}" data-book-chip>${this.esc(label)}</span></div>`;
+  },
+
   // Area tile: overview/sales/spend/banking/reports/settings.
   AREAS: {
     overview: { hue: "blue", icon: "fa-grip", name: "Overview" },
@@ -1821,13 +1830,18 @@ window.sumColumn = sumColumn;
 const FinanceBookView = {
   VIEWS: [["local", "Local"], ["overseas", "Overseas"], ["consolidated", "Consolidated"]],
   // First defaults per D-028: dashboard, reports (P&L, cash flow) = Local; subscriptions = Consolidated
-  DEFAULTS: { dashboard: "local", reports: "local", subscriptions: "consolidated", revenue: "consolidated", accounts: "consolidated" },
+  // "spend" is shared by the Spend tabs that have a book view (Bills and Subscriptions), so the choice carries across them.
+  DEFAULTS: { dashboard: "local", reports: "local", subscriptions: "consolidated", spend: "consolidated", revenue: "consolidated", accounts: "consolidated" },
   _mem: {},
   _key(page) { return `hrflow_finance_book_${page}`; },
   get(page) {
     if (this._mem[page]) return this._mem[page];
     let v = null;
-    try { v = window.localStorage.getItem(this._key(page)); } catch (_) { /* storage unavailable */ }
+    try {
+      v = window.localStorage.getItem(this._key(page));
+      // First visit after Bills and Subscriptions started sharing one view: keep what Subscriptions remembered
+      if (!v && page === "spend") v = window.localStorage.getItem(this._key("subscriptions"));
+    } catch (_) { /* storage unavailable */ }
     if (!this.VIEWS.some(([k]) => k === v)) v = this.DEFAULTS[page] || "consolidated";
     this._mem[page] = v;
     return v;
