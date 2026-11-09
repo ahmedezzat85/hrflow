@@ -898,6 +898,12 @@ class BillResponse(BillBase):
     vendor_name: Optional[str] = None
     category_name: Optional[str] = None
     lines: List[BillLineResponse] = []
+    # Bills page (list and single read only; action responses leave them empty): where the bill sits and what it is.
+    book: Optional[str] = None  # local | overseas
+    book_source: Optional[str] = None  # paid | inferred | default
+    paid_from_account_name: Optional[str] = None  # the paying account, or the vendor's last account when inferred
+    is_subscription: bool = False
+    subscription_name: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -1023,6 +1029,26 @@ class BillQueueCountsResponse(BaseModel):
     void: int = 0
     overdue: int = 0
     all: int = 0
+    attention: int = 0  # draft, pending approval, rejected, or overdue
+    to_pay: int = 0  # approved, scheduled, partially paid
+
+
+class BillMoney(BaseModel):
+    currency: str
+    amount: float
+
+
+class BillSummaryBucket(BaseModel):
+    count: int = 0
+    totals: List[BillMoney] = []  # one line per currency, never added together
+
+
+class BillSummaryResponse(BaseModel):
+    book: str  # local | overseas | consolidated
+    to_pay: BillSummaryBucket
+    overdue: BillSummaryBucket
+    paid_this_month: BillSummaryBucket
+    awaiting_approval: int = 0
 
 
 # ==========================================

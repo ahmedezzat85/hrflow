@@ -28,6 +28,8 @@ from finance.models import (
     LedgerTransactionDB,
     TransactionCategoryDB,
     PaymentTypeDB,
+    SubscriptionChargeDB,
+    SubscriptionDB,
 )
 
 logger = logging.getLogger(__name__)
@@ -65,24 +67,39 @@ class BillsRepository:
         vendor_id: Optional[int] = None,
         search: Optional[str] = None,
         has_attachment: Optional[bool] = None,
-        limit: int = 50,
+        limit: Optional[int] = 50,
         offset: int = 0,
         overdue: Optional[bool] = None,
+        kind: Optional[str] = None,
     ) -> List[BillDB]:
+        """`limit=None` returns every match (the service uses it when it must filter by book before paging)."""
         query = (
             self.db.query(BillDB)
             .options(joinedload(BillDB.lines), joinedload(BillDB.vendor))
         )
+        today = datetime.utcnow().strftime("%Y-%m-%d")
         if queue:
             q_norm = queue.lower().strip()
             if q_norm in bs.VALID_BILL_STATUSES:
                 query = query.filter(BillDB.status == q_norm)
             elif q_norm == "all":
                 query = query.filter(BillDB.status != bs.VOID)
+            elif q_norm == "to_pay":
+                query = query.filter(BillDB.status.in_(bs.OPEN_STATUSES))
+            elif q_norm == "overdue":
+                query = query.filter(BillDB.status.in_(bs.OPEN_STATUSES), BillDB.due_date < today)
+            elif q_norm == "attention":
+                query = query.filter(or_(
+                    BillDB.status.in_((bs.DRAFT, bs.PENDING_APPROVAL, bs.REJECTED)),
+                    (BillDB.status.in_(bs.OPEN_STATUSES)) & (BillDB.due_date < today),
+                ))
         elif status:
             query = query.filter(BillDB.status == status)
         if overdue is True:
-            query = query.filter(BillDB.status.in_(bs.OPEN_STATUSES), BillDB.due_date < datetime.utcnow().strftime("%Y-%m-%d"))
+            query = query.filter(BillDB.status.in_(bs.OPEN_STATUSES), BillDB.due_date < today)
+        if kind in ("subscription", "one_off"):
+            linked = self.db.query(SubscriptionChargeDB.linked_bill_id).filter(SubscriptionChargeDB.linked_bill_id.isnot(None))
+            query = query.filter(BillDB.id.in_(linked) if kind == "subscription" else ~BillDB.id.in_(linked))
 
         if vendor_id is not None:
             query = query.filter(BillDB.vendor_id == vendor_id)
@@ -105,6 +122,32 @@ class BillsRepository:
             query.order_by(BillDB.created_at.desc())
             .offset(offset)
             .limit(limit)
+            .all()
+        )
+
+    def subscription_names_by_bill(self) -> dict:
+        """bill id -> name of the subscription whose charge the bill settles (for the Monthly tag)."""
+        rows = (
+            self.db.query(SubscriptionChargeDB.linked_bill_id, SubscriptionDB.name)
+            .join(SubscriptionDB, SubscriptionDB.id == SubscriptionChargeDB.subscription_id)
+            .filter(SubscriptionChargeDB.linked_bill_id.isnot(None))
+            .all()
+        )
+        return {bill_id: name for bill_id, name in rows}
+
+    def all_bills(self) -> List[BillDB]:
+        return self.db.query(BillDB).all()
+
+    def live_bill_payments_in_month(self, month_prefix: str) -> List[PaymentDB]:
+        """Outgoing, not reversed bill payments dated in the month (YYYY-MM)."""
+        return (
+            self.db.query(PaymentDB)
+            .filter(
+                PaymentDB.direction == "outgoing",
+                PaymentDB.related_bill_id.isnot(None),
+                PaymentDB.is_reversed == False,  # noqa: E712
+                PaymentDB.payment_date.like(f"{month_prefix}%"),
+            )
             .all()
         )
 
@@ -136,7 +179,8 @@ class BillsRepository:
         self.db.refresh(bill)
         return self._load_bill_full(bill_id)
 
-    def get_queue_counts(self, vendor_id: Optional[int] = None) -> dict:
+    def get_queue_counts(self, vendor_id: Optional[int] = None, only_ids: Optional[set] = None) -> dict:
+        """`only_ids` limits the count to those bills (the service passes the bills of one book)."""
         query = self.db.query(BillDB)
         if vendor_id is not None:
             query = query.filter(BillDB.vendor_id == vendor_id)
@@ -144,7 +188,11 @@ class BillsRepository:
         counts = {st: 0 for st in bs.BILL_STATUSES}
         counts["overdue"] = 0
         counts["all"] = 0
+        counts["attention"] = 0
+        counts["to_pay"] = 0
         for b in bills:
+            if only_ids is not None and b.id not in only_ids:
+                continue
             st = (b.status or "").lower()
             if st not in bs.VALID_BILL_STATUSES:
                 continue
@@ -152,8 +200,13 @@ class BillsRepository:
             if st == bs.VOID:
                 continue
             counts["all"] += 1
-            if bs.is_overdue(st, b.due_date):
+            late = bs.is_overdue(st, b.due_date)
+            if late:
                 counts["overdue"] += 1
+            if st in bs.OPEN_STATUSES:
+                counts["to_pay"] += 1
+            if late or st in (bs.DRAFT, bs.PENDING_APPROVAL, bs.REJECTED):
+                counts["attention"] += 1
         return counts
 
     def find_duplicate_candidates(
