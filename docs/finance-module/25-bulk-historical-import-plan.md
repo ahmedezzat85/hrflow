@@ -68,7 +68,7 @@ One manifest per import run, one document **kind** per run (`bills`, `cheques`, 
 **Common columns:** `row_ref` (unique, e.g. `B-0001`), `source_file` (name inside the ZIP, may be empty), `confidence` (0–1, optional), `review_flags` (free text, optional), `notes` (optional).
 
 **bills:** `vendor_name`, `bill_number`, `issue_date`, `due_date`, `currency`, `category`, `total_amount`, `description` (becomes one line "description × 1 × total_amount"; multi-line is a later extension).
-**cheques:** `account` (bank account name or id), `cheque_number`, `payee`, `amount`, `currency`, `issue_date`, `notes`. Created as `draft`.
+**cheques:** `account` (bank account name or id), `cheque_number`, `payee`, `amount`, `currency`, `issue_date`, `notes`, and optional `purpose` (`other`, `cash_withdrawal`, `vendor_payment`; blank = other) and `destination_account` (the active cash account a `cash_withdrawal` funds, in the bank account's currency; required for that purpose). Created as `draft`; a bill is never linked by an import.
 **invoices:** `customer_name`, `invoice_number`, `issue_date`, `due_date`, `currency`, `description`, `amount`, `vat_rate` (optional).
 
 **Rules:** blanks are allowed where a Draft allows them and are listed in `missing_fields`; the importer never guesses. Unknown vendor/customer/category/account: the row is imported with the field empty, `vendor_to_confirm`/`suggested_vendor_name` set (bills), and a warning in the report. Nothing is created in master data.

@@ -152,7 +152,7 @@ test.describe('Finance Import screen (I2)', () => {
 });
 
 // I3: cheques. Handwritten scans are the weakest input, so required fields and confidence are checked per row.
-const CHQ_HEADER = 'row_ref,source_file,confidence,review_flags,notes,account,cheque_number,payee,amount,currency,issue_date';
+const CHQ_HEADER = 'row_ref,source_file,confidence,review_flags,notes,account,cheque_number,payee,amount,currency,issue_date,purpose,destination_account';
 const chqCsv = (...rows) => Buffer.from([CHQ_HEADER, ...rows].join('\n'));
 const CHQ_GOOD = 'C-0001,chq-0001.pdf,0.95,,,Voyance Operating USD,900001,Acme Supplies,1500.00,USD,2026-03-05';
 const CHQ_LOW = 'C-0002,chq-0002.pdf,0.5,amount faint,,Voyance Operating USD,900002,Acme Supplies,200.00,USD,2026-03-06';

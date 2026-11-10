@@ -240,3 +240,75 @@ def test_payee_is_optional_and_saved_blank_with_a_warning(app_client, admin_cook
     assert row["status"] == "warning" and "payee_blank" in _codes(row) and row["created_id"]
     chq = app_client.get(f"{BASE}/{row['created_id']}", cookies=admin_cookies).json()
     assert chq["payee"] == "" and chq["status"] == "draft" and chq["amount"] == 1500.0 and chq["cheque_number"] == "100001"
+
+
+def _cash_acct(client, cookies, name, currency="EGP", active=True):
+    resp = client.post("/api/finance/accounts", json={"account_name": name, "bank_name": None, "account_number": name.replace(" ", ""),
+                                                      "currency": currency, "opening_balance": 0, "account_type": "cash"}, cookies=cookies)
+    assert resp.status_code == 201, resp.text
+    return resp.json()["id"]
+
+
+def test_purpose_and_destination_are_imported_and_blank_stays_other(app_client, admin_cookies):
+    _acct(app_client, admin_cookies)
+    name = f"Chq Acct {_seq['n']}"
+    cash_name = f"Chq Cash {_seq['n']}"
+    cash_id = _cash_acct(app_client, admin_cookies, cash_name)
+    rows = [
+        _row(1, name, purpose="cash_withdrawal", destination_account=cash_name),
+        _row(2, name, purpose="Cash Withdrawal", destination_account=str(cash_id)),  # case, spaces and id are accepted
+        _row(3, name, purpose="vendor_payment"),
+        _row(4, name, purpose="general"),
+        _row(5, name),  # blank = other
+    ]
+    before = _counts()
+    report = _run(app_client, admin_cookies, rows, _files(1, 2, 3, 4, 5), commit=True)
+    assert report["rows_created"] == 5
+    got = [app_client.get(f"{BASE}/{r['created_id']}", cookies=admin_cookies).json() for r in report["rows"]]
+    assert [c["purpose_type"] for c in got] == ["cash_withdrawal", "cash_withdrawal", "vendor_payment", "other", "other"]
+    assert got[0]["destination_cash_account_id"] == cash_id and got[1]["destination_cash_account_id"] == cash_id
+    assert got[2]["destination_cash_account_id"] is None
+    assert all(c["status"] == "draft" and c["linked_transaction_id"] is None for c in got)
+    after = _counts()
+    assert after["finance_ledger_transactions"] == before["finance_ledger_transactions"]  # still drafts: nothing posted
+
+
+def test_issuing_an_imported_cash_withdrawal_posts_both_legs(app_client, admin_cookies):
+    acc = _acct(app_client, admin_cookies)
+    name = f"Chq Acct {_seq['n']}"
+    cash_name = f"Chq Cash {_seq['n']}"
+    cash_id = _cash_acct(app_client, admin_cookies, cash_name)
+    report = _run(app_client, admin_cookies, [_row(1, name, purpose="cash_withdrawal", destination_account=cash_name)], _files(1), commit=True)
+    cid = report["rows"][0]["created_id"]
+    assert app_client.patch(f"{BASE}/{cid}/status", json={"status": "issued"}, cookies=admin_cookies).status_code == 200
+    chq = app_client.get(f"{BASE}/{cid}", cookies=admin_cookies).json()
+    assert chq["linked_transaction_id"] and chq["linked_cash_transaction_id"]
+    assert _balance(app_client, admin_cookies, cash_id) == 1500.0
+
+
+def test_purpose_errors(app_client, admin_cookies):
+    _acct(app_client, admin_cookies)
+    name = f"Chq Acct {_seq['n']}"
+    cash_name = f"Chq Cash {_seq['n']}"
+    _cash_acct(app_client, admin_cookies, cash_name)
+    usd_cash = _cash_acct(app_client, admin_cookies, f"Chq Cash USD {_seq['n']}", currency="USD")
+    rows = [
+        _row(1, name, purpose="petty"),
+        _row(2, name, purpose="cash_withdrawal"),
+        _row(3, name, purpose="cash_withdrawal", destination_account="No Such Cash"),
+        _row(4, name, purpose="cash_withdrawal", destination_account=name),  # a bank account
+        _row(5, name, purpose="cash_withdrawal", destination_account=str(usd_cash)),  # wrong currency
+        _row(6, name, purpose="other", destination_account=cash_name),
+        _row(7, name, purpose="vendor_payment", destination_account=cash_name),
+    ]
+    before = _counts()
+    report = _run(app_client, admin_cookies, rows, _files(1, 2, 3, 4, 5, 6, 7), commit=True)
+    assert report["rows_created"] == 0
+    codes = [_codes(r) for r in report["rows"]]
+    assert "purpose_invalid" in codes[0]
+    assert "destination_missing" in codes[1]
+    assert "destination_unknown" in codes[2]
+    assert "destination_not_cash" in codes[3]
+    assert "destination_currency_mismatch" in codes[4]
+    assert "destination_not_allowed" in codes[5] and "destination_not_allowed" in codes[6]
+    assert _counts() == before
