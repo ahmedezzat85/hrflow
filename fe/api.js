@@ -73,6 +73,29 @@ function getLastCorrelationId() {
   return _lastCorrelationId;
 }
 
+// Mock-mode claim payment (?mock=admin, D-053): mirrors the server rules that matter to the page, on the in-memory claims.
+// The last request bodies are kept in window._mockClaimPaymentCalls so a UI test can check what the page sent.
+function _mockClaimPayment(kind, claimId, body) {
+  window._mockClaimPaymentCalls = window._mockClaimPaymentCalls || [];
+  window._mockClaimPaymentCalls.push({ kind, claimId, body });
+  const fail = (code, message) => { const e = new Error(message); e.detail = { code, message }; return Promise.reject(e); };
+  const claim = insuranceClaims.find((c) => String(c.id) === String(claimId));
+  if (!claim) return fail("claim_not_found", "Claim not found");
+  const state = claim.payment_status || "unpaid";
+  if (kind === "pay") {
+    if (claim.status !== "Approved") return fail("claim_not_approved", "Only an approved claim can be paid.");
+    if (state === "paid") return fail("claim_already_paid", "This claim is already paid.");
+    if (String(claim.date || "").slice(0, 10) < "2026-01-01") return fail("claim_not_eligible", "Claims dated before 2026-01-01 are not paid through HRFlow.");
+    window._mockClaimLedgerSeq = (window._mockClaimLedgerSeq || 9000) + 1;
+    Object.assign(claim, { payment_status: "paid", paid_at: new Date().toISOString(), ledger_transaction_id: window._mockClaimLedgerSeq });
+  } else {
+    if (state !== "paid") return fail("claim_not_paid", "Only a paid claim can have its payment reversed.");
+    if (!String(body.reason || "").trim()) return fail("reason_required", "A reason is required to reverse a claim payment.");
+    claim.payment_status = "reversed";
+  }
+  return Promise.resolve({ id: claim.id, payment_status: claim.payment_status, ledger_transaction_id: claim.ledger_transaction_id });
+}
+
 // Mock-mode personal details (?mock=admin), seeded from the mock employee list.
 function _mockPersonalRecord(empId) {
   window._mockPersonalStore = window._mockPersonalStore || {};
@@ -516,6 +539,15 @@ const Api = {
   getInsuranceClaims() { return apiRequest("GET", "/api/insurance/claims"); },
   submitInsuranceClaim(payload) { return apiRequest("POST", "/api/insurance/claims", payload); },
   actionInsuranceClaim(claimId, status) { return apiRequest("POST", `/api/insurance/claims/${claimId}/action`, { status }); },
+  // Claim payment (D-053): needs hr.insurance.write AND finance.account.write. payload: {account_id, payment_type_id, payment_date?, reference?}
+  payInsuranceClaim(claimId, payload) {
+    if (typeof _isMock === "function" && _isMock()) return _mockClaimPayment("pay", claimId, payload);
+    return apiRequest("POST", `/api/insurance/claims/${claimId}/pay`, payload);
+  },
+  reverseInsuranceClaimPayment(claimId, reason) {
+    if (typeof _isMock === "function" && _isMock()) return _mockClaimPayment("reverse", claimId, { reason });
+    return apiRequest("POST", `/api/insurance/claims/${claimId}/payment/reverse`, { reason });
+  },
   getSalaryHistory(employeeId = null) {
     const q = employeeId ? `?employee_id=${employeeId}` : "";
     return apiRequest("GET", `/api/salary/history${q}`);

@@ -1,0 +1,54 @@
+  <div class="modal-overlay fv fv-dialog fv-dialog--w480 fv-area-teal" id="claimPaymentModal">
+    <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="claimPaymentModalTitle">
+      <div class="modal-head">
+        <span class="modal-head-icon"><i class="fa-solid fa-money-bill-transfer"></i></span>
+        <div class="modal-head-text">
+          <h3 id="claimPaymentModalTitle">Record payment</h3>
+          <p id="claimPaymentModalSubtitle">Pay this approved claim from a company account</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('claimPaymentModal')" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-section">
+          <div class="form-grid">
+            <div class="form-field full">
+              <label for="claimPayEmployee">Employee</label>
+              <input id="claimPayEmployee" readonly>
+            </div>
+            <div class="form-field">
+              <label for="claimPayAmount">Amount</label>
+              <div class="input-group">
+                <span class="input-addon">EGP</span>
+                <input id="claimPayAmount" readonly style="text-align: right;">
+              </div>
+            </div>
+            <div class="form-field">
+              <label for="claimPayCategory">Category</label>
+              <input id="claimPayCategory" readonly value="Medical Insurance">
+            </div>
+            <div class="form-field full">
+              <label for="claimPayAccount">Pay from account</label>
+              <select id="claimPayAccount" onchange="onClaimPayAccountChanged()"></select>
+              <small id="claimPayAccountHint" style="color:var(--ink-muted);"></small>
+            </div>
+            <div class="form-field">
+              <label for="claimPayDate">Payment date</label>
+              <input type="date" id="claimPayDate">
+            </div>
+            <div class="form-field">
+              <label for="claimPayType">Payment type</label>
+              <select id="claimPayType"></select>
+            </div>
+            <div class="form-field full">
+              <label for="claimPayReference">Reference, optional</label>
+              <input id="claimPayReference" maxlength="255" placeholder="Transfer or receipt number">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" id="claimPaymentCancelBtn" onclick="closeModal('claimPaymentModal')">Cancel</button>
+        <button class="btn btn-fill" id="claimPaymentSaveBtn" onclick="saveClaimPayment(event)">Record payment</button>
+      </div>
+    </div>
+  </div>
