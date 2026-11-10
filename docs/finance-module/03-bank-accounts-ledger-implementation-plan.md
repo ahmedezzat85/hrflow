@@ -93,7 +93,11 @@ month-siloed) as the single source of truth for balances.
   `cheque_number` added in Phase 5), `fx_rate` (nullable — the rate applied
   that day, matching the spreadsheet's per-row `Rate` column), `source`
   (`manual` | `invoice_payment` | `bill_payment` | `transfer` | `cheque` |
-  `subscription_charge` | `statement_import`), `linked_invoice_id`,
+  `subscription_charge` | `statement_import`; later additions include `insurance_claim` and
+  `insurance_claim_reversal` (D-053): a claim payment posts one `insurance_claim` money-out row in
+  category Medical Insurance, a reversal adds an opposite `insurance_claim_reversal` row and keeps the
+  original; `source` is a plain string with no check constraint, and `cash_basis.py` counts the
+  reversal as negative spend), `linked_invoice_id`,
   `linked_bill_id`, `running_balance`, `created_at`, `created_by`.
 - Balance-recomputation service: given an account and a date, balance =
   opening_balance + signed sum of transactions up to that date. Store
