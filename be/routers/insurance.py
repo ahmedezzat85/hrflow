@@ -2,14 +2,17 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
 
 from auth import get_current_user
 from core.permissions import require_permission
 from deps import resolve_target_employee, audit_log, permission_scope, Scope
 from models import (
     InsuranceCategoryCreate, InsuranceCategoryUpdate,
-    InsuranceClaimCreate, InsuranceClaimAction,
+    InsuranceClaimCreate, InsuranceClaimAction, InsuranceClaimPay, InsuranceClaimPaymentReverse,
 )
+from db import get_db
+from services import insurance_claim_payment as claim_payment
 from repositories.interfaces import InsuranceRepository, EmployeeRepository, AuditRepository
 from repositories.deps import get_insurance_repo, get_employee_repo, get_audit_repo
 from services.insurance_consumption import compute_consumption
@@ -88,7 +91,11 @@ def get_insurance_claims(
     """Employee ownership is resolved by permission_scope
     before this route executes."""
     scoped_employee_id = None if scope.is_all else scope.employee_id
-    return insurance_repo.list_claims(scoped_employee_id=scoped_employee_id)
+    claims = insurance_repo.list_claims(scoped_employee_id=scoped_employee_id)
+    if not scope.is_all:
+        for claim in claims:
+            claim["ledger_transaction_id"] = None  # a finance record id is not shown to the employee
+    return claims
 
 
 @router.post("/claims", status_code=201)
@@ -161,3 +168,55 @@ def action_insurance_claim(
 
     audit_log(audit_repo, "insurance_claim.action", current_user.get("email"), "insurance_claim", claim_id, f"status={payload.status}")
     return {"message": f"Claim {payload.status.lower()}"}
+
+
+# D-053 (proposed). PROPOSED DEFAULT (Q-025, owner to confirm): paying or reversing needs BOTH the HR insurance write key and the
+# Finance key that posts a manual transaction (finance.account.write); two stacked guards express "both". Neither alone is enough.
+def _payment_error(exc: claim_payment.InsuranceClaimPaymentError) -> HTTPException:
+    return HTTPException(status_code=exc.status_code, detail=exc.detail())
+
+
+@router.post("/claims/{claim_id}/pay")
+def pay_insurance_claim(
+    claim_id: int,
+    payload: InsuranceClaimPay,
+    current_user: dict = Depends(require_permission("hr.insurance.write")),
+    finance_user: dict = Depends(require_permission("finance.account.write")),
+    db: Session = Depends(get_db),
+    audit_repo: AuditRepository = Depends(get_audit_repo),
+):
+    try:
+        result = claim_payment.pay_claim(
+            db, claim_id,
+            account_id=payload.account_id,
+            payment_date=payload.payment_date,
+            payment_type_id=payload.payment_type_id,
+            reference=payload.reference,
+            user_id=current_user.get("id"),
+            user_email=current_user.get("email"),
+        )
+    except claim_payment.InsuranceClaimPaymentError as exc:
+        raise _payment_error(exc)
+    audit_log(audit_repo, "insurance_claim.pay", current_user.get("email"), "insurance_claim", claim_id,
+              f"account={payload.account_id} ledger={result['ledger_transaction_id']}")
+    return result
+
+
+@router.post("/claims/{claim_id}/payment/reverse")
+def reverse_insurance_claim_payment(
+    claim_id: int,
+    payload: InsuranceClaimPaymentReverse,
+    current_user: dict = Depends(require_permission("hr.insurance.write")),
+    finance_user: dict = Depends(require_permission("finance.account.write")),
+    db: Session = Depends(get_db),
+    audit_repo: AuditRepository = Depends(get_audit_repo),
+):
+    try:
+        result = claim_payment.reverse_claim_payment(
+            db, claim_id, reason=payload.reason, user_email=current_user.get("email"),
+        )
+    except claim_payment.InsuranceClaimPaymentError as exc:
+        raise _payment_error(exc)
+    audit_log(audit_repo, "insurance_claim.payment_reversed", current_user.get("email"), "insurance_claim", claim_id,
+              f"reversal={result['payment_reversal_transaction_id']} reason={payload.reason}")
+    return result
