@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "test": "playwright test",
     "test:ui": "playwright test --ui",
-    "lint:finance-tokens": "node scripts/lint-finance-tokens.mjs"
+    "lint:finance-tokens": "node scripts/lint-finance-tokens.mjs",
+    "check:finance-api-bundle": "node scripts/check-finance-api-bundle.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
