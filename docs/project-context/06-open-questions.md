@@ -32,7 +32,7 @@ This register tracks unresolved product, accounting, and technical architecture 
 | Q-006 | Restoring Archived Users | Open |
 | Q-022 | Historical Payroll Import Line Typing and Adjustment Amount Fields | Open (narrowed October 25, 2026: 2023-2024 payroll history deferred by D-040) |
 | Q-024 | May a Payment Exceed an Account's Balance (Overdraft)? | Open (raised October 26, 2026; decision needed only if an overdraft or credit-card account exists) |
-| Q-025 | Insurance Claim Payment: Defaults Awaiting Owner Confirmation | Open (raised November 10, 2026 with D-053; defaults are built and marked in code) |
+| Q-025 | Insurance Claim Payment: Defaults Awaiting Owner Confirmation | Resolved November 10, 2026 by D-053: the owner accepted the built defaults |
 
 Everything else is resolved and kept in the archive section below.
 
@@ -166,7 +166,7 @@ Everything else is resolved and kept in the archive section below.
   - `docs/finance-module/fiscal-year-opening-balances-plan.md`
 
 ### Q-025 — Insurance Claim Payment: Defaults Awaiting Owner Confirmation
-- **Status:** Open. Raised November 10, 2026 with D-053 (proposed). Each item below is built as a default and marked "PROPOSED DEFAULT (Q-025)" in code.
+- **Status:** Resolved November 10, 2026 (D-053 accepted; the owner agreed with all defaults a to e). Raised the same day. Each item below is built as a default and marked "PROPOSED DEFAULT (Q-025)" in code.
 - **Decider:** Owner
 - **Question:**
   Confirm or change these defaults for paying an approved insurance claim from a company account.

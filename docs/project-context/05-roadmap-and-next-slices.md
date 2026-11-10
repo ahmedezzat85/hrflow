@@ -359,7 +359,7 @@ Decision D-052. Plan: `docs/finance-module/import-paid-bills-and-transfers-plan.
 | P5 | Import screen, templates, mock handlers, Playwright | S | P1-P3 |
 | Later | Finance staging tools in `mcp_server/` (documents uploaded to the app locally, matched by `source_file`) | M | P1-P3 |
 
-## 3P. Insurance Claim Payment Link (D-053 proposed November 10, 2026; built, awaiting review)
+## 3P. Insurance Claim Payment Link (D-053 accepted November 10, 2026; built, awaiting review)
 
 Decision D-053 (proposed), open question Q-025. Branch `feature/insurance-claim-payment-link`. Risk class high (posts ledger rows, migration, permissions). One new migration (`0075_claim_payment`), no new permission key.
 
