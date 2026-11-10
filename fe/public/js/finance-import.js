@@ -76,7 +76,7 @@ function _financeImportKind() {
 function _financeImportRefreshButtons() {
   const { manifest, archive } = _financeImportFiles();
   const dry = document.getElementById("financeImportDryRunBtn");
-  if (dry) dry.disabled = FinanceImportState.busy || !(manifest && archive);
+  if (dry) dry.disabled = FinanceImportState.busy || !manifest;
   const commit = document.getElementById("financeImportCommitBtn");
   const r = FinanceImportState.report;
   const importable = r && r.dry_run && !(r.file_errors || []).length ? (r.rows_ok || 0) + (r.rows_warning || 0) : 0;
@@ -155,7 +155,7 @@ function downloadFinanceImportReport() {
 
 async function runFinanceImportDryRun() {
   const { manifest, archive } = _financeImportFiles();
-  if (!manifest || !archive || FinanceImportState.busy) return;
+  if (!manifest || FinanceImportState.busy) return;
   await _financeImportRun(false, manifest, archive);
 }
 
@@ -186,7 +186,7 @@ async function _financeImportRun(commit, manifest, archive, confirmPosting = fal
 async function commitFinanceImport() {
   const r = FinanceImportState.report;
   const { manifest, archive } = _financeImportFiles();
-  if (!r || !r.dry_run || !manifest || !archive || FinanceImportState.busy) return;
+  if (!r || !r.dry_run || !manifest || FinanceImportState.busy) return;
   const n = (r.rows_ok || 0) + (r.rows_warning || 0);
   const posting = r.rows_posting || 0;
   const answer = await FinanceCommand.confirmAction({

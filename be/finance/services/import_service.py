@@ -115,7 +115,7 @@ class ImportService:
         self,
         kind: str,
         manifest_file: UploadFile,
-        archive_file: UploadFile,
+        archive_file: Optional[UploadFile],
         actor: ImportActor,
         commit: bool,
         confirm_posting: bool = False,
@@ -123,8 +123,14 @@ class ImportService:
         if kind not in cfg.KINDS:
             raise HTTPException(status_code=404, detail=f"Unknown import kind '{kind}'")
         manifest_bytes = await self._read_bounded(manifest_file, cfg.MAX_MANIFEST_BYTES, "manifest")
-        archive_bytes = await self._read_bounded(archive_file, cfg.MAX_REQUEST_BYTES, "ZIP file")
-        if len(manifest_bytes) + len(archive_bytes) > cfg.MAX_REQUEST_BYTES:
+        # The ZIP is optional: old records often have no document
+        archive_bytes = (
+            await self._read_bounded(archive_file, cfg.MAX_REQUEST_BYTES, "ZIP file") if archive_file is not None else None
+        )
+        if archive_bytes is not None and not archive_bytes and not (archive_file.filename or ""):
+            archive_file, archive_bytes = None, None
+        archive_bytes_len = len(archive_bytes or b"")
+        if len(manifest_bytes) + archive_bytes_len > cfg.MAX_REQUEST_BYTES:
             raise HTTPException(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                 detail=f"The upload is larger than {cfg.MAX_REQUEST_BYTES // (1024 * 1024)} MB. {cfg.LIMIT_HELP}",
@@ -133,7 +139,7 @@ class ImportService:
             kind=kind,
             manifest_name=manifest_file.filename or "manifest",
             manifest_bytes=manifest_bytes,
-            archive_name=archive_file.filename or "archive.zip",
+            archive_name=(archive_file.filename or "archive.zip") if archive_file is not None else "",
             archive_bytes=archive_bytes,
             actor=actor,
             commit=commit,
@@ -149,7 +155,7 @@ class ImportService:
         manifest_name: str,
         manifest_bytes: bytes,
         archive_name: str,
-        archive_bytes: bytes,
+        archive_bytes: Optional[bytes],
         actor: ImportActor,
         commit: bool,
         confirm_posting: bool = False,
@@ -161,11 +167,14 @@ class ImportService:
         except ManifestError as e:
             report.file_errors.append(str(e))
             return report
-        try:
-            archive = open_archive(archive_bytes)
-        except ArchiveRejected as e:
-            report.file_errors.append(str(e))
-            return report
+        if archive_bytes is None:
+            archive = Archive(entries={}, ambiguous=[])
+        else:
+            try:
+                archive = open_archive(archive_bytes)
+            except ArchiveRejected as e:
+                report.file_errors.append(str(e))
+                return report
         report.file_warnings.extend(manifest.warnings)
         for base in archive.ambiguous:
             report.file_warnings.append(
@@ -299,7 +308,11 @@ class ImportService:
                         referenced.add(key)
                     if entry is None:
                         result.findings.append(
-                            finding(LEVEL_ERROR, "source_file_missing", f"'{source}' was not found in the ZIP")
+                            finding(
+                                LEVEL_ERROR,
+                                "source_file_missing",
+                                f"'{source}' was not found in the ZIP" if archive.entries else f"'{source}' needs a ZIP, but none was uploaded",
+                            )
                         )
                     elif entry.problem:
                         result.findings.append(finding(LEVEL_ERROR, "source_file_invalid", f"'{source}': {entry.problem}"))

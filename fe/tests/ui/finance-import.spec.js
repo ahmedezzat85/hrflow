@@ -27,7 +27,7 @@ async function chooseFiles(page, manifestBuffer, name = 'manifest.csv') {
 }
 
 test.describe('Finance Import screen (I2)', () => {
-  test('shows the ledger notice, and the dry run needs both files', async ({ page }) => {
+  test('shows the ledger notice, and the dry run needs the manifest, the ZIP is optional', async ({ page }) => {
     await openImport(page);
     const notice = page.locator('#financeImportNotice');
     await expect(notice).toContainText('stay Drafts');
@@ -35,7 +35,7 @@ test.describe('Finance Import screen (I2)', () => {
     await expect(notice).toContainText('counted twice');
     await expect(page.locator('#financeImportDryRunBtn')).toBeDisabled();
     await page.setInputFiles('#financeImportManifest', { name: 'm.csv', mimeType: 'text/csv', buffer: csv(GOOD) });
-    await expect(page.locator('#financeImportDryRunBtn')).toBeDisabled();
+    await expect(page.locator('#financeImportDryRunBtn')).toBeEnabled();
     await page.setInputFiles('#financeImportArchive', ZIP);
     await expect(page.locator('#financeImportDryRunBtn')).toBeEnabled();
     await expect(page.locator('#financeImportLimits')).toContainText('50 documents');
