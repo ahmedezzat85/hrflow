@@ -779,7 +779,8 @@
         journal_preview: journal,
       };
     }
-    return apiRequest("POST", `/api/finance/accounts/${accountId}/transactions/preview`, payload);
+    // The request schema also requires account_id in the body (the URL id is the one the server uses).
+    return apiRequest("POST", `/api/finance/accounts/${accountId}/transactions/preview`, { ...payload, account_id: parseInt(accountId, 10) });
   },
 
   async getTransaction(id) {

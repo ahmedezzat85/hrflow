@@ -2272,7 +2272,9 @@ function updateTransactionPreview() {
         }
       }
     } catch (err) {
-      if (plainDescEl) plainDescEl.textContent = err.message || "Unable to compute preview.";
+      // A failed preview never blocks saving; show plain text, not raw validation JSON.
+      const msg = err && err.message ? String(err.message) : "";
+      if (plainDescEl) plainDescEl.textContent = msg && !/^\s*[\[{]/.test(msg) ? msg : "Preview unavailable. You can still save the transaction.";
     }
   }, 150);
 }
