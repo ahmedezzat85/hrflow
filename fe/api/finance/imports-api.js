@@ -70,7 +70,7 @@
       batch_id: null, rows_total: 0, rows_ok: 0, rows_warning: 0, rows_error: 0, rows_duplicate: 0, rows_posting: 0, rows_created: 0, rows_failed: 0,
       file_errors: [], file_warnings: [], unreferenced_files: [], rows: [],
     };
-    if (!/\.zip$/i.test((archiveFile && archiveFile.name) || "")) { report.file_errors.push("The archive is not a ZIP file."); return report; }
+    if (archiveFile && !/\.zip$/i.test(archiveFile.name || "")) { report.file_errors.push("The archive is not a ZIP file."); return report; }
     const table = _parseCsv(await manifestFile.text()).filter((r) => r.some((c) => String(c).trim()));
     if (!table.length) { report.file_errors.push("The manifest has no header row."); return report; }
     const headers = table[0].map((h) => h.trim());
@@ -272,7 +272,7 @@
   const _post = (kind, suffix, manifestFile, archiveFile, confirmPosting = false) => {
     const formData = new FormData();
     formData.append("manifest", manifestFile);
-    formData.append("archive", archiveFile);
+    if (archiveFile) formData.append("archive", archiveFile); // optional: old records often have no document
     if (confirmPosting) formData.append("confirm_posting", "true");
     return apiRequest("POST", `/api/finance/imports/${encodeURIComponent(kind)}${suffix}`, formData);
   };

@@ -30,6 +30,10 @@ jobs:
         working-directory: fe
         run: npm ci
 
+      - name: Check finance-api bundle matches its sources
+        working-directory: fe
+        run: npm run check:finance-api-bundle
+
       - name: Build
         working-directory: fe
         run: npm run build
