@@ -540,13 +540,8 @@ class BillsImporter:
             data["attachment_name"] = _clean_display_name(ctx.entry.base_name)
             data["attachment_url"] = ""
 
-        provenance = f"Imported (batch {ctx.batch_id}, row {ctx.row.get('row_ref')}"
-        if ctx.row.get("source_file"):
-            provenance += f", file {ctx.row.get('source_file')}"
-        provenance += ")."
-        if ctx.row.get("review_flags"):
-            provenance += f" Review flags: {ctx.row.get('review_flags')}."
-        data["notes"] = provenance + (f"\n{ctx.row.get('notes')}" if ctx.row.get("notes") else "")
+        data["notes"] = self._provenance(ctx)
+        data["legal_entity"] = cfg.DEFAULT_LEGAL_ENTITY
 
         try:
             bill = self.service.repo.create(data, lines)
@@ -577,18 +572,18 @@ class BillsImporter:
     # Commit: already-paid bills and subscription charges (D-052)
     # ------------------------------------------------------------------
     @staticmethod
-    def _provenance(ctx: RowContext, extra: str = "") -> str:
-        text = f"Imported (batch {ctx.batch_id}, row {ctx.row.get('row_ref')}"
-        if ctx.row.get("source_file"):
-            text += f", file {ctx.row.get('source_file')}"
-        text += ")."
+    def _provenance(ctx: RowContext, extra: str = "") -> Optional[str]:
+        """The note an imported bill carries: only what the manifest gave (review flags, notes) plus the vendor's own
+        invoice number when there is one. None when the row gave nothing; which batch and row created the bill stays
+        in its activity entry."""
+        parts = []
         if ctx.row.get("review_flags"):
-            text += f" Review flags: {ctx.row.get('review_flags')}."
+            parts.append(f"Review flags: {ctx.row.get('review_flags')}.")
         if extra:
-            text += f" {extra}"
+            parts.append(extra)
         if ctx.row.get("notes"):
-            text += f"\n{ctx.row.get('notes')}"
-        return text
+            parts.append(str(ctx.row.get("notes")))
+        return "\n".join(parts) or None
 
     def _create_paid(self, ctx: RowContext, data: dict, pay: dict, subscription, vendor_bill_number, total) -> int:
         """Create the bill already paid through the bills service (or the subscription settlement), so the payment
@@ -615,6 +610,7 @@ class BillsImporter:
                     due_date=data["due_date"],
                     currency=data["currency"],
                     notes=notes,
+                    legal_entity=cfg.DEFAULT_LEGAL_ENTITY,
                     capture_source=CAPTURE_SOURCE,
                     extraction_confidence=data["extraction_confidence"],
                     file_fingerprint=fingerprint,
@@ -645,6 +641,7 @@ class BillsImporter:
             bill.is_reviewed = False
             bill.extraction_confidence = data["extraction_confidence"]
             bill.notes = notes
+            bill.legal_entity = cfg.DEFAULT_LEGAL_ENTITY
             if ctx.entry is not None:
                 content = ctx.entry.data
                 ext = os.path.splitext(ctx.entry.base_name)[1].lower().lstrip(".")
@@ -704,7 +701,7 @@ class BillsImporter:
             self._drop_empty_charge(charge_id, created_here)
             raise
         settled = self.db.query(SubscriptionChargeDB).filter(SubscriptionChargeDB.id == charge_id).first()
-        settled.note = self._provenance(ctx)
+        settled.note = self._provenance(ctx) or ""
         self.db.commit()
         return settled.linked_bill_id, charge_id, created_here
 

@@ -16,6 +16,9 @@ KIND_PERMISSIONS = {
     "transfers": "finance.account.write",  # the same key the transfer route requires
 }
 
+# Imported bills belong to this legal entity (the bill form defaults to Voyance Health Inc).
+DEFAULT_LEGAL_ENTITY = "Voyance Egypt LLC"
+
 # Warning code that marks a row which will post to the ledger on commit (paid bills, transfers). A commit that
 # contains such rows must carry an explicit confirmation (D-052).
 POSTING_CODE = "will_post_ledger"

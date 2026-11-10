@@ -89,7 +89,8 @@ def test_commit_creates_unreviewed_drafts_with_the_pdf_attached(app_client, admi
     assert bill["bill_number"] == "IMP-002" and bill["issue_date"] == "2026-04-10" and bill["currency"] == "USD"
     assert bill["total"] == 250.5 and bill["lines"][0]["description"] == "Hosting" and bill["amount_paid"] == 0.0
     assert bill["attachment_name"] == "bill-0002.pdf" and bill["file_fingerprint"]
-    assert "batch" in bill["notes"] and "B-0002" in bill["notes"]
+    assert not bill["notes"]  # nothing in the manifest notes column: the note stays empty
+    assert bill["legal_entity"] == "Voyance Egypt LLC"
     assert bill["missing_fields"] == "category"  # blank category is listed, not invented
 
     # the document downloads through the normal authorised endpoint

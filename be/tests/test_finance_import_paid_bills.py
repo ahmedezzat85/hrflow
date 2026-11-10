@@ -207,6 +207,7 @@ def test_subscription_row_records_a_settled_charge_with_the_subscription_bill_nu
     assert bill["bill_number"] == expected_number and " " not in expected_number
     assert bill["status"] == "paid" and bill["capture_source"] == "import" and bill["is_reviewed"] is False
     assert "VENDOR-INV-77" in (bill["notes"] or "")
+    assert bill["legal_entity"] == "Voyance Egypt LLC"
 
     charges = app_client.get(f"/api/finance/subscriptions/charges?subscription_id={sub['id']}", cookies=admin_cookies).json()
     charge = next(c for c in charges if c["billing_date"] == "2023-03-05")
