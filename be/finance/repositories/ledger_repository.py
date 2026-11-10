@@ -90,8 +90,11 @@ class LedgerRepository:
         data: dict,
         created_by: Optional[str] = None,
         payment=None,
+        commit: bool = True,
     ) -> LedgerTransactionDB:
-        """`payment`: the bill/invoice payment this row records (settlement already created it); it is linked to the row."""
+        """`payment`: the bill/invoice payment this row records (settlement already created it); it is linked to the row.
+        `commit=False` leaves the transaction open for a caller that must commit the row together with its own changes
+        (the insurance claim payment, D-053)."""
         bank_account = (
             self.db.query(FinanceBankAccountDB)
             .filter(FinanceBankAccountDB.id == account_id)
@@ -176,9 +179,9 @@ class LedgerRepository:
                 )
                 self.db.add(cash_inflow)
                 self.db.flush()
-                self.recalculate_account_running_balances(dest_cash_id)
+                self.recalculate_account_running_balances(dest_cash_id, commit=commit)
 
-        self.recalculate_account_running_balances(account_id)
+        self.recalculate_account_running_balances(account_id, commit=commit)
         return self.get_by_id(tx.id)
 
     def update_transaction(self, tx_id: int, data: dict) -> LedgerTransactionDB:

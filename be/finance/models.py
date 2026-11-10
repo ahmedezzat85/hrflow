@@ -416,7 +416,7 @@ class LedgerTransactionDB(Base):
     cheque_number = Column(String(50), nullable=True, index=True)
     fx_rate = Column(Rate, nullable=True)
     source = Column(String(50), nullable=False, index=True)
-    # sources: manual | invoice_payment | bill_payment | transfer | cheque | subscription_charge | statement_import | statutory_remittance
+    # sources: manual | invoice_payment | bill_payment | transfer | cheque | subscription_charge | statement_import | statutory_remittance | insurance_claim | insurance_claim_reversal (plain string, no check constraint)
     linked_invoice_id = Column(Integer, ForeignKey("finance_sales_invoices.id", ondelete="SET NULL"), nullable=True, index=True)
     linked_bill_id = Column(Integer, ForeignKey("finance_bills.id", ondelete="SET NULL"), nullable=True, index=True)
     linked_transfer_id = Column(Integer, ForeignKey("finance_account_transfers.id", ondelete="SET NULL"), nullable=True, index=True)

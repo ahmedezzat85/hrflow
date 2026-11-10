@@ -211,7 +211,11 @@ class LedgerService:
         account_id: int,
         payload: LedgerTransactionCreate,
         user_email: Optional[str] = None,
+        source: str = "manual",
+        commit: bool = True,
     ) -> LedgerTransactionResponse:
+        """`source` and `commit=False` exist for the insurance claim payment (D-053), which posts through this same
+        validation path under its own source and commits together with the claim row. Every other caller keeps the defaults."""
         account = None
         if self.accounts_repo:
             account = self.accounts_repo.get_by_id(account_id)
@@ -275,7 +279,7 @@ class LedgerService:
                 )
 
         data = payload.model_dump() if hasattr(payload, "model_dump") else payload.dict()
-        data["source"] = "manual"
+        data["source"] = source
 
         # Resolve category string fallback if category_id not provided
         if not data.get("category_id") and payload.category and self.categories_repo:
@@ -372,7 +376,7 @@ class LedgerService:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
         try:
-            tx = self.repo.create_transaction(account_id, data, created_by=user_email, payment=payment)
+            tx = self.repo.create_transaction(account_id, data, created_by=user_email, payment=payment, commit=commit)
             return self.to_response(tx)
         except ValueError as e:
             raise HTTPException(
