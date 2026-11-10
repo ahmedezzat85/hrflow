@@ -37,6 +37,21 @@ test.describe('FUX-505: Global Quick-Add Transaction', () => {
     await expect(modal).not.toBeVisible();
   });
 
+  test('a failed impact preview shows plain text, never raw validation JSON', async ({ page }) => {
+    await openAdminPage(page, 'a-finance-invoices');
+    await page.locator('#adminQuickAddTxBtn').click();
+    await expect(page.locator('#financeTransactionModal')).toBeVisible();
+    await page.evaluate(() => {
+      FinanceApi.previewTransaction = async () => { throw new Error('[{"type":"missing","loc":["body","account_id"],"msg":"Field required"}]'); };
+    });
+    await page.locator('#fFinanceTxAccountSelect').selectOption({ index: 1 });
+    await page.locator('#fFinanceTxAmount').fill('120');
+    const desc = page.locator('#fFinanceTxPlainDesc');
+    await expect(desc).toContainText('Preview unavailable');
+    await expect(desc).not.toContainText('loc');
+    await page.locator('#financeTransactionModal .modal-close').click();
+  });
+
   test('Command palette and Shift+N keyboard shortcut open global quick-add modal', async ({ page }) => {
     // 1. Test Command Palette
     await page.keyboard.press('Control+k');
