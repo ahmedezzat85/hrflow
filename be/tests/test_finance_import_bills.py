@@ -177,6 +177,17 @@ def test_row_without_a_file_needs_a_known_vendor(app_client, admin_cookies):
     assert bill["attachment_name"] is None
 
 
+def test_import_works_with_no_zip_at_all(app_client, admin_cookies):
+    make_vendor(app_client, admin_cookies, "Import Vendor Co")
+    manifest = manifest_csv("bills", [_row(1, source_file=""), _row(2, source_file="bill-0002.pdf")])
+    report = post_import(app_client, admin_cookies, "bills", manifest, None, commit=True).json()
+    assert report["file_errors"] == []
+    assert report["rows"][0]["status"] == "ok" and report["rows"][0]["created_id"]
+    # a row that names a file still needs the ZIP, and says so
+    assert report["rows"][1]["status"] == "error"
+    assert "needs a ZIP" in report["rows"][1]["findings"][0]["message"]
+
+
 # ── Validation ──────────────────────────────────────────────────────────────
 def test_invalid_values_are_row_errors_and_one_bad_row_never_blocks_the_rest(app_client, admin_cookies):
     make_vendor(app_client, admin_cookies, "Import Vendor Co")

@@ -87,7 +87,7 @@ def get_import_limits(
 async def dry_run_import(
     kind: str,
     manifest: UploadFile = File(...),
-    archive: UploadFile = File(...),
+    archive: Optional[UploadFile] = File(None),
     current_user: dict = Depends(require_import_permission),
     access: AccessContext = Depends(get_access_context),
     service: ImportService = Depends(get_import_service),
@@ -100,7 +100,7 @@ async def dry_run_import(
 async def commit_import(
     kind: str,
     manifest: UploadFile = File(...),
-    archive: UploadFile = File(...),
+    archive: Optional[UploadFile] = File(None),
     confirm_posting: bool = Form(False),
     current_user: dict = Depends(require_import_permission),
     access: AccessContext = Depends(get_access_context),

@@ -83,11 +83,7 @@ def manifest_xlsx(kind: str, rows: List[dict], columns: Optional[List[str]] = No
 def post_import(client, cookies, kind: str, manifest: bytes, archive: bytes, commit: bool = False,
                 manifest_name: str = "manifest.csv"):
     url = f"/api/finance/imports/{kind}" + ("" if commit else "/dry-run")
-    return client.post(
-        url,
-        files={
-            "manifest": (manifest_name, io.BytesIO(manifest), "text/csv"),
-            "archive": ("package.zip", io.BytesIO(archive), "application/zip"),
-        },
-        cookies=cookies,
-    )
+    files = {"manifest": (manifest_name, io.BytesIO(manifest), "text/csv")}
+    if archive is not None:  # the ZIP is optional: old records often have no document
+        files["archive"] = ("package.zip", io.BytesIO(archive), "application/zip")
+    return client.post(url, files=files, cookies=cookies)
