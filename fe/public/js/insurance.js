@@ -153,6 +153,133 @@ function showReceiptPreview(claim){
   }
   openModal('documentPreviewModal');
 }
+// ---- Claim payment (D-053). The server decides everything; these only decide what to show. ----
+// Mirrors CLAIM_PAYMENT_START_DATE in be/services/insurance_claim_payment.py; the server refuses older claims either way.
+const CLAIM_PAYMENT_START_DATE = '2026-01-01';
+const CLAIM_CURRENCY = 'EGP';
+// Mirrors be/finance/services/claim_payment_service.py (bill payment types by account type, without Cheque).
+const CLAIM_PAYMENT_TYPE_CODES = { cash: ['CASH'], bank: ['OUTBOUND_TRANS', 'DEBIT_CARD'] };
+let _claimPayClaimId = null;
+let _claimPayAccounts = [];
+
+function claimPaymentStatus(c){ return c.payment_status || 'unpaid'; }
+function claimIsPayableDate(c){ return String(c.date || '').slice(0, 10) >= CLAIM_PAYMENT_START_DATE; }
+function canPayClaims(){
+  return typeof SessionInfo !== 'undefined' && SessionInfo.hasPermission('hr.insurance.write') && SessionInfo.hasPermission('finance.account.write');
+}
+function claimPaymentBadge(c){
+  if (c.status !== 'Approved' || !claimIsPayableDate(c)) return '';
+  const st = claimPaymentStatus(c);
+  if (st === 'paid') {
+    const day = c.paid_at ? String(c.paid_at).slice(0, 10) : '';
+    const when = day ? ' ' + escapeHtml(fmtDateShort(day) || day) : '';
+    return `<div><span class="badge-pill pill-success" data-claim-payment="paid"><span class="hv-dot hv-dot--success"></span>Paid${when}</span></div>`;
+  }
+  if (st === 'reversed') return '<div><span class="badge-pill pill-warning" data-claim-payment="reversed"><span class="hv-dot hv-dot--warning"></span>Payment reversed</span></div>';
+  return '<div><span class="badge-pill pill-neutral" data-claim-payment="unpaid"><span class="hv-dot hv-dot--muted"></span>Unpaid</span></div>';
+}
+function claimPaymentButtons(c){
+  if (c.status !== 'Approved' || !claimIsPayableDate(c)) return '';
+  const st = claimPaymentStatus(c);
+  let out = '';
+  if (st === 'paid') {
+    if (c.ledger_transaction_id && typeof SessionInfo !== 'undefined' && SessionInfo.hasPermission('finance.account.read')) {
+      out += `<button type="button" class="btn btn-sm" data-action="view-claim-ledger" data-id="${escapeHtml(c.id)}" onclick="viewClaimLedgerEntry('${escapeHtml(c.id)}')">View ledger entry</button>`;
+    }
+    if (canPayClaims()) {
+      out += `<button type="button" class="btn btn-sm" data-action="reverse-claim-payment" data-id="${escapeHtml(c.id)}" onclick="reverseClaimPayment('${escapeHtml(c.id)}')">Reverse payment</button>`;
+    }
+  } else if (canPayClaims()) {
+    out += `<button type="button" class="btn btn-sm btn-fill" data-action="record-claim-payment" data-id="${escapeHtml(c.id)}" onclick="openClaimPaymentModal('${escapeHtml(c.id)}')">Record payment</button>`;
+  }
+  return out;
+}
+function claimPayTypesForAccount(types, account){
+  const allowed = CLAIM_PAYMENT_TYPE_CODES[String((account && account.account_type) || 'bank').toLowerCase()] || [];
+  return (types || []).filter(t => t.is_active !== false && allowed.includes(t.code));
+}
+async function openClaimPaymentModal(claimId){
+  const claim = insuranceClaims.find(c => String(c.id) === String(claimId));
+  if (!claim) return;
+  _claimPayClaimId = claim.id;
+  document.getElementById('claimPayEmployee').value = claim.employee_name || '';
+  document.getElementById('claimPayAmount').value = Number(claim.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  document.getElementById('claimPayDate').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('claimPayReference').value = '';
+  const accSel = document.getElementById('claimPayAccount');
+  const hint = document.getElementById('claimPayAccountHint');
+  accSel.innerHTML = '';
+  document.getElementById('claimPayType').innerHTML = '';
+  hint.textContent = 'Loading accounts…';
+  openModal('claimPaymentModal');
+  try {
+    const accounts = await FinanceApi.getAccounts({ is_active: true });
+    _claimPayAccounts = (accounts || []).filter(a => a.is_active !== false && String(a.currency || '').toUpperCase() === CLAIM_CURRENCY);
+  } catch (err) {
+    _claimPayAccounts = [];
+    toast(err.message, 'fa-solid fa-triangle-exclamation');
+  }
+  accSel.innerHTML = _claimPayAccounts.map(a => `<option value="${escapeHtml(a.id)}">${escapeHtml(a.account_name)}</option>`).join('');
+  hint.textContent = _claimPayAccounts.length ? `Only ${CLAIM_CURRENCY} accounts can pay this claim.` : `There is no active ${CLAIM_CURRENCY} account to pay from.`;
+  await onClaimPayAccountChanged();
+}
+async function onClaimPayAccountChanged(){
+  const typeSel = document.getElementById('claimPayType');
+  const account = _claimPayAccounts.find(a => String(a.id) === String(document.getElementById('claimPayAccount').value));
+  if (!account) { typeSel.innerHTML = ''; return; }
+  let types = [];
+  try { types = await FinanceApi.getPaymentTypes({ usage: 'bill_payment', account_type: account.account_type }); }
+  catch (err) { toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+  typeSel.innerHTML = claimPayTypesForAccount(types, account).map(t => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>`).join('');
+}
+async function saveClaimPayment(evt){
+  const btn = (evt && evt.currentTarget) || document.getElementById('claimPaymentSaveBtn');
+  if (!FinanceForm.validateRequiredFields('claimPaymentModal', [
+    { id: 'claimPayAccount', message: `Choose a ${CLAIM_CURRENCY} account to pay from.` },
+    { id: 'claimPayType', message: 'Choose a payment type.' },
+    { id: 'claimPayDate', message: 'Enter the payment date.' },
+  ])) return;
+  setButtonLoading(btn, true, 'Recording…');
+  try {
+    await Api.payInsuranceClaim(_claimPayClaimId, {
+      account_id: Number(document.getElementById('claimPayAccount').value),
+      payment_type_id: Number(document.getElementById('claimPayType').value),
+      payment_date: document.getElementById('claimPayDate').value,
+      reference: document.getElementById('claimPayReference').value.trim(),
+    });
+    closeModal('claimPaymentModal');
+    toast('Payment recorded.');
+    await refreshClaimsAfterPayment();
+  } catch (err) { toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+  finally { setButtonLoading(btn, false); }
+}
+// Mock mode (?mock=) keeps the claims in memory, so it redraws instead of reloading from the server.
+async function refreshClaimsAfterPayment(){
+  if (typeof _isMock === 'function' && _isMock()) { renderInsuranceTable(); return; }
+  await loadAdminData();
+}
+async function reverseClaimPayment(claimId){
+  const ok = await FinanceCommand.confirmAction({
+    title: 'Reverse claim payment',
+    consequence: 'This adds a reversing entry to the ledger and returns the money to the account. The original entry stays on record, and the claim can be paid again.',
+    actionLabel: 'Reverse payment',
+    actionClass: 'btn btn-danger',
+    requireReason: true,
+  });
+  if (!ok.confirmed) return;
+  try { await Api.reverseInsuranceClaimPayment(claimId, ok.reason); toast('Payment reversed.'); await refreshClaimsAfterPayment(); }
+  catch (err) { toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+}
+async function viewClaimLedgerEntry(claimId){
+  const claim = insuranceClaims.find(c => String(c.id) === String(claimId));
+  if (!claim || !claim.ledger_transaction_id) return;
+  try {
+    const tx = await FinanceApi.getTransaction(claim.ledger_transaction_id);
+    if (window.AdminNav) AdminNav.go('a-finance-accounts');
+    if (typeof openAccountWorkspace === 'function') await openAccountWorkspace(tx.account_id, 'activity');
+  } catch (err) { toast(err.message, 'fa-solid fa-triangle-exclamation'); }
+}
+
 function renderInsuranceTable(){
   const body = document.getElementById('insuranceTableBody');
   if(!body) return;
@@ -163,15 +290,16 @@ function renderInsuranceTable(){
     const dateFormatted = fmtDateShort(c.date) || c.date;
     const providerText = (!c.provider || c.provider === '—' || c.provider === '-') ? '<span style="color:var(--ink-muted);">Not given</span>' : escapeHtml(c.provider);
     const receiptBtn = hasReceipt ? `<button type="button" class="icon-action" title="View receipt for ${escapeHtml(c.employee_name)}" data-action="view-claim-receipt" data-id="${escapeHtml(c.id)}" onclick="viewClaimReceipt('${escapeHtml(c.id)}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.5 12.6 20.9a5.5 5.5 0 0 1-7.8-7.8l8.5-8.5a3.7 3.7 0 0 1 5.2 5.2l-8.5 8.5a1.8 1.8 0 0 1-2.6-2.6l7.8-7.8"></path></svg></button>` : '';
+    const payBtns = claimPaymentButtons(c);
     const actionBtns = isPending
       ? `<button type="button" class="btn btn-sm btn-fill" onclick="actionClaim(${c.id},'Approved')">Approve</button><button type="button" class="icon-action text-danger" title="Reject claim from ${escapeHtml(c.employee_name)}" onclick="actionClaim(${c.id},'Rejected')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>${receiptBtn}`
-      : (receiptBtn || '<span style="color:var(--ink-muted);font-size:12px;">—</span>');
+      : ((payBtns + receiptBtn) || '<span style="color:var(--ink-muted);font-size:12px;">—</span>');
     return `<tr class="${rowClass}">
       <td data-label="Employee" class="tname"><div class="avatar">${initials(c.employee_name)}</div><span>${escapeHtml(c.employee_name)}</span></td>
       <td data-label="Category">${escapeHtml(c.category)}</td>
       <td data-label="Provider">${providerText}</td>
       <td data-label="Date" style="white-space:nowrap;">${dateFormatted}</td>
-      <td data-label="Status">${statusPill(c.status)}</td>
+      <td data-label="Status">${statusPill(c.status)}${claimPaymentBadge(c)}</td>
       <td data-label="Amount" class="hv-right hv-tabular hv-bold" style="color:var(--ink-strong);">${fmtMoney(c.amount)}</td>
       <td data-label="Actions" class="col-actions hv-right" style="white-space:nowrap;">${actionBtns}</td>
     </tr>`;

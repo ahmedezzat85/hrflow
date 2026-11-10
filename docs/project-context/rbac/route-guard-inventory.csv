@@ -31,6 +31,8 @@ routers/insurance.py,GET,/api/insurance/consumption,get_insurance_consumption,NO
 routers/insurance.py,GET,/api/insurance/claims,get_insurance_claims,NONE,hr.insurance.read (all) | self.claim.read (own),scope-by-permission
 routers/insurance.py,POST,/api/insurance/claims,submit_insurance_claim,get_current_user,hr.insurance.write (on behalf) | self.claim.write (own),scope-by-permission
 routers/insurance.py,POST,/api/insurance/claims/{claim_id}/action,action_insurance_claim,require_admin,hr.insurance.write,key-from-admin
+routers/insurance.py,POST,/api/insurance/claims/{claim_id}/pay,pay_insurance_claim,hr.insurance.write AND finance.account.write,hr.insurance.write AND finance.account.write (both required; proposed Q-025),new-route
+routers/insurance.py,POST,/api/insurance/claims/{claim_id}/payment/reverse,reverse_insurance_claim_payment,hr.insurance.write AND finance.account.write,hr.insurance.write AND finance.account.write (both required; proposed Q-025),new-route
 routers/requests.py,GET,/api/requests,get_requests,NONE,hr.request.read (all) | self.requests.read (own),scope-by-permission
 routers/requests.py,POST,/api/requests,create_request,get_current_user,hr.request.write (on behalf) | self.requests.write (own),scope-by-permission
 routers/requests.py,POST,/api/requests/{req_id}/action,action_request,require_admin,hr.request.write,key-from-admin

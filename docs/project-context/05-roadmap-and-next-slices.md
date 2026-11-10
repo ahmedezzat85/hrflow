@@ -359,6 +359,18 @@ Decision D-052. Plan: `docs/finance-module/import-paid-bills-and-transfers-plan.
 | P5 | Import screen, templates, mock handlers, Playwright | S | P1-P3 |
 | Later | Finance staging tools in `mcp_server/` (documents uploaded to the app locally, matched by `source_file`) | M | P1-P3 |
 
+## 3P. Insurance Claim Payment Link (D-053 accepted November 10, 2026; built, awaiting review)
+
+Decision D-053 (proposed), open question Q-025. Branch `feature/insurance-claim-payment-link`. Risk class high (posts ledger rows, migration, permissions). One new migration (`0075_claim_payment`), no new permission key.
+
+| Slice | Scope | Size | Depends on |
+| :--- | :--- | :--- | :--- |
+| 1 | Migration 0075; Finance interface `ClaimPaymentPosting`; HR `pay_claim` / `reverse_claim_payment`; service tests | M | none |
+| 2 | `POST /api/insurance/claims/{id}/pay` and `/payment/reverse`; both-key permission guard; additive claim fields; guard inventory | S | 1 |
+| 3 | Claims page: Record payment dialog, Paid state, ledger link, Reverse payment; API client and mock handlers; Playwright | M | 2 |
+| 4 | Decision, open question, roadmap and module notes | S | 1-3 |
+| Later | Owner answers to Q-025 (a to e); a claim currency and approved amount if wanted; paying several claims at once | S | Q-025 |
+
 ## 4. Deferred Until Decision
 
 The following initiatives remain on hold until formally decided in [04-decision-log.md](04-decision-log.md):

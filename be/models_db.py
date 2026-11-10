@@ -14,6 +14,8 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Boolean,
+    CheckConstraint,
+    UniqueConstraint,
     text,
 )
 from sqlalchemy.orm import relationship
@@ -282,6 +284,17 @@ class InsuranceClaimDB(Base):
     document_url = Column(Text, default="")
     submitted_by = Column(String(255), default="")
     created_at = Column(DateTime, default=datetime.utcnow)
+    # Payment of an approved claim to the employee out of a company account (D-053, migration 0075). unpaid | paid | reversed.
+    payment_status = Column(String(20), default="unpaid", nullable=False, server_default="unpaid")
+    paid_at = Column(DateTime, nullable=True)
+    paid_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    ledger_transaction_id = Column(Integer, ForeignKey("finance_ledger_transactions.id", ondelete="RESTRICT"), nullable=True)
+    payment_reversal_transaction_id = Column(Integer, ForeignKey("finance_ledger_transactions.id", ondelete="RESTRICT"), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("payment_status IN ('unpaid', 'paid', 'reversed')", name="ck_insurance_claims_payment_status"),
+        UniqueConstraint("ledger_transaction_id", name="uq_insurance_claims_ledger_transaction_id"),
+    )
 
     employee = relationship("EmployeeDB", back_populates="claims")
 

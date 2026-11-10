@@ -32,6 +32,10 @@ def _claim_to_dict(c: InsuranceClaimDB) -> dict:
         "status": c.status or "Pending",
         "document_url": c.document_url or "",
         "submitted_by": c.submitted_by or "",
+        # additive (D-053): payment state of the claim
+        "payment_status": c.payment_status or "unpaid",
+        "paid_at": c.paid_at.isoformat() if c.paid_at else None,
+        "ledger_transaction_id": c.ledger_transaction_id,
     }
 
 

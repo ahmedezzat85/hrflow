@@ -360,12 +360,13 @@ export const PARITY_MAP = {
       mockContainerSelector: 'main',
       appContainerSelector: '#a-insurance',
       // Issue 14 (owner decision 2026-10-19): the app keeps the Category / Annual limit header row and its dash in the claim rows
-      keptLabels: ['Annual limit'],
+      // D-053: an approved, unpaid claim shows a Record payment button (and an Unpaid badge) that the design mock does not have
+      keptLabels: ['Annual limit', 'Record payment'],
       setup: async (page) => showAdminSection(page, 'a-insurance', '#a-insurance table'),
       pairs: [
         { name: 'insurance stat tile', mockSelector: 'main > div:first-child > div:first-child', appSelector: '#a-insurance .hv-stat-tile:first-child', accepted: { light: { fontSize: '16px', color: 'rgb(20, 30, 48)', borderColor: 'rgba(30, 60, 140, 0.08)', height: '102px' }, dark: { fontSize: '16px', height: '102px' } } },
         { name: 'limits card', mockSelector: 'main > div:nth-of-type(2) > section:first-child', appSelector: '#a-insurance .card:has(#adminInsuranceCategoryHighlights)', accepted: { light: { fontSize: '16px', color: 'rgb(20, 30, 48)', borderRadius: '18px', borderColor: 'rgba(30, 60, 140, 0.08)', height: '238px', gap: 'normal' }, dark: { fontSize: '16px', borderRadius: '18px', height: '238px', gap: 'normal' } } },
-        { name: 'insurance claims shell', mockSelector: 'main > section:last-child', appSelector: '#a-insurance .card:has(#insuranceTableBody)', accepted: { light: { fontSize: '16px', color: 'rgb(20, 30, 48)', borderColor: 'rgba(32, 86, 232, 0.12)', height: '251px' }, dark: { fontSize: '16px', height: '251px' } } }
+        { name: 'insurance claims shell', mockSelector: 'main > section:last-child', appSelector: '#a-insurance .card:has(#insuranceTableBody)', accepted: { light: { fontSize: '16px', color: 'rgb(20, 30, 48)', borderColor: 'rgba(32, 86, 232, 0.12)', height: '286px' }, dark: { fontSize: '16px', height: '286px' } } } // 251px before D-053 payment badges and buttons
       ]
     }
   ],

@@ -221,6 +221,18 @@ class InsuranceClaimAction(BaseModel):
     status: Literal["Approved", "Rejected"]
 
 
+class InsuranceClaimPay(BaseModel):
+    """Pay an approved claim from a company account (D-053). The amount and the category come from the claim, never from here."""
+    account_id: int
+    payment_type_id: int
+    payment_date: Optional[str] = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    reference: str = Field("", max_length=255)
+
+
+class InsuranceClaimPaymentReverse(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=255)
+
+
 class RaiseApply(BaseModel):
     """
     Redesigned raise model (see docs/analysis/salary-raise-redesign-plan.md):

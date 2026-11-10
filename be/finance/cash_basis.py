@@ -5,7 +5,7 @@ Cash-basis classification of ledger rows for the P&L views (D-026).
 Each ledger row counts toward revenue, toward spend, or toward neither:
   - Movements between the company's own accounts are neither: transfers, FX exchange, teller
     withdrawals and cash-withdrawal cheques (both legs).
-  - Reversal entries (bill_payment_reversal, cheque_reversal, payment_reversal) reduce the side of the
+  - Reversal entries (bill_payment_reversal, cheque_reversal, payment_reversal, insurance_claim_reversal) reduce the side of the
     entry they reverse. They are never revenue or new spend.
   - Payroll and statutory payments are spend.
   - Everything else follows the existing rules: money in is revenue, money out is spend, except rows whose
@@ -13,7 +13,7 @@ Each ledger row counts toward revenue, toward spend, or toward neither:
 """
 from typing import Optional, Tuple
 
-REVERSAL_SOURCES = frozenset({"bill_payment_reversal", "cheque_reversal", "payment_reversal", "revenue_receipt_reversal"})
+REVERSAL_SOURCES = frozenset({"bill_payment_reversal", "cheque_reversal", "payment_reversal", "revenue_receipt_reversal", "insurance_claim_reversal"})
 FORCED_SPEND_SOURCES = frozenset({"payroll", "statutory_remittance"})
 
 # Payment types that only move money between the company's own accounts
@@ -69,7 +69,7 @@ def classify(tx, category_kind: Optional[str] = None, has_category: Optional[boo
         tx.source in FORCED_SPEND_SOURCES
         or category_kind == "cost"
         or tx.linked_bill_id
-        or tx.source in ("bill_payment", "subscription_charge", "cheque")
+        or tx.source in ("bill_payment", "subscription_charge", "cheque", "insurance_claim")
         or not has_category
         or category_kind != "revenue"
     )

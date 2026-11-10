@@ -32,6 +32,7 @@ This register tracks unresolved product, accounting, and technical architecture 
 | Q-006 | Restoring Archived Users | Open |
 | Q-022 | Historical Payroll Import Line Typing and Adjustment Amount Fields | Open (narrowed October 25, 2026: 2023-2024 payroll history deferred by D-040) |
 | Q-024 | May a Payment Exceed an Account's Balance (Overdraft)? | Open (raised October 26, 2026; decision needed only if an overdraft or credit-card account exists) |
+| Q-025 | Insurance Claim Payment: Defaults Awaiting Owner Confirmation | Resolved November 10, 2026 by D-053: the owner accepted the built defaults |
 
 Everything else is resolved and kept in the archive section below.
 
@@ -163,6 +164,24 @@ Everything else is resolved and kept in the archive section below.
   - [04-decision-log.md](04-decision-log.md) (`D-043`)
   - [05-roadmap-and-next-slices.md](05-roadmap-and-next-slices.md) (`3L`)
   - `docs/finance-module/fiscal-year-opening-balances-plan.md`
+
+### Q-025 — Insurance Claim Payment: Defaults Awaiting Owner Confirmation
+- **Status:** Resolved November 10, 2026 (D-053 accepted; the owner agreed with all defaults a to e). Raised the same day. Each item below is built as a default and marked "PROPOSED DEFAULT (Q-025)" in code.
+- **Decider:** Owner
+- **Question:**
+  Confirm or change these defaults for paying an approved insurance claim from a company account.
+- **Items:**
+  - **(a) Permissions.** Paying and reversing need both `hr.insurance.write` and `finance.account.write`; neither alone is enough. Alternative: a new dedicated key, or Finance key only.
+  - **(b) Currency and amount.** A claim has no currency or approved-amount field, so it is treated as EGP and the amount paid is the claim `amount`. An account in another currency is refused. Alternative: add a currency and an approved amount to the claim.
+  - **(c) Payment types.** The vendor-bill rules by account type apply (D-018: cash accounts take Cash; bank accounts take Outgoing transfer or Debit card), without Cheque, because a cheque needs a number and the cheque lifecycle. Alternative: allow Cheque through the cheque flow.
+  - **(d) Reversal and re-payment.** Status values `unpaid` | `paid` | `reversed`; a reversed claim can be paid again and keeps the earlier pair in the ledger; the reversal is dated today and refused in a closed reconciliation period. Alternative: no re-payment, or a reversal dated like the original.
+  - **(e) Overdraft and eligibility.** The manual-transaction path has no balance check, so a claim payment can take an account below zero (this differs from bill payments, which refuse a payment above the balance; see Q-024). Claims dated before 2026-01-01 are not payable through HRFlow. Alternative: apply the bill-payment balance rule to claims; set a different start date.
+- **Decision Needed from Owner:**
+  Confirm or change each item, then update D-053 to Accepted.
+- **Related References:**
+  - [04-decision-log.md](04-decision-log.md) (`D-053`)
+  - [05-roadmap-and-next-slices.md](05-roadmap-and-next-slices.md) (`3P`)
+  - Q-024
 
 ---
 
