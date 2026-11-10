@@ -22,7 +22,9 @@ KIND_COLUMNS: Dict[str, tuple] = {
     # bill; subscription (exact name) records it as that subscription's charge. All five are optional (D-052).
     "bills": ("vendor_name", "bill_number", "issue_date", "due_date", "currency", "category", "total_amount", "description",
               "paid_date", "paid_from_account", "payment_type", "payment_reference", "subscription"),
-    "cheques": ("account", "cheque_number", "payee", "amount", "currency", "issue_date"),
+    # purpose (other | cash_withdrawal | vendor_payment; blank = other) and destination_account (the cash account a
+    # cash_withdrawal funds, required for that purpose) are optional.
+    "cheques": ("account", "cheque_number", "payee", "amount", "currency", "issue_date", "purpose", "destination_account"),
     "invoices": ("customer_name", "invoice_number", "issue_date", "due_date", "currency", "description", "amount", "vat_rate",
                  "expected_account", "revenue_channel"),
     # Money moving between two company accounts (D-028 inter-book transfer when the books differ); source_file is the
@@ -35,6 +37,7 @@ KIND_COLUMNS: Dict[str, tuple] = {
 OPTIONAL_HEADERS = (
     "source_file", "confidence", "review_flags", "notes", "vat_rate",
     "paid_date", "paid_from_account", "payment_type", "payment_reference", "subscription",  # bills
+    "purpose", "destination_account",  # cheques
     "expected_account", "revenue_channel",  # invoices
     "to_amount", "fx_rate", "fee", "exchange_reference",  # transfers
 )

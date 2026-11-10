@@ -8878,11 +8878,11 @@ async getEntityActivity(entityType, entityId) {
   const COMMON = ["row_ref", "source_file", "confidence", "review_flags", "notes"];
   const KIND_COLUMNS = {
     bills: ["vendor_name", "bill_number", "issue_date", "due_date", "currency", "category", "total_amount", "description", "paid_date", "paid_from_account", "payment_type", "payment_reference", "subscription"],
-    cheques: ["account", "cheque_number", "payee", "amount", "currency", "issue_date"],
+    cheques: ["account", "cheque_number", "payee", "amount", "currency", "issue_date", "purpose", "destination_account"],
     invoices: ["customer_name", "invoice_number", "issue_date", "due_date", "currency", "description", "amount", "vat_rate", "expected_account", "revenue_channel"],
     transfers: ["from_account", "to_account", "date", "from_amount", "to_amount", "fx_rate", "fee", "exchange_reference"],
   };
-  const OPTIONAL_COLUMNS = ["source_file", "confidence", "review_flags", "notes", "vat_rate", "paid_date", "paid_from_account", "payment_type", "payment_reference", "subscription", "expected_account", "revenue_channel", "to_amount", "fx_rate", "fee", "exchange_reference"];
+  const OPTIONAL_COLUMNS = ["source_file", "confidence", "review_flags", "notes", "vat_rate", "paid_date", "paid_from_account", "payment_type", "payment_reference", "subscription", "purpose", "destination_account", "expected_account", "revenue_channel", "to_amount", "fx_rate", "fee", "exchange_reference"];
   const IMPORT_PERMISSIONS = { bills: "finance.bill.write", cheques: "finance.account.write", invoices: "finance.invoice.write", transfers: "finance.account.write" };
   const LIMITS = {
     max_documents_per_run: 50,
@@ -8962,6 +8962,14 @@ async getEntityActivity(entityType, entityId) {
         else if (blank.length) findings.push(_finding("error", "required_missing", `${blank.join(", ")} is required for a cheque; leave the row out or flag it in review_flags`));
         if (v.issue_date && !_isoDate(v.issue_date)) findings.push(_finding("error", "issue_date_invalid", `issue_date: '${v.issue_date}' is not an ISO date (YYYY-MM-DD)`));
         if (v.amount && !(Number(v.amount) > 0)) findings.push(_finding("error", "amount_not_positive", "amount must be greater than 0"));
+        const purpose = (v.purpose || "other").toLowerCase().replace(/[ -]/g, "_");
+        if (!["other", "general", "cash_withdrawal", "vendor_payment"].includes(purpose)) findings.push(_finding("error", "purpose_invalid", `purpose '${v.purpose}' is not one of: other, cash_withdrawal, vendor_payment (blank = other)`));
+        else if (purpose === "cash_withdrawal") {
+          const dest = (FinanceMockState.accounts || []).find((a) => String(a.account_name || "").toLowerCase() === v.destination_account.toLowerCase() || String(a.id) === v.destination_account);
+          if (!v.destination_account) findings.push(_finding("error", "destination_missing", "destination_account is required when purpose is cash_withdrawal"));
+          else if (!dest) findings.push(_finding("error", "destination_unknown", `Destination account '${v.destination_account}' does not exist (use its exact name or id)`));
+          else if (dest.account_type !== "cash") findings.push(_finding("error", "destination_not_cash", `Destination account '${dest.account_name}' must be a cash account, not ${dest.account_type}`));
+        } else if (v.destination_account) findings.push(_finding("error", "destination_not_allowed", "destination_account is only used when purpose is cash_withdrawal"));
         if (!v.payee) findings.push(_finding("warning", "payee_blank", "payee is blank: it is saved empty. Add it in the cheque if needed"));
         if (v.confidence !== "" && Number(v.confidence) < LIMITS.low_confidence_threshold) findings.push(_finding("warning", "low_confidence", `Confidence ${Number(v.confidence)} is below ${LIMITS.low_confidence_threshold}: compare this row with the scan`));
         if (!v.source_file) findings.push(_finding("warning", "no_scan", "No source file: the cheque will be flagged as scan missing"));

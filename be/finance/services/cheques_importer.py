@@ -7,6 +7,10 @@ posts nothing to the ledger; issuing it later does (posting_policy at_issue), so
 beyond `draft`. Handwriting is the weakest input, so the rules are stricter than for bills: amount, cheque number
 and issue date must be present and valid for a row to import, and the owner checks every row against the scan.
 Payee is optional (saved blank with a warning); a cheque has no customer.
+
+Purpose is optional: blank means "other" (shown as General). `cash_withdrawal` needs `destination_account`, an active
+cash account in the bank account's currency (same rule as entering the cheque by hand, D-020). `vendor_payment` is
+accepted without a bill; a bill is never linked by an import.
 """
 import os
 import uuid
@@ -27,6 +31,7 @@ from finance.services.subscriptions_service import FINANCE_UPLOADS_DIR
 import file_layout
 
 REQUIRED_FIELDS = ("amount", "cheque_number", "issue_date")
+_PURPOSE_ALIASES = {"": "other", "other": "other", "general": "other", "cash_withdrawal": "cash_withdrawal", "vendor_payment": "vendor_payment"}
 _MIME = {"pdf": "application/pdf", "png": "image/png", "jpeg": "image/jpeg", "webp": "image/webp", "heic": "image/heic"}
 
 
@@ -96,6 +101,35 @@ class ChequesImporter:
                 elif account.account_type != "bank":
                     err("account_not_bank", f"Cheques must be drawn from a bank account; '{account.account_name}' is a {account.account_type} account")
 
+        # Purpose and, for a cash withdrawal, the cash account it funds
+        purpose_raw = (row.get("purpose") or "").strip().lower().replace(" ", "_").replace("-", "_")
+        purpose = _PURPOSE_ALIASES.get(purpose_raw)
+        destination = None
+        dest_ref = row.get("destination_account")
+        if purpose is None:
+            err("purpose_invalid", f"purpose '{row.get('purpose')}' is not one of: other, cash_withdrawal, vendor_payment (blank = other)")
+        elif purpose == "cash_withdrawal":
+            if not dest_ref:
+                err("destination_missing", "destination_account is required when purpose is cash_withdrawal")
+            else:
+                found = [a for a in self._account_rows() if (a.account_name or "").strip().lower() == dest_ref.lower()]
+                if not found and dest_ref.isdigit():
+                    found = [a for a in self._account_rows() if a.id == int(dest_ref)]
+                if not found:
+                    err("destination_unknown", f"Destination account '{dest_ref}' does not exist (use its exact name or id)")
+                elif len(found) > 1:
+                    err("destination_ambiguous", f"More than one account is named '{dest_ref}'; use its id")
+                else:
+                    destination = found[0]
+                    if not destination.is_active:
+                        err("destination_inactive", f"Destination account '{destination.account_name}' is inactive")
+                    elif destination.account_type != "cash":
+                        err("destination_not_cash", f"Destination account '{destination.account_name}' must be a cash account, not {destination.account_type}")
+                    elif account is not None and (destination.currency or "").upper() != (account.currency or "").upper():
+                        err("destination_currency_mismatch", f"A cash withdrawal must go to a cash account in the same currency: '{destination.account_name}' is {destination.currency}, the bank account is {account.currency}")
+        elif dest_ref:
+            err("destination_not_allowed", "destination_account is only used when purpose is cash_withdrawal")
+
         issue_date = amount = None
         if row.get("issue_date"):
             try:
@@ -146,7 +180,7 @@ class ChequesImporter:
         if any(f.level == LEVEL_ERROR for f in findings):
             return None, findings
         return {"account": account, "cheque_number": number, "issue_date": issue_date, "amount": amount,
-                "currency": currency, "payee": payee}, findings
+                "currency": currency, "payee": payee, "purpose_type": purpose, "destination": destination}, findings
 
     # ------------------------------------------------------------------
     def check_row(self, ctx: RowContext) -> List[Finding]:
@@ -193,7 +227,8 @@ class ChequesImporter:
             amount=data["amount"],
             currency=data["currency"],
             payee=data["payee"] or "",
-            purpose_type="other",
+            purpose_type=data["purpose_type"],
+            destination_cash_account_id=data["destination"].id if data["destination"] else None,
             status="draft",
             notes=notes,
         )
