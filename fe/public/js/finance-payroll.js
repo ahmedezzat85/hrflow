@@ -103,6 +103,47 @@
       }
     },
 
+    // Maps employee records to run rows, keeping any bonuses already typed for the same employee.
+    _buildRows(emps) {
+      const existingBonusesMap = {};
+      (this.rows || []).forEach(r => {
+        if (r.bonuses && r.bonuses.length) existingBonusesMap[r.id] = r.bonuses;
+      });
+      return emps.map(e => {
+        const baseExt = Number(e.externalSalaryUsd !== undefined ? e.externalSalaryUsd : (e.external_salary_usd || 0));
+        let baseInt = Number(e.internalSalaryUsd !== undefined ? e.internalSalaryUsd : (e.internal_salary_usd || 0));
+        if (baseExt === 0 && baseInt === 0 && e.salary) {
+          baseInt = Number(e.salary);
+        }
+        const ded = Number(e.deductions !== undefined ? e.deductions : (e.deductions_total || 0));
+        return {
+          id: e.id,
+          name: e.name,
+          role: e.role || e.title || e.position || e.dept || 'Employee',
+          dept: e.dept || e.department || 'Operations',
+          baseExt: baseExt,
+          baseInt: baseInt,
+          deductions: ded,
+          deductions_total: ded,
+          bonuses: existingBonusesMap[e.id] || [],
+          exception: null
+        };
+      });
+    },
+
+    // The server decides who belongs to the period (HP-1). For a historical period the roster is exactly the
+    // preview's recipients, leavers included; otherwise it is the active, non-archived employees as before.
+    syncRosterToPreview(preview) {
+      const all = Array.isArray(this._allEmployees) ? this._allEmployees : [];
+      if (!all.length) return;
+      if (preview && preview.historical_period && Array.isArray(preview.recipients)) {
+        const ids = new Set(preview.recipients.map(r => String(r.employee_id)));
+        this.rows = this._buildRows(all.filter(e => ids.has(String(e.id))));
+      } else {
+        this.rows = this._buildRows(all.filter(e => !e.archived && (!e.status || String(e.status).toLowerCase() === 'active')));
+      }
+    },
+
     async loadEmployeesFromDb() {
       try {
         let rawEmployees = null;
@@ -131,37 +172,14 @@
           }
         }
 
+        // Keep every employee (any status, archived too): a historical period is staffed from the server preview,
+        // which can include leavers. Only the current-period roster is limited to active, non-archived employees.
+        this._allEmployees = Array.isArray(rawEmployees) ? rawEmployees : [];
         if (Array.isArray(rawEmployees)) rawEmployees = rawEmployees.filter(e => !e.archived);   // archived employees are not paid
         if (Array.isArray(rawEmployees) && rawEmployees.length > 0) {
-          const existingBonusesMap = {};
-          (this.rows || []).forEach(r => {
-            if (r.bonuses && r.bonuses.length) {
-              existingBonusesMap[r.id] = r.bonuses;
-            }
-          });
-
           const activeEmps = rawEmployees.filter(e => !e.status || String(e.status).toLowerCase() === 'active');
           if (activeEmps.length > 0) {
-            this.rows = activeEmps.map(e => {
-              const baseExt = Number(e.externalSalaryUsd !== undefined ? e.externalSalaryUsd : (e.external_salary_usd || 0));
-              let baseInt = Number(e.internalSalaryUsd !== undefined ? e.internalSalaryUsd : (e.internal_salary_usd || 0));
-              if (baseExt === 0 && baseInt === 0 && e.salary) {
-                baseInt = Number(e.salary);
-              }
-              const ded = Number(e.deductions !== undefined ? e.deductions : (e.deductions_total || 0));
-              return {
-                id: e.id,
-                name: e.name,
-                role: e.role || e.title || e.position || e.dept || 'Employee',
-                dept: e.dept || e.department || 'Operations',
-                baseExt: baseExt,
-                baseInt: baseInt,
-                deductions: ded,
-                deductions_total: ded,
-                bonuses: existingBonusesMap[e.id] || [],
-                exception: null
-              };
-            });
+            this.rows = this._buildRows(activeEmps);
           }
         } else if (!isMockMode) {
           this.rows = [];
@@ -841,25 +859,31 @@
       }
     },
 
-    onScreen1PeriodChange() {
+    async onScreen1PeriodChange() {
       const m = document.getElementById('p1Month');
-      if (m && m.value && m.value !== this.month) {
+      const monthChanged = !!(m && m.value && m.value !== this.month);
+      if (monthChanged) {
         // month changed on screen 1: move start, end and pay date with it
         this.setPeriod(m.value);
         ['p1PayDate', 'p1Start', 'p1End'].forEach((id, i) => {
           const el = document.getElementById(id);
           if (el) el.value = [this.payDate, this.start, this.end][i];
         });
-        this.drawPeriodLabel();
-        return;
+      } else {
+        const pd = document.getElementById('p1PayDate');
+        if (pd && pd.value) this.payDate = pd.value;
+        const s = document.getElementById('p1Start');
+        if (s && s.value) this.start = s.value;
+        const e = document.getElementById('p1End');
+        if (e && e.value) this.end = e.value;
       }
-      const pd = document.getElementById('p1PayDate');
-      if (pd && pd.value) this.payDate = pd.value;
-      const s = document.getElementById('p1Start');
-      if (s && s.value) this.start = s.value;
-      const e = document.getElementById('p1End');
-      if (e && e.value) this.end = e.value;
       this.drawPeriodLabel();
+      // The employee list depends on the period: reload the preview for it (a saved run keeps its own lines).
+      if (!(this.currentRun && this.currentRun.id)) {
+        this.currentPreview = null;
+        await this.fetchPreview();
+        this.drawScreen1();
+      }
     },
 
     async applyScreen1Fx() {
@@ -2390,6 +2414,7 @@
 
         if (preview) {
           this.currentPreview = preview;
+          this.syncRosterToPreview(preview);
           if (preview.fx_rate_value !== undefined && preview.fx_rate_value !== null) {
             this.fxResolved = true;
             this.resolvedFxRate = Number(preview.fx_rate_value);
