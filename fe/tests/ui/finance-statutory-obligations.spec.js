@@ -82,6 +82,36 @@ test.describe('FUX-410: Statutory Obligations Tracker', () => {
     await expect(row).toContainText('Settled');
   });
 
+  test('The amount paid may differ from the calculated figure: more is recorded, less can be closed as final', async ({ page }) => {
+    const row = page.locator('#financeStatutoryTableBody tr:has-text("Withholding Tax (WHT)")');
+    await row.locator('.btn-stat-remit').click();
+    await expect(page.locator('#statutorySettleModal')).toBeVisible();
+    await expect(page.locator('#statSettleAmount')).toHaveValue('850.00');
+
+    // the amount is not capped at the remaining balance, and the screen says what a different amount means
+    await page.fill('#statSettleAmount', '900.00');
+    await expect(page.locator('#statSettleDifferenceHint')).toContainText('more than the calculated remainder');
+    await page.fill('#statSettleAmount', '800.00');
+    await expect(page.locator('#statSettleDifferenceHint')).toContainText('remains outstanding');
+    await page.check('#statSettleFinal');
+    await expect(page.locator('#statSettleDifferenceHint')).toContainText('closed with that difference');
+
+    await page.click('#statSettleSaveBtn');
+    await expect(page.locator('#statutorySettleModal')).not.toBeVisible();
+    await expect(row).toContainText('Remitted');
+    await expect(row).toContainText('-EGP 50.00');   // paid 800 against 850 accrued
+  });
+
+  test('Paying more than the calculated remainder is accepted', async ({ page }) => {
+    const row = page.locator('#financeStatutoryTableBody tr:has-text("Withholding Tax (WHT)")');
+    await row.locator('.btn-stat-remit').click();
+    await page.fill('#statSettleAmount', '900.00');
+    await page.click('#statSettleSaveBtn');
+    await expect(page.locator('#statutorySettleModal')).not.toBeVisible();
+    await expect(row).toContainText('Remitted');
+    await expect(row).toContainText('+EGP 50.00');   // paid 900 against 850 accrued
+  });
+
   test('AC 7: Record manual statutory obligation directly in accrued status', async ({ page }) => {
     // Open Record Modal
     await page.click('#financeAddStatutoryBtn');

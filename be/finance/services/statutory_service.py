@@ -30,7 +30,8 @@ class StatutoryObligationsService:
         self.settlement_svc = SettlementService(db)
 
     def _to_response(self, obl: StatutoryObligationDB) -> Dict[str, Any]:
-        remaining = max(0.0, round(obl.amount_accrued - (obl.amount_remitted or 0.0), 2))
+        remaining = 0.0 if obl.status == "remitted" else max(0.0, round(obl.amount_accrued - (obl.amount_remitted or 0.0), 2))
+        difference = round((obl.amount_remitted or 0.0) - obl.amount_accrued, 2) if obl.status == "remitted" else 0.0
         return {
             "id": obl.id,
             "obligation_type": obl.obligation_type,
@@ -39,6 +40,7 @@ class StatutoryObligationsService:
             "amount_accrued": obl.amount_accrued,
             "amount_remitted": obl.amount_remitted or 0.0,
             "remaining_balance": remaining,
+            "payment_difference": difference,
             "variance_amount": obl.variance_amount or 0.0,
             "variance_note": obl.variance_note,
             "currency": obl.currency,
@@ -243,6 +245,7 @@ class StatutoryObligationsService:
                 reference=data.get("reference", ""),
                 method=data.get("method"),
                 created_by=user_email,
+                final_payment=bool(data.get("final_payment")),
             )
             resp = self._to_response(obl)
             resp["payment_id"] = payment.id

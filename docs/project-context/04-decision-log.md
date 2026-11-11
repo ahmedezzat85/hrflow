@@ -608,6 +608,13 @@ This document records durable product and architectural decisions approved by th
 - **Compatibility:** migration `0076_transfer_void` adds three nullable columns to `finance_account_transfers` (and an index on `voided_at`); existing transfers are untouched. Payroll runs already created keep their locked FX rate, so voiding a transfer does not change them; a draft run picks the next available rate when refreshed.
 - **Related References:** `be/finance/services/transfers_service.py`, `be/finance/routers/transfers.py`, `be/migrations/versions/0076_transfer_void.py`, `be/tests/test_finance_transfer_void.py`, `fe/tests/ui/finance-transfer-void.spec.js`.
 
+### D-055 — A Statutory Payment May Differ From the Calculated Amount (STAT-PAY-1)
+
+- **Status:** Accepted by owner, November 11, 2026 (the owner confirmed that actual payments differ from the system figure, up or down, as agreed at design time). Built on `feat/statutory-payment-differs`.
+- **Decision:** (1) The amount paid against a statutory obligation is a fact and is never refused for being more than the accrued figure (the earlier "overpayment is prevented" rule, FUX-410, is removed for statutory obligations only; bills and invoices keep it). (2) Paying the accrued amount or more remits the obligation. (3) Paying less leaves it partially remitted (an instalment) unless the payment is marked `final_payment`, which closes it as remitted; the settle screen has a "final payment" tick for this. (4) The response carries `payment_difference` (paid minus accrued, only once remitted); the list shows it as "Paid +X / -X vs accrued", next to the existing estimate-vs-accrued variance. A remitted obligation reports no remaining balance and no pending amount in the statutory reports, even when paid less. (5) The ledger row and the account balance always use the amount actually paid.
+- **Compatibility:** no migration and no change to stored columns (`payment_difference` is computed). Existing remitted obligations show a difference of zero. The payroll step-6 button still pays the recorded accrued amount; to pay a different amount, record the actual figure there or use the Statutory tab.
+- **Related References:** `be/finance/services/settlement_service.py` (`settle_statutory_obligation`), `be/finance/services/statutory_service.py`, `be/finance/schemas.py`, `fe/public/js/finance-statutory.js`, `fe/api/finance/statutory-api.js`, `be/tests/test_finance_statutory_obligations.py`, `fe/tests/ui/finance-statutory-obligations.spec.js`.
+
 ## Related but Not Decisions
 
 The following items are established architectural baseline rules or future roadmaps rather than standalone decision entries:

@@ -205,6 +205,10 @@ function renderFinanceStatutoryTable() {
 
     // Variance (true-up) under the remaining amount, in the obligation's own currency
     let varianceNote = "";
+    const payDiff = Number(obl.payment_difference || 0);
+    if (payDiff !== 0) {
+      varianceNote += `<span class="fv-note fv-note--warn" title="Amount paid minus the accrued amount">Paid ${payDiff > 0 ? "+" : ""}${esc(FinanceFormat.formatMoney(payDiff, cur))} vs accrued</span>`;
+    }
     const varAmt = Number(obl.variance_amount || 0);
     if (varAmt !== 0) {
       const sign = varAmt > 0 ? "+" : "";
@@ -343,6 +347,22 @@ async function submitStatutoryConfirmAdjust() {
 // -------------------------------------------------------------
 // Settle / Remittance Modal Flow
 // -------------------------------------------------------------
+// Says what the entered amount means: above the remaining balance it is recorded as a difference, never refused.
+function _statutoryShowPaymentDifference(remaining) {
+  const hint = document.getElementById("statSettleDifferenceHint");
+  const amtEl = document.getElementById("statSettleAmount");
+  const finalEl = document.getElementById("statSettleFinal");
+  if (!hint || !amtEl) return;
+  const c = (_statutoryActiveObligation && _statutoryActiveObligation.currency) || "EGP";
+  const paid = parseFloat(amtEl.value);
+  const diff = Math.round((paid - remaining) * 100) / 100;
+  if (isNaN(paid) || Math.abs(diff) < 0.005) { hint.textContent = ""; return; }
+  if (diff > 0) hint.textContent = `${FinanceFormat.formatMoney(diff, c)} more than the calculated remainder. It will be recorded as paid, and the obligation shows the difference.`;
+  else hint.textContent = (finalEl && finalEl.checked)
+    ? `${FinanceFormat.formatMoney(-diff, c)} less than the calculated remainder. The obligation will be closed with that difference.`
+    : `${FinanceFormat.formatMoney(-diff, c)} remains outstanding after this payment. Tick "final payment" to close it instead.`;
+}
+
 async function openStatutorySettleModal(id) {
   const obl = _statutoryObligations.find((o) => o.id === Number(id));
   if (!obl) return;
@@ -373,9 +393,17 @@ async function openStatutorySettleModal(id) {
   }
 
   if (amtEl) {
+    // The amount actually paid may differ from the calculated figure, so there is no upper limit
     amtEl.value = remaining.toFixed(2);
-    amtEl.max = remaining;
+    amtEl.removeAttribute("max");
+    amtEl.oninput = () => _statutoryShowPaymentDifference(remaining);
   }
+  const finalEl = document.getElementById("statSettleFinal");
+  if (finalEl) {
+    finalEl.checked = false;
+    finalEl.onchange = () => _statutoryShowPaymentDifference(remaining);
+  }
+  _statutoryShowPaymentDifference(remaining);
   if (dateEl) {
     dateEl.value = new Date().toISOString().slice(0, 10);
   }
@@ -461,6 +489,7 @@ async function submitStatutorySettlement() {
       currency: (_statutoryActiveObligation && _statutoryActiveObligation.currency) || "EGP",
       reference: reference,
       payment_type_id: payment_type_id,
+      final_payment: !!(document.getElementById("statSettleFinal") || {}).checked,
     });
     if (typeof showToast === "function") showToast("Statutory remittance recorded successfully", "success");
     if (typeof closeModal === "function") closeModal("statutorySettleModal");
