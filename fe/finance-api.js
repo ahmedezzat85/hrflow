@@ -2869,9 +2869,32 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       }
       if (params && params.date_from) list = list.filter((t) => t.date >= params.date_from);
       if (params && params.date_to) list = list.filter((t) => t.date <= params.date_to);
+      if (!(params && params.include_voided)) list = list.filter((t) => !t.voided_at);   // voided transfers are hidden by default
       return list.sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
     }
     return _getAllPages("/api/finance/transfers", params, 200);
+  },
+
+  // Voids a wrong transfer (D-054): removes all its ledger rows, restores both balances, keeps the record hidden.
+  async voidTransfer(transferId, reason) {
+    if (_isMock()) {
+      const transfer = (FinanceMockState.transfers || []).find((t) => t.id === parseInt(transferId, 10));
+      if (!transfer) throw new Error("Transfer not found");
+      if (transfer.voided_at) throw new Error("Transfer is already voided");
+      if (!reason || String(reason).trim().length < 5) throw new Error("A reason of at least 5 characters is required");
+      const legs = (FinanceMockState.transactions || []).filter((t) => t.linked_transfer_id === transfer.id);
+      legs.forEach((leg) => {
+        const acc = (FinanceMockState.accounts || []).find((a) => a.id === leg.account_id);
+        if (acc) acc.current_balance = round(acc.current_balance + (leg.direction === "out" ? leg.amount : -leg.amount), 2);
+      });
+      FinanceMockState.transactions = (FinanceMockState.transactions || []).filter((t) => t.linked_transfer_id !== transfer.id);
+      transfer.voided_at = new Date().toISOString();
+      transfer.voided_by = "cfo@voyance.health";
+      transfer.void_reason = String(reason).trim();
+      transfer.settlement_status = "voided";
+      return transfer;
+    }
+    return apiRequest("POST", `/api/finance/transfers/${transferId}/void`, { reason });
   },
 
   async getTransfer(id) {

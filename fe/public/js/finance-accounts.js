@@ -2822,6 +2822,9 @@ function renderFinanceTransfers(all) {
           <td data-label="Type">${esc(typeLabel[t.transfer_type] || typeLabel.internal)}</td>
           <td data-label="Status">${status}</td>
           <td data-label="Out / in" class="cell-money fv-num"><div class="fv-amount"><span class="fv-amount__value">${outAmount}</span><span class="fv-sub">${esc(inSub)}</span></div></td>
+          <td data-label="Actions" class="col-actions">${FinanceUI.rowActions({
+            icons: [{ icon: "fa-ban", label: "Void transfer", className: "fv-icon-btn--danger btn-void-transfer", onclick: `voidFinanceTransfer(${t.id})` }],
+          })}</td>
         </tr>
       `;
     })
@@ -3233,6 +3236,34 @@ async function matchInTransitTransfer(transferId) {
   }
 }
 
+
+// A wrong transfer is voided, never edited (D-054): one action removes the outflow, inflow and fee rows and restores both balances.
+async function voidFinanceTransfer(transferId) {
+  const transfer = (FinanceState.transfers || []).find((t) => t.id === transferId);
+  if (!transfer) return;
+  const fromName = transfer.from_account_name || "External";
+  const toName = transfer.to_account_name || "External";
+  const result = await FinanceCommand.confirmAction({
+    title: "Void this transfer?",
+    consequence: `Removes every ledger entry of this transfer (both accounts and any fee) and restores the balances. The transfer is then hidden from the list and cannot be matched or reused. To correct it, enter the right transfer afterwards.`,
+    summary: `<strong>${escapeHtml(fromName)} &rarr; ${escapeHtml(toName)}</strong><br>${escapeHtml(FinanceFormat.formatMoney(Math.abs(transfer.from_amount || 0), transfer.from_currency))} on ${escapeHtml(transfer.date)}`,
+    actionLabel: "Void transfer",
+    requireReason: true,
+  });
+  if (!result.confirmed) return;
+  try {
+    await FinanceApi.voidTransfer(transferId, result.reason);
+    toast("Transfer voided. Both account balances were restored.", "fa-solid fa-circle-check");
+    FinanceState.accounts = await FinanceApi.getAccounts();
+    if (_activeWorkspaceAccountId) {
+      await openAccountWorkspace(_activeWorkspaceAccountId, "activity");
+    }
+    await loadFinanceTransfers();
+  } catch (err) {
+    toast("Could not void the transfer: " + (err.message || err), "fa-solid fa-triangle-exclamation");
+  }
+}
+window.voidFinanceTransfer = voidFinanceTransfer;
 
 // Window exports for Accounts, Categories, Payment Types, Ledger, Transfers
 window.switchFinanceAccountsSubTab = switchFinanceAccountsSubTab;

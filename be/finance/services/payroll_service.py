@@ -473,6 +473,7 @@ class PayrollService:
         tx_query = self.db.query(AccountTransferDB).filter(
             AccountTransferDB.from_currency == "USD",
             AccountTransferDB.to_currency == "EGP",
+            AccountTransferDB.voided_at.is_(None),   # a voided transfer never supplies a rate
         )
         if fx_rate_source == "payment_date":
             transfer = tx_query.filter(AccountTransferDB.date <= period_end).order_by(desc(AccountTransferDB.date)).first()

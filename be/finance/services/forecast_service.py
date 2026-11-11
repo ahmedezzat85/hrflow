@@ -76,6 +76,7 @@ class CashForecastService:
                 .filter(
                     AccountTransferDB.from_account_id == acc.id,
                     AccountTransferDB.confirmed_leg != "both",
+                    AccountTransferDB.voided_at.is_(None),
                 )
                 .all()
             )

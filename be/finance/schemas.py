@@ -1127,9 +1127,16 @@ class AccountTransferResponse(AccountTransferBase):
     created_by: Optional[str] = None
     outflow_transaction_id: Optional[int] = None
     inflow_transaction_id: Optional[int] = None
+    voided_at: Optional[datetime] = None
+    voided_by: Optional[str] = None
+    void_reason: Optional[str] = None
 
     class Config:
         from_attributes = True
+
+
+class TransferVoidRequest(BaseModel):
+    reason: str = Field(..., min_length=5, max_length=500, description="Why the transfer is voided (kept on the record)")
 
 
 class TransferMatchRequest(BaseModel):

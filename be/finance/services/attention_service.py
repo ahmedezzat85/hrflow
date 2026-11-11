@@ -324,7 +324,7 @@ class AttentionQueueService:
         if can_transfers:
             transfers = (
                 self.db.query(AccountTransferDB)
-                .filter(AccountTransferDB.confirmed_leg != "both")
+                .filter(AccountTransferDB.confirmed_leg != "both", AccountTransferDB.voided_at.is_(None))
                 .all()
             )
             if scope.restricts:

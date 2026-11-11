@@ -649,7 +649,7 @@ def get_finance_transfers_export_data(
     ]
     rows = []
     with get_db_context() as db:
-        query = db.query(AccountTransferDB)
+        query = db.query(AccountTransferDB).filter(AccountTransferDB.voided_at.is_(None))
         if year:
             query = query.filter(AccountTransferDB.date.like(f"{year}-%"))
         if start_date:

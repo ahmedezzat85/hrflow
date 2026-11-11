@@ -16,6 +16,7 @@ from finance.schemas import (
     TransferMatchRequest,
     TransferPreviewRequest,
     TransferPreviewResponse,
+    TransferVoidRequest,
 )
 from finance.services.transfers_service import TransfersService
 from finance.deps import get_transfers_service, get_idempotency_key, get_idempotency_service
@@ -31,6 +32,7 @@ def list_transfers(
     date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     exchange_reference: Optional[str] = Query(None, description="Filter by exchange reference text"),
+    include_voided: bool = Query(False, description="Also list voided transfers (hidden by default)"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     current_user: dict = Depends(require_permission("finance.account.read")),
@@ -45,6 +47,7 @@ def list_transfers(
         exchange_reference=exchange_reference,
         limit=limit,
         offset=offset,
+        include_voided=include_voided,
     )
 
 
@@ -89,6 +92,18 @@ def preview_transfer(
 ):
     """Generates a dynamic preview of balance effects, conversion rate, and dual-leg ledger impact."""
     return service.preview_transfer(payload)
+
+
+@router.post("/{transfer_id}/void", response_model=AccountTransferResponse)
+def void_transfer(
+    transfer_id: int,
+    payload: TransferVoidRequest,
+    current_user: dict = Depends(require_permission("finance.account.write")),
+    service: TransfersService = Depends(get_transfers_service),
+):
+    """Voids a wrong transfer: removes all its ledger rows, recomputes both accounts' balances, keeps the record hidden."""
+    voided_by = current_user.get("email") or current_user.get("sub") or "user"
+    return service.void_transfer(transfer_id, payload.reason, voided_by=voided_by)
 
 
 @router.post("/{transfer_id}/match", response_model=AccountTransferResponse)

@@ -2,11 +2,20 @@
 be/finance/services/transfers_service.py
 Business logic, validations, and mapping for Account Transfers (Phase 3).
 """
+import json
+from datetime import datetime
 from typing import List, Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from finance.models import AccountTransferDB, FinanceBankAccountDB
+from finance.models import (
+    AccountTransferDB,
+    BankStatementImportDB,
+    FinanceAttachmentDB,
+    FinanceBankAccountDB,
+    StatementLineDB,
+)
+from models_db import AuditLogDB
 from finance.repositories.transfers_repository import TransfersRepository
 from finance.schemas import (
     AccountTransferCreate,
@@ -54,6 +63,9 @@ class TransfersService:
             to_account_name=transfer.to_account.account_name if transfer.to_account else None,
             outflow_transaction_id=out_tx_id,
             inflow_transaction_id=in_tx_id,
+            voided_at=transfer.voided_at,
+            voided_by=transfer.voided_by,
+            void_reason=transfer.void_reason,
         )
 
     def list_transfers(
@@ -65,6 +77,7 @@ class TransfersService:
         exchange_reference: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
+        include_voided: bool = False,
     ) -> List[AccountTransferResponse]:
         transfers = self.repo.list_transfers(
             account_id=account_id,
@@ -74,6 +87,7 @@ class TransfersService:
             exchange_reference=exchange_reference,
             limit=limit,
             offset=offset,
+            include_voided=include_voided,
         )
         return [self.to_response(t) for t in transfers]
 
@@ -85,6 +99,68 @@ class TransfersService:
                 detail=f"Transfer with ID {transfer_id} not found",
             )
         return self.to_response(transfer)
+
+    def void_transfer(self, transfer_id: int, reason: str, voided_by: Optional[str] = None) -> AccountTransferResponse:
+        """Voids a transfer (D-054): removes its ledger rows (outflow, inflow, fee), recomputes both accounts' balances,
+        and keeps the transfer record, marked voided. All or nothing. Refused when a leg is matched to a bank statement
+        line, sits in a closed reconciliation month, or carries an attached document, so nothing is lost silently."""
+        transfer = self.repo.get_by_id(transfer_id)
+        if not transfer:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Transfer with ID {transfer_id} not found")
+        if transfer.voided_at is not None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Transfer is already voided")
+
+        legs = list(transfer.ledger_transactions or [])
+        for leg in legs:
+            if self.db.query(StatementLineDB).filter(StatementLineDB.matched_transaction_id == leg.id).first():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="A leg of this transfer is matched to a bank statement line. Unmatch it before voiding.",
+                )
+            closed = (
+                self.db.query(BankStatementImportDB)
+                .filter(
+                    BankStatementImportDB.account_id == leg.account_id,
+                    BankStatementImportDB.period_month == leg.date[:7],
+                    BankStatementImportDB.status == "closed",
+                )
+                .first()
+            )
+            if closed:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"A leg of this transfer is in the closed reconciliation period {leg.date[:7]}. Reopen the period before voiding.",
+                )
+            if self.db.query(FinanceAttachmentDB).filter(FinanceAttachmentDB.ledger_transaction_id == leg.id).first():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="A leg of this transfer has an attached document. Remove the attachment before voiding.",
+                )
+
+        account_ids = {leg.account_id for leg in legs}
+        removed = [leg.id for leg in legs]
+        for leg in legs:
+            self.db.delete(leg)
+        self.db.flush()
+
+        transfer.voided_at = datetime.utcnow()
+        transfer.voided_by = voided_by
+        transfer.void_reason = reason.strip()
+        transfer.settlement_status = "voided"
+        for account_id in account_ids:
+            self.repo.ledger_repo.recalculate_account_running_balances(account_id, commit=False)
+        self.db.add(AuditLogDB(
+            timestamp=datetime.utcnow().isoformat() + "Z",
+            actor_email=voided_by or "system@hrflow.internal",
+            action="finance.transfer.voided",
+            target_type="account_transfer",
+            target_id=str(transfer.id),
+            details=json.dumps({"reason": transfer.void_reason, "removed_ledger_transaction_ids": removed,
+                                "accounts": sorted(a for a in account_ids if a)}),
+        ))
+        self.db.commit()
+        self.db.refresh(transfer)
+        return self.to_response(self.repo.get_by_id(transfer.id))
 
     def create_transfer(
         self,
@@ -221,6 +297,10 @@ class TransfersService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Transfer with ID {transfer_id} not found",
             )
+        if transfer.voided_at is not None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Transfer is voided")
+        if transfer.voided_at is not None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Transfer is voided")
         if transfer.confirmed_leg == "both" or transfer.settlement_status == "settled":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
