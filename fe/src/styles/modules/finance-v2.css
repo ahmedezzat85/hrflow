@@ -1257,8 +1257,8 @@
 }
 
 /* Cancel is a text button in every dialog footer */
-.fv-dialog .modal-foot > .btn:not(.btn-fill):not(.btn-danger):not(.btn-outline),
-.fv-dialog .modal-foot .fv-foot-right > .btn:not(.btn-fill):not(.btn-danger):not(.btn-outline) {
+.fv-dialog .modal-foot > .btn:not(.btn-fill):not(.btn-danger):not(.btn-outline):not(.btn-success):not(.btn-warning),
+.fv-dialog .modal-foot .fv-foot-right > .btn:not(.btn-fill):not(.btn-danger):not(.btn-outline):not(.btn-success):not(.btn-warning) {
   background: transparent;
   border-color: transparent;
   color: var(--ink-label);
@@ -1270,6 +1270,23 @@
   border-color: var(--danger);
   color: var(--fv-on-brand);
 }
+
+.fv-dialog .btn-success,
+.fv-dialog .btn-fill.btn-success {
+  background: var(--success);
+  border-color: var(--success);
+  color: var(--fv-on-brand);
+}
+
+.fv-dialog .btn-warning,
+.fv-dialog .btn-fill.btn-warning {
+  background: var(--warning);
+  border-color: var(--warning);
+  color: var(--fv-on-brand);
+}
+
+[data-theme="dark"] .fv-dialog .btn-success,
+[data-theme="dark"] .fv-dialog .btn-warning { color: var(--bg); }
 
 .fv .fv-hint {
   font-size: 12px;
@@ -2328,6 +2345,32 @@
   width: 100%; max-width: 100%; box-sizing: border-box; padding: 12px; border: 1px dashed var(--fv-outline); border-radius: 10px;
   background: var(--fv-surface-soft); color: var(--ink-muted); font-family: inherit; font-size: 13px;
 }
+
+/* ---------- Alert strip (class "alert"): tinted surface, border and radius by tone; text colour stays with the content ---------- */
+.fv .alert {
+  --alert-tone: var(--info);
+  padding: 10px 14px; border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--alert-tone) 30%, transparent);
+  background: color-mix(in srgb, var(--alert-tone) 12%, transparent);
+}
+.fv .alert.alert-warning { --alert-tone: var(--warning); }
+.fv .alert.alert-danger { --alert-tone: var(--danger); }
+.fv .alert.alert-success { --alert-tone: var(--success); }
+
+/* ---------- Alert box: icon + message strip inside dialogs (tone by variant, all from tokens) ---------- */
+.fv-dialog .alert-box {
+  --alert-tone: var(--info);
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 14px; border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--alert-tone) 30%, transparent);
+  background: color-mix(in srgb, var(--alert-tone) 12%, transparent);
+  color: var(--alert-tone);
+}
+.fv-dialog .alert-box.alert-warning { --alert-tone: var(--warning); }
+.fv-dialog .alert-box.alert-danger { --alert-tone: var(--danger); }
+.fv-dialog .alert-box.alert-success { --alert-tone: var(--success); }
+.fv-dialog .alert-box > i { color: var(--alert-tone); font-size: 16px; margin-top: 1px; flex: none; }
+.fv-dialog .alert-box .alert-content { flex: 1; min-width: 0; font-size: 12.5px; color: var(--alert-tone); }
 
 /* ---------- S9: detail drawer (same head as a dialog, summary cards and soft tiles) ---------- */
 .fv.finance-drawer-overlay {

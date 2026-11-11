@@ -14,7 +14,7 @@
     <!-- Wizard Step Indicator Progress Bar -->
     <div class="wizard-steps-bar" style="display: flex; background: var(--bg2); border-bottom: 1px solid var(--border); padding: 12px 20px; gap: 8px; justify-content: space-between;">
       <div class="wizard-step active" id="stmtStepIndicator1" style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--accent-text);">
-        <span class="step-num" style="width: 22px; height: 22px; border-radius: 50%; background: var(--primary); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">1</span>
+        <span class="step-num" style="width: 22px; height: 22px; border-radius: 50%; background: var(--primary); color: var(--on-accent); display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">1</span>
         <span>1. Choose &amp; Details</span>
       </div>
       <div class="wizard-step" id="stmtStepIndicator2" style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; color: var(--text3);">
@@ -120,9 +120,9 @@
     <div id="stmtWizardStep2" class="wizard-pane" style="display: none;">
       <div class="modal-body" style="padding: 20px;">
         <!-- Duplicate File Warning Banner -->
-        <div id="stmtWizardDuplicateWarning" class="alert-box alert-danger" style="display: none; margin-bottom: 14px; background: var(--danger-soft); border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent); border-radius: 8px; padding: 12px 14px;">
-          <i class="fa-solid fa-triangle-exclamation" style="color:var(--danger); font-size:18px;"></i>
-          <div class="alert-content" style="font-size:12.5px; color:var(--danger);">
+        <div id="stmtWizardDuplicateWarning" class="alert-box alert-danger" style="display: none; margin-bottom: 14px">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <div class="alert-content">
             <strong>Duplicate Statement Detected:</strong> An identical file was already imported for this account. Re-importing may cause duplicate records unless intentionally replacing an existing statement.
             <div style="margin-top: 6px;">
               <label style="font-weight: 600; cursor: pointer;">
@@ -209,9 +209,9 @@
     <div id="stmtWizardStep3" class="wizard-pane" style="display: none;">
       <div class="modal-body" style="padding: 20px;">
         <!-- PDF Review Required Warning -->
-        <div id="stmtPdfReviewAlert" class="alert-box alert-warning" style="display: none; margin-bottom: 14px; background: var(--warning-soft); border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent); border-radius: 8px; padding: 10px 14px;">
-          <i class="fa-solid fa-shield-halved" style="color: var(--warning); font-size: 16px;"></i>
-          <div class="alert-content" style="font-size: 12.5px; color: var(--warning);">
+        <div id="stmtPdfReviewAlert" class="alert-box alert-warning" style="display: none; margin-bottom: 14px">
+          <i class="fa-solid fa-shield-halved"></i>
+          <div class="alert-content">
             <strong>PDF Extraction Review Required:</strong> Electronic PDF extractions must be reviewed and line-by-line confirmed before finalizing close.
           </div>
         </div>
