@@ -220,10 +220,10 @@ function goToWizardStep(stepNum) {
       } else if (s < stepNum) {
         indicator.classList.remove("active");
         indicator.style.fontWeight = "500";
-        indicator.style.color = "var(--success, #16a34a)";
+        indicator.style.color = "var(--success)";
         const num = indicator.querySelector(".step-num");
         if (num) {
-          num.style.background = "var(--success, #16a34a)";
+          num.style.background = "var(--success)";
           num.style.color = "#fff";
         }
       } else {
@@ -232,7 +232,7 @@ function goToWizardStep(stepNum) {
         indicator.style.color = "var(--text3)";
         const num = indicator.querySelector(".step-num");
         if (num) {
-          num.style.background = "var(--bg3, #e2e8f0)";
+          num.style.background = "var(--bg3)";
           num.style.color = "var(--text2)";
         }
       }
@@ -456,7 +456,7 @@ async function executeStatementPreview() {
     if (netEl) {
       const netVal = Number(summary.calculated_net || 0);
       netEl.innerHTML = `${netVal >= 0 ? '+' : '-'}$${Math.abs(netVal).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
-      netEl.style.color = netVal >= 0 ? 'var(--success, #16a34a)' : 'var(--danger, #dc2626)';
+      netEl.style.color = netVal >= 0 ? 'var(--success)' : 'var(--danger)';
     }
 
     // Balance Math Check
@@ -832,9 +832,9 @@ function updateReconciliationHeader(imp, summary = null) {
         const diff = summary.difference;
         diffValEl.textContent = formatCurrency(diff);
         if (Math.abs(diff) < 0.01) {
-          diffValEl.style.color = "var(--color-success, #16a34a)";
+          diffValEl.style.color = "var(--color-success)";
         } else {
-          diffValEl.style.color = "var(--color-danger, #ef4444)";
+          diffValEl.style.color = "var(--color-danger)";
         }
       } else {
         diffValEl.textContent = "—";
@@ -922,7 +922,7 @@ function renderReconciliationLinesTable(lines) {
     } else if (line.status === "ignored") {
       statusBadge = '<span class="status-badge status-neutral" style="font-size:11px;"><i class="fa-solid fa-ban"></i> Ignored</span>';
     } else if (line.status === "split") {
-      statusBadge = '<span class="status-badge" style="background:#f5f3ff;color:#7c3aed;font-size:11px;"><i class="fa-solid fa-arrows-split-up-and-left"></i> Split</span>';
+      statusBadge = '<span class="status-badge" style="background:var(--purple-soft);color:var(--purple);font-size:11px;"><i class="fa-solid fa-arrows-split-up-and-left"></i> Split</span>';
     } else {
       statusBadge = '<span class="status-badge status-warning" style="font-size:11px;"><i class="fa-solid fa-circle-exclamation"></i> Unmatched</span>';
     }
@@ -958,7 +958,7 @@ function renderReconciliationLinesTable(lines) {
                 )
                 .join("")}
             </select>
-            <div id="matchRationaleText_${line.id}" style="font-size:11px;color:var(--accent-text);background:rgba(37,99,235,0.06);padding:4px 8px;border-radius:4px;display:flex;align-items:center;gap:5px;">
+            <div id="matchRationaleText_${line.id}" style="font-size:11px;color:var(--accent-text);background:color-mix(in srgb, var(--accent) 6%, transparent);padding:4px 8px;border-radius:4px;display:flex;align-items:center;gap:5px;">
               <i class="fa-solid fa-wand-magic-sparkles"></i> <span>${escapeHtml(suggestions[0].reason || 'Candidate match')}</span>
             </div>
           </div>
@@ -994,7 +994,7 @@ function renderReconciliationLinesTable(lines) {
       const children = line.child_lines || [];
       matchColContent = `
         <div style="font-size:12px;">
-          <div style="font-weight:600;color:#7c3aed;"><i class="fa-solid fa-arrows-split-up-and-left"></i> Split into ${children.length || 'multiple'} ledger portions</div>
+          <div style="font-weight:600;color:var(--purple);"><i class="fa-solid fa-arrows-split-up-and-left"></i> Split into ${children.length || 'multiple'} ledger portions</div>
           ${children.map((c) => `<div style="font-size:11px;color:var(--text-muted);">· ${escapeHtml(c.raw_description)}: ${formatCurrency(c.raw_amount)}</div>`).join("")}
         </div>
       `;
@@ -1012,8 +1012,8 @@ function renderReconciliationLinesTable(lines) {
               : ""
           }
           <button class="btn btn-sm btn-outline btn-create-entry" style="padding:4px 8px;font-size:11px;" onclick="openCreateEntryForLine(${line.id})" title="Post new ledger entry"><i class="fa-solid fa-plus"></i> Create</button>
-          <button class="btn btn-sm btn-outline btn-split-line" style="padding:4px 8px;font-size:11px;color:#7c3aed;" onclick="openSplitModalForLine(${line.id})" title="Split into multiple allocations"><i class="fa-solid fa-arrows-split-up-and-left"></i> Split</button>
-          <button class="btn btn-sm btn-outline btn-ignore-line" style="padding:4px 8px;font-size:11px;color:var(--color-danger, #ef4444);" onclick="openIgnoreModalForLine(${line.id})" title="Exclude line with audit reason"><i class="fa-solid fa-ban"></i></button>
+          <button class="btn btn-sm btn-outline btn-split-line" style="padding:4px 8px;font-size:11px;color:var(--purple);" onclick="openSplitModalForLine(${line.id})" title="Split into multiple allocations"><i class="fa-solid fa-arrows-split-up-and-left"></i> Split</button>
+          <button class="btn btn-sm btn-outline btn-ignore-line" style="padding:4px 8px;font-size:11px;color:var(--color-danger);" onclick="openIgnoreModalForLine(${line.id})" title="Exclude line with audit reason"><i class="fa-solid fa-ban"></i></button>
         </div>
       `;
     } else {
@@ -1390,7 +1390,7 @@ function openReconciliationCloseModal() {
   if (bookBalEl) bookBalEl.textContent = formatCurrency(bookBal);
   if (diffEl) {
     diffEl.textContent = formatCurrency(diff);
-    diffEl.style.color = isZeroDiff ? "var(--color-success, #16a34a)" : "var(--color-danger, #ef4444)";
+    diffEl.style.color = isZeroDiff ? "var(--color-success)" : "var(--color-danger)";
   }
 
   if (balancedBanner) balancedBanner.style.display = isZeroDiff ? "block" : "none";
@@ -1550,10 +1550,10 @@ function renderCompletionReport(r) {
     : '<span class="status-badge status-success"><i class="fa-solid fa-check"></i> Reconciled</span>';
 
   const balancePill = isBalanced
-    ? '<span style="background:rgba(22,163,74,0.15);color:#15803d;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;"><i class="fa-solid fa-check"></i> Balanced ($0.00)</span>'
+    ? '<span style="background:color-mix(in srgb, var(--success) 15%, transparent);color:var(--success);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;"><i class="fa-solid fa-check"></i> Balanced ($0.00)</span>'
     : r.is_exception_override
     ? '<span class="badge-pill pill-warning"><i class="fa-solid fa-triangle-exclamation"></i> Exception Override</span>'
-    : '<span style="background:rgba(239,68,68,0.15);color:#b91c1c;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;"><i class="fa-solid fa-xmark"></i> Unbalanced</span>';
+    : '<span style="background:color-mix(in srgb, var(--danger) 15%, transparent);color:var(--danger);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;"><i class="fa-solid fa-xmark"></i> Unbalanced</span>';
 
   let ignoredTableHtml = '';
   if (r.ignored_lines_details && r.ignored_lines_details.length > 0) {
@@ -1616,7 +1616,7 @@ function renderCompletionReport(r) {
       </div>
       <div style="background:var(--bg-card-subtle); padding:10px 14px; border-radius:6px; border:1px solid var(--border-color);">
         <div style="font-size:11px; text-transform:uppercase; color:var(--text-muted); font-weight:600;">Balance Difference</div>
-        <div style="font-size:15px; font-weight:700; font-family:monospace; margin-top:3px; color:${isBalanced ? 'var(--color-success, #16a34a)' : 'var(--color-danger, #ef4444)'};">
+        <div style="font-size:15px; font-weight:700; font-family:monospace; margin-top:3px; color:${isBalanced ? 'var(--color-success)' : 'var(--color-danger)'};">
           ${formatCurrency(r.balance_difference)} ${balancePill}
         </div>
       </div>
@@ -1682,7 +1682,7 @@ function renderCompletionReport(r) {
         ${r.closing_notes ? `<div style="grid-column: span 2;">Closing Comments: <em>${escapeHtml(r.closing_notes)}</em></div>` : ''}
         ${r.is_exception_override ? `<div style="grid-column: span 2; color:var(--warning);"><strong>Exception Override Justification:</strong> ${escapeHtml(r.exception_override_reason || '—')}</div>` : ''}
         ${r.reopened_at ? `
-          <div style="grid-column: span 2; border-top:1px dashed var(--border-color); padding-top:6px; margin-top:4px; color:#d97706;">
+          <div style="grid-column: span 2; border-top:1px dashed var(--border-color); padding-top:6px; margin-top:4px; color:var(--warning);">
             Reopened By: <strong>${escapeHtml(r.reopened_by || '—')}</strong> on ${new Date(r.reopened_at).toLocaleString()}<br>
             <strong>Reopen Audit Reason:</strong> ${escapeHtml(r.reopen_reason || '—')}
           </div>

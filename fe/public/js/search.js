@@ -161,7 +161,7 @@ function renderCommandPaletteResults(results, query) {
   const itemsHtml = results.map((item, idx) => {
     const isAction = item.type === 'action';
     const avatarHtml = isAction
-      ? `<div class="palette-item-avatar" style="background:rgba(37,99,235,0.12); color:#2563EB; display:flex; align-items:center; justify-content:center;"><i class="${item.icon || 'fa-solid fa-bolt'}"></i></div>`
+      ? `<div class="palette-item-avatar" style="background:color-mix(in srgb, var(--accent) 12%, transparent); color:var(--accent); display:flex; align-items:center; justify-content:center;"><i class="${item.icon || 'fa-solid fa-bolt'}"></i></div>`
       : `<div class="palette-item-avatar">${initials(item.name)}</div>`;
     const statusHtml = isAction
       ? `<span class="badge" style="background:var(--bg3); color:var(--text2); font-size:10px; font-weight:600; padding:2px 6px; border-radius:4px;">${item.status}</span>`

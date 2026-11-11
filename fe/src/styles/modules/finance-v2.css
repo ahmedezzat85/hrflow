@@ -2309,6 +2309,26 @@
   color: var(--ink-strong);
 }
 
+/* ---------- Date filters take the HR form-date look (400 weight, ink-strong, 14px); row height stays with the neighbouring selects ---------- */
+.fv input[type="date"]:is(.fv-select, .form-input) {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--ink-strong);
+  padding: 0 12px;
+}
+.fv input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; }
+
+/* ---------- File inputs: the native button follows the app (same as the employee insurance upload) ---------- */
+.fv input[type="file"]::file-selector-button,
+.fv-dialog input[type="file"]::file-selector-button {
+  height: 30px; margin-right: 10px; padding: 0 12px; border: 1px solid var(--fv-outline); border-radius: 8px;
+  background: var(--fv-surface); color: var(--brand-ink); font-family: inherit; font-weight: 600; font-size: 12.5px; cursor: pointer;
+}
+.fv input[type="file"].fv-input {
+  width: 100%; max-width: 100%; box-sizing: border-box; padding: 12px; border: 1px dashed var(--fv-outline); border-radius: 10px;
+  background: var(--fv-surface-soft); color: var(--ink-muted); font-family: inherit; font-size: 13px;
+}
+
 /* ---------- S9: detail drawer (same head as a dialog, summary cards and soft tiles) ---------- */
 .fv.finance-drawer-overlay {
   background: var(--fv-scrim);

@@ -415,7 +415,7 @@ async function openEditInvoiceModal(invoiceId) {
     if (invNumEl) {
       invNumEl.value = inv.invoice_number;
       invNumEl.readOnly = isIssued;
-      invNumEl.style.backgroundColor = isIssued ? "var(--surface2, #f1f5f9)" : "";
+      invNumEl.style.backgroundColor = isIssued ? "var(--surface2)" : "";
     }
     const lockNote = document.getElementById("invoiceNumberImmutableNote");
     if (lockNote) lockNote.style.display = isIssued ? "block" : "none";

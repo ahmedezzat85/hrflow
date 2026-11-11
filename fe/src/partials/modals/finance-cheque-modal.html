@@ -13,17 +13,17 @@
     </div>
     <div class="modal-body">
       <!-- Stale Date Warning Banner -->
-      <div id="chequeStaleWarningBanner" class="alert-box alert-warning" style="display: none; margin-bottom: 14px; background: #fffbeb; border: 1px solid #fef08a; border-radius: 8px; padding: 10px 14px;">
-        <i class="fa-solid fa-triangle-exclamation" style="color:#d97706; font-size:16px;"></i>
-        <div class="alert-content" style="font-size:12.5px; color:#92400e;">
+      <div id="chequeStaleWarningBanner" class="alert-box alert-warning" style="display: none; margin-bottom: 14px; background: var(--warning-soft); border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent); border-radius: 8px; padding: 10px 14px;">
+        <i class="fa-solid fa-triangle-exclamation" style="color:var(--warning); font-size:16px;"></i>
+        <div class="alert-content" style="font-size:12.5px; color:var(--warning);">
           <strong>Stale-Date Warning:</strong> <span id="chequeStaleWarningText">This issue date exceeds the standard 180-day bank clearance window. Banks may dishonour upon presentment.</span>
         </div>
       </div>
 
       <!-- Duplicate Check Warning -->
-      <div id="chequeDuplicateWarning" class="alert-box alert-danger" style="display: none; margin-bottom: 14px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 10px 14px;">
-        <i class="fa-solid fa-circle-exclamation" style="color:#dc2626; font-size:16px;"></i>
-        <div class="alert-content" style="font-size:12.5px; color:#991b1b;">
+      <div id="chequeDuplicateWarning" class="alert-box alert-danger" style="display: none; margin-bottom: 14px; background: var(--danger-soft); border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent); border-radius: 8px; padding: 10px 14px;">
+        <i class="fa-solid fa-circle-exclamation" style="color:var(--danger); font-size:16px;"></i>
+        <div class="alert-content" style="font-size:12.5px; color:var(--danger);">
           <strong>Duplicate Cheque Number:</strong> <span id="chequeDuplicateWarningText">This cheque number is already registered for this account.</span>
         </div>
       </div>
@@ -155,9 +155,9 @@
     <div class="modal-body">
       <div id="chequeActionSummaryCard" style="background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-bottom:14px; font-size:13px;"></div>
       
-      <div class="alert-box alert-warning" id="chequeActionNotice" style="margin-bottom:14px; background:#fffbeb; border:1px solid #fef08a; border-radius:8px; padding:10px 14px;">
-        <i class="fa-solid fa-circle-info" style="color:#d97706;"></i>
-        <div class="alert-content" style="font-size:12px; color:#92400e;">
+      <div class="alert-box alert-warning" id="chequeActionNotice" style="margin-bottom:14px; background:var(--warning-soft); border:1px solid color-mix(in srgb, var(--warning) 30%, transparent); border-radius:8px; padding:10px 14px;">
+        <i class="fa-solid fa-circle-info" style="color:var(--warning);"></i>
+        <div class="alert-content" style="font-size:12px; color:var(--warning);">
           This action will atomically reverse any posted continuous ledger outflow transactions and restore the account balance.
         </div>
       </div>
@@ -186,7 +186,7 @@
 <div id="financeChequeReplaceModal" class="modal-overlay fv fv-dialog fv-area-sky">
   <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="chequeReplaceModalTitle" style="max-width: 560px;">
     <div class="modal-head">
-      <div class="modal-head-icon" style="background:#f5f3ff; color:#7c3aed;"><i class="fa-solid fa-arrows-rotate"></i></div>
+      <div class="modal-head-icon" style="background:var(--purple-soft); color:var(--purple);"><i class="fa-solid fa-arrows-rotate"></i></div>
       <div class="modal-head-text">
         <h3 id="chequeReplaceModalTitle">Issue Replacement Cheque</h3>
         <p>Void/replace the existing cheque and draw a new replacement cheque with linked audit history.</p>
@@ -196,9 +196,9 @@
     <div class="modal-body">
       <div id="chequeReplaceOldSummary" style="background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-bottom:14px; font-size:13px;"></div>
 
-      <div class="alert-box" style="margin-bottom:14px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px 14px;">
-        <i class="fa-solid fa-shield-halved" style="color:#16a34a;"></i>
-        <div class="alert-content" style="font-size:12px; color:#166534;">
+      <div class="alert-box" style="margin-bottom:14px; background:var(--success-soft); border:1px solid color-mix(in srgb, var(--success) 30%, transparent); border-radius:8px; padding:10px 14px;">
+        <i class="fa-solid fa-shield-halved" style="color:var(--success);"></i>
+        <div class="alert-content" style="font-size:12px; color:var(--success);">
           The old cheque will be retired to <strong>Replaced</strong> status and its ledger entries reversed. The new replacement cheque will be issued with linked bidirectional lineage.
         </div>
       </div>

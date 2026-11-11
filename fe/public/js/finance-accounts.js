@@ -940,7 +940,7 @@ async function loadWorkspaceReconcile() {
     } else {
       container.innerHTML = `
         <div class="empty-state" style="padding:2.5rem 1rem;">
-          <i class="fa-solid fa-check-double" style="font-size:2rem; color:var(--success, #10b981); margin-bottom:10px;"></i>
+          <i class="fa-solid fa-check-double" style="font-size:2rem; color:var(--success); margin-bottom:10px;"></i>
           <h4>Account In Balance</h4>
           <p style="color:var(--text3); font-size:13px; max-width:480px; margin:0 auto 14px auto;">
             All recent statement lines have been matched with ledger transactions or no pending statements require review.

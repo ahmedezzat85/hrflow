@@ -711,7 +711,7 @@ async function openReportDrilldown(drilldownType, targetId, title) {
         <td><strong>${r.description || '—'}</strong></td>
         <td>${r.account || '—'}</td>
         <td style="text-align:center;"><span class="badge ${isOut ? 'badge-danger' : 'badge-success'}">${(r.direction || 'out').toUpperCase()}</span></td>
-        <td class="cell-money" style="text-align:right; font-weight:600; color:${isOut ? '#EF4444' : '#10B981'};">
+        <td class="cell-money" style="text-align:right; font-weight:600; color:${isOut ? 'var(--danger)' : 'var(--success)'};">
           ${isOut ? '-' : '+'}${FinanceFormat.formatMoney(r.amount || 0, r.currency || 'USD')}
         </td>
       `;
@@ -972,7 +972,7 @@ async function loadReportSchedules() {
             <td style="max-width:240px; word-break:break-all; font-size:0.85rem;">${_escapeHtmlText(recipientsList)}</td>
             <td style="font-size:0.85rem; color:var(--text-muted);">${_escapeHtmlText(s.created_by || "system")}</td>
             <td style="text-align:center;">
-              <button class="btn btn-sm btn-outline delete-schedule-btn" style="color:#EF4444; padding:3px 8px;" onclick="deleteReportSchedule(${s.id})" title="Cancel Delivery Schedule">
+              <button class="btn btn-sm btn-outline delete-schedule-btn" style="color:var(--danger); padding:3px 8px;" onclick="deleteReportSchedule(${s.id})" title="Cancel Delivery Schedule">
                 <i class="fa-solid fa-trash-can"></i>
               </button>
             </td>
@@ -1096,8 +1096,8 @@ async function loadReportCategorySummary() {
         <td class="cell-money" style="text-align:right; font-weight:600;">${FinanceFormat.renderMoneyHtml(amt, reportCurr)}</td>
         <td>
           <div style="display:flex; align-items:center; gap:10px;">
-            <div style="flex:1; height:8px; background:var(--border-color, #E2E8F0); border-radius:4px; overflow:hidden;">
-              <div style="width:${Math.min(pct, 100)}%; height:100%; background:#EF4444; border-radius:4px;"></div>
+            <div style="flex:1; height:8px; background:var(--border-color); border-radius:4px; overflow:hidden;">
+              <div style="width:${Math.min(pct, 100)}%; height:100%; background:var(--danger); border-radius:4px;"></div>
             </div>
             <span style="font-size:0.85rem; font-weight:600; min-width:48px; text-align:right;">${pct.toFixed(1)}%</span>
           </div>
@@ -1205,7 +1205,7 @@ async function loadReportMatrix() {
         </td>`;
       });
       const gTot = Number(report.grand_total || 0);
-      fHtml += `<td class="cell-money" style="text-align:right; font-weight:800; font-size:1.05rem; color:#EF4444;">
+      fHtml += `<td class="cell-money" style="text-align:right; font-weight:800; font-size:1.05rem; color:var(--danger);">
         ${FinanceFormat.renderMoneyHtml(gTot, "USD")}
       </td></tr>`;
       tfoot.innerHTML = fHtml;
@@ -1246,7 +1246,7 @@ async function loadReportBalances() {
         const card = document.createElement("div");
         card.className = "card";
         card.style.padding = "16px";
-        card.style.borderLeft = curr === "USD" ? "4px solid #10B981" : "4px solid #3B82F6";
+        card.style.borderLeft = curr === "USD" ? "4px solid var(--success)" : "4px solid var(--accent)";
         card.innerHTML = `
           <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total ${curr} Liquidity</div>
           <div style="font-size:1.4rem; font-weight:700; color:var(--text-main); margin-top:4px;">
@@ -1497,7 +1497,7 @@ async function loadReportTransactions() {
             <i class="fa-solid ${isOut ? 'fa-arrow-up' : 'fa-arrow-down'}"></i> ${tx.direction.toUpperCase()}
           </span>
         </td>
-        <td class="cell-money" style="text-align:right; font-weight:600; color:${isOut ? '#EF4444' : '#10B981'};">
+        <td class="cell-money" style="text-align:right; font-weight:600; color:${isOut ? 'var(--danger)' : 'var(--success)'};">
           ${isOut ? '-' : '+'}${FinanceFormat.formatMoney(amt, tx.currency)}
         </td>
         <td>${FinanceFormat.formatStatusBadge("transaction", tx.status || "posted")}</td>
@@ -1703,7 +1703,7 @@ async function loadReportProfitAndLoss() {
     if (expEl) expEl.textContent = FinanceFormat.formatMoney(data.total_expenses || 0, curr);
     if (netEl) {
       netEl.textContent = FinanceFormat.formatMoney(data.net_income || 0, curr);
-      netEl.style.color = (data.net_income || 0) >= 0 ? "#10B981" : "#EF4444";
+      netEl.style.color = (data.net_income || 0) >= 0 ? "var(--success)" : "var(--danger)";
     }
     if (marEl) marEl.textContent = `${(data.net_margin_pct || 0).toFixed(1)}%`;
     if (revSubEl) revSubEl.textContent = FinanceFormat.formatMoney(data.total_revenue || 0, curr);
@@ -1717,12 +1717,12 @@ async function loadReportProfitAndLoss() {
       } else {
         revTbody.innerHTML = data.revenue_items.map((it) => `
           <tr>
-            <td style="font-weight:600;"><i class="fa-solid fa-layer-group" style="color:#10B981; margin-right:6px;"></i> ${_esc(it.category_name)}</td>
-            <td class="cell-money" style="text-align:right; font-weight:700; color:#10B981;">${FinanceFormat.formatMoney(it.amount, it.currency || curr)}</td>
+            <td style="font-weight:600;"><i class="fa-solid fa-layer-group" style="color:var(--success); margin-right:6px;"></i> ${_esc(it.category_name)}</td>
+            <td class="cell-money" style="text-align:right; font-weight:700; color:var(--success);">${FinanceFormat.formatMoney(it.amount, it.currency || curr)}</td>
             <td>
               <div style="display:flex; align-items:center; gap:8px;">
-                <div style="flex:1; height:6px; border-radius:3px; background:#E2E8F0; overflow:hidden;">
-                  <div style="width:${Math.min(100, Math.max(0, it.percentage))}%; height:100%; background:#10B981;"></div>
+                <div style="flex:1; height:6px; border-radius:3px; background:var(--border2); overflow:hidden;">
+                  <div style="width:${Math.min(100, Math.max(0, it.percentage))}%; height:100%; background:var(--success);"></div>
                 </div>
                 <span style="font-size:0.8rem; color:var(--text-muted); width:45px; text-align:right;">${it.percentage.toFixed(1)}%</span>
               </div>
@@ -1745,12 +1745,12 @@ async function loadReportProfitAndLoss() {
       } else {
         expTbody.innerHTML = data.expense_items.map((it) => `
           <tr>
-            <td style="font-weight:600;"><i class="fa-solid fa-tag" style="color:#EF4444; margin-right:6px;"></i> ${_esc(it.category_name)}</td>
-            <td class="cell-money" style="text-align:right; font-weight:700; color:#EF4444;">${FinanceFormat.formatMoney(it.amount, it.currency || curr)}</td>
+            <td style="font-weight:600;"><i class="fa-solid fa-tag" style="color:var(--danger); margin-right:6px;"></i> ${_esc(it.category_name)}</td>
+            <td class="cell-money" style="text-align:right; font-weight:700; color:var(--danger);">${FinanceFormat.formatMoney(it.amount, it.currency || curr)}</td>
             <td>
               <div style="display:flex; align-items:center; gap:8px;">
-                <div style="flex:1; height:6px; border-radius:3px; background:#E2E8F0; overflow:hidden;">
-                  <div style="width:${Math.min(100, Math.max(0, it.percentage))}%; height:100%; background:#EF4444;"></div>
+                <div style="flex:1; height:6px; border-radius:3px; background:var(--border2); overflow:hidden;">
+                  <div style="width:${Math.min(100, Math.max(0, it.percentage))}%; height:100%; background:var(--danger);"></div>
                 </div>
                 <span style="font-size:0.8rem; color:var(--text-muted); width:45px; text-align:right;">${it.percentage.toFixed(1)}%</span>
               </div>
@@ -1809,9 +1809,9 @@ async function loadReportBalanceSheet() {
 
     if (badge) {
       if (data.is_balanced) {
-        badge.innerHTML = `<span style="color:#10B981;"><i class="fa-solid fa-circle-check"></i> BALANCED ✓</span>`;
+        badge.innerHTML = `<span style="color:var(--success);"><i class="fa-solid fa-circle-check"></i> BALANCED ✓</span>`;
       } else {
-        badge.innerHTML = `<span style="color:#EF4444;"><i class="fa-solid fa-triangle-exclamation"></i> VARIANCE: ${FinanceFormat.formatMoney(data.variance || 0, curr)}</span>`;
+        badge.innerHTML = `<span style="color:var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i> VARIANCE: ${FinanceFormat.formatMoney(data.variance || 0, curr)}</span>`;
       }
     }
 
@@ -1828,7 +1828,7 @@ async function loadReportBalanceSheet() {
       } else {
         aTbody.innerHTML = items.map((x) => `
           <tr>
-            <td style="font-weight:600;"><i class="fa-solid fa-building-columns" style="color:#2563EB; margin-right:6px;"></i> ${_esc(x.name)}</td>
+            <td style="font-weight:600;"><i class="fa-solid fa-building-columns" style="color:var(--accent); margin-right:6px;"></i> ${_esc(x.name)}</td>
             <td style="color:var(--text-muted); font-size:0.85rem;">${_esc(x.note || "")}</td>
             <td class="cell-money" style="text-align:right; font-weight:600;">${FinanceFormat.formatMoney(x.amount, curr)}</td>
           </tr>
@@ -1845,7 +1845,7 @@ async function loadReportBalanceSheet() {
       } else {
         lTbody.innerHTML = items.map((x) => `
           <tr>
-            <td style="font-weight:600;"><i class="fa-solid fa-receipt" style="color:#F59E0B; margin-right:6px;"></i> ${_esc(x.name)}</td>
+            <td style="font-weight:600;"><i class="fa-solid fa-receipt" style="color:var(--warning); margin-right:6px;"></i> ${_esc(x.name)}</td>
             <td style="color:var(--text-muted); font-size:0.85rem;">${_esc(x.note || "")}</td>
             <td class="cell-money" style="text-align:right; font-weight:600;">${FinanceFormat.formatMoney(x.amount, curr)}</td>
           </tr>
@@ -1862,7 +1862,7 @@ async function loadReportBalanceSheet() {
       } else {
         eTbody.innerHTML = items.map((x) => `
           <tr>
-            <td style="font-weight:600;"><i class="fa-solid fa-coins" style="color:#10B981; margin-right:6px;"></i> ${_esc(x.name)}</td>
+            <td style="font-weight:600;"><i class="fa-solid fa-coins" style="color:var(--success); margin-right:6px;"></i> ${_esc(x.name)}</td>
             <td style="color:var(--text-muted); font-size:0.85rem;">${_esc(x.note || "")}</td>
             <td class="cell-money" style="text-align:right; font-weight:600;">${FinanceFormat.formatMoney(x.amount, curr)}</td>
           </tr>
@@ -1898,9 +1898,9 @@ async function loadReportTrialBalance() {
     if (vEl) vEl.textContent = FinanceFormat.formatMoney(data.variance || 0, curr);
     if (bEl) {
       if (data.is_balanced) {
-        bEl.innerHTML = `<span style="color:#10B981;"><i class="fa-solid fa-circle-check"></i> DEBITS = CREDITS ✓</span>`;
+        bEl.innerHTML = `<span style="color:var(--success);"><i class="fa-solid fa-circle-check"></i> DEBITS = CREDITS ✓</span>`;
       } else {
-        bEl.innerHTML = `<span style="color:#EF4444;"><i class="fa-solid fa-triangle-exclamation"></i> UNBALANCED</span>`;
+        bEl.innerHTML = `<span style="color:var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i> UNBALANCED</span>`;
       }
     }
 
@@ -1917,8 +1917,8 @@ async function loadReportTrialBalance() {
             <td style="font-family:monospace; font-size:0.85rem; font-weight:600;">${_esc(l.code)}</td>
             <td style="font-weight:600;">${_esc(l.name)}</td>
             <td><span class="badge badge-neutral" style="text-transform:capitalize; font-size:0.75rem;">${_esc(l.type)}</span></td>
-            <td class="cell-money" style="text-align:right; color:#2563EB;">${l.debit > 0 ? FinanceFormat.formatMoney(l.debit, curr) : "-"}</td>
-            <td class="cell-money" style="text-align:right; color:#8B5CF6;">${l.credit > 0 ? FinanceFormat.formatMoney(l.credit, curr) : "-"}</td>
+            <td class="cell-money" style="text-align:right; color:var(--accent);">${l.debit > 0 ? FinanceFormat.formatMoney(l.debit, curr) : "-"}</td>
+            <td class="cell-money" style="text-align:right; color:var(--purple);">${l.credit > 0 ? FinanceFormat.formatMoney(l.credit, curr) : "-"}</td>
           </tr>
         `).join("");
       }
@@ -1928,8 +1928,8 @@ async function loadReportTrialBalance() {
       tfoot.innerHTML = `
         <tr>
           <td colspan="3" style="text-align:right; font-weight:700;">TOTALS:</td>
-          <td class="cell-money" style="text-align:right; color:#2563EB; font-weight:700;">${FinanceFormat.formatMoney(data.total_debits || 0, curr)}</td>
-          <td class="cell-money" style="text-align:right; color:#8B5CF6; font-weight:700;">${FinanceFormat.formatMoney(data.total_credits || 0, curr)}</td>
+          <td class="cell-money" style="text-align:right; color:var(--accent); font-weight:700;">${FinanceFormat.formatMoney(data.total_debits || 0, curr)}</td>
+          <td class="cell-money" style="text-align:right; color:var(--purple); font-weight:700;">${FinanceFormat.formatMoney(data.total_credits || 0, curr)}</td>
         </tr>
       `;
     }
@@ -1967,12 +1967,12 @@ async function loadReportCashFlow() {
     const tbody = document.getElementById("reportCfTableBody");
     if (tbody) {
       let rowsHtml = `
-        <tr style="background:var(--bg-secondary, #F8FAFC); font-weight:700;">
+        <tr style="background:var(--bg-secondary); font-weight:700;">
           <td><i class="fa-solid fa-hourglass-start" style="color:var(--text-muted); margin-right:8px;"></i> Cash & Cash Equivalents at Beginning of Period</td>
           <td class="cell-money" style="text-align:right;">${FinanceFormat.formatMoney(data.beginning_cash_balance || 0, curr)}</td>
         </tr>
-        <tr style="background:rgba(37,99,235,0.05); font-weight:700; border-top:2px solid var(--border-color, #E2E8F0);">
-          <td colspan="2"><i class="fa-solid fa-circle-chevron-right" style="color:#2563EB; margin-right:6px;"></i> Cash Flows from Operating Activities</td>
+        <tr style="background:color-mix(in srgb, var(--accent) 5%, transparent); font-weight:700; border-top:2px solid var(--border-color);">
+          <td colspan="2"><i class="fa-solid fa-circle-chevron-right" style="color:var(--accent); margin-right:6px;"></i> Cash Flows from Operating Activities</td>
         </tr>
       `;
 
@@ -1981,7 +1981,7 @@ async function loadReportCashFlow() {
         rowsHtml += `<tr><td colspan="2" style="padding-left:32px; color:var(--text-muted); font-size:0.9rem;">No operational flows in period.</td></tr>`;
       } else {
         opItems.forEach((x) => {
-          const color = x.amount >= 0 ? "#10B981" : "#EF4444";
+          const color = x.amount >= 0 ? "var(--success)" : "var(--danger)";
           rowsHtml += `
             <tr>
               <td style="padding-left:32px;"><i class="fa-solid fa-caret-right" style="color:var(--text-muted); margin-right:6px;"></i> ${_esc(x.name)}</td>
@@ -1992,12 +1992,12 @@ async function loadReportCashFlow() {
       }
 
       rowsHtml += `
-        <tr style="font-weight:700; background:var(--bg-secondary, #F8FAFC);">
+        <tr style="font-weight:700; background:var(--bg-secondary);">
           <td style="padding-left:32px;">Net Cash Generated by Operating Activities</td>
-          <td class="cell-money" style="text-align:right; color:#10B981;">${FinanceFormat.formatMoney(data.net_cash_operating || 0, curr)}</td>
+          <td class="cell-money" style="text-align:right; color:var(--success);">${FinanceFormat.formatMoney(data.net_cash_operating || 0, curr)}</td>
         </tr>
-        <tr style="background:rgba(37,99,235,0.05); font-weight:700; border-top:2px solid var(--border-color, #E2E8F0);">
-          <td colspan="2"><i class="fa-solid fa-circle-chevron-right" style="color:#2563EB; margin-right:6px;"></i> Cash Flows from Investing Activities</td>
+        <tr style="background:color-mix(in srgb, var(--accent) 5%, transparent); font-weight:700; border-top:2px solid var(--border-color);">
+          <td colspan="2"><i class="fa-solid fa-circle-chevron-right" style="color:var(--accent); margin-right:6px;"></i> Cash Flows from Investing Activities</td>
         </tr>
       `;
 
@@ -2016,8 +2016,8 @@ async function loadReportCashFlow() {
       }
 
       rowsHtml += `
-        <tr style="background:rgba(37,99,235,0.05); font-weight:700; border-top:2px solid var(--border-color, #E2E8F0);">
-          <td colspan="2"><i class="fa-solid fa-circle-chevron-right" style="color:#2563EB; margin-right:6px;"></i> Cash Flows from Financing Activities</td>
+        <tr style="background:color-mix(in srgb, var(--accent) 5%, transparent); font-weight:700; border-top:2px solid var(--border-color);">
+          <td colspan="2"><i class="fa-solid fa-circle-chevron-right" style="color:var(--accent); margin-right:6px;"></i> Cash Flows from Financing Activities</td>
         </tr>
       `;
 
@@ -2044,13 +2044,13 @@ async function loadReportCashFlow() {
         </tr>`;
       }
       rowsHtml += `
-        <tr style="font-weight:700; background:rgba(37,99,235,0.08); border-top:2px solid #2563EB;">
+        <tr style="font-weight:700; background:color-mix(in srgb, var(--accent) 8%, transparent); border-top:2px solid var(--accent);">
           <td>Net Increase / (Decrease) in Cash and Cash Equivalents</td>
-          <td class="cell-money" style="text-align:right; font-size:1.05rem; color:#2563EB;">${FinanceFormat.formatMoney(data.net_change_in_cash || 0, curr)}</td>
+          <td class="cell-money" style="text-align:right; font-size:1.05rem; color:var(--accent);">${FinanceFormat.formatMoney(data.net_change_in_cash || 0, curr)}</td>
         </tr>
-        <tr style="font-weight:700; background:rgba(16,185,129,0.12); border-top:2px solid #10B981;">
-          <td><i class="fa-solid fa-flag-checkered" style="color:#059669; margin-right:8px;"></i> Cash & Cash Equivalents at End of Period</td>
-          <td class="cell-money" style="text-align:right; font-size:1.15rem; color:#059669;">${FinanceFormat.formatMoney(data.ending_cash_balance || 0, curr)}</td>
+        <tr style="font-weight:700; background:color-mix(in srgb, var(--success) 12%, transparent); border-top:2px solid var(--success);">
+          <td><i class="fa-solid fa-flag-checkered" style="color:var(--success); margin-right:8px;"></i> Cash & Cash Equivalents at End of Period</td>
+          <td class="cell-money" style="text-align:right; font-size:1.15rem; color:var(--success);">${FinanceFormat.formatMoney(data.ending_cash_balance || 0, curr)}</td>
         </tr>
       `;
 
@@ -2109,14 +2109,14 @@ async function loadReportArAging() {
       } else {
         tbody.innerHTML = rows.map((r) => `
           <tr>
-            <td style="font-weight:600;"><i class="fa-solid fa-hospital-user" style="color:#2563EB; margin-right:6px;"></i> ${_esc(r.name)}</td>
+            <td style="font-weight:600;"><i class="fa-solid fa-hospital-user" style="color:var(--accent); margin-right:6px;"></i> ${_esc(r.name)}</td>
             <td style="text-align:center;"><span class="badge badge-neutral">${r.outstanding_count}</span></td>
             <td class="cell-money" style="text-align:right;">${FinanceFormat.formatMoney(r.buckets.current, curr)}</td>
             <td class="cell-money" style="text-align:right;">${FinanceFormat.formatMoney(r.buckets.days_1_30, curr)}</td>
             <td class="cell-money" style="text-align:right;">${FinanceFormat.formatMoney(r.buckets.days_31_60, curr)}</td>
             <td class="cell-money" style="text-align:right;">${FinanceFormat.formatMoney(r.buckets.days_61_90, curr)}</td>
-            <td class="cell-money" style="text-align:right; color:#DC2626; font-weight:600;">${FinanceFormat.formatMoney(r.buckets.days_over_90, curr)}</td>
-            <td class="cell-money" style="text-align:right; font-weight:700; color:#2563EB;">${FinanceFormat.formatMoney(r.buckets.total, curr)}</td>
+            <td class="cell-money" style="text-align:right; color:var(--danger); font-weight:600;">${FinanceFormat.formatMoney(r.buckets.days_over_90, curr)}</td>
+            <td class="cell-money" style="text-align:right; font-weight:700; color:var(--accent);">${FinanceFormat.formatMoney(r.buckets.total, curr)}</td>
             <td style="text-align:center;">
               <button class="btn btn-sm btn-outline" onclick="openReportDrilldown('entity', '${r.id}', '${_esc(r.name)}')">
                 <i class="fa-solid fa-search"></i>
@@ -2135,8 +2135,8 @@ async function loadReportArAging() {
           <td class="cell-money" style="text-align:right; font-weight:700;">${FinanceFormat.formatMoney(t.days_1_30, curr)}</td>
           <td class="cell-money" style="text-align:right; font-weight:700;">${FinanceFormat.formatMoney(t.days_31_60, curr)}</td>
           <td class="cell-money" style="text-align:right; font-weight:700;">${FinanceFormat.formatMoney(t.days_61_90, curr)}</td>
-          <td class="cell-money" style="text-align:right; font-weight:700; color:#DC2626;">${FinanceFormat.formatMoney(t.days_over_90, curr)}</td>
-          <td class="cell-money" style="text-align:right; font-weight:700; color:#2563EB;">${FinanceFormat.formatMoney(t.total, curr)}</td>
+          <td class="cell-money" style="text-align:right; font-weight:700; color:var(--danger);">${FinanceFormat.formatMoney(t.days_over_90, curr)}</td>
+          <td class="cell-money" style="text-align:right; font-weight:700; color:var(--accent);">${FinanceFormat.formatMoney(t.total, curr)}</td>
           <td></td>
         </tr>
       `;
@@ -2186,14 +2186,14 @@ async function loadReportApAging() {
       } else {
         tbody.innerHTML = rows.map((r) => `
           <tr>
-            <td style="font-weight:600;"><i class="fa-solid fa-building" style="color:#EF4444; margin-right:6px;"></i> ${_esc(r.name)}</td>
+            <td style="font-weight:600;"><i class="fa-solid fa-building" style="color:var(--danger); margin-right:6px;"></i> ${_esc(r.name)}</td>
             <td style="text-align:center;"><span class="badge badge-neutral">${r.outstanding_count}</span></td>
             <td class="cell-money" style="text-align:right;">${FinanceFormat.formatMoney(r.buckets.current, curr)}</td>
             <td class="cell-money" style="text-align:right;">${FinanceFormat.formatMoney(r.buckets.days_1_30, curr)}</td>
             <td class="cell-money" style="text-align:right;">${FinanceFormat.formatMoney(r.buckets.days_31_60, curr)}</td>
             <td class="cell-money" style="text-align:right;">${FinanceFormat.formatMoney(r.buckets.days_61_90, curr)}</td>
-            <td class="cell-money" style="text-align:right; color:#DC2626; font-weight:600;">${FinanceFormat.formatMoney(r.buckets.days_over_90, curr)}</td>
-            <td class="cell-money" style="text-align:right; font-weight:700; color:#EF4444;">${FinanceFormat.formatMoney(r.buckets.total, curr)}</td>
+            <td class="cell-money" style="text-align:right; color:var(--danger); font-weight:600;">${FinanceFormat.formatMoney(r.buckets.days_over_90, curr)}</td>
+            <td class="cell-money" style="text-align:right; font-weight:700; color:var(--danger);">${FinanceFormat.formatMoney(r.buckets.total, curr)}</td>
             <td style="text-align:center;">
               <button class="btn btn-sm btn-outline" onclick="openReportDrilldown('entity', '${r.id}', '${_esc(r.name)}')">
                 <i class="fa-solid fa-search"></i>
@@ -2212,8 +2212,8 @@ async function loadReportApAging() {
           <td class="cell-money" style="text-align:right; font-weight:700;">${FinanceFormat.formatMoney(t.days_1_30, curr)}</td>
           <td class="cell-money" style="text-align:right; font-weight:700;">${FinanceFormat.formatMoney(t.days_31_60, curr)}</td>
           <td class="cell-money" style="text-align:right; font-weight:700;">${FinanceFormat.formatMoney(t.days_61_90, curr)}</td>
-          <td class="cell-money" style="text-align:right; font-weight:700; color:#DC2626;">${FinanceFormat.formatMoney(t.days_over_90, curr)}</td>
-          <td class="cell-money" style="text-align:right; font-weight:700; color:#EF4444;">${FinanceFormat.formatMoney(t.total, curr)}</td>
+          <td class="cell-money" style="text-align:right; font-weight:700; color:var(--danger);">${FinanceFormat.formatMoney(t.days_over_90, curr)}</td>
+          <td class="cell-money" style="text-align:right; font-weight:700; color:var(--danger);">${FinanceFormat.formatMoney(t.total, curr)}</td>
           <td></td>
         </tr>
       `;
@@ -2407,7 +2407,7 @@ async function loadEmployeeCompensationReport(empId, dFrom, dTo, currency) {
           <td><strong>${l.period_label || 'Current'}</strong></td>
           <td>${typeLabel}</td>
           <td style="text-align:right;">${formatCurrency(l.base_salary)}</td>
-          <td style="text-align:right; color:#EF4444;">${formatCurrency((l.tax_amount || 0) + (l.deductions_total || 0))}</td>
+          <td style="text-align:right; color:var(--danger);">${formatCurrency((l.tax_amount || 0) + (l.deductions_total || 0))}</td>
           <td style="text-align:right; font-weight:700;">${formatCurrency(l.net_pay)}</td>
           <td style="text-align:center;">${statusBadge}</td>
           <td style="font-size:0.82rem; color:var(--text-muted);">${l.paid_at ? new Date(l.paid_at).toLocaleDateString() : '—'}</td>
@@ -2514,7 +2514,7 @@ async function loadStatutoryRemittedReport() {
           <td><strong>${it.period}</strong></td>
           <td><span class="badge badge-neutral">${typeLabel}</span></td>
           <td>${it.notes || '—'}</td>
-          <td style="text-align:right; font-weight:700; color:#10B981;">${formatCurrency(it.amount_remitted)}</td>
+          <td style="text-align:right; font-weight:700; color:var(--success);">${formatCurrency(it.amount_remitted)}</td>
           <td style="text-align:right; color:var(--text-muted);">${formatCurrency(it.amount_accrued)}</td>
           <td style="text-align:center;"><span class="badge badge-success">Settled</span></td>
           <td style="font-size:0.85rem;">${it.due_date || '—'}</td>
@@ -2526,7 +2526,7 @@ async function loadStatutoryRemittedReport() {
       tfoot.innerHTML = `
         <tr>
           <td colspan="3">Total Remitted to Authorities</td>
-          <td style="text-align:right; font-weight:700; color:#10B981;">${formatCurrency(data.total_remitted)}</td>
+          <td style="text-align:right; font-weight:700; color:var(--success);">${formatCurrency(data.total_remitted)}</td>
           <td colspan="3"></td>
         </tr>
       `;
@@ -2627,8 +2627,8 @@ async function loadPayableStatusReport() {
         return `
           <tr>
             <td><strong>${f.label}</strong></td>
-            <td style="text-align:right; color:#10B981; font-weight:600;">${formatCurrency(f.settled_amount)}</td>
-            <td style="text-align:right; color:#EF4444; font-weight:600;">${formatCurrency(f.pending_amount)}</td>
+            <td style="text-align:right; color:var(--success); font-weight:600;">${formatCurrency(f.settled_amount)}</td>
+            <td style="text-align:right; color:var(--danger); font-weight:600;">${formatCurrency(f.pending_amount)}</td>
             <td style="text-align:right; font-weight:700;">${formatCurrency(f.total_amount)}</td>
             <td style="text-align:center;"><span class="${badgeClass}">${f.status.replace(/_/g, " ").toUpperCase()}</span></td>
           </tr>
@@ -2639,8 +2639,8 @@ async function loadPayableStatusReport() {
         tfoot.innerHTML = `
           <tr>
             <td>Total Net Outflow Status</td>
-            <td style="text-align:right; color:#10B981; font-weight:700;">${formatCurrency(data.total_settled)}</td>
-            <td style="text-align:right; color:#EF4444; font-weight:700;">${formatCurrency(data.total_pending)}</td>
+            <td style="text-align:right; color:var(--success); font-weight:700;">${formatCurrency(data.total_settled)}</td>
+            <td style="text-align:right; color:var(--danger); font-weight:700;">${formatCurrency(data.total_pending)}</td>
             <td style="text-align:right; font-weight:700; color:var(--accent-text);">${formatCurrency(data.grand_total)}</td>
             <td style="text-align:center;">${data.total_pending === 0 ? '<span class="badge badge-success">FULLY SETTLED</span>' : '<span class="badge badge-warning">ACTION REQUIRED</span>'}</td>
           </tr>
@@ -2671,15 +2671,15 @@ async function loadPayableStatusReport() {
         <tr>
           <td><strong>${e.employee_name}</strong></td>
           <td><span class="badge badge-neutral">${e.department || 'General'}</span></td>
-          <td style="text-align:right; color:#10B981;">${formatCurrency(e.external_settled)}</td>
-          <td style="text-align:right; color:#EF4444;">${formatCurrency(e.external_pending)}</td>
-          <td style="text-align:right; color:#10B981;">${formatCurrency(e.internal_settled)}</td>
-          <td style="text-align:right; color:#EF4444;">${formatCurrency(e.internal_pending)}</td>
+          <td style="text-align:right; color:var(--success);">${formatCurrency(e.external_settled)}</td>
+          <td style="text-align:right; color:var(--danger);">${formatCurrency(e.external_pending)}</td>
+          <td style="text-align:right; color:var(--success);">${formatCurrency(e.internal_settled)}</td>
+          <td style="text-align:right; color:var(--danger);">${formatCurrency(e.internal_pending)}</td>
           <td style="text-align:right; font-size:0.85rem;">
-            <span style="color:#10B981;">${formatCurrency(e.tax_settled)}</span> / <span style="color:#EF4444;">${formatCurrency(e.tax_pending)}</span>
+            <span style="color:var(--success);">${formatCurrency(e.tax_settled)}</span> / <span style="color:var(--danger);">${formatCurrency(e.tax_pending)}</span>
           </td>
           <td style="text-align:right; font-size:0.85rem;">
-            <span style="color:#10B981;">${formatCurrency(e.insurance_settled)}</span> / <span style="color:#EF4444;">${formatCurrency(e.insurance_pending)}</span>
+            <span style="color:var(--success);">${formatCurrency(e.insurance_settled)}</span> / <span style="color:var(--danger);">${formatCurrency(e.insurance_pending)}</span>
           </td>
           <td style="text-align:right; font-weight:700;">${formatCurrency((e.total_settled || 0) + (e.total_pending || 0))}</td>
         </tr>
