@@ -315,7 +315,10 @@ def test_migration_0075_upgrades_and_downgrades_with_a_single_head(tmp_path):
 
     heads = alembic("heads")
     assert heads.returncode == 0, heads.stderr
-    assert len([ln for ln in heads.stdout.splitlines() if "(head)" in ln]) == 1 and "0075_claim_payment" in heads.stdout
+    assert len([ln for ln in heads.stdout.splitlines() if "(head)" in ln]) == 1   # later migrations may sit on top of 0075
+    history = alembic("history")
+    assert history.returncode == 0, history.stderr
+    assert "0075_claim_payment" in history.stdout
 
     up = alembic("upgrade", "head")
     assert up.returncode == 0, up.stderr[-2000:]

@@ -31,6 +31,7 @@ class TransfersRepository:
         exchange_reference: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
+        include_voided: bool = False,
     ) -> List[AccountTransferDB]:
         query = (
             self.db.query(AccountTransferDB)
@@ -40,6 +41,10 @@ class TransfersRepository:
                 joinedload(AccountTransferDB.ledger_transactions),
             )
         )
+        if not include_voided:
+            query = query.filter(AccountTransferDB.voided_at.is_(None))
+        if not include_voided:
+            query = query.filter(AccountTransferDB.voided_at.is_(None))
         if account_id is not None:
             query = query.filter(
                 or_(

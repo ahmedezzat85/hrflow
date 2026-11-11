@@ -994,6 +994,10 @@ class AccountTransferDB(Base):
     note = Column(Text, default="", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(String(255), nullable=True)
+    # Voided (D-054): a wrong transfer is voided, never edited. Its ledger rows are removed and the record is kept, hidden by default.
+    voided_at = Column(DateTime, nullable=True, index=True)
+    voided_by = Column(String(255), nullable=True)
+    void_reason = Column(Text, nullable=True)
 
     from_account = relationship("FinanceBankAccountDB", foreign_keys=[from_account_id])
     to_account = relationship("FinanceBankAccountDB", foreign_keys=[to_account_id])
