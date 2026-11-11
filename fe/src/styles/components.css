@@ -225,6 +225,7 @@ thead th.col-actions {
 .badge-rejected,
 .badge-info,
 .badge-primary,
+.pill-primary,
 .badge-indigo,
 .badge-neutral,
 .badge-grey,
@@ -481,6 +482,10 @@ button:disabled,
 [data-theme="dark"] .btn-warning:hover,
 [data-theme="dark"] .fv .btn-fill.btn-success,
 [data-theme="dark"] .fv .btn-fill.btn-warning { color: var(--bg); }
+
+/* Text colour utilities used by script-built markup */
+.text-primary { color: var(--accent-text); }
+.text-success { color: var(--success); }
 
 .btn-success-outline {
   border-color: rgba(14, 169, 102, .3);
