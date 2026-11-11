@@ -497,6 +497,18 @@ class PayrollService:
             raw += f"|{l.get('employee_id')}:{l.get('compensation_type')}:{l.get('net_pay')}:{l.get('bank_account_masked')}"
         return f"src-{hashlib.sha256(raw.encode('utf-8')).hexdigest()[:12]}"
 
+    def _prior_period_run(self, period_start: str, exclude_run_id: Optional[int] = None) -> Optional[PayrollRunDB]:
+        """The latest approved, finalized or paid run for a period before this one (not simply the newest run:
+        history is entered out of order)."""
+        query = (
+            self.db.query(PayrollRunDB)
+            .filter(PayrollRunDB.status.in_(["approved", "finalized", "paid"]))
+            .filter(PayrollRunDB.period_start < period_start)
+        )
+        if exclude_run_id is not None:
+            query = query.filter(PayrollRunDB.id != exclude_run_id)
+        return query.order_by(desc(PayrollRunDB.period_start), desc(PayrollRunDB.id)).first()
+
     def _evaluate_employee_payroll_snapshots(
         self,
         period_label: str,
@@ -858,12 +870,7 @@ class PayrollService:
         tot_si_egp = snapshot_data["tot_si_egp"]
 
         # 3. Variance Comparison vs Prior Run
-        prior_run = (
-            self.db.query(PayrollRunDB)
-            .filter(PayrollRunDB.status.in_(["approved", "finalized", "paid"]))
-            .order_by(desc(PayrollRunDB.id))
-            .first()
-        )
+        prior_run = self._prior_period_run(period_start)
 
         prior_total = prior_run.total_net if prior_run else tot_net
         net_delta = round(tot_net - prior_total, 2)
@@ -1300,13 +1307,7 @@ class PayrollService:
             )
             self.db.add(line_db)
 
-        prior_run = (
-            self.db.query(PayrollRunDB)
-            .filter(PayrollRunDB.id != run.id)
-            .filter(PayrollRunDB.status.in_(["approved", "finalized", "paid"]))
-            .order_by(desc(PayrollRunDB.id))
-            .first()
-        )
+        prior_run = self._prior_period_run(run.period_start, exclude_run_id=run.id)
         prior_total = prior_run.total_net if prior_run else tot_net
         net_delta = round(tot_net - prior_total, 2)
         pct_change = round(((tot_net - prior_total) / prior_total * 100), 1) if prior_run and prior_total > 0 else 0.0
@@ -1587,13 +1588,7 @@ class PayrollService:
         run.headcount = distinct_headcount
         run.liabilities_summary_json = "{}"
 
-        prior_run = (
-            self.db.query(PayrollRunDB)
-            .filter(PayrollRunDB.id != run.id)
-            .filter(PayrollRunDB.status.in_(["approved", "finalized", "paid"]))
-            .order_by(desc(PayrollRunDB.id))
-            .first()
-        )
+        prior_run = self._prior_period_run(run.period_start, exclude_run_id=run.id)
         if prior_run:
             try:
                 var = json.loads(run.variance_summary_json or "{}")
@@ -2150,6 +2145,9 @@ class PayrollService:
             .first()
         )
         date_str = run.paid_at.strftime("%Y-%m-%d") if run.paid_at else datetime.utcnow().strftime("%Y-%m-%d")
+        # A historical period is entered after the fact: the money moved on the run's payment date, not today.
+        if payroll_eligibility.is_historical_period(run.period_end) and payroll_eligibility.parse_date(run.payment_date):
+            date_str = payroll_eligibility.parse_date(run.payment_date).isoformat()
 
         created_txs = []
         for suffix, label, amount, account, counterparty in resolved:

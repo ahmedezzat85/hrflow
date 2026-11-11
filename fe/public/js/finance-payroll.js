@@ -139,18 +139,44 @@
       if (preview && preview.historical_period && Array.isArray(preview.recipients)) {
         const ids = new Set(preview.recipients.map(r => String(r.employee_id)));
         this.rows = this._buildRows(all.filter(e => ids.has(String(e.id))));
-        // Pay comes from the plan in force during the period (the preview lines), never the employee record,
-        // which holds today's plan.
-        const lines = Array.isArray(preview.lines) ? preview.lines : [];
-        this.rows.forEach(row => {
-          const mine = lines.filter(l => String(l.employee_id) === String(row.id) && l.base_salary !== undefined && l.base_salary !== null);
-          if (!mine.length) return;
-          row.baseExt = mine.filter(l => l.compensation_type === 'external_usd').reduce((s, l) => s + Number(l.base_salary || 0), 0);
-          row.baseInt = mine.filter(l => l.compensation_type !== 'external_usd').reduce((s, l) => s + Number(l.base_salary || 0), 0);
-        });
+        this._applyLinePay(this.rows, preview.lines);
       } else {
         this.rows = this._buildRows(all.filter(e => !e.archived && (!e.status || String(e.status).toLowerCase() === 'active')));
       }
+    },
+
+    // Pay comes from the plan in force during the period (the calculated lines), never the employee record,
+    // which holds today's plan.
+    _applyLinePay(rows, lines) {
+      const all = Array.isArray(lines) ? lines : [];
+      rows.forEach(row => {
+        const mine = all.filter(l => String(l.employee_id) === String(row.id) && l.base_salary !== undefined && l.base_salary !== null);
+        if (!mine.length) return;
+        row.baseExt = mine.filter(l => l.compensation_type === 'external_usd').reduce((s, l) => s + Number(l.base_salary || 0), 0);
+        row.baseInt = mine.filter(l => l.compensation_type !== 'external_usd').reduce((s, l) => s + Number(l.base_salary || 0), 0);
+      });
+    },
+
+    // A reopened historical run is staffed from its own saved lines, not from today's active employees.
+    syncRosterToRun(run) {
+      const lines = Array.isArray(run && run.lines) ? run.lines : [];
+      if (!run) return;
+      if (!run.historical_period) { this.syncRosterToPreview(null); return; }   // back to the active roster
+      if (!lines.length) return;
+      const byId = new Map((this._allEmployees || []).map(e => [String(e.id), e]));
+      const ids = [...new Set(lines.map(l => String(l.employee_id)))];
+      const emps = ids.map(id => byId.get(id) || {
+        id: Number(id),
+        name: (lines.find(l => String(l.employee_id) === id) || {}).employee_name || `Employee #${id}`,
+      });
+      this.rows = this._buildRows(emps);
+      this._applyLinePay(this.rows, lines);
+      this.rows.forEach(row => {
+        const ded = lines.filter(l => String(l.employee_id) === String(row.id) && l.compensation_type !== 'external_usd')
+          .reduce((s, l) => s + Number(l.deductions_total || 0), 0);
+        row.deductions = ded;
+        row.deductions_total = ded;
+      });
     },
 
     async loadEmployeesFromDb() {
@@ -638,6 +664,7 @@
           const run = await FinanceApi.getPayrollRun(idOrPeriod);
           if (run) {
             this.currentRun = run;
+            this.syncRosterToRun(run);
             this.month = run.period_label || this.month;
             this.start = run.period_start || this.start;
             this.end = run.period_end || this.end;
