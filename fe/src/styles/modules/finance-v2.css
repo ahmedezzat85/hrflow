@@ -1257,8 +1257,8 @@
 }
 
 /* Cancel is a text button in every dialog footer */
-.fv-dialog .modal-foot > .btn:not(.btn-fill):not(.btn-danger):not(.btn-outline),
-.fv-dialog .modal-foot .fv-foot-right > .btn:not(.btn-fill):not(.btn-danger):not(.btn-outline) {
+.fv-dialog .modal-foot > .btn:not(.btn-fill):not(.btn-danger):not(.btn-outline):not(.btn-success):not(.btn-warning),
+.fv-dialog .modal-foot .fv-foot-right > .btn:not(.btn-fill):not(.btn-danger):not(.btn-outline):not(.btn-success):not(.btn-warning) {
   background: transparent;
   border-color: transparent;
   color: var(--ink-label);
@@ -1270,6 +1270,23 @@
   border-color: var(--danger);
   color: var(--fv-on-brand);
 }
+
+.fv-dialog .btn-success,
+.fv-dialog .btn-fill.btn-success {
+  background: var(--success);
+  border-color: var(--success);
+  color: var(--fv-on-brand);
+}
+
+.fv-dialog .btn-warning,
+.fv-dialog .btn-fill.btn-warning {
+  background: var(--warning);
+  border-color: var(--warning);
+  color: var(--fv-on-brand);
+}
+
+[data-theme="dark"] .fv-dialog .btn-success,
+[data-theme="dark"] .fv-dialog .btn-warning { color: var(--bg); }
 
 .fv .fv-hint {
   font-size: 12px;

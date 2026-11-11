@@ -710,8 +710,8 @@
   display: none;
 }
 
-:where(.fv-dialog) .modal-foot .btn:not(.btn-fill):not(.btn-danger):not(.btn-primary),
-:where(.fv-dialog) .modal-footer .btn:not(.btn-fill):not(.btn-danger):not(.btn-primary) {
+:where(.fv-dialog) .modal-foot .btn:not(.btn-fill):not(.btn-danger):not(.btn-primary):not(.btn-success):not(.btn-warning),
+:where(.fv-dialog) .modal-footer .btn:not(.btn-fill):not(.btn-danger):not(.btn-primary):not(.btn-success):not(.btn-warning) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -759,6 +759,22 @@
   font-weight: 600;
   font-size: 13px;
   border: 0;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+:where(.fv-dialog) .modal-foot .btn-success,
+:where(.fv-dialog) .modal-footer .btn-success,
+:where(.fv-dialog) .modal-foot .btn-warning,
+:where(.fv-dialog) .modal-footer .btn-warning {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 9px;
+  font-weight: 600;
+  font-size: 13px;
   cursor: pointer;
   text-decoration: none;
 }
