@@ -18,7 +18,7 @@
     </div>
 
     <!-- Persistent Live KPI Bar: Statement Balance, Book Balance, Difference, Resolved Summary -->
-    <div id="reconciliationKpiBar" style="padding: 12px 24px; background: var(--bg-card-subtle, #f8fafc); border-bottom: 1px solid var(--border-color); display:grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; align-items: center;">
+    <div id="reconciliationKpiBar" style="padding: 12px 24px; background: var(--bg-card-subtle); border-bottom: 1px solid var(--border-color); display:grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; align-items: center;">
       <div style="background:var(--bg-card); padding:8px 12px; border-radius:6px; border:1px solid var(--border-color);">
         <div style="font-size:11px; text-transform:uppercase; color:var(--text-muted); font-weight:600;">Statement Closing</div>
         <div id="reconcileStatementClosingVal" style="font-size:16px; font-weight:700; color:var(--text-primary); font-family:monospace;">—</div>
@@ -33,11 +33,11 @@
       </div>
       <div style="background:var(--bg-card); padding:8px 12px; border-radius:6px; border:1px solid var(--border-color);">
         <div style="font-size:11px; text-transform:uppercase; color:var(--text-muted); font-weight:600;">Resolved Amount</div>
-        <div id="reconcileResolvedAmountVal" style="font-size:16px; font-weight:700; color:var(--color-success, #16a34a); font-family:monospace;">$0.00</div>
+        <div id="reconcileResolvedAmountVal" style="font-size:16px; font-weight:700; color:var(--color-success); font-family:monospace;">$0.00</div>
       </div>
       <div style="background:var(--bg-card); padding:8px 12px; border-radius:6px; border:1px solid var(--border-color);">
         <div style="font-size:11px; text-transform:uppercase; color:var(--text-muted); font-weight:600;">Remaining Lines</div>
-        <div id="reconcileRemainingCountVal" style="font-size:16px; font-weight:700; color:var(--color-warning, #d97706); font-family:monospace;">0</div>
+        <div id="reconcileRemainingCountVal" style="font-size:16px; font-weight:700; color:var(--color-warning); font-family:monospace;">0</div>
       </div>
     </div>
 
@@ -165,7 +165,7 @@
 <div id="reconcileIgnoreModal" class="modal-overlay fv fv-dialog fv-area-sky" style="z-index: 1050;">
   <div class="modal modal-v2 modal-v2-box" style="max-width: 440px;">
     <div class="modal-head">
-      <div class="modal-head-icon" style="background:rgba(239,68,68,0.1);color:#ef4444;"><i class="fa-solid fa-ban"></i></div>
+      <div class="modal-head-icon" style="background:color-mix(in srgb, var(--danger) 10%, transparent);color:var(--danger);"><i class="fa-solid fa-ban"></i></div>
       <div class="modal-head-text">
         <h3>Ignore Statement Line</h3>
         <p>Document why this bank transaction is excluded from the ledger.</p>
@@ -193,7 +193,7 @@
 <div id="reconcileSplitModal" class="modal-overlay fv fv-dialog fv-area-sky" style="z-index: 1050;">
   <div class="modal modal-v2 modal-v2-box" style="max-width: 620px;">
     <div class="modal-head">
-      <div class="modal-head-icon" style="background:rgba(124,58,237,0.1);color:#7c3aed;"><i class="fa-solid fa-arrows-split-up-and-left"></i></div>
+      <div class="modal-head-icon" style="background:color-mix(in srgb, var(--purple) 10%, transparent);color:var(--purple);"><i class="fa-solid fa-arrows-split-up-and-left"></i></div>
       <div class="modal-head-text">
         <h3>Split Statement Line</h3>
         <p>Divide this single transaction into multiple allocated ledger items.</p>
@@ -219,7 +219,7 @@
       </div>
       <div class="modal-foot">
         <button type="button" class="btn" onclick="closeReconcileSplitModal()">Cancel</button>
-        <button type="submit" id="btnConfirmSplitPortions" class="btn btn-fill" style="background:#7c3aed;color:#fff;"><i class="fa-solid fa-check"></i> Apply Split &amp; Link</button>
+        <button type="submit" id="btnConfirmSplitPortions" class="btn btn-fill" style="background:var(--purple);color:var(--on-accent);"><i class="fa-solid fa-check"></i> Apply Split &amp; Link</button>
       </div>
     </form>
   </div>
@@ -394,7 +394,7 @@
 
           <div id="rulePreviewResultsContainer" style="display:none; background:var(--bg-card-subtle); padding:10px; border-radius:6px; font-size:12px;">
             <div id="rulePreviewSummaryText" style="font-weight:600; margin-bottom:6px;"></div>
-            <div id="rulePreviewConflictsAlert" style="display:none; color:var(--color-warning); margin-bottom:6px; padding:6px 8px; background:rgba(217,119,6,0.1); border-radius:4px;"></div>
+            <div id="rulePreviewConflictsAlert" style="display:none; color:var(--color-warning); margin-bottom:6px; padding:6px 8px; background:color-mix(in srgb, var(--warning) 10%, transparent); border-radius:4px;"></div>
             <div id="rulePreviewMatchedLinesList" style="max-height:140px; overflow-y:auto; font-family:monospace; font-size:11px; display:flex; flex-direction:column; gap:4px;"></div>
           </div>
         </div>
@@ -414,7 +414,7 @@
 <div id="financeApplyRulesConfirmModal" class="modal-overlay fv fv-dialog fv-area-sky" style="z-index: 1065;">
   <div class="modal modal-v2 modal-v2-box" style="max-width: 480px;">
     <div class="modal-head">
-      <div class="modal-head-icon" style="background:rgba(37,99,235,0.1);color:#2563eb;"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+      <div class="modal-head-icon" style="background:color-mix(in srgb, var(--accent) 10%, transparent);color:var(--accent);"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
       <div class="modal-head-text">
         <h3>Apply Reconciliation Rules</h3>
         <p>Evaluate all active rules against unmatched statement lines.</p>
@@ -442,7 +442,7 @@
 <div id="reconcileCloseModal" class="modal-overlay fv fv-dialog fv-area-sky" style="z-index: 1070;">
   <div class="modal modal-v2 modal-v2-box" style="max-width: 520px;">
     <div class="modal-head">
-      <div class="modal-head-icon" style="background:rgba(22,163,74,0.1);color:#16a34a;"><i class="fa-solid fa-lock"></i></div>
+      <div class="modal-head-icon" style="background:color-mix(in srgb, var(--success) 10%, transparent);color:var(--success);"><i class="fa-solid fa-lock"></i></div>
       <div class="modal-head-text">
         <h3>Close Reconciliation Period</h3>
         <p>Lock cash book postings and finalize the accounting period.</p>
@@ -468,16 +468,16 @@
         </div>
 
         <!-- Balanced confirmation banner -->
-        <div id="closeModalBalancedBanner" style="display:none; padding:10px 12px; background:rgba(22,163,74,0.1); border:1px solid #16a34a; border-radius:6px; color:#15803d; font-size:13px; margin-bottom:14px;">
+        <div id="closeModalBalancedBanner" style="display:none; padding:10px 12px; background:color-mix(in srgb, var(--success) 10%, transparent); border:1px solid var(--success); border-radius:6px; color:var(--success); font-size:13px; margin-bottom:14px;">
           <i class="fa-solid fa-circle-check"></i> <strong>Zero-Difference Verified:</strong> Statement closing balance perfectly matches the continuous ledger balance.
         </div>
 
         <!-- Variance warning banner & override policy -->
-        <div id="closeModalVarianceWarning" style="display:none; padding:10px 12px; background:rgba(239,68,68,0.1); border:1px solid #ef4444; border-radius:6px; color:#b91c1c; font-size:13px; margin-bottom:14px;">
+        <div id="closeModalVarianceWarning" style="display:none; padding:10px 12px; background:color-mix(in srgb, var(--danger) 10%, transparent); border:1px solid var(--danger); border-radius:6px; color:var(--danger); font-size:13px; margin-bottom:14px;">
           <i class="fa-solid fa-triangle-exclamation"></i> <strong>Variance Detected:</strong> Statement and book balance differ or unresolved lines remain. Closing requires an authorized documented exception override.
         </div>
 
-        <div id="closeModalOverrideSection" style="display:none; margin-bottom:14px; padding:10px 12px; background:rgba(245,158,11,0.08); border:1px dashed #f59e0b; border-radius:6px;">
+        <div id="closeModalOverrideSection" style="display:none; margin-bottom:14px; padding:10px 12px; background:color-mix(in srgb, var(--warning) 8%, transparent); border:1px dashed var(--warning); border-radius:6px;">
           <label style="display:flex; align-items:center; gap:8px; font-weight:600; font-size:13px; cursor:pointer; color:var(--text-primary);">
             <input type="checkbox" id="closeExceptionOverrideCheckbox" onchange="toggleCloseOverrideReasonRequirement()">
             Authorize Documented Exception Override
@@ -510,7 +510,7 @@
 <div id="reconcileReopenModal" class="modal-overlay fv fv-dialog fv-area-sky" style="z-index: 1070;">
   <div class="modal modal-v2 modal-v2-box" style="max-width: 480px;">
     <div class="modal-head">
-      <div class="modal-head-icon" style="background:rgba(245,158,11,0.1);color:#d97706;"><i class="fa-solid fa-lock-open"></i></div>
+      <div class="modal-head-icon" style="background:color-mix(in srgb, var(--warning) 10%, transparent);color:var(--warning);"><i class="fa-solid fa-lock-open"></i></div>
       <div class="modal-head-text">
         <h3>Reopen Reconciliation Period</h3>
         <p>Unlock the period to adjust ledger entries or statement lines.</p>
@@ -519,7 +519,7 @@
     </div>
     <form id="reconcileReopenForm" onsubmit="submitReconciliationReopen(event)">
       <div class="modal-body">
-        <div style="padding:10px 12px; background:rgba(245,158,11,0.1); border:1px solid #f59e0b; border-radius:6px; color:#b45309; font-size:13px; margin-bottom:14px;">
+        <div style="padding:10px 12px; background:color-mix(in srgb, var(--warning) 10%, transparent); border:1px solid var(--warning); border-radius:6px; color:var(--warning); font-size:13px; margin-bottom:14px;">
           <i class="fa-solid fa-circle-exclamation"></i> <strong>Audit Notice:</strong> Reopening unlocks the posting lock for this period, allowing new transactions and cheques to be created. All reopen events are permanently logged in the audit trail.
         </div>
         <div class="form-field full">
@@ -543,7 +543,7 @@
 <div id="reconciliationCompletionReportModal" class="modal-overlay fv fv-dialog fv-area-sky" style="z-index: 1075;">
   <div class="modal modal-v2 modal-v2-box" style="max-width: 820px; width:95vw; max-height:90vh; display:flex; flex-direction:column;">
     <div class="modal-head">
-      <div class="modal-head-icon" style="background:rgba(37,99,235,0.1);color:#2563eb;"><i class="fa-solid fa-file-invoice"></i></div>
+      <div class="modal-head-icon" style="background:color-mix(in srgb, var(--accent) 10%, transparent);color:var(--accent);"><i class="fa-solid fa-file-invoice"></i></div>
       <div class="modal-head-text">
         <h3>Reconciliation Completion Report</h3>
         <p id="reportSubheaderText">Comprehensive audit report of period reconciliation and uncleared items.</p>

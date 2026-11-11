@@ -12,21 +12,21 @@
     </div>
 
     <!-- Wizard Step Indicator Progress Bar -->
-    <div class="wizard-steps-bar" style="display: flex; background: var(--bg2, #f8fafc); border-bottom: 1px solid var(--border); padding: 12px 20px; gap: 8px; justify-content: space-between;">
+    <div class="wizard-steps-bar" style="display: flex; background: var(--bg2); border-bottom: 1px solid var(--border); padding: 12px 20px; gap: 8px; justify-content: space-between;">
       <div class="wizard-step active" id="stmtStepIndicator1" style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--accent-text);">
         <span class="step-num" style="width: 22px; height: 22px; border-radius: 50%; background: var(--primary); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">1</span>
         <span>1. Choose &amp; Details</span>
       </div>
       <div class="wizard-step" id="stmtStepIndicator2" style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; color: var(--text3);">
-        <span class="step-num" style="width: 22px; height: 22px; border-radius: 50%; background: var(--bg3, #e2e8f0); color: var(--text2); display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">2</span>
+        <span class="step-num" style="width: 22px; height: 22px; border-radius: 50%; background: var(--bg3); color: var(--text2); display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">2</span>
         <span>2. Map &amp; Preview</span>
       </div>
       <div class="wizard-step" id="stmtStepIndicator3" style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; color: var(--text3);">
-        <span class="step-num" style="width: 22px; height: 22px; border-radius: 50%; background: var(--bg3, #e2e8f0); color: var(--text2); display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">3</span>
+        <span class="step-num" style="width: 22px; height: 22px; border-radius: 50%; background: var(--bg3); color: var(--text2); display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">3</span>
         <span>3. Validate</span>
       </div>
       <div class="wizard-step" id="stmtStepIndicator4" style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; color: var(--text3);">
-        <span class="step-num" style="width: 22px; height: 22px; border-radius: 50%; background: var(--bg3, #e2e8f0); color: var(--text2); display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">4</span>
+        <span class="step-num" style="width: 22px; height: 22px; border-radius: 50%; background: var(--bg3); color: var(--text2); display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">4</span>
         <span>4. Import</span>
       </div>
     </div>
@@ -120,9 +120,9 @@
     <div id="stmtWizardStep2" class="wizard-pane" style="display: none;">
       <div class="modal-body" style="padding: 20px;">
         <!-- Duplicate File Warning Banner -->
-        <div id="stmtWizardDuplicateWarning" class="alert-box alert-danger" style="display: none; margin-bottom: 14px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px 14px;">
-          <i class="fa-solid fa-triangle-exclamation" style="color:#dc2626; font-size:18px;"></i>
-          <div class="alert-content" style="font-size:12.5px; color:#991b1b;">
+        <div id="stmtWizardDuplicateWarning" class="alert-box alert-danger" style="display: none; margin-bottom: 14px; background: var(--danger-soft); border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent); border-radius: 8px; padding: 12px 14px;">
+          <i class="fa-solid fa-triangle-exclamation" style="color:var(--danger); font-size:18px;"></i>
+          <div class="alert-content" style="font-size:12.5px; color:var(--danger);">
             <strong>Duplicate Statement Detected:</strong> An identical file was already imported for this account. Re-importing may cause duplicate records unless intentionally replacing an existing statement.
             <div style="margin-top: 6px;">
               <label style="font-weight: 600; cursor: pointer;">
@@ -142,7 +142,7 @@
         </div>
 
         <!-- CSV Column Mapping Dropdowns -->
-        <div id="stmtWizardMappingContainer" style="background: var(--bg-card-subtle, rgba(0,0,0,0.02)); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+        <div id="stmtWizardMappingContainer" style="background: var(--bg-card-subtle); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
           <h4 style="margin: 0 0 10px 0; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
             <i class="fa-solid fa-table-columns" style="color: var(--accent-text);"></i> Column Mapping
           </h4>
@@ -209,26 +209,26 @@
     <div id="stmtWizardStep3" class="wizard-pane" style="display: none;">
       <div class="modal-body" style="padding: 20px;">
         <!-- PDF Review Required Warning -->
-        <div id="stmtPdfReviewAlert" class="alert-box alert-warning" style="display: none; margin-bottom: 14px; background: #fffbeb; border: 1px solid #fef08a; border-radius: 8px; padding: 10px 14px;">
-          <i class="fa-solid fa-shield-halved" style="color: #d97706; font-size: 16px;"></i>
-          <div class="alert-content" style="font-size: 12.5px; color: #92400e;">
+        <div id="stmtPdfReviewAlert" class="alert-box alert-warning" style="display: none; margin-bottom: 14px; background: var(--warning-soft); border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent); border-radius: 8px; padding: 10px 14px;">
+          <i class="fa-solid fa-shield-halved" style="color: var(--warning); font-size: 16px;"></i>
+          <div class="alert-content" style="font-size: 12.5px; color: var(--warning);">
             <strong>PDF Extraction Review Required:</strong> Electronic PDF extractions must be reviewed and line-by-line confirmed before finalizing close.
           </div>
         </div>
 
         <!-- Metric KPI Cards -->
         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px;">
-          <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 12px;">
-            <div style="font-size: 11px; color: #166534; font-weight: 600;">Valid Lines</div>
-            <div style="font-size: 20px; font-weight: 700; color: #15803d;" id="stmtKpiValid">0</div>
+          <div style="background: var(--success-soft); border: 1px solid color-mix(in srgb, var(--success) 30%, transparent); border-radius: 8px; padding: 10px 12px;">
+            <div style="font-size: 11px; color: var(--success); font-weight: 600;">Valid Lines</div>
+            <div style="font-size: 20px; font-weight: 700; color: var(--success);" id="stmtKpiValid">0</div>
           </div>
-          <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 10px 12px;">
-            <div style="font-size: 11px; color: #991b1b; font-weight: 600;">Parsing Errors</div>
-            <div style="font-size: 20px; font-weight: 700; color: #b91c1c;" id="stmtKpiErrors">0</div>
+          <div style="background: var(--danger-soft); border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent); border-radius: 8px; padding: 10px 12px;">
+            <div style="font-size: 11px; color: var(--danger); font-weight: 600;">Parsing Errors</div>
+            <div style="font-size: 20px; font-weight: 700; color: var(--danger);" id="stmtKpiErrors">0</div>
           </div>
-          <div style="background: #fffbeb; border: 1px solid #fef08a; border-radius: 8px; padding: 10px 12px;">
-            <div style="font-size: 11px; color: #92400e; font-weight: 600;">Duplicate Rows</div>
-            <div style="font-size: 20px; font-weight: 700; color: #b45309;" id="stmtKpiDuplicates">0</div>
+          <div style="background: var(--warning-soft); border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent); border-radius: 8px; padding: 10px 12px;">
+            <div style="font-size: 11px; color: var(--warning); font-weight: 600;">Duplicate Rows</div>
+            <div style="font-size: 20px; font-weight: 700; color: var(--warning);" id="stmtKpiDuplicates">0</div>
           </div>
           <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px;">
             <div style="font-size: 11px; color: var(--text3); font-weight: 600;">Net Statement Activity</div>
@@ -284,7 +284,7 @@
     <!-- STEP 4: Confirm & Import -->
     <div id="stmtWizardStep4" class="wizard-pane" style="display: none;">
       <div class="modal-body" style="padding: 24px; text-align: center;">
-        <div style="width: 60px; height: 60px; border-radius: 50%; background: #ecfdf5; color: #10b981; display: inline-flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 14px;">
+        <div style="width: 60px; height: 60px; border-radius: 50%; background: var(--success-soft); color: var(--success); display: inline-flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 14px;">
           <i class="fa-solid fa-check"></i>
         </div>
         <h3 style="margin: 0 0 6px 0; font-size: 18px;">Ready to Commit Bank Statement</h3>
@@ -303,7 +303,7 @@
           </div>
           <div style="margin-bottom: 6px; display: flex; justify-content: space-between;">
             <span style="color: var(--text3);">Valid Lines to Commit:</span>
-            <strong id="stmtConfirmLinesCount" style="color: #10b981;">0</strong>
+            <strong id="stmtConfirmLinesCount" style="color: var(--success);">0</strong>
           </div>
           <div style="display: flex; justify-content: space-between;">
             <span style="color: var(--text3);">Initial Review State:</span>

@@ -1733,7 +1733,7 @@ const FinanceDrawer = {
         attachList.innerHTML = attachments.map((att) => `
           <div class="related-record-card" style="cursor:default; display:flex; justify-content:space-between; align-items:center;">
             <div style="display:flex; align-items:center; gap:10px;">
-              <i class="fa-solid fa-file-pdf" style="font-size:1.4rem; color:var(--danger, #ef4444);"></i>
+              <i class="fa-solid fa-file-pdf" style="font-size:1.4rem; color:var(--danger);"></i>
               <div>
                 <div style="font-weight:600; font-size:0.88rem; color:var(--text);">${att.file_name}</div>
                 <div style="font-size:0.75rem; color:var(--text3);">${att.file_size ? `${(att.file_size / 1024).toFixed(1)} KB • ` : ""}Uploaded ${att.uploaded_at ? FinanceFormat.formatFinanceDate(att.uploaded_at) : "recently"}</div>

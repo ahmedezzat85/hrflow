@@ -2649,7 +2649,7 @@ async function renderBillDrawerActions(data) {
     if (nav) nav.parentNode.insertBefore(banner, nav);
   }
   if (bill.status === "rejected" && bill.approval_comment) {
-    banner.style.cssText = "margin:8px 20px 0; padding:8px 12px; border:1px solid var(--danger,#ef4444); border-radius:6px; font-size:0.85rem;";
+    banner.style.cssText = "margin:8px 20px 0; padding:8px 12px; border:1px solid var(--danger); border-radius:6px; font-size:0.85rem;";
     banner.innerHTML = `<strong>Rejected:</strong> ${FinanceFormat.escapeHtml(bill.approval_comment)}`;
   } else {
     banner.style.cssText = "display:none;";

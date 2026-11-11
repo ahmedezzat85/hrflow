@@ -185,10 +185,10 @@ const PayrollTableController = {
     const grandTotals = this.computeTotals(allFiltered);
 
     let html = `
-      <div class="payroll-table-wrapper" style="overflow-x:auto; border-radius:12px; border:1px solid var(--border-color, #E2E8F0); background:var(--surface, #ffffff); box-shadow:var(--shadow-sm);">
+      <div class="payroll-table-wrapper" style="overflow-x:auto; border-radius:12px; border:1px solid var(--border-color); background:var(--surface); box-shadow:var(--shadow-sm);">
         <table class="payroll-worksheet-table" id="payrollWorksheetTable" style="width:100%; border-collapse:collapse; font-size:0.85rem;">
           <thead>
-            <tr style="background:var(--bg-secondary, #F8FAFC); border-bottom:2px solid var(--border-color, #CBD5E1); color:var(--text-muted, #64748B); text-transform:uppercase; font-size:0.75rem; letter-spacing:0.04em;">
+            <tr style="background:var(--bg-secondary); border-bottom:2px solid var(--border-color); color:var(--text-muted); text-transform:uppercase; font-size:0.75rem; letter-spacing:0.04em;">
               <th style="padding:12px 14px; text-align:left; min-width:200px;">Employee</th>
               <th style="padding:12px 14px; text-align:right; min-width:110px;">Base Salary</th>
               <th style="padding:12px 14px; text-align:right; min-width:90px;">Overtime</th>
@@ -196,7 +196,7 @@ const PayrollTableController = {
               <th style="padding:12px 14px; text-align:right; min-width:110px; color:var(--accent-text);">Sales Comm. ✎</th>
               <th style="padding:12px 14px; text-align:right; min-width:110px; color:var(--accent-text);">Supp. Comm. ✎</th>
               <th style="padding:12px 14px; text-align:center; min-width:90px;">Source</th>
-              <th style="padding:12px 14px; text-align:right; min-width:100px; color:var(--danger, #EF4444);">Deductions</th>
+              <th style="padding:12px 14px; text-align:right; min-width:100px; color:var(--danger);">Deductions</th>
               <th style="padding:12px 14px; text-align:right; min-width:120px; font-weight:700;">Net Pay</th>
             </tr>
           </thead>
@@ -221,11 +221,11 @@ const PayrollTableController = {
 
         // Group Header
         html += `
-          <tr class="payroll-group-header-row" style="background:var(--bg-secondary, #F1F5F9); border-top:2px solid var(--border-color, #CBD5E1); border-bottom:1px solid var(--border-color, #E2E8F0);">
-            <td colspan="9" style="padding:10px 14px; font-weight:700; color:var(--text-primary, #0F172A); font-size:0.85rem;">
+          <tr class="payroll-group-header-row" style="background:var(--bg-secondary); border-top:2px solid var(--border-color); border-bottom:1px solid var(--border-color);">
+            <td colspan="9" style="padding:10px 14px; font-weight:700; color:var(--text-primary); font-size:0.85rem;">
               <i class="fa-solid fa-layer-group" style="color:var(--accent-text); margin-right:8px;"></i>
               Account Group: <strong>${groupName}</strong>
-              <span class="badge" style="margin-left:8px; background:var(--surface, #fff); border:1px solid var(--border-color, #CBD5E1); color:var(--text-muted, #475569); font-size:0.75rem; font-weight:600;">
+              <span class="badge" style="margin-left:8px; background:var(--surface); border:1px solid var(--border-color); color:var(--text-muted); font-size:0.75rem; font-weight:600;">
                 ${rows.length} ${rows.length === 1 ? 'employee' : 'employees'}
               </span>
             </td>
@@ -237,8 +237,8 @@ const PayrollTableController = {
           const isExt = r.source === 'EXT';
           const rowClass = isExt ? 'payroll-row payroll-row-ext' : 'payroll-row';
           const rowStyle = isExt
-            ? 'border-bottom:1px solid var(--border-color, #E2E8F0); opacity:0.85; background:var(--bg-subtle, rgba(241,245,249,0.5));'
-            : 'border-bottom:1px solid var(--border-color, #E2E8F0);';
+            ? 'border-bottom:1px solid var(--border-color); opacity:0.85; background:var(--bg-subtle);'
+            : 'border-bottom:1px solid var(--border-color);';
 
           const bonusKey = `${r.id}_bonus`;
           const salesKey = `${r.id}_salesComm`;
@@ -303,18 +303,18 @@ const PayrollTableController = {
                           data-emp-id="${r.id}"
                           onclick="PayrollTableController.toggleRowSource('${r.id}')"
                           title="Click to toggle Internal/External source"
-                          style="border-radius:20px; padding:3px 10px; font-size:0.75rem; font-weight:700; cursor:pointer; border:1.5px solid; transition:all 0.15s ease; ${r.source === 'INT' ? 'border-color:#0D9488; color:#0D9488; background:rgba(13,148,136,0.08);' : 'border-color:#2563EB; color:#2563EB; background:rgba(37,99,235,0.08);'}">
+                          style="border-radius:20px; padding:3px 10px; font-size:0.75rem; font-weight:700; cursor:pointer; border:1.5px solid; transition:all 0.15s ease; ${r.source === 'INT' ? 'border-color:var(--success); color:var(--success); background:color-mix(in srgb, var(--success) 8%, transparent);' : 'border-color:var(--accent); color:var(--accent); background:color-mix(in srgb, var(--accent) 8%, transparent);'}">
                     ${r.source}
                   </button>
                 ` : `
-                  <span class="badge" style="${r.source === 'INT' ? 'background:#E6FFFA; color:#0D9488; border:1px solid #99F6E4;' : 'background:#EFF6FF; color:#2563EB; border:1px solid #BFDBFE;'} font-size:0.75rem; font-weight:700;">
+                  <span class="badge" style="${r.source === 'INT' ? 'background:var(--success-soft); color:var(--success); border:1px solid color-mix(in srgb, var(--success) 30%, transparent);' : 'background:var(--info-soft); color:var(--accent); border:1px solid color-mix(in srgb, var(--info) 30%, transparent);'} font-size:0.75rem; font-weight:700;">
                     ${r.source}
                   </span>
                 `}
               </td>
 
               <!-- Deductions -->
-              <td style="padding:10px 14px; text-align:right; font-variant-numeric:tabular-nums; color:var(--danger, #EF4444);">
+              <td style="padding:10px 14px; text-align:right; font-variant-numeric:tabular-nums; color:var(--danger);">
                 -${this.formatMoney(r.deductions)}
               </td>
 
@@ -328,7 +328,7 @@ const PayrollTableController = {
 
         // Group Totals Row
         html += `
-          <tr class="payroll-group-totals-row" id="groupTotals_${groupName.replace(/\s+/g, '_')}" style="background:var(--bg-secondary, #F8FAFC); border-bottom:2px solid var(--border-color, #CBD5E1); font-weight:700;">
+          <tr class="payroll-group-totals-row" id="groupTotals_${groupName.replace(/\s+/g, '_')}" style="background:var(--bg-secondary); border-bottom:2px solid var(--border-color); font-weight:700;">
             <td style="padding:10px 14px; text-align:left; color:var(--text-muted); font-size:0.8rem; text-transform:uppercase;">
               <i class="fa-solid fa-calculator" style="margin-right:6px;"></i> TOTAL (${groupName})
             </td>
@@ -338,7 +338,7 @@ const PayrollTableController = {
             <td style="padding:10px 14px; text-align:right; font-variant-numeric:tabular-nums;" class="gt-sales">${this.formatMoney(groupTotals.salesComm)}</td>
             <td style="padding:10px 14px; text-align:right; font-variant-numeric:tabular-nums;" class="gt-supp">${this.formatMoney(groupTotals.supportComm)}</td>
             <td style="padding:10px 14px; text-align:center; color:var(--text-muted); font-size:0.75rem;">—</td>
-            <td style="padding:10px 14px; text-align:right; font-variant-numeric:tabular-nums; color:var(--danger, #EF4444);" class="gt-ded">-${this.formatMoney(groupTotals.deductions)}</td>
+            <td style="padding:10px 14px; text-align:right; font-variant-numeric:tabular-nums; color:var(--danger);" class="gt-ded">-${this.formatMoney(groupTotals.deductions)}</td>
             <td style="padding:10px 14px; text-align:right; font-variant-numeric:tabular-nums; color:var(--accent-text); font-size:0.92rem;" class="gt-net">${this.formatMoney(groupTotals.netPay)}</td>
           </tr>
         `;
@@ -346,7 +346,7 @@ const PayrollTableController = {
 
       // Overall Grand Total Row
       html += `
-        <tr class="payroll-grand-totals-row" style="background:var(--surface, #ffffff); border-top:3px double var(--border-color, #94A3B8); font-weight:800; font-size:0.9rem;">
+        <tr class="payroll-grand-totals-row" style="background:var(--surface); border-top:3px double var(--border-color); font-weight:800; font-size:0.9rem;">
           <td style="padding:12px 14px; text-align:left; color:var(--text-primary); text-transform:uppercase;">
             <i class="fa-solid fa-coins" style="color:var(--accent-text); margin-right:6px;"></i> GRAND TOTAL
           </td>
@@ -356,7 +356,7 @@ const PayrollTableController = {
           <td style="padding:12px 14px; text-align:right; font-variant-numeric:tabular-nums;" id="grandTotalSales">${this.formatMoney(grandTotals.salesComm)}</td>
           <td style="padding:12px 14px; text-align:right; font-variant-numeric:tabular-nums;" id="grandTotalSupp">${this.formatMoney(grandTotals.supportComm)}</td>
           <td style="padding:12px 14px; text-align:center; font-size:0.75rem; color:var(--text-muted);">${grandTotals.count} staff</td>
-          <td style="padding:12px 14px; text-align:right; font-variant-numeric:tabular-nums; color:var(--danger, #EF4444);" id="grandTotalDed">-${this.formatMoney(grandTotals.deductions)}</td>
+          <td style="padding:12px 14px; text-align:right; font-variant-numeric:tabular-nums; color:var(--danger);" id="grandTotalDed">-${this.formatMoney(grandTotals.deductions)}</td>
           <td style="padding:12px 14px; text-align:right; font-variant-numeric:tabular-nums; color:var(--accent-text); font-size:1.02rem;" id="grandTotalNet">${this.formatMoney(grandTotals.netPay)}</td>
         </tr>
       `;
@@ -418,7 +418,7 @@ const PayrollTableController = {
              class="payroll-inline-input"
              id="inlineInput_${empId}_${field}"
              value="${currentVal}"
-             style="width:100%; max-width:95px; padding:4px 6px; font-size:0.85rem; text-align:right; border:2px solid var(--primary, #2563EB); border-radius:6px; background:var(--surface, #ffffff); color:var(--text-primary); outline:none; font-variant-numeric:tabular-nums; box-shadow:0 0 0 3px rgba(37,99,235,0.2);" />
+             style="width:100%; max-width:95px; padding:4px 6px; font-size:0.85rem; text-align:right; border:2px solid var(--primary); border-radius:6px; background:var(--surface); color:var(--text-primary); outline:none; font-variant-numeric:tabular-nums; box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);" />
     `;
 
     const input = cell.querySelector('input');
