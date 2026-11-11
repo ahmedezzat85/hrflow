@@ -39,8 +39,10 @@ from finance.services.payroll_calculation_helper import validate_and_calculate_i
 
 # In-memory store for active previews and draft adjustments during runner execution
 _PREVIEW_CACHE: Dict[str, Dict[str, Any]] = {}
-# A bonus added on the run screen lives on a preview. The screen asks for a fresh preview (new id) after every change and
-# saves without a preview id, so a new preview of a period inherits the adjustments of the latest recent preview of that period.
+# A bonus typed on the run screen before the run is saved is a "pending" adjustment: a finance_payroll_adjustments row with no
+# run, keyed by its period. It is stored in the database (not on the in-memory preview) because the app runs several worker
+# processes and a preview exists in one of them only. Every new preview of the period lists the pending rows, creating the run
+# adopts them, and a pending row older than this many hours is abandoned and ignored.
 _ADJUSTMENT_CARRY_HOURS = 12
 
 # Snapshot fields copied from an evaluated line onto a PayrollLineDB when a draft run is refreshed.
@@ -965,26 +967,30 @@ class PayrollService:
         _PREVIEW_CACHE[preview_id] = preview_data
         return preview_data
 
+    def _pending_adjustments(self, period_label: str) -> List[PayrollAdjustmentDB]:
+        """Bonuses typed for a period whose run is not saved yet (no run, recent). Empty while the period has an active run:
+        that run holds its own adjustments."""
+        if self.db.query(PayrollRunDB).filter(PayrollRunDB.period_label == period_label, PayrollRunDB.status != "cancelled").first():
+            return []
+        cutoff = datetime.utcnow() - timedelta(hours=_ADJUSTMENT_CARRY_HOURS)
+        return (
+            self.db.query(PayrollAdjustmentDB)
+            .filter(
+                PayrollAdjustmentDB.payroll_run_id.is_(None),
+                PayrollAdjustmentDB.effective_period == period_label,
+                PayrollAdjustmentDB.created_at >= cutoff,
+            )
+            .order_by(PayrollAdjustmentDB.created_at.asc())
+            .all()
+        )
+
     def _carry_forward_adjustments(self, preview: Dict[str, Any]) -> None:
-        """Copies the bonus/commission adjustments of the latest recent preview of the same period onto a new preview.
-        Skipped while an active run exists for the period (the run holds its own adjustments). An adjustment for an
-        employee who is not on the new preview is dropped."""
-        label = preview["period_label"]
-        if self.db.query(PayrollRunDB).filter(PayrollRunDB.period_label == label, PayrollRunDB.status != "cancelled").first():
-            return
-        cutoff = (datetime.utcnow() - timedelta(hours=_ADJUSTMENT_CARRY_HOURS)).isoformat() + "Z"
-        earlier = [
-            p for p in _PREVIEW_CACHE.values()
-            if p.get("period_label") == label and p.get("adjustments") and str(p.get("generated_at", "")) >= cutoff
-        ]
-        if not earlier:
-            return
-        source = max(earlier, key=lambda p: str(p.get("generated_at", "")))
+        """Puts the period's pending bonuses on a new preview. One for an employee who is not on the preview is left out."""
         on_period = {r["employee_id"] for r in preview.get("recipients", [])}
-        carried = [dict(a, preview_id=preview["preview_id"]) for a in source["adjustments"] if a["employee_id"] in on_period]
-        if not carried:
+        pending = [a for a in self._pending_adjustments(preview["period_label"]) if a.employee_id in on_period]
+        if not pending:
             return
-        preview["adjustments"] = carried
+        preview["adjustments"] = [dict(self._adjustment_dict(a), preview_id=preview["preview_id"]) for a in pending]
         preview["preview_version"] = (preview.get("preview_version") or 1) + 1
         self._recalculate_preview_aggregates(preview)
 
@@ -1028,18 +1034,28 @@ class PayrollService:
         payload: PayrollAdjustmentCreate,
         user_email: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Adds a Commission or Bonus adjustment to a preview and immediately updates totals."""
-        preview = self.get_preview(preview_id)
-
-        emp = next((r for r in preview.get("recipients", []) if r["employee_id"] == payload.employee_id), None)
-        if not emp:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Employee #{payload.employee_id} not found in preview.")
+        """Adds a Commission or Bonus adjustment for a period and immediately updates the preview totals. The adjustment is
+        stored as a pending row, so it survives a preview that lives in another worker process (that case needs the period)."""
+        preview = _PREVIEW_CACHE.get(preview_id)
+        if preview is not None:
+            period_label = preview["period_label"]
+            emp = next((r for r in preview.get("recipients", []) if r["employee_id"] == payload.employee_id), None)
+            if not emp:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Employee #{payload.employee_id} not found in preview.")
+        else:
+            period_label = payload.effective_period
+            if not period_label:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Preview '{preview_id}' not found.")
+            known = self.db.query(EmployeeDB).filter(EmployeeDB.id == payload.employee_id).first()
+            if not known:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Employee #{payload.employee_id} not found.")
+            emp = {"employee_id": known.id, "employee_name": known.name}
 
         if payload.amount <= 0:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Adjustment amount must be greater than zero.")
 
         if payload.external_reference:
-            existing = next((a for a in preview.get("adjustments", []) if a.get("external_reference") == payload.external_reference), None)
+            existing = any(a.external_reference == payload.external_reference for a in self._pending_adjustments(period_label))
             if existing:
                 raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Duplicate external reference '{payload.external_reference}'.")
 
@@ -1055,7 +1071,7 @@ class PayrollService:
             "amount": round(float(payload.amount), 2),
             "currency": payload.currency or "USD",
             "payment_source": payload.payment_source.upper(),
-            "effective_period": preview["period_label"],
+            "effective_period": period_label,
             "description": payload.description or f"{payload.type.title()} for {emp['employee_name']}",
             "external_reference": payload.external_reference,
             "origin": payload.origin or "MANUAL",
@@ -1065,9 +1081,18 @@ class PayrollService:
             "updated_at": now_iso,
         }
 
-        preview.setdefault("adjustments", []).append(adj)
-        preview["preview_version"] = (preview.get("preview_version") or 1) + 1
-        self._recalculate_preview_aggregates(preview)
+        now = datetime.utcnow()
+        self.db.add(PayrollAdjustmentDB(
+            id=adj_id, employee_id=adj["employee_id"], preview_id=preview_id, payroll_run_id=None, type=adj["type"],
+            direction="ADDITION", amount=adj["amount"], currency=adj["currency"], payment_source=adj["payment_source"],
+            effective_period=period_label, description=adj["description"], external_reference=adj["external_reference"],
+            origin=adj["origin"], status="DRAFT", created_by=user_email, created_at=now, updated_at=now,
+        ))
+        self.db.commit()
+        if preview is not None:
+            preview.setdefault("adjustments", []).append(adj)
+            preview["preview_version"] = (preview.get("preview_version") or 1) + 1
+            self._recalculate_preview_aggregates(preview)
         self._log_audit(
             action="payroll.adjustment.created",
             target_type="payroll_adjustment",
@@ -1084,9 +1109,12 @@ class PayrollService:
         payload: PayrollAdjustmentUpdate,
         user_email: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Edits an existing adjustment on a preview and recalculates totals immediately."""
-        preview = self.get_preview(preview_id)
-        adj = next((a for a in preview.get("adjustments", []) if a["id"] == adjustment_id), None)
+        """Edits a pending adjustment and recalculates the preview totals immediately."""
+        preview = _PREVIEW_CACHE.get(preview_id)
+        row = self.db.query(PayrollAdjustmentDB).filter(PayrollAdjustmentDB.id == adjustment_id, PayrollAdjustmentDB.payroll_run_id.is_(None)).first()
+        adj = next((a for a in (preview or {}).get("adjustments", []) if a["id"] == adjustment_id), None)
+        if adj is None and row is not None:
+            adj = self._adjustment_dict(row)
         if not adj:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Adjustment '{adjustment_id}' not found.")
 
@@ -1108,8 +1136,13 @@ class PayrollService:
             adj["external_reference"] = payload.external_reference
 
         adj["updated_at"] = datetime.utcnow().isoformat() + "Z"
-        preview["preview_version"] = (preview.get("preview_version") or 1) + 1
-        self._recalculate_preview_aggregates(preview)
+        if row is not None:
+            row.amount, row.payment_source, row.type = adj["amount"], adj["payment_source"], adj["type"]
+            row.description, row.external_reference, row.updated_at = adj["description"], adj["external_reference"], datetime.utcnow()
+            self.db.commit()
+        if preview is not None:
+            preview["preview_version"] = (preview.get("preview_version") or 1) + 1
+            self._recalculate_preview_aggregates(preview)
         self._log_audit(
             action="payroll.adjustment.updated",
             target_type="payroll_adjustment",
@@ -1125,16 +1158,21 @@ class PayrollService:
         adjustment_id: str,
         user_email: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Removes an adjustment from a preview and recalculates totals immediately."""
-        preview = self.get_preview(preview_id)
-        adjs = preview.get("adjustments", [])
+        """Removes a pending adjustment and recalculates the preview totals immediately."""
+        preview = _PREVIEW_CACHE.get(preview_id)
+        row = self.db.query(PayrollAdjustmentDB).filter(PayrollAdjustmentDB.id == adjustment_id, PayrollAdjustmentDB.payroll_run_id.is_(None)).first()
+        adjs = (preview or {}).get("adjustments", [])
         idx = next((i for i, a in enumerate(adjs) if a["id"] == adjustment_id), None)
-        if idx is None:
+        if idx is None and row is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Adjustment '{adjustment_id}' not found.")
 
-        removed = adjs.pop(idx)
-        preview["preview_version"] = (preview.get("preview_version") or 1) + 1
-        self._recalculate_preview_aggregates(preview)
+        removed = adjs.pop(idx) if idx is not None else self._adjustment_dict(row)
+        if row is not None:
+            self.db.delete(row)
+            self.db.commit()
+        if preview is not None:
+            preview["preview_version"] = (preview.get("preview_version") or 1) + 1
+            self._recalculate_preview_aggregates(preview)
         self._log_audit(
             action="payroll.adjustment.deleted",
             target_type="payroll_adjustment",
@@ -1549,7 +1587,17 @@ class PayrollService:
             )
             self.db.add(line_db)
 
+        adopted_ids = set()
         for a in preview.get("adjustments", []):
+            pending_row = self.db.query(PayrollAdjustmentDB).filter(PayrollAdjustmentDB.id == a["id"], PayrollAdjustmentDB.payroll_run_id.is_(None)).first()
+            if pending_row is not None:
+                pending_row.payroll_run_id = run.id
+                pending_row.preview_id = preview.get("preview_id")
+                pending_row.effective_period = run.period_label
+                pending_row.status = "SUBMITTED" if submit_for_approval else "DRAFT"
+                pending_row.updated_at = datetime.utcnow()
+                adopted_ids.add(a["id"])
+                continue
             adj_db = PayrollAdjustmentDB(
                 id=a["id"],
                 employee_id=a["employee_id"],
@@ -1572,6 +1620,10 @@ class PayrollService:
             self.db.add(adj_db)
 
         self.db.flush()
+        # Pending bonuses left over (for someone not on the period) are abandoned, not carried to a later run
+        self.db.query(PayrollAdjustmentDB).filter(
+            PayrollAdjustmentDB.payroll_run_id.is_(None), PayrollAdjustmentDB.effective_period == run.period_label
+        ).delete(synchronize_session=False)
         self._recalculate_run_aggregates(run)
         self.db.commit()
         self.db.refresh(run)

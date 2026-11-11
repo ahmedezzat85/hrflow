@@ -1349,16 +1349,20 @@
         }
       } else if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.addPreviewAdjustment === 'function' && this.currentPreview && this.currentPreview.preview_id) {
         try {
+          // the period lets the server store the bonus even when this preview lives in another worker process
           const adj = await FinanceApi.addPreviewAdjustment(this.currentPreview.preview_id, {
             employee_id: empId,
             type: bTypeVal,
             amount: amt,
             payment_source: bSource,
-            description: bTypeLabel
+            description: bTypeLabel,
+            effective_period: this.month
           });
           if (adj && adj.id) createdAdjId = adj.id;
         } catch (err) {
-          console.warn('[PayrollApp] Could not persist preview adjustment:', err);
+          // Never keep a bonus only on screen: it would be lost when the run is saved
+          this.showBanner(err.message || 'Could not save the bonus. It was not added.', 'red');
+          return;
         }
       }
 

@@ -68,14 +68,65 @@ def test_after_a_run_exists_or_is_deleted_old_bonuses_do_not_come_back(env, fixe
     assert preview(env, 2025, 4)["total_bonuses"] == 0.0
 
 
-def test_a_stale_preview_from_long_ago_is_not_carried_over(env, fixed_today, monkeypatch):
+def test_a_stale_pending_bonus_from_long_ago_is_not_carried_over(env, fixed_today):
+    from datetime import timedelta
     emp = make_emp(env, "Old Olga", amount=1000.0)
     svc = PayrollService(env)
     first = preview(env, 2025, 5)
-    svc.create_preview_adjustment(first["preview_id"], _bonus(emp.id, 60.0))
-    first["generated_at"] = "2020-01-01T00:00:00Z"
+    adj = svc.create_preview_adjustment(first["preview_id"], _bonus(emp.id, 60.0))
+    assert preview(env, 2025, 5)["total_bonuses"] == 60.0
+    env.query(PayrollAdjustmentDB).filter_by(id=adj["id"]).update({"created_at": datetime.utcnow() - timedelta(hours=13)})
+    env.commit()
     assert preview(env, 2025, 5)["total_bonuses"] == 0.0
-    assert datetime.utcnow().year >= 2025
+
+
+# ---- Two worker processes: a preview exists in one of them only (production runs uvicorn --workers 2) ----
+
+def _other_worker():
+    from finance.services import payroll_service
+    payroll_service._PREVIEW_CACHE.clear()   # what a request on the other worker sees: no previews at all
+
+
+def test_a_bonus_sent_to_the_other_worker_is_still_saved(env, fixed_today):
+    emp = make_emp(env, "Two Workers", status="Inactive", amount=1000.0)
+    svc = PayrollService(env)
+    first = preview(env, 2025, 9)
+    _other_worker()
+    # the add request lands on a worker that never saw this preview: it needs the period, and still stores the bonus
+    adj = svc.create_preview_adjustment(first["preview_id"], PayrollAdjustmentCreate(
+        employee_id=emp.id, type="BONUS", amount=275.0, payment_source="INT", effective_period="2025-09"))
+    assert adj["amount"] == 275.0
+    _other_worker()
+    assert preview(env, 2025, 9)["total_bonuses"] == 275.0                    # a fresh preview on any worker lists it
+    _other_worker()
+    run = create(env, 2025, 9)                                               # and saving adopts it
+    saved = env.query(PayrollAdjustmentDB).filter(PayrollAdjustmentDB.payroll_run_id == run["id"]).all()
+    assert [(a.id, a.employee_id, a.amount) for a in saved] == [(adj["id"], emp.id, 275.0)]
+    assert env.query(PayrollAdjustmentDB).filter(PayrollAdjustmentDB.payroll_run_id.is_(None)).count() == 0
+
+
+def test_without_the_period_an_unknown_preview_is_still_refused(env, fixed_today):
+    from fastapi import HTTPException
+    import pytest
+    emp = make_emp(env, "No Period", amount=1000.0)
+    with pytest.raises(HTTPException) as exc:
+        PayrollService(env).create_preview_adjustment("PRV-GONE", _bonus(emp.id))
+    assert exc.value.status_code == 404
+
+
+def test_remove_and_edit_a_pending_bonus_from_the_other_worker(env, fixed_today):
+    from finance.schemas import PayrollAdjustmentUpdate
+    emp = make_emp(env, "Edit Ed", amount=1000.0)
+    svc = PayrollService(env)
+    first = preview(env, 2025, 10)
+    kept = svc.create_preview_adjustment(first["preview_id"], _bonus(emp.id, 100.0))
+    gone = svc.create_preview_adjustment(first["preview_id"], _bonus(emp.id, 40.0))
+    _other_worker()
+    svc.update_preview_adjustment("PRV-OTHER", kept["id"], PayrollAdjustmentUpdate(amount=120.0))
+    svc.delete_preview_adjustment("PRV-OTHER", gone["id"])
+    assert preview(env, 2025, 10)["total_bonuses"] == 120.0
+    run = create(env, 2025, 10)
+    assert [a.amount for a in env.query(PayrollAdjustmentDB).filter(PayrollAdjustmentDB.payroll_run_id == run["id"]).all()] == [120.0]
 
 
 # ---- A bonus can be added to and removed from a run that is already saved as a draft ----
