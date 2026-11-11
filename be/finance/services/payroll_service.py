@@ -7,7 +7,7 @@ import hashlib
 import json
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
@@ -39,6 +39,9 @@ from finance.services.payroll_calculation_helper import validate_and_calculate_i
 
 # In-memory store for active previews and draft adjustments during runner execution
 _PREVIEW_CACHE: Dict[str, Dict[str, Any]] = {}
+# A bonus added on the run screen lives on a preview. The screen asks for a fresh preview (new id) after every change and
+# saves without a preview id, so a new preview of a period inherits the adjustments of the latest recent preview of that period.
+_ADJUSTMENT_CARRY_HOURS = 12
 
 # Snapshot fields copied from an evaluated line onto a PayrollLineDB when a draft run is refreshed.
 _REFRESH_LINE_FIELDS = (
@@ -958,8 +961,32 @@ class PayrollService:
             "recipients": recipients,
             "adjustments": [],
         }
+        self._carry_forward_adjustments(preview_data)
         _PREVIEW_CACHE[preview_id] = preview_data
         return preview_data
+
+    def _carry_forward_adjustments(self, preview: Dict[str, Any]) -> None:
+        """Copies the bonus/commission adjustments of the latest recent preview of the same period onto a new preview.
+        Skipped while an active run exists for the period (the run holds its own adjustments). An adjustment for an
+        employee who is not on the new preview is dropped."""
+        label = preview["period_label"]
+        if self.db.query(PayrollRunDB).filter(PayrollRunDB.period_label == label, PayrollRunDB.status != "cancelled").first():
+            return
+        cutoff = (datetime.utcnow() - timedelta(hours=_ADJUSTMENT_CARRY_HOURS)).isoformat() + "Z"
+        earlier = [
+            p for p in _PREVIEW_CACHE.values()
+            if p.get("period_label") == label and p.get("adjustments") and str(p.get("generated_at", "")) >= cutoff
+        ]
+        if not earlier:
+            return
+        source = max(earlier, key=lambda p: str(p.get("generated_at", "")))
+        on_period = {r["employee_id"] for r in preview.get("recipients", [])}
+        carried = [dict(a, preview_id=preview["preview_id"]) for a in source["adjustments"] if a["employee_id"] in on_period]
+        if not carried:
+            return
+        preview["adjustments"] = carried
+        preview["preview_version"] = (preview.get("preview_version") or 1) + 1
+        self._recalculate_preview_aggregates(preview)
 
     def get_preview(self, preview_id: str) -> Dict[str, Any]:
         """Retrieves active cached preview including adjustments and recipients."""
@@ -1548,6 +1575,9 @@ class PayrollService:
         self._recalculate_run_aggregates(run)
         self.db.commit()
         self.db.refresh(run)
+        # The period now has a run that holds its adjustments: no cached preview of it may hand them out again.
+        for key in [k for k, v in _PREVIEW_CACHE.items() if v.get("period_label") == period_label]:
+            _PREVIEW_CACHE.pop(key, None)
         self._log_audit(
             action="payroll.run.submitted" if submit_for_approval else "payroll.run.created",
             target_type="payroll_run",
