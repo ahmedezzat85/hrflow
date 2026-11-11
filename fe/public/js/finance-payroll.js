@@ -139,6 +139,15 @@
       if (preview && preview.historical_period && Array.isArray(preview.recipients)) {
         const ids = new Set(preview.recipients.map(r => String(r.employee_id)));
         this.rows = this._buildRows(all.filter(e => ids.has(String(e.id))));
+        // Pay comes from the plan in force during the period (the preview lines), never the employee record,
+        // which holds today's plan.
+        const lines = Array.isArray(preview.lines) ? preview.lines : [];
+        this.rows.forEach(row => {
+          const mine = lines.filter(l => String(l.employee_id) === String(row.id) && l.base_salary !== undefined && l.base_salary !== null);
+          if (!mine.length) return;
+          row.baseExt = mine.filter(l => l.compensation_type === 'external_usd').reduce((s, l) => s + Number(l.base_salary || 0), 0);
+          row.baseInt = mine.filter(l => l.compensation_type !== 'external_usd').reduce((s, l) => s + Number(l.base_salary || 0), 0);
+        });
       } else {
         this.rows = this._buildRows(all.filter(e => !e.archived && (!e.status || String(e.status).toLowerCase() === 'active')));
       }
