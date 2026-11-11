@@ -358,6 +358,16 @@ def _login_cookie_for(app_client, email):
     return create_test_user(email, role_key=role_key, employee_id=employee_id)
 
 
+@pytest.fixture(autouse=True)
+def _clean_payroll_preview_cache():
+    """Payroll previews live in a module-level cache, and a new preview inherits the adjustments of a recent preview of the
+    same period. Tests share one process, so each test starts and ends with an empty cache."""
+    from finance.services import payroll_service
+    payroll_service._PREVIEW_CACHE.clear()
+    yield
+    payroll_service._PREVIEW_CACHE.clear()
+
+
 @pytest.fixture
 def admin_cookies(app_client):
     return _login_cookie_for(app_client, "admin@hrflow.test")
