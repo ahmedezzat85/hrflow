@@ -455,6 +455,33 @@ button:disabled,
   color: var(--on-accent);
 }
 
+/* Solid semantic buttons: confirm/finalize (success) and approve/reopen (warning). .fv .btn-fill would otherwise win with brand blue. */
+.btn-success,
+.btn-warning,
+.fv .btn-fill.btn-success,
+.fv .btn-fill.btn-warning {
+  color: var(--on-accent);
+}
+.btn-success,
+.fv .btn-fill.btn-success { background: var(--success); border-color: var(--success); }
+.btn-warning,
+.fv .btn-fill.btn-warning { background: var(--warning); border-color: var(--warning); }
+.btn-success:hover,
+.btn-warning:hover,
+.fv .btn-fill.btn-success:hover,
+.fv .btn-fill.btn-warning:hover { color: var(--on-accent); filter: brightness(1.1); }
+.btn-success:hover,
+.fv .btn-fill.btn-success:hover { background: var(--success); border-color: var(--success); }
+.btn-warning:hover,
+.fv .btn-fill.btn-warning:hover { background: var(--warning); border-color: var(--warning); }
+/* Dark theme: the semantic fills are light, so the label uses the page background colour for contrast. */
+[data-theme="dark"] .btn-success,
+[data-theme="dark"] .btn-warning,
+[data-theme="dark"] .btn-success:hover,
+[data-theme="dark"] .btn-warning:hover,
+[data-theme="dark"] .fv .btn-fill.btn-success,
+[data-theme="dark"] .fv .btn-fill.btn-warning { color: var(--bg); }
+
 .btn-success-outline {
   border-color: rgba(14, 169, 102, .3);
   color: var(--success);
