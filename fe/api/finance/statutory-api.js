@@ -244,10 +244,8 @@
       if (obl.status === "remitted") throw new Error("Statutory obligation is already fully remitted");
 
       const settleAmt = Number(data.amount);
-      const remaining = Math.max(0, round(obl.amount_accrued - (obl.amount_remitted || 0)));
-      if (settleAmt > remaining + 0.001) {
-        throw new Error(`Payment amount ($${settleAmt.toFixed(2)}) exceeds remaining balance ($${remaining.toFixed(2)}).`);
-      }
+      if (!(settleAmt > 0)) throw new Error("Payment amount must be greater than 0");
+      // The amount actually paid may be more or less than the calculated figure (no overpayment refusal)
 
       const bankAcc = (FinanceMockState.accounts || []).find((a) => a.id === Number(data.bank_account_id));
       if (bankAcc && (bankAcc.currency || "").toUpperCase() !== (obl.currency || "EGP").toUpperCase()) {
@@ -258,12 +256,13 @@
       }
 
       obl.amount_remitted = round((obl.amount_remitted || 0) + settleAmt);
-      if (obl.amount_remitted >= obl.amount_accrued - 0.001) {
+      if (obl.amount_remitted >= obl.amount_accrued - 0.001 || data.final_payment) {
         obl.status = "remitted";
       } else {
         obl.status = "partially_remitted";
       }
-      obl.remaining_balance = Math.max(0, round(obl.amount_accrued - obl.amount_remitted));
+      obl.remaining_balance = obl.status === "remitted" ? 0 : Math.max(0, round(obl.amount_accrued - obl.amount_remitted));
+      obl.payment_difference = obl.status === "remitted" ? round(obl.amount_remitted - obl.amount_accrued) : 0;
       obl.updated_at = new Date().toISOString();
       return obl;
     }

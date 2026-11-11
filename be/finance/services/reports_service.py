@@ -3160,7 +3160,7 @@ class ReportsService:
         for obl in statutory_records:
             accrued = float(obl.amount_accrued or obl.amount_estimated or 0.0)
             remitted = float(obl.amount_remitted or 0.0)
-            pending = max(0.0, accrued - remitted)
+            pending = 0.0 if obl.status == "remitted" else max(0.0, accrued - remitted)   # a closed obligation owes nothing, even if paid less
 
             if obl.obligation_type in tax_types:
                 tax_settled += remitted

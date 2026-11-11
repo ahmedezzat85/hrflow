@@ -2702,6 +2702,9 @@ class StatutoryObligationSettle(BaseModel):
     reference: str = ""
     method: Optional[str] = None
     payment_type_id: Optional[int] = Field(None, description="Outgoing payment type fitting the paying account kind (defaults by kind)")
+    # The amount actually paid may be more or less than the calculated figure. A smaller payment leaves the obligation
+    # partially remitted unless this is the final payment, which closes it and shows the shortfall as the difference.
+    final_payment: bool = False
 
 
 class VatEstimateRequest(BaseModel):
@@ -2723,6 +2726,7 @@ class StatutoryObligationResponse(BaseModel):
     amount_accrued: float
     amount_remitted: float = 0.0
     remaining_balance: float = 0.0
+    payment_difference: float = 0.0   # paid minus accrued once the obligation is remitted (+ paid more, - paid less)
     variance_amount: float = 0.0
     variance_note: Optional[str] = None
     currency: str = "EGP"

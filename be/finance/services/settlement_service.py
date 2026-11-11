@@ -294,12 +294,15 @@ class SettlementService:
         reference: str = "",
         method: Optional[str] = None,
         created_by: Optional[str] = None,
+        final_payment: bool = False,
     ) -> Tuple[StatutoryObligationDB, PaymentDB, LedgerTransactionDB]:
         """
         Record a settlement against a statutory obligation.
-        Enforces status integrity (must be accrued or partially_remitted),
-        checks remaining balance, prevents overpayment, updates obligation amount_remitted,
-        transitions status to remitted or partially_remitted, and creates the linked PaymentDB
+        Enforces status integrity (must be accrued or partially_remitted). The amount paid is a fact, not a calculation: it
+        may be more or less than the accrued figure, because the government portal's own result, penalties and rounding
+        differ from the payroll estimate. Paying the accrued amount or more remits the obligation; paying less leaves it
+        partially remitted unless `final_payment` closes it. The difference is reported, never refused.
+        Updates obligation amount_remitted, and creates the linked PaymentDB
         and LedgerTransactionDB records; the account balance comes from
         recalculate_account_running_balances. All of it commits together.
 
@@ -357,11 +360,6 @@ class SettlementService:
                     f"Payment type '{pt.name if pt else payment_type_id}' cannot be used to pay a statutory obligation from a {account_type} account.",
                 )
 
-        if payment_amount > remaining + 0.001:
-            raise ValueError(
-                f"Payment amount (${payment_amount:.2f}) exceeds remaining balance (${remaining:.2f}). Overpayment is prevented."
-            )
-
         ref_str = reference or f"STAT-{obligation.obligation_type}-{obligation.period}"
         payment = PaymentDB(
             direction="outgoing",
@@ -381,7 +379,7 @@ class SettlementService:
         # Update obligation amounts and status
         new_paid = round(paid_so_far + payment_amount, 2)
         obligation.amount_remitted = new_paid
-        if new_paid >= obligation.amount_accrued - 0.001:
+        if new_paid >= obligation.amount_accrued - 0.001 or final_payment:
             obligation.status = "remitted"
         else:
             obligation.status = "partially_remitted"

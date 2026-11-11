@@ -221,7 +221,7 @@ def test_settle_statutory_obligation(app_client, admin_cookies):
         bank_acc = db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == bank_id).first()
         assert round(bank_acc.current_balance, 2) == round(initial_balance - 400.0, 2)
 
-    # 2. Overpayment attempt ($700 when remaining is $600)
+    # 2. The actual payment can exceed the calculated remainder ($700 when $600 remains): it is recorded, not refused
     overpay_resp = app_client.post(
         f"/api/finance/statutory-obligations/{obl_id}/settle",
         json={
@@ -232,27 +232,20 @@ def test_settle_statutory_obligation(app_client, admin_cookies):
         },
         cookies=admin_cookies,
     )
-    assert overpay_resp.status_code == 400
-    assert "exceeds remaining balance" in overpay_resp.json()["detail"]
+    assert overpay_resp.status_code == 200
+    res2 = overpay_resp.json()
+    assert res2["status"] == "remitted"
+    assert res2["amount_remitted"] == 1100.0
+    assert res2["remaining_balance"] == 0.0
+    assert res2["payment_difference"] == 100.0   # paid $100 more than accrued, shown as the difference
 
-    # 3. Complete settlement (remaining $600)
-    settle2_resp = app_client.post(
+    # 3. Once remitted, a further payment is refused
+    again = app_client.post(
         f"/api/finance/statutory-obligations/{obl_id}/settle",
-        json={
-            "amount": 600.0,
-            "payment_date": "2026-09-17",
-            "bank_account_id": bank_id,
-            "currency": "USD",
-            "reference": "WHT-FINAL-01",
-            "method": "bank_transfer",
-        },
+        json={"amount": 10.0, "payment_date": "2026-09-17", "bank_account_id": bank_id, "currency": "USD"},
         cookies=admin_cookies,
     )
-    assert settle2_resp.status_code == 200
-    res2 = settle2_resp.json()
-    assert res2["status"] == "remitted"
-    assert res2["amount_remitted"] == 1000.0
-    assert res2["remaining_balance"] == 0.0
+    assert again.status_code == 400 and "already fully remitted" in again.json()["detail"]
 
     # Verify ledger transactions created
     with get_db_context() as db:
@@ -345,3 +338,37 @@ def test_needs_attention_queue_surfaces_statutory_obligations(app_client, admin_
     stat_item = next(i for i in queue.items if i.id == f"statutory-{obl_id}")
     assert stat_item.type == "statutory_obligation"
     assert stat_item.target_route == "a-finance-statutory"
+
+
+def test_payment_may_differ_from_the_calculated_amount_either_way(app_client, admin_cookies):
+    """The actual payment is a fact: more than accrued is recorded as a difference, less can be closed as the final payment."""
+    bank_id = _get_or_create_bank_account()
+
+    def new_obligation(period, accrued):
+        r = app_client.post("/api/finance/statutory-obligations", json={
+            "obligation_type": "income_tax", "period": period, "amount_accrued": accrued, "due_date": "2026-10-15", "currency": "USD"}, cookies=admin_cookies)
+        assert r.status_code == 201
+        return r.json()["id"]
+
+    def pay(obl_id, amount, **extra):
+        return app_client.post(f"/api/finance/statutory-obligations/{obl_id}/settle", json={
+            "amount": amount, "payment_date": "2026-10-16", "bank_account_id": bank_id, "currency": "USD", **extra}, cookies=admin_cookies)
+
+    # paid less, and it is the last payment: closed, with the shortfall shown as a negative difference
+    short = new_obligation("2026-07", 1000.0)
+    r = pay(short, 940.0, final_payment=True)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "remitted" and body["amount_remitted"] == 940.0 and body["payment_difference"] == -60.0
+    assert body["remaining_balance"] == 0.0
+
+    # paid less without saying it is final: stays open (an instalment), no difference reported yet
+    part = new_obligation("2026-08", 1000.0)
+    r = pay(part, 940.0)
+    assert r.json()["status"] == "partially_remitted" and r.json()["payment_difference"] == 0.0
+
+    # paid more in one go (e.g. a penalty added by the portal): recorded in full, difference positive
+    more = new_obligation("2026-09", 1000.0)
+    r = pay(more, 1070.0)
+    assert r.status_code == 200
+    assert r.json()["status"] == "remitted" and r.json()["amount_remitted"] == 1070.0 and r.json()["payment_difference"] == 70.0
