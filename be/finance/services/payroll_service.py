@@ -1907,6 +1907,54 @@ class PayrollService:
         )
         return self._format_run_detail(run)
 
+    def revert_run_to_draft(self, run_id: int, reason: str, user_email: Optional[str] = None) -> Dict[str, Any]:
+        """Sends a submitted, approved or finalized run back to draft so it can be edited again.
+
+        Finalizing only stamps the run (it creates no ledger or statutory entries), so nothing needs undoing
+        except the stamps. Once any payment has been made money has moved, so the run can no longer be reverted.
+        The reason is kept in the audit log; the maker-checker approval has to be given again afterwards.
+        """
+        run = self.db.query(PayrollRunDB).filter(PayrollRunDB.id == run_id).first()
+        if not run:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Payroll run #{run_id} not found")
+        if run.status == "draft":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Payroll run #{run_id} is already a draft.")
+        if run.status not in ("submitted", "approved", "finalized"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Payroll run #{run_id} is '{run.status}': payment has started, so it can no longer be reverted to draft.",
+            )
+        any_paid = any((l.payment_status or "pending") != "pending" for l in run.lines)
+        posted = (
+            self.db.query(LedgerTransactionDB)
+            .filter(LedgerTransactionDB.reference.like(f"PAYROLL-{run.period_label}%"))
+            .first()
+        )
+        if any_paid or posted or run.paid_at:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Payroll run #{run_id} already has payments or ledger entries, so it cannot be reverted to draft.",
+            )
+
+        previous_status = run.status
+        run.status = "draft"
+        run.submitted_at = run.submitted_by = None
+        run.approved_at = run.approved_by = None
+        run.finalized_at = run.finalized_by = None
+        for adj in (run.adjustments or []):
+            adj.status = "DRAFT"
+            adj.updated_at = datetime.utcnow()
+        self.db.commit()
+        self.db.refresh(run)
+        self._log_audit(
+            action="payroll.run.reverted_to_draft",
+            target_type="payroll_run",
+            target_id=str(run.id),
+            actor_email=user_email,
+            details={"period_label": run.period_label, "from_status": previous_status, "reason": reason.strip()},
+        )
+        return self._format_run_detail(run)
+
     def export_run_csv(self, run_id: int) -> str:
         """Exports payroll run recipient payments and adjustments as a net payment CSV."""
         run = self.db.query(PayrollRunDB).filter(PayrollRunDB.id == run_id).first()

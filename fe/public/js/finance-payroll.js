@@ -2655,7 +2655,7 @@
       badge.className = `p-badge ${info[1]} topbar-run-status`;
       // "Revert to draft" sits in the top bar while the run is approved (before the payment step)
       const revertBtn = document.getElementById('payrollTopRevertBtn');
-      if (revertBtn) revertBtn.hidden = badge.hidden || info[0] !== 'Approved';
+      if (revertBtn) revertBtn.hidden = badge.hidden || !(info[0] === 'Approved' || info[0].startsWith('Finalized'));
     },
 
     drawFundingAccounts() {
@@ -2960,18 +2960,33 @@
       closeModal('payrollRevertModal');
     },
 
-    confirmRevert() {
+    async confirmRevert() {
       const reasonEl = document.getElementById('payrollRevertReason');
       const reason = reasonEl ? reasonEl.value.trim() : '';
       if (!reason) {
         FinanceForm.setFieldError(reasonEl, 'A reason is required to revert to draft.');
         return;
       }
-      if (this.currentRun) {
-        this.currentRun.status = 'draft';
+      const runId = this.currentRun && this.currentRun.id;
+      try {
+        // The server changes the status and stamps; reloading the run afterwards shows what is really saved.
+        if (runId && typeof FinanceApi !== 'undefined' && typeof FinanceApi.revertPayrollRun === 'function') {
+          await FinanceApi.revertPayrollRun(runId, reason);
+        } else if (this.currentRun) {
+          this.currentRun.status = 'draft';
+        }
+      } catch (err) {
+        this.closeRevertModal();
+        this.showBanner(err.message || 'Could not revert the run to draft.', 'red');
+        return;
       }
       this.closeRevertModal();
-      this.setStep(1);
+      if (runId) {
+        await this.loadRunsFromDb();
+        await this.openHistoryRun(runId);
+      } else {
+        this.setStep(1);
+      }
       this.addAudit(`Run reverted to draft: ${reason}`);
       this.showBanner('Payroll run reverted to draft.', 'blue');
     }

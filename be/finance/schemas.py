@@ -2588,6 +2588,10 @@ class PayrollRunResponse(BaseModel):
         from_attributes = True
 
 
+class PayrollRevertRequest(BaseModel):
+    reason: str = Field(..., min_length=5, max_length=500, description="Why the run goes back to draft (kept in the audit log)")
+
+
 class PayrollPaymentRequest(BaseModel):
     bank_account_id: Optional[int] = None
     retry_failed_only: bool = False
