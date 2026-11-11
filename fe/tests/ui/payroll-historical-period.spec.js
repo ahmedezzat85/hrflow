@@ -50,13 +50,22 @@ test.describe('HP-1: historical payroll period', () => {
       const real = FinanceApi.previewPayrollRun;
       FinanceApi.previewPayrollRun = async (p) => {
         const prev = await real.call(FinanceApi, p);
-        if (prev.historical_period) prev.recipients = [{ employee_id: 1 }, { employee_id: 2 }];
+        if (prev.historical_period) {
+          prev.recipients = [{ employee_id: 1 }, { employee_id: 2 }];
+          // the plan in force that month differs from today's record (10000 / 3000)
+          prev.lines = [
+            { employee_id: 1, compensation_type: 'external_usd', base_salary: 8000 },
+            { employee_id: 1, compensation_type: 'internal_usd', base_salary: 2000 },
+            { employee_id: 2, compensation_type: 'external_usd', base_salary: 2500 },
+          ];
+        }
         return prev;
       };
     });
     await page.fill('#p1Month', '2025-03');
     await page.dispatchEvent('#p1Month', 'change');
     await expect.poll(() => page.evaluate(() => PayrollApp.rows.map(r => r.name).join(','))).toBe('Sarah Connor,Lee Leaver');
+    expect(await page.evaluate(() => PayrollApp.rows.map(r => [r.baseExt, r.baseInt]))).toEqual([[8000, 2000], [2500, 0]]);
     // Back to the current month: the roster is the active employees again
     const ym = new Date().toISOString().slice(0, 7);
     await page.fill('#p1Month', ym);
