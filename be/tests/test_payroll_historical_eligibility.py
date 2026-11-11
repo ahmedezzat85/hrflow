@@ -297,3 +297,37 @@ def test_twelve_months_of_2025_with_hires_leavers_and_a_gap(env, fixed_today):
         assert p["total_net"] == expected_net[month], month
         assert p["headcount"] == expected_heads[month], month
         assert p["historical_period"] is True
+
+
+# ---- Follow-ups: out-of-order history ----
+
+def _saved_run(db, label, net, headcount, status="approved"):
+    year, month = int(label[:4]), int(label[5:])
+    start, end = month_bounds(year, month)
+    run = PayrollRunDB(period_label=label, period_start=start, period_end=end, payment_date=end, status=status,
+                       currency="USD", created_by="test", created_at=datetime.utcnow(), total_net=net, headcount=headcount)
+    db.add(run)
+    db.commit()
+    return run
+
+
+def test_variance_compares_with_the_previous_period_not_the_newest_run(env, fixed_today):
+    make_emp(env, "Mia", plans=(("2020-01-01", None),), amount=1000.0)
+    _saved_run(env, "2025-01", 1000.0, 1)
+    _saved_run(env, "2025-06", 9000.0, 5)   # newer id, later period: must not be the comparison for March
+    p = preview(env, 2025, 3)
+    assert p["variance_summary"]["prior_period_label"] == "2025-01"
+    # the first period ever entered has nothing before it
+    assert preview(env, 2024, 12)["variance_summary"]["prior_period_label"] is None
+
+
+def test_paying_a_historical_run_dates_the_ledger_rows_on_its_payment_date(env, fixed_today):
+    from finance.models import LedgerTransactionDB
+    make_emp(env, "Pia", plans=(("2020-01-01", None),), amount=1000.0)
+    run_id = generate(env, 2025, 3)["id"]
+    svc = PayrollService(env)
+    svc.approve_run(run_id, user_email="approver@hp1.test", allow_self_approval=True)
+    svc.finalize_run(run_id, user_email="approver@hp1.test")
+    svc.execute_payment(run_id, user_email="approver@hp1.test")
+    rows = env.query(LedgerTransactionDB).filter(LedgerTransactionDB.reference.like("PAYROLL-2025-03%")).all()
+    assert rows and {r.date for r in rows} == {"2025-03-31"}
