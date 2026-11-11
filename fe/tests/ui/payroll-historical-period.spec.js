@@ -36,6 +36,34 @@ test.describe('HP-1: historical payroll period', () => {
     await expect(items.nth(1)).toContainText('Joined after this period');
   });
 
+  test('changing the month on step 1 reloads the preview and staffs the run from it', async ({ page }) => {
+    await openRun(page);
+    await page.evaluate(() => { PayrollApp.currentRun = null; PayrollApp.setStep(0); });
+    await expect(page.locator('#p1Month')).toBeVisible();
+    // Employee list as the server preview returns it for a past month: one active and one leaver, plus a skipped one
+    await page.evaluate(() => {
+      PayrollApp._allEmployees = [
+        { id: 1, name: 'Sarah Connor', status: 'Active', external_salary_usd: 10000 },
+        { id: 2, name: 'Lee Leaver', status: 'Inactive', external_salary_usd: 3000 },
+        { id: 7, name: 'Omar Planless', status: 'Active', external_salary_usd: 1000 },
+      ];
+      const real = FinanceApi.previewPayrollRun;
+      FinanceApi.previewPayrollRun = async (p) => {
+        const prev = await real.call(FinanceApi, p);
+        if (prev.historical_period) prev.recipients = [{ employee_id: 1 }, { employee_id: 2 }];
+        return prev;
+      };
+    });
+    await page.fill('#p1Month', '2025-03');
+    await page.dispatchEvent('#p1Month', 'change');
+    await expect.poll(() => page.evaluate(() => PayrollApp.rows.map(r => r.name).join(','))).toBe('Sarah Connor,Lee Leaver');
+    // Back to the current month: the roster is the active employees again
+    const ym = new Date().toISOString().slice(0, 7);
+    await page.fill('#p1Month', ym);
+    await page.dispatchEvent('#p1Month', 'change');
+    await expect.poll(() => page.evaluate(() => PayrollApp.rows.map(r => r.name).join(','))).toBe('Sarah Connor,Omar Planless');
+  });
+
   test('a saved run keeps showing the list, and a later month shows neither', async ({ page }) => {
     await openRun(page);
     await page.evaluate(async () => {
