@@ -854,6 +854,22 @@
       return apiRequest("POST", `/api/finance/payroll/runs/${runId}/finalize`);
     },
 
+    // Sends a submitted, approved or finalized run back to draft on the server; refused once payment has started.
+    async revertPayrollRun(runId, reason) {
+      if (_isMock()) {
+        const run = (FinanceMockState.payrollRuns || []).find((r) => r.id === parseInt(runId, 10));
+        if (!run) throw new Error(`Payroll run #${runId} not found`);
+        if (run.status === "draft") throw new Error(`Payroll run #${runId} is already a draft.`);
+        if (!["submitted", "approved", "finalized"].includes(run.status)) {
+          throw new Error(`Payroll run #${runId} is '${run.status}': payment has started, so it can no longer be reverted to draft.`);
+        }
+        run.status = "draft";
+        run.approved_at = run.approved_by = run.finalized_at = run.finalized_by = null;
+        return run;
+      }
+      return apiRequest("POST", `/api/finance/payroll/runs/${runId}/revert-to-draft`, { reason });
+    },
+
     async disbursePayrollRun(runId, retryFailedOnly = false, simulateFailures = null) {
       if (_isMock()) {
         const run = (FinanceMockState.payrollRuns || []).find((r) => r.id === parseInt(runId, 10));

@@ -16,6 +16,7 @@ from finance.schemas import (
     PayrollRunCreate,
     PayrollRunGenerateRequest,
     PayrollPaymentRequest,
+    PayrollRevertRequest,
     EmployeePayslipResponse,
     PayrollLineCreate,
     PayrollLineResponse,
@@ -270,6 +271,18 @@ def finalize_payroll_run(
     """Locks the payroll run against edits and enables funding/disbursement."""
     user_email = current_user.get("email") if isinstance(current_user, dict) else None
     return service.finalize_run(run_id=run_id, user_email=user_email)
+
+
+@router.post("/runs/{run_id}/revert-to-draft", response_model=PayrollRunResponse)
+def revert_payroll_run_to_draft(
+    req: PayrollRevertRequest,
+    run_id: int = Path(..., description="Submitted, approved or finalized Payroll Run ID to send back to draft"),
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.payroll.approve")),
+):
+    """Undoes submission, approval and finalization so the run can be edited again. Refused once any payment has been made."""
+    user_email = current_user.get("email") if isinstance(current_user, dict) else None
+    return service.revert_run_to_draft(run_id=run_id, reason=req.reason, user_email=user_email)
 
 
 @router.get("/runs/{run_id}/export")
