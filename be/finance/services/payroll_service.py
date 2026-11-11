@@ -1713,6 +1713,149 @@ class PayrollService:
 
         return self._format_line_dict(line_db)
 
+    @staticmethod
+    def _adjustment_dict(a: PayrollAdjustmentDB) -> Dict[str, Any]:
+        return {
+            "id": a.id, "employee_id": a.employee_id, "preview_id": a.preview_id, "payroll_run_id": a.payroll_run_id,
+            "type": a.type, "direction": a.direction, "amount": a.amount, "currency": a.currency,
+            "payment_source": a.payment_source, "effective_period": a.effective_period, "description": a.description,
+            "external_reference": a.external_reference, "origin": a.origin, "status": a.status,
+            "created_by": a.created_by, "created_at": a.created_at, "updated_at": a.updated_at,
+        }
+
+    @staticmethod
+    def _adjustment_line_type(adjustment_type: str) -> str:
+        return "bonus" if adjustment_type == "BONUS" else "commission_sales"
+
+    def add_run_adjustment(self, run_id: int, payload: PayrollAdjustmentCreate, user_email: Optional[str] = None) -> Dict[str, Any]:
+        """Adds a bonus or commission to a saved draft run: the adjustment row and its payment line, then re-totals the run.
+        Same shape as a bonus carried in from a preview when the run was created."""
+        run = self.db.query(PayrollRunDB).filter(PayrollRunDB.id == run_id).first()
+        if not run:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Payroll run #{run_id} not found")
+        if run.status != "draft":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot change bonuses on payroll run #{run_id}: Run is in '{run.status}' status. Revert it to draft first.",
+            )
+        if payload.amount is None or payload.amount <= 0:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Adjustment amount must be greater than zero.")
+        on_run = (
+            self.db.query(PayrollLineDB)
+            .filter(PayrollLineDB.payroll_run_id == run.id, PayrollLineDB.employee_id == payload.employee_id)
+            .first()
+        )
+        if not on_run:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Employee #{payload.employee_id} is not on payroll run #{run_id}.")
+        if payload.external_reference:
+            duplicate = (
+                self.db.query(PayrollAdjustmentDB)
+                .filter(PayrollAdjustmentDB.payroll_run_id == run.id, PayrollAdjustmentDB.external_reference == payload.external_reference)
+                .first()
+            )
+            if duplicate:
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Duplicate external reference '{payload.external_reference}'.")
+
+        amount = round(float(payload.amount), 2)
+        adj_type = payload.type.upper()
+        description = payload.description or f"{adj_type.title()} for {on_run.employee_name}"
+        now = datetime.utcnow()
+        adj = PayrollAdjustmentDB(
+            id=f"adj_{uuid.uuid4().hex[:8]}",
+            employee_id=payload.employee_id,
+            preview_id=None,
+            payroll_run_id=run.id,
+            type=adj_type,
+            direction="ADDITION",
+            amount=amount,
+            currency=payload.currency or "USD",
+            payment_source=payload.payment_source.upper(),
+            effective_period=run.period_label,
+            description=description,
+            external_reference=payload.external_reference,
+            origin=payload.origin or "MANUAL",
+            status="DRAFT",
+            created_by=user_email,
+            created_at=now,
+            updated_at=now,
+        )
+        self.db.add(adj)
+        self.db.add(PayrollLineDB(
+            payroll_run_id=run.id,
+            employee_id=on_run.employee_id,
+            employee_name=on_run.employee_name,
+            department=on_run.department,
+            compensation_type=self._adjustment_line_type(adj_type),
+            is_taxable_local=True,
+            is_insurable=False,
+            base_salary=amount,
+            allowances_total=0.0,
+            deductions_total=0.0,
+            net_pay=amount,
+            employer_cost_extra=0.0,
+            bank_name=on_run.bank_name or "Unassigned",
+            bank_account_masked=on_run.bank_account_masked or "Not Provided",
+            payment_status="pending",
+            snapshot_notes=description,
+            created_at=now,
+        ))
+        self.db.flush()
+        self._recalculate_run_aggregates(run)
+        self.db.commit()
+        self.db.refresh(adj)
+        self._log_audit(
+            action="payroll.adjustment.created",
+            target_type="payroll_adjustment",
+            target_id=adj.id,
+            actor_email=user_email,
+            details={"run_id": run.id, "type": adj.type, "amount": adj.amount, "payment_source": adj.payment_source, "employee_id": adj.employee_id},
+        )
+        return self._adjustment_dict(adj)
+
+    def delete_run_adjustment(self, run_id: int, adjustment_id: str, user_email: Optional[str] = None) -> Dict[str, Any]:
+        """Removes a bonus or commission from a saved draft run, with its payment line, and re-totals the run."""
+        run = self.db.query(PayrollRunDB).filter(PayrollRunDB.id == run_id).first()
+        if not run:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Payroll run #{run_id} not found")
+        if run.status != "draft":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot change bonuses on payroll run #{run_id}: Run is in '{run.status}' status. Revert it to draft first.",
+            )
+        adj = (
+            self.db.query(PayrollAdjustmentDB)
+            .filter(PayrollAdjustmentDB.id == adjustment_id, PayrollAdjustmentDB.payroll_run_id == run.id)
+            .first()
+        )
+        if not adj:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Adjustment '{adjustment_id}' not found on payroll run #{run_id}.")
+        # The payment line has no link to its adjustment: take the one line of the same employee, kind and amount
+        line = (
+            self.db.query(PayrollLineDB)
+            .filter(
+                PayrollLineDB.payroll_run_id == run.id,
+                PayrollLineDB.employee_id == adj.employee_id,
+                PayrollLineDB.compensation_type == self._adjustment_line_type(adj.type),
+                PayrollLineDB.net_pay == adj.amount,
+            )
+            .order_by(PayrollLineDB.id.desc())
+            .first()
+        )
+        if line is not None:
+            self.db.delete(line)
+        self.db.delete(adj)
+        self.db.flush()
+        self._recalculate_run_aggregates(run)
+        self.db.commit()
+        self._log_audit(
+            action="payroll.adjustment.deleted",
+            target_type="payroll_adjustment",
+            target_id=adjustment_id,
+            actor_email=user_email,
+            details={"run_id": run.id, "type": adj.type, "amount": adj.amount, "employee_id": adj.employee_id},
+        )
+        return {"success": True, "deleted_id": adjustment_id}
+
     def delete_line(self, run_id: int, line_id: int) -> Dict[str, Any]:
         """Removes a line from a draft payroll run."""
         run = self.db.query(PayrollRunDB).filter(PayrollRunDB.id == run_id).first()

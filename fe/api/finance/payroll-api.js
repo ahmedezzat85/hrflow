@@ -618,6 +618,40 @@
       return apiRequest("POST", `/api/finance/payroll/previews/${previewId}/adjustments`, payload);
     },
 
+    // Bonus or commission on a run that is already saved as a draft (the preview it was typed on no longer exists).
+    async addRunAdjustment(runId, payload) {
+      if (_isMock()) {
+        const run = (FinanceMockState.payrollRuns || []).find((r) => r.id === parseInt(runId, 10));
+        if (!run) throw new Error(`Payroll run #${runId} not found`);
+        if (run.status !== "draft") throw new Error(`Cannot change bonuses on payroll run #${runId}: Run is in '${run.status}' status. Revert it to draft first.`);
+        if (!payload.amount || Number(payload.amount) <= 0) throw new Error("Adjustment amount must be greater than zero.");
+        const adj = {
+          id: `adj_${Math.random().toString(16).slice(2, 10)}`, employee_id: payload.employee_id, payroll_run_id: run.id,
+          type: String(payload.type || "BONUS").toUpperCase() === "BONUS" ? "BONUS" : "COMMISSION", direction: "ADDITION",
+          amount: round(Number(payload.amount), 2), currency: "USD", payment_source: String(payload.payment_source || "INT").toUpperCase(),
+          description: payload.description || "Bonus", status: "DRAFT", created_at: new Date().toISOString(),
+        };
+        (run.adjustments || (run.adjustments = [])).push(adj);
+        run.total_net = round((run.total_net || 0) + adj.amount, 2);
+        return adj;
+      }
+      return apiRequest("POST", `/api/finance/payroll/runs/${runId}/adjustments`, payload);
+    },
+
+    async deleteRunAdjustment(runId, adjustmentId) {
+      if (_isMock()) {
+        const run = (FinanceMockState.payrollRuns || []).find((r) => r.id === parseInt(runId, 10));
+        if (!run) throw new Error(`Payroll run #${runId} not found`);
+        if (run.status !== "draft") throw new Error(`Cannot change bonuses on payroll run #${runId}: Run is in '${run.status}' status. Revert it to draft first.`);
+        const idx = (run.adjustments || []).findIndex((a) => a.id === adjustmentId);
+        if (idx < 0) throw new Error(`Adjustment '${adjustmentId}' not found on payroll run #${runId}.`);
+        const [gone] = run.adjustments.splice(idx, 1);
+        run.total_net = round((run.total_net || 0) - gone.amount, 2);
+        return { success: true, deleted_id: adjustmentId };
+      }
+      return apiRequest("DELETE", `/api/finance/payroll/runs/${runId}/adjustments/${adjustmentId}`);
+    },
+
     async updatePreviewAdjustment(previewId, adjustmentId, payload) {
       if (_isMock()) {
         const p = (FinanceMockState.previews || {})[previewId];

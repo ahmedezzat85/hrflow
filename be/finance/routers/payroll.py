@@ -221,6 +221,30 @@ def delete_payroll_line(
     return service.delete_line(run_id=run_id, line_id=line_id)
 
 
+@router.post("/runs/{run_id}/adjustments", response_model=PayrollAdjustmentResponse, status_code=status.HTTP_201_CREATED)
+def add_run_adjustment(
+    req: PayrollAdjustmentCreate,
+    run_id: int = Path(..., description="Draft Payroll Run ID"),
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.payroll.prepare")),
+):
+    """Adds a bonus or commission to a saved draft run and re-totals it."""
+    user_email = current_user.get("email") if isinstance(current_user, dict) else None
+    return service.add_run_adjustment(run_id, req, user_email)
+
+
+@router.delete("/runs/{run_id}/adjustments/{adjustment_id}")
+def delete_run_adjustment(
+    run_id: int = Path(..., description="Draft Payroll Run ID"),
+    adjustment_id: str = Path(..., description="Adjustment ID"),
+    service: PayrollService = Depends(get_payroll_service),
+    current_user: dict = Depends(require_permission("finance.payroll.prepare")),
+):
+    """Removes a bonus or commission from a saved draft run and re-totals it."""
+    user_email = current_user.get("email") if isinstance(current_user, dict) else None
+    return service.delete_run_adjustment(run_id, adjustment_id, user_email)
+
+
 @router.post("/runs/{run_id}/refresh", response_model=PayrollRunResponse)
 def refresh_payroll_run(
     run_id: int = Path(..., description="Draft Payroll Run ID to re-check against current data"),

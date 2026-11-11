@@ -150,17 +150,40 @@
     _applyLinePay(rows, lines) {
       const all = Array.isArray(lines) ? lines : [];
       rows.forEach(row => {
-        const mine = all.filter(l => String(l.employee_id) === String(row.id) && l.base_salary !== undefined && l.base_salary !== null);
+        // base pay only: bonus and commission lines are shown as the row's bonuses, never as base
+        const isExtraLine = (l) => ['bonus', 'commission_sales', 'commission_support'].includes(l.compensation_type);
+        const mine = all.filter(l => String(l.employee_id) === String(row.id) && l.base_salary !== undefined && l.base_salary !== null && !isExtraLine(l));
         if (!mine.length) return;
         row.baseExt = mine.filter(l => l.compensation_type === 'external_usd').reduce((s, l) => s + Number(l.base_salary || 0), 0);
         row.baseInt = mine.filter(l => l.compensation_type !== 'external_usd').reduce((s, l) => s + Number(l.base_salary || 0), 0);
       });
     },
 
+    // The bonuses and commissions saved on a run, as the rows show them.
+    _bonusesFromRun(run) {
+      const out = {};
+      (Array.isArray(run && run.adjustments) ? run.adjustments : []).forEach(a => {
+        const description = String(a.description || '');
+        const label = a.type === 'BONUS' ? 'Bonus' : (/support/i.test(description) ? 'Support Commission' : 'Sales Commission');
+        (out[a.employee_id] = out[a.employee_id] || []).push({
+          id: a.id, type: label, amount: Number(a.amount || 0), source: String(a.payment_source).toUpperCase() === 'EXT' ? 'external' : 'internal', description: label
+        });
+      });
+      return out;
+    },
+
     // A reopened historical run is staffed from its own saved lines, not from today's active employees.
     syncRosterToRun(run) {
       const lines = Array.isArray(run && run.lines) ? run.lines : [];
       if (!run) return;
+      this._syncRosterToRunPeople(run, lines);
+      const saved = this._bonusesFromRun(run);
+      if (Array.isArray(run.adjustments)) {
+        (this.rows || []).forEach(r => { r.bonuses = saved[r.id] || []; });
+      }
+    },
+
+    _syncRosterToRunPeople(run, lines) {
       if (!run.historical_period) { this.syncRosterToPreview(null); return; }   // back to the active roster
       if (!lines.length) return;
       const byId = new Map((this._allEmployees || []).map(e => [String(e.id), e]));
@@ -1310,9 +1333,21 @@
       };
       const bTypeLabel = typeLabelMap[bTypeVal] || 'Bonus';
 
-      // Persist to backend preview adjustment if preview is active
+      // A run already saved as a draft takes the bonus on the server directly; otherwise it goes on the preview
       let createdAdjId = null;
-      if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.addPreviewAdjustment === 'function' && this.currentPreview && this.currentPreview.preview_id) {
+      const savedRunId = this.currentRun && this.currentRun.id;
+      if (savedRunId && typeof FinanceApi !== 'undefined' && typeof FinanceApi.addRunAdjustment === 'function') {
+        try {
+          const adj = await FinanceApi.addRunAdjustment(savedRunId, {
+            employee_id: empId, type: bTypeVal, amount: amt, payment_source: bSource, description: bTypeLabel
+          });
+          if (adj && adj.id) createdAdjId = adj.id;
+          this.currentRun = await FinanceApi.getPayrollRun(savedRunId);
+        } catch (err) {
+          this.showBanner(err.message || 'Could not save the bonus on this run.', 'red');
+          return;
+        }
+      } else if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.addPreviewAdjustment === 'function' && this.currentPreview && this.currentPreview.preview_id) {
         try {
           const adj = await FinanceApi.addPreviewAdjustment(this.currentPreview.preview_id, {
             employee_id: empId,
@@ -1365,7 +1400,16 @@
 
     async deleteBonus(empId, bonusIdx, adjId) {
       if (this.isRunLocked()) return; // a finalized or paid run is read-only
-      if (adjId && typeof FinanceApi !== 'undefined' && typeof FinanceApi.deletePreviewAdjustment === 'function' && this.currentPreview && this.currentPreview.preview_id) {
+      const savedRunId = this.currentRun && this.currentRun.id;
+      if (savedRunId && adjId && typeof FinanceApi !== 'undefined' && typeof FinanceApi.deleteRunAdjustment === 'function') {
+        try {
+          await FinanceApi.deleteRunAdjustment(savedRunId, adjId);
+          this.currentRun = await FinanceApi.getPayrollRun(savedRunId);
+        } catch (err) {
+          this.showBanner(err.message || 'Could not remove the bonus from this run.', 'red');
+          return;
+        }
+      } else if (adjId && typeof FinanceApi !== 'undefined' && typeof FinanceApi.deletePreviewAdjustment === 'function' && this.currentPreview && this.currentPreview.preview_id) {
         try {
           await FinanceApi.deletePreviewAdjustment(this.currentPreview.preview_id, adjId);
         } catch (err) {
