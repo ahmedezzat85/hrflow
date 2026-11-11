@@ -215,7 +215,7 @@ function goToWizardStep(stepNum) {
         const num = indicator.querySelector(".step-num");
         if (num) {
           num.style.background = "var(--primary)";
-          num.style.color = "#fff";
+          num.style.color = "var(--on-accent)";
         }
       } else if (s < stepNum) {
         indicator.classList.remove("active");
@@ -224,7 +224,7 @@ function goToWizardStep(stepNum) {
         const num = indicator.querySelector(".step-num");
         if (num) {
           num.style.background = "var(--success)";
-          num.style.color = "#fff";
+          num.style.color = "var(--on-accent)";
         }
       } else {
         indicator.classList.remove("active");

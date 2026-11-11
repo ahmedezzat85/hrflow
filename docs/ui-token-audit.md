@@ -46,3 +46,8 @@ Not fully measured. Raw `px`/`rem` font sizes and radii (4, 6, 8, 9, 12, 14 px) 
 5. Optionally verify visually with a Playwright pass over `?mock=admin` and `?mock=employee`, in light and dark.
 
 Nothing here has been changed in code yet.
+
+## Status (after PRs 140 and 141)
+Done: date filters, file inputs, Finance colour literals, shared `.alert-box` / `.alert`, `btn-success` / `btn-warning`, `pill-primary`, `text-primary`, `text-success`, drift lint with baseline.
+Left on purpose: classes that are fully styled inline and render correctly (`form-label`, `modal-title`, `modal-subtitle`, `modal-md`, `modal-v2-box`, `wizard-*`, `export-format-card`, `warning-callout`) and pure script hooks (`btn-*-rule`, `gt-*`, `payroll-*`). Convert them to shared classes only when those screens are next touched, with a visual check.
+Open: about 1,100 inline `style=""` attributes; canvas chart palettes (`charts.js`); Arabic file-button text is browser-controlled.
