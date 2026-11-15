@@ -3,7 +3,7 @@
             <!-- Left card: My use this year -->
             <section class="card" style="background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: var(--fv-shadow-card);">
               <div style="display: flex; align-items: baseline; justify-content: space-between;">
-                <h2 style="margin: 0; font-family: var(--font-head, Sora, sans-serif); font-size: 15px; color: var(--ink-strong);">My use this year</h2>
+                <h2 class="ui-h15">My use this year</h2>
                 <span id="empInsuranceTotalConsumed" style="font-family: var(--font-head, Sora, sans-serif); font-weight: 700; font-size: 20px; color: var(--ink-strong);">—</span>
               </div>
               <div id="empInsuranceCategoryGrid" style="display: flex; flex-direction: column; gap: 10px;"></div>
@@ -12,14 +12,14 @@
 
             <!-- Right card: Submit a claim -->
             <section class="card" style="background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: var(--fv-shadow-card);">
-              <h2 style="margin: 0; font-family: var(--font-head, Sora, sans-serif); font-size: 15px; color: var(--ink-strong);">Submit a claim</h2>
+              <h2 class="ui-h15">Submit a claim</h2>
               <div id="empClaimForm" style="display: flex; flex-direction: column; gap: 12px;">
                 <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
-                  <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label);">
+                  <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label)">
                     Category
                     <select id="claimCategory" style="height: 36px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; background: var(--fv-surface); color: var(--ink-strong);"></select>
                   </label>
-                  <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label);">
+                  <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label)">
                     Amount
                     <span style="display: flex;">
                       <span style="display: inline-flex; align-items: center; height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--fv-input-border); border-right: 0; border-radius: 9px 0 0 9px; background: var(--fv-surface-soft); color: var(--ink-muted); font-size: 13px;">EGP</span>
@@ -43,10 +43,10 @@
           <!-- My claims table -->
           <section class="card fv-table-card" style="background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: 14px; overflow: hidden; box-shadow: var(--fv-shadow-card);">
             <div style="padding: 12px 16px; border-bottom: 1px solid var(--fv-line);">
-              <h2 style="margin: 0; font-family: var(--font-head, Sora, sans-serif); font-size: 15px; color: var(--ink-strong);">My claims</h2>
+              <h2 class="ui-h15">My claims</h2>
             </div>
             <div class="fv-table-scroll">
-              <table class="responsive-card-table fv-table" style="width: 100%; border-collapse: collapse;">
+              <table class="responsive-card-table fv-table ui-table-full">
                 <thead>
                   <tr>
                     <th scope="col" style="text-align: left; padding: 11px 16px; font-size: 12px; font-weight: 600; color: var(--ink-label); border-bottom: 1px solid var(--fv-line);">Category</th>

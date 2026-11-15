@@ -1,0 +1,9 @@
+/* Shared one-purpose classes that replace repeated inline style attributes.
+   Doubled class selectors give the same precedence an inline style had over component rules. */
+.ui-lbl.ui-lbl { font-size: 12.5px; font-weight: 600; color: var(--ink-label); }
+.ui-note.ui-note { font-size: 12.5px; color: var(--ink-muted); }
+.ui-note-12.ui-note-12 { font-size: 12px; color: var(--ink-muted); }
+.ui-note-115.ui-note-115 { font-size: 11.5px; color: var(--ink-muted); }
+.ui-control.ui-control { height: 36px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; }
+.ui-h15.ui-h15 { margin: 0; font-family: var(--font-head, Sora, sans-serif); font-size: 15px; color: var(--ink-strong); }
+.ui-table-full.ui-table-full { width: 100%; border-collapse: collapse; }

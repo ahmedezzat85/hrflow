@@ -21,6 +21,7 @@
 @import "./styles/modules/employee-pay-analytics.css";
 @import "./styles/modules/finance.css";
 @import "./styles/modules/finance-v2.css";
+@import "./styles/modules/shared-utilities.css";
 @import "./styles/admin-nav.css";
 
 /* Responsive overrides & accessibility */

@@ -2,12 +2,12 @@
           <!-- 3 compact KPI cards -->
           <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 14px;">
             <div class="card" style="padding: 14px 18px; border-radius: 14px; border: 1px solid var(--fv-line); background: var(--fv-surface); box-shadow: var(--fv-shadow-card);">
-              <div style="font-size: 12.5px; font-weight: 600; color: var(--ink-label);">Annual entitlement</div>
+              <div class="ui-lbl">Annual entitlement</div>
               <div id="empStatVacEntitlement" style="font-family: var(--font-head, Sora, sans-serif); font-weight: 700; font-size: 24px; color: var(--ink-strong);">21 days</div>
-              <div style="font-size: 12.5px; color: var(--ink-muted);">for 2026</div>
+              <div class="ui-note">for 2026</div>
             </div>
             <div class="card" style="padding: 14px 18px; border-radius: 14px; border: 1px solid var(--fv-line); background: var(--fv-surface); box-shadow: var(--fv-shadow-card);">
-              <div style="font-size: 12.5px; font-weight: 600; color: var(--ink-label);">Used</div>
+              <div class="ui-lbl">Used</div>
               <div id="empStatVacUsed" style="font-family: var(--font-head, Sora, sans-serif); font-weight: 700; font-size: 24px; color: var(--ink-strong);">8 days</div>
               <span style="margin-top: 6px; height: 6px; border-radius: 999px; background: var(--fv-line); display: block; overflow: hidden;">
                 <span id="empVacUsedProgress" style="display: block; width: 38%; height: 6px; border-radius: 999px; background: var(--id-teal);"></span>
@@ -15,9 +15,9 @@
               <span id="empStatVacUsedTrend" style="display: none;"></span>
             </div>
             <div class="card" style="padding: 14px 18px; border-radius: 14px; border: 1px solid var(--fv-line); background: var(--fv-surface); box-shadow: var(--fv-shadow-card);">
-              <div style="font-size: 12.5px; font-weight: 600; color: var(--ink-label);">Left to take</div>
+              <div class="ui-lbl">Left to take</div>
               <div id="empStatVacRemaining" style="font-family: var(--font-head, Sora, sans-serif); font-weight: 700; font-size: 24px; color: var(--brand);">13 days</div>
-              <div style="font-size: 12.5px; color: var(--ink-muted);">available balance</div>
+              <div class="ui-note">available balance</div>
             </div>
           </div>
 
@@ -26,11 +26,11 @@
             <!-- Request time off -->
             <section class="card" style="background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: 14px; padding: 14px 16px; box-shadow: var(--fv-shadow-card); display: flex; flex-direction: column; gap: 12px;">
               <div>
-                <h2 style="margin: 0; font-family: var(--font-head, Sora, sans-serif); font-size: 15px; color: var(--ink-strong);">Request time off</h2>
-                <div style="font-size: 12.5px; color: var(--ink-muted);">Goes to HR and your manager for approval</div>
+                <h2 class="ui-h15">Request time off</h2>
+                <div class="ui-note">Goes to HR and your manager for approval</div>
               </div>
               <div id="empVacationForm" style="display: flex; flex-direction: column; gap: 12px;">
-                <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label);">
+                <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label)">
                   Leave type
                   <select id="vacType" style="height: 36px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; background: var(--fv-surface); color: var(--ink-strong);">
                     <option>Annual Leave</option>
@@ -39,23 +39,23 @@
                     <option>Unpaid Leave</option>
                   </select>
                 </label>
-                <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label);">
+                <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label)">
                   Duration
                   <select id="vacDuration" onchange="onVacationDatesChange()" style="height: 36px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; background: var(--fv-surface); color: var(--ink-strong);">
                     <option value="Full Day(s)">Full Day(s)</option>
                   </select>
                 </label>
                 <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
-                  <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label);">
+                  <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label)">
                     Start date
                     <input type="date" id="vacStart" onchange="onVacationDatesChange()" style="height: 36px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; background: var(--fv-surface); color: var(--ink-strong);">
                   </label>
-                  <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label);">
+                  <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label)">
                     End date
                     <input type="date" id="vacEnd" onchange="onVacationDatesChange()" style="height: 36px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; background: var(--fv-surface); color: var(--ink-strong);">
                   </label>
                 </div>
-                <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label);">
+                <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label)">
                   Reason, optional
                   <textarea rows="2" id="vacReason" placeholder="Anything HR should know" style="padding: 8px 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; background: var(--fv-surface); color: var(--ink-strong); resize: none;"></textarea>
                 </label>
@@ -71,10 +71,10 @@
             <!-- My leave history -->
             <section class="card fv-table-card" style="background: var(--fv-surface); border: 1px solid var(--fv-line); border-radius: 14px; overflow: hidden; box-shadow: var(--fv-shadow-card);">
               <div style="padding: 14px 16px; border-bottom: 1px solid var(--fv-line);">
-                <h2 style="margin: 0; font-family: var(--font-head, Sora, sans-serif); font-size: 15px; color: var(--ink-strong);">My leave history</h2>
+                <h2 class="ui-h15">My leave history</h2>
               </div>
               <div class="fv-table-scroll">
-                <table class="responsive-card-table fv-table" style="width: 100%; border-collapse: collapse;">
+                <table class="responsive-card-table fv-table ui-table-full">
                   <thead>
                     <tr>
                       <th scope="col" style="text-align: left; padding: 11px 16px; font-size: 12px; font-weight: 600; color: var(--ink-label); border-bottom: 1px solid var(--fv-line);">Type</th>
