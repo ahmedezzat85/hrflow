@@ -275,4 +275,26 @@ test.describe('Finance Import screen: rows that post (D-052)', () => {
     await expect(page.locator('.btn-import-open')).toHaveCount(0);
     expect(await page.evaluate(() => FinanceMockState.transfers.filter((t) => String(t.note).includes('import batch')).length)).toBe(1);
   });
+  test('bank fees kind: manifest only, marked as posting, template has the fee columns, created as a money-out fee', async ({ page }) => {
+    await openImport(page);
+    await page.selectOption('#financeImportKind', 'bank_fees');
+    await expect(page.locator('#financeImportNotice')).toContainText('Bank fees');
+    const template = await page.evaluate(() => FinanceApi.getImportTemplateCsv('bank_fees'));
+    expect(template).toContain('row_ref,source_file,confidence,review_flags,notes,account,date,amount,currency,description,category,reference');
+    const acct = await page.evaluate(() => ({ n: FinanceMockState.accounts[0].account_name, c: FinanceMockState.accounts[0].currency }));
+    const header = 'row_ref,account,date,amount';
+    const rows = [`F-1,${acct.n},2023-03-31,25.50`, `F-2,Nope,2023-03-31,5.00`, `F-3,${acct.n},2023-03-31,0`];
+    await page.setInputFiles('#financeImportManifest', { name: 'fees.csv', mimeType: 'text/csv', buffer: Buffer.from([header, ...rows].join('\n')) });
+    await page.click('#financeImportDryRunBtn');
+    const body = page.locator('#financeImportReportBody tr');
+    await expect(body.filter({ hasText: 'F-1' })).toContainText('Will post a fee of 25.50');
+    await expect(body.filter({ hasText: 'F-2' })).toContainText('account_unknown');
+    await expect(body.filter({ hasText: 'F-3' })).toContainText('amount_not_positive');
+    await expect(page.locator('#financeImportCommitBtn')).toContainText('1 posts to the ledger');
+    await page.click('#financeImportCommitBtn');
+    await confirmDialog(page);
+    await expect(page.locator('#financeImportResult')).toContainText('1 record created');
+    await expect(page.locator('.btn-import-open')).toHaveCount(0);
+    expect(await page.evaluate(() => FinanceMockState.transactions.filter((t) => t.entry_type === 'bank_fee').map((t) => [t.direction, t.amount, t.payment_type_code]))).toEqual([['out', 25.5, 'BANK_FEES']]);
+  });
 });

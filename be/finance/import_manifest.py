@@ -30,6 +30,8 @@ KIND_COLUMNS: Dict[str, tuple] = {
     # Money moving between two company accounts (D-028 inter-book transfer when the books differ); source_file is the
     # supporting document and is attached to both ledger legs.
     "transfers": ("from_account", "to_account", "date", "from_amount", "to_amount", "fx_rate", "fee", "exchange_reference"),
+    # Standalone bank fees (monthly charge, card fee): one money-out ledger row per line on a company account.
+    "bank_fees": ("account", "date", "amount", "currency", "description", "category", "reference"),
 }
 
 # Headers that must be present. Cells may still be blank where a Draft allows it; whether a blank cell is
@@ -41,6 +43,8 @@ OPTIONAL_HEADERS = (
     "expected_account", "revenue_channel",  # invoices
     "to_amount", "fx_rate", "fee", "exchange_reference",  # transfers
 )
+# Optional only for one kind (the same name is required for other kinds, e.g. currency on bills)
+KIND_OPTIONAL_HEADERS = {"bank_fees": ("currency", "description", "category", "reference")}
 
 _ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _XLSX_MAGIC = b"PK\x03\x04"
@@ -73,7 +77,7 @@ def all_columns(kind: str) -> tuple:
 
 
 def required_headers(kind: str) -> tuple:
-    return tuple(c for c in all_columns(kind) if c not in OPTIONAL_HEADERS)
+    return tuple(c for c in all_columns(kind) if c not in OPTIONAL_HEADERS and c not in KIND_OPTIONAL_HEADERS.get(kind, ()))
 
 
 # ---------------------------------------------------------------------------

@@ -7,9 +7,9 @@
  */
 
 // Kinds the screen offers. Each slice enables its kind here once its importer exists on the backend.
-const FINANCE_IMPORT_ENABLED_KINDS = ["bills", "cheques", "invoices", "transfers"];
-const FINANCE_IMPORT_LABELS = { bills: "Vendor bills", cheques: "Cheques", invoices: "Sales invoices", transfers: "Transfers between accounts" };
-const FINANCE_IMPORT_DRAWER_TYPES = { bills: "bill", cheques: "cheque", invoices: "invoice" }; // transfers have no drawer
+const FINANCE_IMPORT_ENABLED_KINDS = ["bills", "cheques", "invoices", "transfers", "bank_fees"];
+const FINANCE_IMPORT_LABELS = { bills: "Vendor bills", cheques: "Cheques", invoices: "Sales invoices", transfers: "Transfers between accounts", bank_fees: "Bank fees" };
+const FINANCE_IMPORT_DRAWER_TYPES = { bills: "bill", cheques: "cheque", invoices: "invoice" }; // transfers and bank fees have no drawer
 const FINANCE_IMPORT_STATUS = {
   ok: { label: "Ready", group: "settled" },
   warning: { label: "Warning", group: "waiting" },
@@ -193,7 +193,7 @@ async function commitFinanceImport() {
     title: posting ? "Create records and post to the ledger" : "Create drafts",
     summary: `<strong>${FinanceUI.esc(FINANCE_IMPORT_LABELS[r.kind] || r.kind)}</strong> · ${n} document${n === 1 ? "" : "s"}`,
     consequence: posting
-      ? `${posting} of ${n} row${n === 1 ? "" : "s"} will post to the ledger and change account balances (paid bills and transfers). The other rows are created as Drafts. Rows with errors or duplicates are skipped. Confirm only if the cashbooks do not already hold these movements.`
+      ? `${posting} of ${n} row${n === 1 ? "" : "s"} will post to the ledger and change account balances (paid bills, transfers and bank fees). The other rows are created as Drafts. Rows with errors or duplicates are skipped. Confirm only if the cashbooks do not already hold these movements.`
       : `${n} Draft${n === 1 ? "" : "s"} will be created with their documents attached. Rows with errors or duplicates are skipped. Nothing is approved, paid or posted to the ledger.`,
     actionLabel: posting ? "Create and post" : "Create drafts",
     actionClass: "btn btn-fill",

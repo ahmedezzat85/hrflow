@@ -8954,9 +8954,12 @@ async getEntityActivity(entityType, entityId) {
     cheques: ["account", "cheque_number", "payee", "amount", "currency", "issue_date", "purpose", "destination_account"],
     invoices: ["customer_name", "invoice_number", "issue_date", "due_date", "currency", "description", "amount", "vat_rate", "expected_account", "revenue_channel"],
     transfers: ["from_account", "to_account", "date", "from_amount", "to_amount", "fx_rate", "fee", "exchange_reference"],
+    bank_fees: ["account", "date", "amount", "currency", "description", "category", "reference"],
   };
+  // Optional for one kind only: the same name is required elsewhere (currency on bills, cheques and invoices)
+  const KIND_OPTIONAL = { bank_fees: ["currency", "description", "category", "reference"] };
   const OPTIONAL_COLUMNS = ["source_file", "confidence", "review_flags", "notes", "vat_rate", "paid_date", "paid_from_account", "payment_type", "payment_reference", "subscription", "purpose", "destination_account", "expected_account", "revenue_channel", "to_amount", "fx_rate", "fee", "exchange_reference"];
-  const IMPORT_PERMISSIONS = { bills: "finance.bill.write", cheques: "finance.account.write", invoices: "finance.invoice.write", transfers: "finance.account.write" };
+  const IMPORT_PERMISSIONS = { bills: "finance.bill.write", cheques: "finance.account.write", invoices: "finance.invoice.write", transfers: "finance.account.write", bank_fees: "finance.account.write" };
   const LIMITS = {
     max_documents_per_run: 50,
     max_request_bytes: 24 * 1024 * 1024,
@@ -9008,7 +9011,7 @@ async getEntityActivity(entityType, entityId) {
     const table = _parseCsv(await manifestFile.text()).filter((r) => r.some((c) => String(c).trim()));
     if (!table.length) { report.file_errors.push("The manifest has no header row."); return report; }
     const headers = table[0].map((h) => h.trim());
-    const required = COMMON.concat(KIND_COLUMNS[kind] || []).filter((c) => !OPTIONAL_COLUMNS.includes(c));
+    const required = COMMON.concat(KIND_COLUMNS[kind] || []).filter((c) => !OPTIONAL_COLUMNS.includes(c) && !(KIND_OPTIONAL[kind] || []).includes(c));
     const missing = required.filter((c) => !headers.includes(c));
     if (missing.length) { report.file_errors.push(`The manifest is missing required column(s) for '${kind}': ${missing.join(", ")}.`); return report; }
     if (table.length === 1) { report.file_errors.push("The manifest has a header but no document rows."); return report; }
@@ -9103,6 +9106,18 @@ async getEntityActivity(entityType, entityId) {
         if (!v.source_file) findings.push(_finding("warning", "no_document", "No source file: the transfer has no supporting document attached"));
         if (src && dst && !findings.some((f) => f.level === "error")) findings.push(_finding("warning", "will_post_ledger", `Will move ${Number(v.from_amount).toFixed(2)} ${src.currency} from '${src.account_name}' to '${dst.account_name}' on ${v.date}: posts the ledger legs to both accounts`));
       }
+      if (kind === "bank_fees") {
+        const blank = ["account", "date", "amount"].filter((f) => !v[f]);
+        if (blank.length) findings.push(_finding("error", "required_missing", `${blank.join(", ")} is required for a bank fee`));
+        const acct = v.account ? (FinanceMockState.accounts || []).find((a) => String(a.account_name || "").toLowerCase() === v.account.toLowerCase()) : null;
+        if (v.account && !acct) findings.push(_finding("error", "account_unknown", `account '${v.account}' does not exist (use its exact name); accounts are never created by an import`));
+        if (v.date && !_isoDate(v.date)) findings.push(_finding("error", "date_invalid", `date: '${v.date}' is not an ISO date (YYYY-MM-DD)`));
+        if (v.amount && !/^\d+(\.\d+)?$/.test(v.amount)) findings.push(_finding("error", "amount_invalid", `amount: '${v.amount}' is not a plain decimal number (use '.' and no thousands separator)`));
+        else if (v.amount && !(Number(v.amount) > 0)) findings.push(_finding("error", "amount_not_positive", "amount must be greater than 0"));
+        if (acct && v.currency && v.currency.toUpperCase() !== String(acct.currency).toUpperCase()) findings.push(_finding("error", "currency_mismatch", `currency ${v.currency.toUpperCase()} differs from the account currency (${acct.currency})`));
+        if (v.category && v.category.toLowerCase() !== "bank fees" && !(FinanceMockState.categories || []).some((c) => String(c.name || "").toLowerCase() === v.category.toLowerCase())) findings.push(_finding("error", "category_unknown", `Category '${v.category}' does not exist`));
+        if (acct && !findings.some((f) => f.level === "error")) findings.push(_finding("warning", "will_post_ledger", `Will post a fee of ${Number(v.amount).toFixed(2)} ${acct.currency} out of '${acct.account_name}' on ${v.date}`));
+      }
       if (kind === "invoices" && v.revenue_channel && !["local_egp", "overseas_usd", "cash", "intercompany_transfer_us", "other"].includes(v.revenue_channel.toLowerCase())) {
         findings.push(_finding("error", "revenue_channel_invalid", `revenue_channel '${v.revenue_channel}' must be one of: cash, intercompany_transfer_us, local_egp, other, overseas_usd`));
       }
@@ -9193,6 +9208,19 @@ async getEntityActivity(entityType, entityId) {
               from_amount: Number(v.from_amount), from_currency: from.currency, to_amount: Number(v.to_amount) || Number(v.from_amount),
               to_currency: to.currency, transfer_type: from.currency === to.currency ? "internal" : "same_bank_fx", settlement_status: "settled",
               exchange_reference: v.exchange_reference || null, note: `Imported transfer [import batch ${batchId}, row ${v.row_ref}]`,
+            });
+            r.created_id = id;
+          } else if (kind === "bank_fees") {
+            const src = table.slice(1)[r.row_number - 1];
+            const v = {};
+            headers.forEach((h, k) => { v[h] = String(src[k] || "").trim(); });
+            const acct = (FinanceMockState.accounts || []).find((a) => String(a.account_name || "").toLowerCase() === v.account.toLowerCase());
+            if (!FinanceMockState.transactions) FinanceMockState.transactions = [];
+            const id = Math.max(0, ...FinanceMockState.transactions.map((t) => t.id || 0)) + 1;
+            FinanceMockState.transactions.unshift({
+              id, account_id: acct.id, date: v.date, direction: "out", amount: Number(v.amount), currency: acct.currency,
+              category_name: v.category || "Bank Fees", payment_type_code: "BANK_FEES", payment_type_name: "Bank Fee", entry_type: "bank_fee",
+              reference: v.reference || "", description: v.description || "Bank fees", source: "manual", payee_type: "none",
             });
             r.created_id = id;
           } else {
