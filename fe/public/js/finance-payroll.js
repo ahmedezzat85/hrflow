@@ -2349,6 +2349,17 @@
       const btnRecord = document.getElementById(isSi ? 'btnP6RecordSocialIns' : 'btnP6RecordTax');
       const btnSettle = document.getElementById(isSi ? 'btnP6SettleSocialIns' : 'btnP6SettleTax');
       const payStage = document.getElementById(isSi ? 'p6SiPayStage' : 'p6TaxPayStage');
+      // Until the portal amount is confirmed there is nothing to pay: the payment fields wait, and say why
+      const idp = isSi ? 'p6Si' : 'p6Tax';
+      const waiting = !!obl && obl.status === 'estimated';
+      [`${idp}DebitAccount`, `${idp}PaymentDate`, `${idp}PaidAmount`, `${idp}Final`].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (waiting) { el.disabled = true; el.title = 'Confirm the portal amount first, then record the payment.'; }
+        else { if (el.title && el.title.startsWith('Confirm the portal')) el.title = ''; el.disabled = id === `${idp}DebitAccount` ? el.options.length < 2 : false; }
+      });
+      const paidHint = document.getElementById(`${idp}PaidHint`);
+      if (paidHint && waiting) paidHint.textContent = 'Confirm the portal amount above first. Then enter the payment.';
       const setBadge = (text, cls) => { if (badge) { badge.textContent = text; badge.className = `stage-badge ${cls}`; } };
 
       if (!obl) {
