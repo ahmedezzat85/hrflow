@@ -104,6 +104,16 @@ Use for finance (e.g., FUX stories in `docs/finance-module/`), payroll, permissi
 - Preserve element IDs, layout structures, and semantic CSS tokens.
 - **Finance styling (D-027):** Finance pages and dialogs style through the `.fv` scope in `fe/src/styles/modules/finance-v2.css` with tokens from `tokens.css` and the `FinanceUI` helpers in `finance-core.js`. No colour literals in Finance JS, partials or `finance-v2.css` (run `npm run lint:finance-tokens` in `fe/`); do not restyle the global `.btn`, `.badge`, `.card` or `.filter-tab`. Playwright runs against the built `fe/dist`, so run `npm run build` before any UI spec.
 
+### UI Rules for Agents (apply everywhere, not only Finance)
+
+`fe/src/styles/tokens.css` is the design source of truth. Never invent a colour, size, radius or shadow.
+
+- **Colours:** use tokens (`var(--danger)`, `--success`, `--warning`, `--accent`, `--ink-*`, `--fv-*`, `--id-*`). No hex/rgb literals in CSS (outside `tokens.css`), JS or partials; for tints use `color-mix(in srgb, var(--token) N%, transparent)`. Canvas charts cannot use `var()`: read tokens with `getComputedStyle` at draw time (see `chartColors()` in `charts.js`).
+- **Reuse before you build:** buttons `btn` / `btn-fill` / `btn-outline` / `btn-success` / `btn-warning` / `btn-danger-outline`; callouts `.fv-callout`; alerts `.alert-box` (dialogs, icon + message) and `.alert` (strips) with `alert-warning|danger|success|info`; pills `badge-pill pill-*`; tables `.fv-table`; dialogs `.fv-dialog`; filters `.fv-pill`; selects `data-hv-dropdown`; file uploads `data-hv-file`; helpers in `FinanceUI`. Do not hand-build a lookalike with inline styles.
+- **No new inline `style=""`** in partials except `display:none` toggles. Put repeated styling in a class (`shared-utilities.css` for small shared ones, the module CSS for component styles). `npm run lint:token-drift` fails when a partial gains inline styles or a file gains colour literals; lower the baseline with `-- --update` only after removing drift, never to admit new drift.
+- **Dates and files:** native `<input type="date">` is styled by its container; do not build a custom date picker. Never show the browser's native file button, use `data-hv-file`.
+- **Check your change:** run `npm run build`, `npm run lint:finance-tokens`, `npm run lint:token-drift`, and the specs for the screens you touched, in light and dark. For a styling refactor, compare computed styles of every element before and after and confirm zero real differences.
+
 ## Playwright UI Testing Instructions
 
 The repository has a comprehensive Playwright test suite in `fe/tests/ui/` configured via `fe/playwright.config.js`.
