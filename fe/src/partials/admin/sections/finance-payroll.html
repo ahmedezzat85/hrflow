@@ -227,7 +227,7 @@
                   </div>
 
                   <div class="payroll-table-wrap">
-                    <table class="payroll-worksheet" id="payrollProcessingTable" style="width: 100%; border-collapse: collapse;">
+                    <table class="payroll-worksheet ui-table-full" id="payrollProcessingTable">
                       <thead>
                         <tr>
                           <th scope="col" class="payroll-name-th" style="text-align: left; padding: 11px 16px;">Employee</th>
@@ -298,7 +298,7 @@
                   </div>
 
                   <div class="payroll-table-wrap">
-                    <table class="payroll-worksheet responsive-card-table" id="payrollPaymentPreviewTable" style="width: 100%; border-collapse: collapse;">
+                    <table class="payroll-worksheet responsive-card-table ui-table-full" id="payrollPaymentPreviewTable">
                       <thead>
                         <tr>
                           <th class="col-id payroll-id-th sr-only" style="display:none;">ID</th>
@@ -403,7 +403,7 @@
                   <button class="btn btn-ghost" id="btnP5Back" onclick="PayrollApp.setStep(3)">Back</button>
                   <div style="display: flex; align-items: center; gap: 14px;">
                     <button type="button" class="btn btn-outline" id="btnP5ExportCsv" onclick="PayrollApp.exportRunCsv()" style="height: 34px; padding: 0 14px; border-radius: 9px; font-weight: 600; font-size: 13px;">Export CSV</button>
-                    <span id="p5ConfirmHint" style="font-size: 12.5px; color: var(--ink-muted);">Records the payment in HRFlow. No money is sent from here.</span>
+                    <span class="ui-note" id="p5ConfirmHint">Records the payment in HRFlow. No money is sent from here.</span>
                     <button type="button" class="btn btn-fill" id="btnP5ConfirmDisburse" onclick="PayrollApp.confirmDisbursement()">
                       Confirm and record as paid
                     </button>
@@ -472,41 +472,41 @@
                     <div style="display: flex; align-items: center; gap: 10px;">
                       <div style="flex: 1;">
                         <h2 style="margin: 0; font-family: var(--font-head, Sora, sans-serif); font-size: 15px; font-weight: 700; color: var(--ink-strong);"><span class="pv-area-tile pv-area-tile--teal" aria-hidden="true"><i class="fa-solid fa-shield-halved"></i></span>Social insurance</h2>
-                        <div style="font-size: 12.5px; color: var(--ink-muted);">Employee and employer contributions</div>
+                        <div class="ui-note">Employee and employer contributions</div>
                       </div>
                       <span class="stage-badge unrecorded" id="p6SiStatusBadge">Not recorded</span>
                     </div>
 
                     <div class="pv-s6-tiles" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;">
                       <div class="pv-tile-cell" style="padding: 10px 12px; border-radius: 12px; background: var(--fv-surface-soft); display: flex; flex-direction: column; gap: 2px;">
-                        <span style="font-size: 12px; color: var(--ink-muted);">HRFlow estimate</span>
+                        <span class="ui-note-12">HRFlow estimate</span>
                         <span class="stat-obl-amount" style="font-weight: 700; font-size: 14px; color: var(--ink-strong);" id="p6SocialInsEstimate">0.00 EGP</span>
-                        <span style="font-size: 11.5px; color: var(--ink-muted);">run snapshot</span>
+                        <span class="ui-note-115">run snapshot</span>
                       </div>
                       <label class="pv-tile-cell" style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 12px; background: var(--fv-surface-soft); font-size: 12px; color: var(--ink-muted);">
                         <span>Portal-confirmed</span>
                         <input type="number" step="0.01" min="0" id="p6SocialInsActual" placeholder="From the portal" oninput="PayrollApp.calcScreen6Variance('si')" style="height: 30px; padding: 0 8px; border: 1px solid var(--fv-input-border); border-radius: 8px; font-size: 13.5px; font-weight: 700; color: var(--ink-strong); background: var(--fv-surface);">
                       </label>
                       <div class="pv-tile-cell" style="padding: 10px 12px; border-radius: 12px; background: var(--fv-surface-soft); display: flex; flex-direction: column; gap: 2px;">
-                        <span style="font-size: 12px; color: var(--ink-muted);">Variance</span>
+                        <span class="ui-note-12">Variance</span>
                         <span style="font-weight: 700; font-size: 14px; color: var(--warning-text, var(--warning));" id="p6SocialInsVariance">0.00 EGP</span>
-                        <span style="font-size: 11.5px; color: var(--ink-muted);">confirmed − estimate</span>
+                        <span class="ui-note-115">confirmed − estimate</span>
                       </div>
                     </div>
 
                     <div class="pay-stage locked" id="p6SiPayStage">
                       <div class="pv-s6-fields" style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 10px; margin-bottom: 12px;">
-                        <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label);">
+                        <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label)">
                           Pay from company account
                           <select id="p6SiDebitAccount" style="height: 36px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; background: var(--fv-surface); color: var(--ink-strong);"></select>
                         </label>
-                        <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label);">
+                        <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label)">
                           Settlement date
                           <input type="date" id="p6SiPaymentDate" placeholder="Pick a date" style="height: 36px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; background: var(--fv-surface); color: var(--ink-strong);">
                         </label>
                       </div>
                       <div class="pv-s6-paid" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px;">
-                        <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label);">
+                        <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label)">
                           Amount paid (the actual payment)
                           <input type="number" step="0.01" min="0.01" id="p6SiPaidAmount" oninput="PayrollApp.showScreen6PaidHint('si')" style="height: 36px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; background: var(--fv-surface); color: var(--ink-strong);">
                         </label>
@@ -532,41 +532,41 @@
                     <div style="display: flex; align-items: center; gap: 10px;">
                       <div style="flex: 1;">
                         <h2 style="margin: 0; font-family: var(--font-head, Sora, sans-serif); font-size: 15px; font-weight: 700; color: var(--ink-strong);"><span class="pv-area-tile pv-area-tile--ochre" aria-hidden="true"><i class="fa-solid fa-receipt"></i></span>Salary income tax</h2>
-                        <div style="font-size: 12.5px; color: var(--ink-muted);">Withheld from salaries</div>
+                        <div class="ui-note">Withheld from salaries</div>
                       </div>
                       <span class="stage-badge unrecorded" id="p6TaxStatusBadge">Not recorded</span>
                     </div>
 
                     <div class="pv-s6-tiles" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;">
                       <div class="pv-tile-cell" style="padding: 10px 12px; border-radius: 12px; background: var(--fv-surface-soft); display: flex; flex-direction: column; gap: 2px;">
-                        <span style="font-size: 12px; color: var(--ink-muted);">HRFlow estimate</span>
+                        <span class="ui-note-12">HRFlow estimate</span>
                         <span class="stat-obl-amount" style="font-weight: 700; font-size: 14px; color: var(--ink-strong);" id="p6TaxEstimate">0.00 EGP</span>
-                        <span style="font-size: 11.5px; color: var(--ink-muted);">run snapshot</span>
+                        <span class="ui-note-115">run snapshot</span>
                       </div>
                       <label class="pv-tile-cell" style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 12px; background: var(--fv-surface-soft); font-size: 12px; color: var(--ink-muted);">
                         <span>Portal-confirmed</span>
                         <input type="number" step="0.01" min="0" id="p6TaxActual" placeholder="From the portal" oninput="PayrollApp.calcScreen6Variance('tax')" style="height: 30px; padding: 0 8px; border: 1px solid var(--fv-input-border); border-radius: 8px; font-size: 13.5px; font-weight: 700; color: var(--ink-strong); background: var(--fv-surface);">
                       </label>
                       <div class="pv-tile-cell" style="padding: 10px 12px; border-radius: 12px; background: var(--fv-surface-soft); display: flex; flex-direction: column; gap: 2px;">
-                        <span style="font-size: 12px; color: var(--ink-muted);">Variance</span>
+                        <span class="ui-note-12">Variance</span>
                         <span style="font-weight: 700; font-size: 14px; color: var(--warning-text, var(--warning));" id="p6TaxVariance">0.00 EGP</span>
-                        <span style="font-size: 11.5px; color: var(--ink-muted);">confirmed − estimate</span>
+                        <span class="ui-note-115">confirmed − estimate</span>
                       </div>
                     </div>
 
                     <div class="pay-stage locked" id="p6TaxPayStage">
                       <div class="pv-s6-fields" style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 10px; margin-bottom: 12px;">
-                        <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label);">
+                        <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label)">
                           Pay from company account
                           <select id="p6TaxDebitAccount" style="height: 36px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; background: var(--fv-surface); color: var(--ink-strong);"></select>
                         </label>
-                        <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label);">
+                        <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label)">
                           Settlement date
                           <input type="date" id="p6TaxPaymentDate" placeholder="Pick a date" style="height: 36px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; background: var(--fv-surface); color: var(--ink-strong);">
                         </label>
                       </div>
                       <div class="pv-s6-paid" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px;">
-                        <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label);">
+                        <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label)">
                           Amount paid (the actual payment)
                           <input type="number" step="0.01" min="0.01" id="p6TaxPaidAmount" oninput="PayrollApp.showScreen6PaidHint('tax')" style="height: 36px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; background: var(--fv-surface); color: var(--ink-strong);">
                         </label>
@@ -614,7 +614,7 @@
 
                 <div class="footer payroll-footer-actions pv-s6-footer" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-radius: 14px; background: var(--fv-surface); border: 1px solid var(--fv-line);">
                   <button class="btn btn-ghost" id="btnP6Back" onclick="PayrollApp.setStep(4)" style="height: 34px; padding: 0 12px; border-radius: 9px; font-weight: 600; font-size: 13px;">Back</button>
-                  <span style="font-size: 12.5px; color: var(--ink-muted);">The government portal is the source of truth for statutory amounts. HRFlow keeps its estimate, the confirmed amount and the variance side by side.</span>
+                  <span class="ui-note">The government portal is the source of truth for statutory amounts. HRFlow keeps its estimate, the confirmed amount and the variance side by side.</span>
                   <button class="btn btn-fill" id="btnP6Finish" onclick="PayrollApp.showPage('list')" style="height: 34px; padding: 0 16px; border-radius: 9px; font-weight: 600; font-size: 13px;">
                     Finish and return to runs
                   </button>
@@ -772,7 +772,7 @@
               </div>
 
               <div class="save-bar pv-settings-save-bar">
-                <span style="font-size: 12.5px; color: var(--ink-muted);">Changes apply to the current and future runs; finished runs keep their snapshot.</span>
+                <span class="ui-note">Changes apply to the current and future runs; finished runs keep their snapshot.</span>
                 <span style="display: flex; gap: 8px;">
                   <button type="button" class="btn btn-ghost" onclick="PayrollApp.showPage('list')">Cancel</button>
                   <button type="button" class="btn btn-fill" id="payrollSettingsSaveBtn" onclick="PayrollApp.saveSettings()">Save settings</button>
@@ -793,7 +793,7 @@
                 <button class="modal-close" onclick="PayrollApp.closeRevertModal()" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
               </div>
               <div class="modal-body" style="padding: 16px 22px; display: flex; flex-direction: column; gap: 12px;">
-                <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label);">
+                <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label)">
                   Reason
                   <textarea id="payrollRevertReason" rows="3" placeholder="Why the run goes back to draft" style="padding: 8px 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; resize: none; background: var(--fv-surface); color: var(--ink-strong);"></textarea>
                   <span style="font-weight: 400; font-size: 12px; color: var(--ink-muted);">Required. Saved in the audit log.</span>
