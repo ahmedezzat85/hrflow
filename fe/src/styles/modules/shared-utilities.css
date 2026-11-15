@@ -7,3 +7,12 @@
 .ui-control.ui-control { height: 36px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; }
 .ui-h15.ui-h15 { margin: 0; font-family: var(--font-head, Sora, sans-serif); font-size: 15px; color: var(--ink-strong); }
 .ui-table-full.ui-table-full { width: 100%; border-collapse: collapse; }
+
+/* Themed file input (public/js/file-input.js): English button + file-name label over a visually hidden real input */
+.hv-file { position: relative; display: flex; align-items: center; gap: 10px; width: 100%; box-sizing: border-box; min-width: 0; padding: 8px 12px; border: 1px dashed var(--fv-outline); border-radius: 10px; background: var(--fv-surface-soft); }
+.hv-file__native { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; pointer-events: none; margin: 0; }
+.hv-file__btn { flex: none; height: 30px; padding: 0 12px; border: 1px solid var(--fv-outline); border-radius: 8px; background: var(--fv-surface); color: var(--brand-ink); font: inherit; font-weight: 600; font-size: 12.5px; cursor: pointer; }
+.hv-file__btn:hover { background: var(--brand-wash); }
+.hv-file__btn:disabled { opacity: .55; cursor: not-allowed; }
+.hv-file__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--ink-strong); }
+.hv-file.is-empty .hv-file__name { color: var(--ink-muted); }

@@ -185,12 +185,12 @@
                 </div>
                 <div class="fv-import-field">
                   <label class="fv-settings-row__label" for="financeImportManifest">Manifest (CSV or XLSX)</label>
-                  <input type="file" id="financeImportManifest" class="fv-input" accept=".csv,.xlsx" onchange="onFinanceImportFilesChanged()">
+                  <input type="file" id="financeImportManifest" data-hv-file class="fv-input" accept=".csv,.xlsx" onchange="onFinanceImportFilesChanged()">
                   <button type="button" class="btn btn-outline" id="financeImportTemplateBtn" onclick="downloadFinanceImportTemplate()">Download template</button>
                 </div>
                 <div class="fv-import-field">
                   <label class="fv-settings-row__label" for="financeImportArchive">Documents (optional, ZIP of PDFs or photos)</label>
-                  <input type="file" id="financeImportArchive" class="fv-input" accept=".zip" onchange="onFinanceImportFilesChanged()">
+                  <input type="file" id="financeImportArchive" data-hv-file class="fv-input" accept=".zip" onchange="onFinanceImportFilesChanged()">
                 </div>
               </div>
               <p class="fv-sub" id="financeImportLimits"></p>

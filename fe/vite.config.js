@@ -10,6 +10,7 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const APP_SCRIPT_ORDER = [
   'state.js',
   'dropdown.js',
+  'file-input.js',
   'ui.js',
   'admin-nav.js',
   'router.js',
