@@ -379,7 +379,7 @@ function renderEmployeeInsuranceHighlights(){
           <span style="color: var(--ink-strong); font-weight: 700;">EGP ${cat.consumed.toLocaleString()} of ${cat.limit.toLocaleString()}</span>
         </div>
         <span style="height: 6px; border-radius: 999px; background: var(--fv-line); display: block; overflow: hidden;">
-          <span style="display: block; height: 6px; border-radius: 999px; background: #1f9d8e; width: ${pct}%;"></span>
+          <span style="display: block; height: 6px; border-radius: 999px; background: var(--id-teal); width: ${pct}%;"></span>
         </span>
       </div>
     `;

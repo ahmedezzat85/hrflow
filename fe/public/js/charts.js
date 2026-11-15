@@ -1,15 +1,19 @@
 function chartColors(){
-  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  // Canvas cannot use var(): read the active theme's token values at draw time.
+  const cs = getComputedStyle(document.documentElement);
+  const tok = (name) => cs.getPropertyValue(name).trim();
   return {
-    grid: dark ? '#26396f' : '#e7e9f3',
-    text: dark ? '#9fb0dc' : '#6b7280',
-    accent: '#2056e8',
-    warning: '#e07d10',
-    success: '#10b981',
-    info: '#0ea5e9',
-    vacation: '#1f9d8e',
-    wfh: '#3f98d0',
-    insurance: '#d55f92'
+    grid: tok('--border2'),
+    text: tok('--text2'),
+    accent: tok('--accent'),
+    warning: tok('--id-orange'),
+    success: tok('--id-green'),
+    info: tok('--id-sky'),
+    vacation: tok('--id-teal'),
+    wfh: tok('--id-sky'),
+    insurance: tok('--id-pink'),
+    external: tok('--id-blue'),
+    internal: tok('--id-green')
   };
 }
 
@@ -185,7 +189,7 @@ function initCharts(){
           {
             label: 'External USD',
             data: sorted.map(s => s.newExternal || 0),
-            backgroundColor: '#4f80f2',
+            backgroundColor: c.external,
             borderRadius: 5,
             maxBarThickness: 44,
             stack: 'pay'
@@ -193,7 +197,7 @@ function initCharts(){
           {
             label: 'Internal USD cash',
             data: sorted.map(s => s.newInternal || 0),
-            backgroundColor: '#4fa24c',
+            backgroundColor: c.internal,
             borderRadius: 5,
             maxBarThickness: 44,
             stack: 'pay'
@@ -245,6 +249,12 @@ function refreshCharts(){
     if (ch.options.plugins && ch.options.plugins.legend && ch.options.plugins.legend.labels) {
       ch.options.plugins.legend.labels.color = c.text;
     }
+    // Dataset fills follow the theme too (identity colours differ between light and dark).
+    const fills = { 'Vacation': c.vacation, 'Work from home': c.wfh, 'Medical claim': c.insurance, 'External USD': c.external, 'Internal USD cash': c.internal };
+    (ch.data.datasets || []).forEach(ds => {
+      if (Array.isArray(ds.backgroundColor)) ds.backgroundColor = [c.accent, c.warning, c.success];
+      else if (fills[ds.label]) ds.backgroundColor = fills[ds.label];
+    });
     ch.update();
   });
 }
