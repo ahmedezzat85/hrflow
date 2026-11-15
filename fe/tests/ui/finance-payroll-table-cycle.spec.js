@@ -571,11 +571,12 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
         { id: 99, obligation_type: 'social_insurance_employee', period: window.PayrollApp.month, amount_accrued: 2200, amount_remitted: 0, status: 'accrued', notes: 'payroll_run_id:1' }
       ];
       window.PayrollApp.banks = [
-        { id: 7, name: 'Custom Settling Account', currency: 'USD', number: '****9988' }
+        { id: 7, name: 'Custom Settling Account', currency: 'EGP', number: '****9988' },
+        { id: 8, name: 'Payroll USD Funding', currency: 'USD', number: '****1111' }
       ];
-      // Statutory payments follow the funding account from Payroll settings
-      window.PayrollApp.selectedExternalAccountId = 7;
-      window.PayrollApp.fundingSummary = { external: { id: 7, name: 'Custom Settling Account', currency: 'USD' }, internal: null };
+      // The payroll funding account is a USD one; statutory payments are chosen separately, from EGP accounts
+      window.PayrollApp.selectedExternalAccountId = 8;
+      window.PayrollApp.fundingSummary = { external: { id: 8, name: 'Payroll USD Funding', currency: 'USD' }, internal: null };
       window.PayrollApp.setStep(5);
     });
 
@@ -584,7 +585,8 @@ test.describe('HRFlow Six-Screen Payroll Journey & Lifecycle Cycle', () => {
     await expect(page.locator('#p6SiPaymentDate')).toBeVisible();
 
     // Fill inline fields
-    await expect(page.locator('#p6SiDebitAccount')).toBeDisabled();
+    await expect(page.locator('#p6SiDebitAccount')).toBeEnabled();
+    await expect(page.locator('#p6SiDebitAccount option')).toHaveCount(2); // placeholder + the one EGP account
     await expect(page.locator('#p6SiDebitAccount option:checked')).toContainText('Custom Settling Account');
     await page.fill('#p6SiPaymentDate', '2026-09-25');
 

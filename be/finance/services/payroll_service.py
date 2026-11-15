@@ -36,6 +36,7 @@ from finance import payroll_eligibility
 from repositories.social_insurance_repository import SocialInsuranceRepository
 from repositories.tax_method_repository import TaxMethodRepository
 from finance.services.payroll_calculation_helper import validate_and_calculate_internal_statutory
+from finance.services.payroll_statutory_sync import ensure_run_obligations
 
 # In-memory store for active previews and draft adjustments during runner execution
 _PREVIEW_CACHE: Dict[str, Dict[str, Any]] = {}
@@ -2121,7 +2122,9 @@ class PayrollService:
         run.finalized_at = datetime.utcnow()
         run.finalized_by = user_email or "admin@hrflow.test"
 
-        # NOTE: Under net-payment runner, finalization does NOT create statutory obligations or liability entries.
+        # Finalizing creates no ledger or liability entries (D-025). It does open the run's statutory obligations
+        # (income tax, social insurance) as estimates, so they show in Finance > Spend > Statutory to confirm and pay.
+        ensure_run_obligations(self.db, run)
         self.db.commit()
         self.db.refresh(run)
         self._log_audit(

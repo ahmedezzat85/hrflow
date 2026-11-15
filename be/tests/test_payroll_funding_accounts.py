@@ -207,24 +207,22 @@ def _payroll_obligation(client, cookies):
     return obl_id
 
 
-def test_payroll_statutory_payment_follows_settings_with_no_fallback(app_client, admin_cookies):
-    configured = _account("FA Statutory", opening=50000.0)
-    other = _account("FA Other", opening=50000.0)
+def test_payroll_statutory_payment_uses_the_account_the_user_chooses(app_client, admin_cookies):
+    """Statutory dues are not paid from the payroll funding account: the caller names the paying account."""
+    funding = _account("FA Payroll Funding", opening=50000.0)
+    chosen = _account("FA Statutory Pay", opening=50000.0)
+    set_funding_accounts(funding)
     obl_id = _payroll_obligation(app_client, admin_cookies)
     url = f"/api/finance/statutory-obligations/{obl_id}/settle"
     body = {"amount": 400.0, "payment_date": "2027-09-16", "currency": "USD", "reference": "SI-1", "method": "bank_transfer"}
 
-    # Settings unset: blocked, even when the client names an account
-    blocked = app_client.post(url, json={**body, "bank_account_id": other}, cookies=admin_cookies)
-    assert blocked.status_code == 409 and blocked.json()["detail"]["code"] == "funding_accounts_not_set"
+    # No account named: refused (there is no fallback to the payroll funding account)
+    missing = app_client.post(url, json=body, cookies=admin_cookies)
+    assert missing.status_code == 400 and missing.json()["detail"]["code"] == "bank_account_required"
+    assert account_balance(app_client, admin_cookies, funding) == 50000.0
 
-    set_funding_accounts(configured)
-    # A different account is refused
-    wrong = app_client.post(url, json={**body, "bank_account_id": other}, cookies=admin_cookies)
-    assert wrong.status_code == 400 and wrong.json()["detail"]["code"] == "funding_accounts_come_from_settings"
-    assert account_balance(app_client, admin_cookies, other) == 50000.0
-
-    # Omitting the account pays from the configured one
-    ok = app_client.post(url, json=body, cookies=admin_cookies)
+    # The chosen account pays, the payroll funding account is untouched
+    ok = app_client.post(url, json={**body, "bank_account_id": chosen}, cookies=admin_cookies)
     assert ok.status_code == 200, ok.text
-    assert account_balance(app_client, admin_cookies, configured) == 49600.0
+    assert account_balance(app_client, admin_cookies, chosen) == 49600.0
+    assert account_balance(app_client, admin_cookies, funding) == 50000.0
