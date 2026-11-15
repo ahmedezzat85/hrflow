@@ -505,6 +505,17 @@
                           <input type="date" id="p6SiPaymentDate" placeholder="Pick a date" style="height: 36px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; background: var(--fv-surface); color: var(--ink-strong);">
                         </label>
                       </div>
+                      <div class="pv-s6-paid" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px;">
+                        <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label);">
+                          Amount paid (the actual payment)
+                          <input type="number" step="0.01" min="0.01" id="p6SiPaidAmount" oninput="PayrollApp.showScreen6PaidHint('si')" style="height: 36px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; background: var(--fv-surface); color: var(--ink-strong);">
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-label);">
+                          <input type="checkbox" id="p6SiFinal" onchange="PayrollApp.showScreen6PaidHint('si')">
+                          <span>Final payment: close it even if the amount differs from the recorded figure</span>
+                        </label>
+                        <small id="p6SiPaidHint" style="color: var(--ink-muted);"></small>
+                      </div>
                       <div class="stat-obl-actions" style="display: flex; justify-content: flex-end; gap: 10px;">
                         <button type="button" class="btn btn-outline" id="btnP6RecordSocialIns" onclick="PayrollApp.recordStatutoryObligation('si')" style="height: 34px; padding: 0 14px; border-radius: 9px; font-weight: 600; font-size: 13px;">
                           Record obligation
@@ -553,6 +564,17 @@
                           Settlement date
                           <input type="date" id="p6TaxPaymentDate" placeholder="Pick a date" style="height: 36px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; background: var(--fv-surface); color: var(--ink-strong);">
                         </label>
+                      </div>
+                      <div class="pv-s6-paid" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px;">
+                        <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-label);">
+                          Amount paid (the actual payment)
+                          <input type="number" step="0.01" min="0.01" id="p6TaxPaidAmount" oninput="PayrollApp.showScreen6PaidHint('tax')" style="height: 36px; padding: 0 10px; border: 1px solid var(--fv-input-border); border-radius: 9px; font-size: 14px; background: var(--fv-surface); color: var(--ink-strong);">
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-label);">
+                          <input type="checkbox" id="p6TaxFinal" onchange="PayrollApp.showScreen6PaidHint('tax')">
+                          <span>Final payment: close it even if the amount differs from the recorded figure</span>
+                        </label>
+                        <small id="p6TaxPaidHint" style="color: var(--ink-muted);"></small>
                       </div>
                       <div class="stat-obl-actions" style="display: flex; justify-content: flex-end; gap: 10px;">
                         <button type="button" class="btn btn-outline" id="btnP6RecordTax" onclick="PayrollApp.recordStatutoryObligation('tax')" style="height: 34px; padding: 0 14px; border-radius: 9px; font-weight: 600; font-size: 13px;">
