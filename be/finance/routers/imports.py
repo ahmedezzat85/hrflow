@@ -24,6 +24,7 @@ from finance.services import bills_importer  # noqa: F401  (registers the bills 
 from finance.services import cheques_importer  # noqa: F401  (registers the cheques importer)
 from finance.services import invoices_importer  # noqa: F401  (registers the invoices importer)
 from finance.services import transfers_importer  # noqa: F401  (registers the transfers importer)
+from finance.services import bank_fees_importer  # noqa: F401  (registers the bank_fees importer)
 
 router = APIRouter(prefix="/api/finance/imports", tags=["Finance - Bulk Import"])
 

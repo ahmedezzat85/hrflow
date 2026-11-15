@@ -6,7 +6,7 @@ The nginx request limit (25 MB) is not changed; these limits keep a run inside i
 timeout. Everything here is a plain constant so tests can monkeypatch it.
 """
 
-KINDS = ("bills", "cheques", "invoices", "transfers")
+KINDS = ("bills", "cheques", "invoices", "transfers", "bank_fees")
 
 # Permission that the target entity already requires (D-033): no new permission
 KIND_PERMISSIONS = {
@@ -14,6 +14,7 @@ KIND_PERMISSIONS = {
     "cheques": "finance.account.write",
     "invoices": "finance.invoice.write",
     "transfers": "finance.account.write",  # the same key the transfer route requires
+    "bank_fees": "finance.account.write",  # the same key the manual-transaction route requires
 }
 
 # Imported bills belong to this legal entity (the bill form defaults to Voyance Health Inc).
