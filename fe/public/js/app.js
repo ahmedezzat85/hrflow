@@ -405,7 +405,7 @@ function renderEmployeePortal() {
     vacTbody.innerHTML = empVacationHistory.map(v => {
       const datesStr = (v.startDate && v.endDate ? fmtDateRange(v.startDate, v.endDate) : v.dates || (v.start_date && v.end_date ? fmtDateRange(v.start_date, v.end_date) : v.date || '—'));
       const isWfh = v.type === 'Work from home' || v.type === 'Work From Home' || v.type === 'WFH';
-      const dotBg = isWfh ? '#3f98d0' : '#1f9d8e';
+      const dotBg = isWfh ? 'var(--id-sky)' : 'var(--id-teal)';
       const isApp = v.status === 'Approved';
       const pillTone = isApp ? 'pill-success' : 'pill-neutral';
       return `
