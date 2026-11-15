@@ -251,8 +251,11 @@ def test_statutory_remitted_report_and_payable_status(app_client, admin_cookies)
     app_client.post(f"/api/finance/payroll/runs/{run_id}/approve", cookies=admin_cookies)
     app_client.post(f"/api/finance/payroll/runs/{run_id}/finalize", cookies=admin_cookies)
 
-    # Explicitly seed statutory obligations for 2026-09 compliance testing
+    # Explicitly seed statutory obligations for 2026-09 compliance testing (replacing the estimates finalize opened)
     with get_db_context() as db:
+        db.query(StatutoryObligationDB).filter(
+            StatutoryObligationDB.source_type == "payroll_run", StatutoryObligationDB.source_id == run_id
+        ).delete()
         db.add(StatutoryObligationDB(
             obligation_type="income_tax",
             period="2026-09",

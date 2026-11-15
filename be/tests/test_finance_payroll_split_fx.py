@@ -271,13 +271,25 @@ def test_finalize_run_excludes_external_usd_from_statutory_obligations(app_clien
     assert fin_data["status"] == "finalized"
     assert fin_data["finalized_at"] is not None
 
-    # Verify no StatutoryObligationDB rows are auto-generated
+    # Finalizing opens the run's EGP obligations as estimates, from the run's (internal-line) totals only
     with get_db_context() as db:
         obligations = db.query(StatutoryObligationDB).filter(
             StatutoryObligationDB.source_type == "payroll_run",
             StatutoryObligationDB.source_id == run_id,
         ).all()
-        assert len(obligations) == 0
+        by_type = {o.obligation_type: o for o in obligations}
+        assert set(by_type) <= {"income_tax", "social_insurance_employee"}
+        assert all(o.status == "estimated" and o.currency == "EGP" and o.period == "2026-12" for o in obligations)
+        assert all(o.due_date == "2027-01-15" for o in obligations)
+        si_total = round(float(fin_data["total_social_insurance_egp"] or 0.0), 2)
+        assert (round(by_type["social_insurance_employee"].amount_estimated, 2) if si_total else None) == (si_total or None)
+
+    # Idempotent: reading the list (which back-fills) adds nothing second
+    assert app_client.get("/api/finance/statutory-obligations?period=2026-12", cookies=admin_cookies).status_code == 200
+    with get_db_context() as db:
+        assert db.query(StatutoryObligationDB).filter(
+            StatutoryObligationDB.source_type == "payroll_run", StatutoryObligationDB.source_id == run_id
+        ).count() == len(obligations)
 
 
 def test_dual_funding_accounts_split_journal_posting(app_client, admin_cookies):

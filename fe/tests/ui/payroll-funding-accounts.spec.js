@@ -87,21 +87,35 @@ test.describe('Payroll funding accounts in Payroll settings', () => {
     expect(await page.evaluate(() => PayrollApp.canSetFundingAccounts())).toBe(false);
   });
 
-  test('statutory payments never fall back: settle is blocked while the funding account is unset', async ({ page }) => {
+  test('statutory payments are paid from an account the user chooses, never silently the payroll funding account', async ({ page }) => {
     await openPayroll(page, 'admin', { unset: true });
     await page.click('#btnOpenCurrentCycle');
     await page.evaluate(() => {
       window._settled = [];
       window.FinanceApi.settleStatutoryObligation = async (id, payload) => { window._settled.push(payload); return {}; };
       window.FinanceApi.getStatutoryObligation = async () => ({ amount_accrued: 100 });
+      window.PayrollApp.banks = [
+        { id: 21, name: 'EGP Account A', currency: 'EGP', number: '****1' },
+        { id: 22, name: 'EGP Account B', currency: 'EGP', number: '****2' },
+        { id: 23, name: 'USD Payroll', currency: 'USD', number: '****3' },
+      ];
       window.PayrollApp.setStep(5);
     });
     await expect(page.locator('#payrollScreen6')).toBeVisible();
-    await expect(page.locator('#p6SiDebitAccount')).toBeDisabled();
-    await expect(page.locator('#p6SiDebitAccount option:checked')).toHaveText('Not set');
+    // EGP accounts only, nothing preselected when there is more than one, and the select is usable
+    await expect(page.locator('#p6SiDebitAccount')).toBeEnabled();
+    await expect(page.locator('#p6SiDebitAccount option')).toHaveCount(3);
+    await expect(page.locator('#p6SiDebitAccount')).toHaveValue('');
     await page.evaluate(() => { const b = document.getElementById('btnP6SettleSocialIns'); b.disabled = false; b.setAttribute('data-obl-id', '1'); });
+    await page.evaluate(() => { document.getElementById('p6SiPaidAmount').value = '100'; });
     await page.evaluate(() => PayrollApp.settleStatutory('si'));
     expect(await page.evaluate(() => window._settled.length)).toBe(0);
-    await expect(page.locator('#payrollActionBanner')).toContainText('funding account is set in Payroll settings');
+    await expect(page.locator('#payrollActionBanner')).toContainText('Choose the company account');
+
+    await page.selectOption('#p6SiDebitAccount', '22');
+    await page.evaluate(() => PayrollApp.settleStatutory('si'));
+    const settled = await page.evaluate(() => window._settled);
+    expect(settled.length).toBe(1);
+    expect(settled[0].bank_account_id).toBe(22);
   });
 });

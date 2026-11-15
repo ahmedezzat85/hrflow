@@ -287,13 +287,14 @@ def test_commissions_participate_in_statutory_obligations(app_client, admin_cook
     fin_data = fin_resp.json()
     assert fin_data["total_net"] == 4500.0  # 3000 + 1000 + 500
 
-    # Verify no StatutoryObligationDB records are auto-generated
+    # Finalizing opens the run's obligations as EGP estimates (the user confirms them against the portal)
     with get_db_context() as db:
         obligations = db.query(StatutoryObligationDB).filter(
             StatutoryObligationDB.source_type == "payroll_run",
             StatutoryObligationDB.source_id == run_id,
         ).all()
-        assert len(obligations) == 0
+        assert obligations
+        assert all(o.status == "estimated" and o.currency == "EGP" for o in obligations)
 
 
 def test_reject_modifications_on_locked_run(app_client, admin_cookies):

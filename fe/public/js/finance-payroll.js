@@ -2216,16 +2216,10 @@
       this.calcScreen6Variance('si');
       this.calcScreen6Variance('tax');
 
-      const siAccountSelect = document.getElementById('p6SiDebitAccount');
-      const taxAccountSelect = document.getElementById('p6TaxDebitAccount');
       const siDateInput = document.getElementById('p6SiPaymentDate');
       const taxDateInput = document.getElementById('p6TaxPaymentDate');
 
-      // Statutory payments follow the funding account set in Payroll settings: shown read-only, no other choice
-      const bankOptionsHtml = this.fundingOptionHtml(this.selectedExternalAccountId, this.fundingSummary.external);
-      if (siAccountSelect) { siAccountSelect.innerHTML = bankOptionsHtml; siAccountSelect.disabled = true; }
-      if (taxAccountSelect) { taxAccountSelect.innerHTML = bankOptionsHtml; taxAccountSelect.disabled = true; }
-      this.applyStatutoryFundingState();
+      this.renderStatutoryAccountSelects();
 
       const defaultPayDate = this.payDate || new Date().toISOString().slice(0, 10);
       if (siDateInput && !siDateInput.value) siDateInput.value = defaultPayDate;
@@ -2306,76 +2300,20 @@
               </tr>
             `).join('');
 
-            // Update badge & settle buttons
-            const siObl = linked.find(o => o.obligation_type.includes('social_insurance'));
-            const taxObl = linked.find(o => o.obligation_type.includes('income_tax'));
-
-            const siBadge = document.getElementById('p6SiStatusBadge');
-            const taxBadge = document.getElementById('p6TaxStatusBadge');
-            const btnRecordSi = document.getElementById('btnP6RecordSocialIns');
-            const btnRecordTax = document.getElementById('btnP6RecordTax');
-            const btnSettleSi = document.getElementById('btnP6SettleSocialIns');
-            const btnSettleTax = document.getElementById('btnP6SettleTax');
-            const siPayStage = document.getElementById('p6SiPayStage');
-            const taxPayStage = document.getElementById('p6TaxPayStage');
-
-            if (siObl) {
-              if (siBadge) {
-                const isRemitted = siObl.status === 'remitted';
-                siBadge.textContent = isRemitted ? 'Remitted' : 'Recorded, unpaid';
-                siBadge.className = `stage-badge ${isRemitted ? 'settled' : 'recorded'}`;
-              }
-              if (siPayStage) siPayStage.classList.remove('locked');
-              this.prefillScreen6Paid('si', siObl);
-              if (btnSettleSi) {
-                btnSettleSi.disabled = siObl.status === 'remitted';
-                btnSettleSi.setAttribute('data-obl-id', siObl.id);
-                btnSettleSi.style.display = '';
-              }
-              if (btnRecordSi) btnRecordSi.style.display = 'none';
-            } else {
-              if (siBadge) {
-                siBadge.textContent = 'Not recorded';
-                siBadge.className = 'stage-badge unrecorded';
-              }
-              if (siPayStage) siPayStage.classList.add('locked');
-              if (btnSettleSi) {
-                btnSettleSi.disabled = true;
-                btnSettleSi.style.display = 'none';
-              }
-              if (btnRecordSi) btnRecordSi.style.display = '';
-            }
-
-            if (taxObl) {
-              if (taxBadge) {
-                const isRemitted = taxObl.status === 'remitted';
-                taxBadge.textContent = isRemitted ? 'Remitted' : 'Recorded, unpaid';
-                taxBadge.className = `stage-badge ${isRemitted ? 'settled' : 'recorded'}`;
-              }
-              if (taxPayStage) taxPayStage.classList.remove('locked');
-              this.prefillScreen6Paid('tax', taxObl);
-              if (btnSettleTax) {
-                btnSettleTax.disabled = taxObl.status === 'remitted';
-                btnSettleTax.setAttribute('data-obl-id', taxObl.id);
-                btnSettleTax.style.display = '';
-              }
-              if (btnRecordTax) btnRecordTax.style.display = 'none';
-            } else {
-              if (taxBadge) {
-                taxBadge.textContent = 'Not recorded';
-                taxBadge.className = 'stage-badge unrecorded';
-              }
-              if (taxPayStage) taxPayStage.classList.add('locked');
-              if (btnSettleTax) {
-                btnSettleTax.disabled = true;
-                btnSettleTax.style.display = 'none';
-              }
-              if (btnRecordTax) btnRecordTax.style.display = '';
-            }
+            // Update badge & buttons. An estimated obligation (opened when the run was finalized) must be confirmed
+            // against the portal figure before it can be paid; a confirmed one is paid.
+            const runId = this.currentRun ? this.currentRun.id : null;
+            const pick = (needle) => {
+              const matches = linked.filter(o => o.obligation_type.includes(needle));
+              return matches.find(o => o.source_type === 'payroll_run' && o.source_id === runId)
+                || matches.find(o => o.notes && o.notes.includes(runTag))
+                || matches[0];
+            };
+            this.applyScreen6ObligationState('si', pick('social_insurance'));
+            this.applyScreen6ObligationState('tax', pick('income_tax'));
 
             const resolved = this.resolvePayrollRunState(this.currentRun, linked);
             this.renderStatutoryBadge(resolved.badge, resolved.badgeClass);
-            this.applyStatutoryFundingState();
             return;
           }
         }
@@ -2405,6 +2343,42 @@
       tbody.innerHTML = '<tr><td colspan="6" class="muted" style="text-align:center; padding:16px;">No statutory obligations recorded yet for this payroll run.</td></tr>';
     },
 
+    applyScreen6ObligationState(type, obl) {
+      const isSi = type === 'si';
+      const badge = document.getElementById(isSi ? 'p6SiStatusBadge' : 'p6TaxStatusBadge');
+      const btnRecord = document.getElementById(isSi ? 'btnP6RecordSocialIns' : 'btnP6RecordTax');
+      const btnSettle = document.getElementById(isSi ? 'btnP6SettleSocialIns' : 'btnP6SettleTax');
+      const payStage = document.getElementById(isSi ? 'p6SiPayStage' : 'p6TaxPayStage');
+      const setBadge = (text, cls) => { if (badge) { badge.textContent = text; badge.className = `stage-badge ${cls}`; } };
+
+      if (!obl) {
+        setBadge('Not recorded', 'unrecorded');
+        if (payStage) payStage.classList.add('locked');
+        if (btnSettle) { btnSettle.disabled = true; btnSettle.style.display = 'none'; }
+        if (btnRecord) { btnRecord.style.display = ''; btnRecord.textContent = 'Record obligation'; btnRecord.removeAttribute('data-obl-id'); }
+        return;
+      }
+
+      if (obl.status === 'estimated') {
+        setBadge('Estimated, confirm the portal amount', 'unrecorded');
+        if (payStage) payStage.classList.add('locked');
+        if (btnSettle) { btnSettle.disabled = true; btnSettle.style.display = 'none'; }
+        if (btnRecord) { btnRecord.style.display = ''; btnRecord.textContent = 'Confirm amount'; btnRecord.setAttribute('data-obl-id', obl.id); }
+        return;
+      }
+
+      const isRemitted = obl.status === 'remitted';
+      setBadge(isRemitted ? 'Remitted' : 'Recorded, unpaid', isRemitted ? 'settled' : 'recorded');
+      if (payStage) payStage.classList.remove('locked');
+      this.prefillScreen6Paid(type, obl);
+      if (btnSettle) {
+        btnSettle.disabled = isRemitted;
+        btnSettle.setAttribute('data-obl-id', obl.id);
+        btnSettle.style.display = '';
+      }
+      if (btnRecord) btnRecord.style.display = 'none';
+    },
+
     async recordStatutoryObligation(type) {
       if (typeof SessionInfo !== 'undefined' && !SessionInfo.hasPermission('finance.statutory.write')) {
         this.showBanner('Permission denied: finance.statutory.write required.', 'red');
@@ -2421,8 +2395,21 @@
         return;
       }
 
+      const recordBtn = document.getElementById(isSi ? 'btnP6RecordSocialIns' : 'btnP6RecordTax');
+      const existingId = recordBtn ? recordBtn.getAttribute('data-obl-id') : null;
       try {
-        if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.createStatutoryObligation === 'function') {
+        if (existingId && typeof FinanceApi !== 'undefined' && typeof FinanceApi.confirmOrAdjustStatutoryObligation === 'function') {
+          // The run's estimated obligation already exists: confirm it at the portal amount (the variance is kept)
+          const estEl = document.getElementById(isSi ? 'p6SocialInsEstimate' : 'p6TaxEstimate');
+          const est = estEl ? (Number(estEl.getAttribute('data-est')) || 0) : 0;
+          const obl = await FinanceApi.confirmOrAdjustStatutoryObligation(existingId, {
+            amount_accrued: amt,
+            variance_note: Math.abs(amt - est) >= 0.005 ? 'Portal-confirmed amount differs from the payroll estimate' : null
+          });
+          this.showBanner(`Statutory obligation #${obl.id} confirmed at ${amt} EGP.`, 'blue');
+          this.addAudit(`Confirmed ${isSi ? 'Social Insurance' : 'Tax'} statutory obligation #${obl.id} at ${amt} EGP.`);
+          await this.loadLinkedStatutoryObligations();
+        } else if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.createStatutoryObligation === 'function') {
           const obl = await FinanceApi.createStatutoryObligation({
             obligation_type: isSi ? 'social_insurance_employee' : 'income_tax',
             period: this.month,
@@ -2441,12 +2428,19 @@
       }
     },
 
-    // Settling a statutory payment needs the funding account from Payroll settings; without it the buttons stay off.
-    applyStatutoryFundingState() {
-      if (this.selectedExternalAccountId) return;
-      ['btnP6SettleSocialIns', 'btnP6SettleTax'].forEach(id => {
-        const btn = document.getElementById(id);
-        if (btn) { btn.disabled = true; btn.title = 'Set the funding account in Payroll settings first.'; }
+    // The paying account of a statutory payment is chosen here, per obligation: it is EGP and normally not the payroll
+    // salary funding account. EGP accounts only (statutory payments carry no exchange rate).
+    renderStatutoryAccountSelects() {
+      const accounts = (this.banks || []).filter(b => String(b.currency || '').toUpperCase() === 'EGP');
+      ['p6SiDebitAccount', 'p6TaxDebitAccount'].forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const keep = sel.value;
+        const options = accounts.map(b => `<option value="${b.id}">${this.fundingAccountLabel(b)}</option>`).join('');
+        sel.innerHTML = `<option value="" disabled>${accounts.length ? 'Choose an account' : 'No active EGP account'}</option>` + options;
+        const stay = accounts.find(b => String(b.id) === String(keep));
+        sel.value = stay ? String(stay.id) : (accounts.length === 1 ? String(accounts[0].id) : '');
+        sel.disabled = accounts.length === 0;
       });
     },
 
@@ -2492,11 +2486,12 @@
 
       const dateInput = document.getElementById(isSi ? 'p6SiPaymentDate' : 'p6TaxPaymentDate');
 
-      if (!this.selectedExternalAccountId) {
-        this.showBanner('Statutory payments cannot be recorded until the funding account is set in Payroll settings.', 'red');
+      const accountSelect = document.getElementById(isSi ? 'p6SiDebitAccount' : 'p6TaxDebitAccount');
+      if (!accountSelect || !accountSelect.value) {
+        this.showBanner('Choose the company account to pay this statutory obligation from.', 'red');
         return;
       }
-      const bankAccountId = Number(this.selectedExternalAccountId);
+      const bankAccountId = Number(accountSelect.value);
       const paymentDate = (dateInput && dateInput.value) ? dateInput.value : new Date().toISOString().slice(0, 10);
 
       const paidInput = document.getElementById(isSi ? 'p6SiPaidAmount' : 'p6TaxPaidAmount');
