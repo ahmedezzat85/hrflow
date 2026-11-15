@@ -19,10 +19,8 @@
   "public/js/charts.js": 11,
   "public/js/finance-dashboard.js": 1,
   "public/js/finance-reports.js": 1,
-  "public/js/finance-statements.js": 2,
   "public/js/insurance.js": 1,
   "public/js/invoices.js": 2,
   "src/partials/modals/document-preview-modal.html": 1,
-  "src/partials/modals/finance-statement-upload-modal.html": 1,
   "src/partials/modals/finance-transaction-modal.html": 1
 }
