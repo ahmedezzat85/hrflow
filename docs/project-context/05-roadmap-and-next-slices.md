@@ -371,6 +371,17 @@ Decision D-053 (proposed), open question Q-025. Branch `feature/insurance-claim-
 | 4 | Decision, open question, roadmap and module notes | S | 1-3 |
 | Later | Owner answers to Q-025 (a to e); a claim currency and approved amount if wanted; paying several claims at once | S | Q-025 |
 
+## 3Q. Bank Fees Import Kind (D-056 proposed November 15, 2026; built, awaiting review)
+
+Decision D-056 (proposed), open question Q-026. Plan: `docs/finance-module/bank-fees-import.md`. Branch `feature/bank-fees-import`. Risk class high (the import posts ledger rows), no migration, no new permission key.
+
+| Slice | Scope | Size | Depends on |
+| :--- | :--- | :--- | :--- |
+| 1 | `bank_fees` kind: manifest columns, importer through the manual-transaction path, audit-based re-commit guard, backend tests | M | P3 |
+| 2 | Import screen option, template, mock handlers, notice, Playwright | S | 1 |
+| 3 | Decision, open question, roadmap and module doc | S | 1-2 |
+| Later | Owner answers to Q-026; an `import_batch_id` on ledger rows if batch queries or a batch undo are wanted | S | Q-026 |
+
 ## 4. Deferred Until Decision
 
 The following initiatives remain on hold until formally decided in [04-decision-log.md](04-decision-log.md):

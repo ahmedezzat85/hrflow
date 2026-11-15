@@ -189,6 +189,21 @@ Everything else is resolved and kept in the archive section below.
 
 Kept for traceability. Each entry names the decision that resolved it; the decision log and the code are authoritative.
 
+### Q-026 — Bank Fees Import: Defaults Awaiting Owner Confirmation
+- **Status:** Open (raised November 15, 2026). Each item is built as a default and marked "DEFAULT" in `be/finance/services/bank_fees_importer.py`.
+- **Decider:** Owner
+- **Question:**
+  Confirm or change these defaults for importing standalone bank fees (D-056).
+- **Items:**
+  - **(a) Category.** A row without `category` uses "Bank Fees". Alternative: require a category on every row.
+  - **(b) Identical fees.** A fee that matches an existing ledger row on account, date, amount and category is a warning, not an error. Alternative: block it. A repeat of the same file is blocked either way.
+  - **(c) Balance.** No balance check; a fee can take an account below zero, as a manual transaction can (Q-024). Alternative: refuse a fee above the balance.
+  - **(d) Batch provenance.** Ledger rows carry no import batch; the audit log records batch and `row_ref`, and undo is the manual delete. Alternative: add `import_batch_id` to ledger rows (a migration) for batch queries and a batch undo.
+- **Decision Needed from Owner:**
+  Confirm or change each item, then update D-056 to Accepted.
+- **Related References:**
+  - [04-decision-log.md](04-decision-log.md) (`D-056`)
+
 ### Q-001 — Payroll Paid-State Funding Scope
 - **Status:** Resolved — D-025 (October 10, 2026): Option A, net pay only; employer tax and social insurance are paid as statutory obligations.  
 - **Question:**  
