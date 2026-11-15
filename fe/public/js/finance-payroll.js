@@ -2326,6 +2326,7 @@
                 siBadge.className = `stage-badge ${isRemitted ? 'settled' : 'recorded'}`;
               }
               if (siPayStage) siPayStage.classList.remove('locked');
+              this.prefillScreen6Paid('si', siObl);
               if (btnSettleSi) {
                 btnSettleSi.disabled = siObl.status === 'remitted';
                 btnSettleSi.setAttribute('data-obl-id', siObl.id);
@@ -2352,6 +2353,7 @@
                 taxBadge.className = `stage-badge ${isRemitted ? 'settled' : 'recorded'}`;
               }
               if (taxPayStage) taxPayStage.classList.remove('locked');
+              this.prefillScreen6Paid('tax', taxObl);
               if (btnSettleTax) {
                 btnSettleTax.disabled = taxObl.status === 'remitted';
                 btnSettleTax.setAttribute('data-obl-id', taxObl.id);
@@ -2448,6 +2450,40 @@
       });
     },
 
+    // The amount actually paid may differ from the recorded figure (more or less): the field starts at what is still owed.
+    prefillScreen6Paid(type, obl) {
+      const idp = type === 'si' ? 'p6Si' : 'p6Tax';
+      const input = document.getElementById(`${idp}PaidAmount`);
+      const final = document.getElementById(`${idp}Final`);
+      const remaining = obl.status === 'remitted' ? 0
+        : Math.max(0, Number(obl.remaining_balance !== undefined ? obl.remaining_balance : (Number(obl.amount_accrued || 0) - Number(obl.amount_remitted || 0))));
+      this._p6Remaining = Object.assign(this._p6Remaining || {}, { [type]: { remaining, currency: obl.currency || 'EGP' } });
+      if (input) {
+        input.disabled = obl.status === 'remitted';
+        if (document.activeElement !== input) input.value = remaining > 0 ? remaining.toFixed(2) : '';
+      }
+      if (final) { final.disabled = obl.status === 'remitted'; if (obl.status === 'remitted') final.checked = false; }
+      this.showScreen6PaidHint(type);
+    },
+
+    // Says what the entered amount means; a different amount is never refused.
+    showScreen6PaidHint(type) {
+      const idp = type === 'si' ? 'p6Si' : 'p6Tax';
+      const hint = document.getElementById(`${idp}PaidHint`);
+      const input = document.getElementById(`${idp}PaidAmount`);
+      const final = document.getElementById(`${idp}Final`);
+      const info = (this._p6Remaining || {})[type];
+      if (!hint || !input || !info) return;
+      const paid = parseFloat(input.value);
+      const diff = Math.round((paid - info.remaining) * 100) / 100;
+      const money = (v) => (typeof FinanceFormat !== 'undefined' ? FinanceFormat.formatMoney(v, info.currency) : v.toFixed(2));
+      if (isNaN(paid) || Math.abs(diff) < 0.005) { hint.textContent = ''; return; }
+      if (diff > 0) hint.textContent = `${money(diff)} more than the recorded figure. It is recorded as paid and shown as the difference.`;
+      else hint.textContent = (final && final.checked)
+        ? `${money(-diff)} less than the recorded figure. The obligation closes with that difference.`
+        : `${money(-diff)} stays outstanding after this payment. Tick final payment to close it instead.`;
+    },
+
     async settleStatutory(type) {
       const isSi = type === 'si';
       const btn = document.getElementById(isSi ? 'btnP6SettleSocialIns' : 'btnP6SettleTax');
@@ -2463,13 +2499,21 @@
       const bankAccountId = Number(this.selectedExternalAccountId);
       const paymentDate = (dateInput && dateInput.value) ? dateInput.value : new Date().toISOString().slice(0, 10);
 
+      const paidInput = document.getElementById(isSi ? 'p6SiPaidAmount' : 'p6TaxPaidAmount');
+      const finalBox = document.getElementById(isSi ? 'p6SiFinal' : 'p6TaxFinal');
+      const paidAmount = paidInput ? parseFloat(paidInput.value) : NaN;
+      if (!(paidAmount > 0)) {
+        if (paidInput) FinanceForm.setFieldError(paidInput, 'Enter the amount actually paid.');
+        return;
+      }
+
       try {
         if (typeof FinanceApi !== 'undefined' && typeof FinanceApi.settleStatutoryObligation === 'function') {
-          const obl = await FinanceApi.getStatutoryObligation(oblId);
           await FinanceApi.settleStatutoryObligation(oblId, {
-            amount: obl.amount_accrued,
+            amount: paidAmount,
             payment_date: paymentDate,
-            bank_account_id: bankAccountId
+            bank_account_id: bankAccountId,
+            final_payment: !!(finalBox && finalBox.checked)
           });
           this.showBanner(`Statutory obligation #${oblId} settled and remitted.`, 'green');
           this.addAudit(`Settled statutory obligation #${oblId}.`);
