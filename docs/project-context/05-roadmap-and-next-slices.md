@@ -358,6 +358,9 @@ Decision D-052. Plan: `docs/finance-module/import-paid-bills-and-transfers-plan.
 | P4 | Invoice `expected_account` and `revenue_channel` | S | I4 |
 | P5 | Import screen, templates, mock handlers, Playwright | S | P1-P3 |
 | Later | Finance staging tools in `mcp_server/` (documents uploaded to the app locally, matched by `source_file`) | M | P1-P3 |
+| Done | Finance read tools in `mcp_server/` (FM-1 accounts, balances, ledger; FM-2 transfers, bills, cheques, reference data, import batches), `mcp:finance` scope with route allow-list (D-058) | M | MCP-1 |
+| Later | `finance_match_expected` (FM-3): match expected cash-book rows against HRFlow, report missing, extra and month-end differences. Deferred by the owner; build only on request | M | D-058 |
+| Later | Per-token rate limit and a persistent audit of MCP finance reads (today: one log line per call) | S | D-058 |
 
 ## 3P. Insurance Claim Payment Link (D-053 accepted November 10, 2026; built, awaiting review)
 

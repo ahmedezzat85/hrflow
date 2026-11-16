@@ -101,7 +101,11 @@ def test_the_exposed_tools_are_exactly_the_planned_set_and_none_can_approve(web)
     session = _open_session(web, {"Authorization": f"Bearer {KEY}"})
     names = {t["name"] for t in _call(web, session, "tools/list")["tools"]}
     assert names == {"find_employee", "list_leave", "list_holidays", "list_leave_types",
-                     "validate_history_items", "stage_history_items", "get_import_batch"}
+                     "validate_history_items", "stage_history_items", "get_import_batch",
+                     "finance_list_accounts", "finance_get_balances", "finance_get_month_end_balances",
+                     "finance_list_transactions", "finance_summarize_transactions",
+                     "finance_list_transfers", "finance_list_bills", "finance_list_cheques",
+                     "finance_list_reference_data", "finance_list_import_batches", "finance_get_import_batch_rows"}
 
 
 def test_a_tool_call_goes_through_with_the_token_and_returns_minimal_data(web, fake):

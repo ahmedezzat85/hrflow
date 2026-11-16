@@ -904,6 +904,7 @@ class BillResponse(BillBase):
     paid_from_account_name: Optional[str] = None  # the paying account, or the vendor's last account when inferred
     is_subscription: bool = False
     subscription_name: Optional[str] = None
+    import_batch_id: Optional[int] = None  # the bulk-import run that created the bill, if any
 
     class Config:
         from_attributes = True
@@ -1242,6 +1243,7 @@ class ChequeResponse(ChequeBase):
     linked_cash_transaction_id: Optional[int] = None
     created_at: Optional[datetime] = None
     created_by: Optional[str] = None
+    import_batch_id: Optional[int] = None  # the bulk-import run that created the cheque, if any
 
     class Config:
         from_attributes = True

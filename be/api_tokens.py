@@ -7,6 +7,7 @@ Tokens are created and revoked on the host (scripts/manage_api_tokens.py), never
 token cannot mint another.
 """
 import hashlib
+import re
 import secrets
 from dataclasses import replace
 from datetime import datetime, timedelta
@@ -24,7 +25,37 @@ SCOPES = {
     "mcp:read": frozenset({"hr.employee.read", "hr.vacation.read", "hr.request.read"}),
     # Staging only. hr.history_import.review (accept/reject/edit) is in no scope: only a signed-in person reviews.
     "mcp:stage": frozenset({"hr.history_import.read", "hr.history_import.write"}),
+    # Read-only company finance (FM-1). Permission keys are coarse (finance.report.read also opens payroll and
+    # compensation reports), so this scope is paired with the route allow-list below.
+    "mcp:finance": frozenset({"finance.account.read", "finance.report.read", "finance.bill.read",
+                              "finance.vendor.read"}),
 }
+
+# Scopes whose tokens may only reach the listed GET routes under /api/finance. A scope without an entry here
+# (mcp:read, mcp:stage) holds no finance permission, so the finance check below never lets it in anyway.
+FINANCE_ROUTE_ALLOW = {
+    "mcp:finance": (
+        re.compile(r"^/api/finance/accounts$"),
+        re.compile(r"^/api/finance/accounts/\d+/transactions$"),
+        re.compile(r"^/api/finance/accounts/\d+/checkpoints$"),
+        re.compile(r"^/api/finance/reports/(balances|fiscal-year-summary|transactions|category-summary)$"),
+        re.compile(r"^/api/finance/(categories|payment-types|transfers|bills|cheques|vendors)$"),
+        re.compile(r"^/api/finance/imports/batches$"),
+        re.compile(r"^/api/finance/imports/batches/\d+/rows$"),
+    ),
+}
+
+
+def route_allowed(scopes: str, method: str, path: str, query=None) -> bool:
+    """Token requests under /api/finance must be a GET on a route some scope of the token lists, and must not ask
+    for a file export. Everything else outside /api/finance is governed by the permission intersection alone."""
+    if not path.startswith("/api/finance"):
+        return True
+    if method.upper() != "GET":
+        return False
+    if query is not None and (query.get("format") or "json") != "json":
+        return False
+    return any(p.match(path) for s in parse_scopes(scopes) for p in FINANCE_ROUTE_ALLOW.get(s, ()))
 
 
 def hash_token(token: str) -> str:

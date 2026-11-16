@@ -447,6 +447,9 @@ class ReportsService:
                 "description": tx.description or "",
                 "cheque_number": tx.cheque_number or "",
                 "source": tx.source,
+                "linked_bill_id": tx.linked_bill_id,
+                "linked_transfer_id": tx.linked_transfer_id,
+                "linked_cheque_id": tx.linked_cheque_id,
                 "running_balance": float(tx.running_balance or 0.0),
             })
 

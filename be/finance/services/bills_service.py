@@ -116,6 +116,7 @@ class BillsService:
             remaining_balance=remaining,
             notes=bill.notes,
             capture_source=bill.capture_source or "manual",
+            import_batch_id=bill.import_batch_id,
             extraction_confidence=bill.extraction_confidence,
             missing_fields=bill.missing_fields,
             department=bill.department,

@@ -306,6 +306,8 @@ def _authenticate_api_token(request: Request, db: Session, secret: str) -> dict:
     row = api_tokens.lookup_token(db, secret)
     if row is None:
         raise _unauthorized("Invalid or expired API token.")
+    if not api_tokens.route_allowed(row.scopes, request.method, request.url.path, request.query_params):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This API token's scopes do not allow this route.")
     ctx = api_tokens.narrow_context(resolve_access(db, {"uid": row.user_id}), row.scopes)
     request.state.access_context = ctx
     user_dict = {
