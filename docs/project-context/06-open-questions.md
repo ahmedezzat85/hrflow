@@ -33,6 +33,7 @@ This register tracks unresolved product, accounting, and technical architecture 
 | Q-022 | Historical Payroll Import Line Typing and Adjustment Amount Fields | Open (narrowed October 25, 2026: 2023-2024 payroll history deferred by D-040) |
 | Q-024 | May a Payment Exceed an Account's Balance (Overdraft)? | Open (raised October 26, 2026; decision needed only if an overdraft or credit-card account exists) |
 | Q-025 | Insurance Claim Payment: Defaults Awaiting Owner Confirmation | Resolved November 10, 2026 by D-053: the owner accepted the built defaults |
+| Q-027 | Finance MCP: Amounts of Employee-Related Ledger Rows | Open (raised November 16, 2026 with D-058) |
 
 Everything else is resolved and kept in the archive section below.
 
@@ -184,6 +185,25 @@ Everything else is resolved and kept in the archive section below.
   - Q-024
 
 ---
+
+### Q-027 — Finance MCP: Amounts of Employee-Related Ledger Rows
+- **Status:** Open. Raised November 16, 2026 with D-058.
+- **Decider:** Owner
+- **Question:**
+  The finance MCP tools return ledger rows about employees (payroll, insurance claims) without payee, description or category, but with their amounts. Should the amounts of those rows also be withheld?
+- **Why It Matters:**
+  The owner ruled that payroll data must not reach the chat app. A single payment amount can still reveal a person's pay. Withholding amounts would make an account's rows no longer add up to its month-end balances, which is the purpose of the tools.
+- **Known Current Context:**
+  - Month-end balances and totals include these rows; the rows carry `details_withheld: true`.
+- **Options:**
+  - Keep as built (amounts shown, identity hidden).
+  - Show these rows as one total per day or month per account.
+  - Withhold them and add a reconciling "employee-related" line per month.
+- **Decision Needed from Owner:**
+  Choose an option, then record it in [04-decision-log.md](04-decision-log.md).
+- **Related References:**
+  - [04-decision-log.md](04-decision-log.md) (`D-058`)
+  - `mcp_server/finance_tools.py` (`_tx_view`)
 
 ## Resolved Questions (Archive)
 

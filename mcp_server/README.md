@@ -23,7 +23,27 @@ It runs as its own process on the HRFlow PC, **off by default**. Stop it and the
 | `stage_history_items(batch_label, items, idempotency_key)` | saves up to 100 validated items for review; the same key returns the same batch |
 | `get_import_batch(batch_id)` | review progress of a batch |
 
-There is no tool that approves, edits or deletes a live record, and none that returns salary, bank, tax, ID or document data. The token is also limited on HRFlow's side: it carries the `mcp:read` and `mcp:stage` scopes only, and accepting an item needs a permission that is in no token scope.
+There is no tool that approves, edits or deletes a live record, and none that returns salary, bank account, tax, ID or document data (the finance tools below read company accounts only). The token is also limited on HRFlow's side: it carries the `mcp:read` and `mcp:stage` scopes only, and accepting an item needs a permission that is in no token scope.
+
+### Finance tools (read-only, company accounts)
+
+Needs a token with the `mcp:finance` scope (D-058) whose user holds the finance read permissions. Every list needs a date range or a limit, returns at most 200 rows (`limit`, `cursor`, `truncated`, `next_cursor`), and amounts stay in each account's own currency (never converted). Dates are `YYYY-MM-DD`; accounts, vendors and categories are given by exact name, case-insensitive.
+
+| Tool | What it does |
+| :--- | :--- |
+| `finance_list_accounts(book?, include_inactive?)` | name, bank, currency, type, book, visibility, opening and stored balance, latest checkpoint with unrecorded difference (partial accounts). No account numbers. |
+| `finance_get_balances(as_of_date, accounts?, book?)` | balance of each active account at a date, from HRFlow's shared balance function (fiscal-year openings included) |
+| `finance_get_month_end_balances(account, year, months?, through_year?)` | opening, money in, money out, closing and transaction count per month; at most 24 months |
+| `finance_list_transactions(account, date_from, date_to, direction?, payment_type?, category?, min_amount?, max_amount?, text?, limit?, cursor?)` | ledger rows with running balance, source and linked bill, transfer or cheque ids; totals for the whole match |
+| `finance_summarize_transactions(account, date_from, date_to, group_by)` | totals and counts by month, category, payment_type or direction |
+| `finance_list_transfers(date_from, date_to, account?, limit?, cursor?)` | own-account transfers and FX conversions with both legs, rate and fee; voided ones left out |
+| `finance_list_bills(date_from, date_to, vendor?, status?, number_prefix?, paid_from_account?, limit?, cursor?)` | bills by issue date, with paying account, capture source and import batch id |
+| `finance_list_cheques(date_from, date_to, status?, account?, limit?, cursor?)` | cheques by issue date |
+| `finance_list_reference_data(kind)` | exact names: vendors, categories, payment_types or accounts |
+| `finance_list_import_batches(kind?, date_from?, date_to?, limit?, cursor?)` | committed bulk-import runs with created and failed counts (not the HR `get_import_batch`) |
+| `finance_get_import_batch_rows(batch_id, limit?, cursor?)` | what a run created: manifest `row_ref`, record kind, id and number |
+
+What the finance tools never return: account numbers or IBANs, vendor tax ids and contacts, cheque signers, attachments, creator emails, employee bank accounts, payroll or compensation reports. Ledger rows about employees show no payee, description or category (`details_withheld`). On HRFlow's side the `mcp:finance` token can only GET the routes listed in `FINANCE_ROUTE_ALLOW` (`be/api_tokens.py`); every other route under `/api/finance` answers 403. Mint it with `--scopes mcp:read,mcp:stage,mcp:finance`.
 
 ## Set up (once)
 
