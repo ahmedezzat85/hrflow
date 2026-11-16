@@ -136,10 +136,10 @@ def _digest():
 
 # ---- scope and route allow-list ---------------------------------------------------------------------------------
 
-def test_scope_grants_only_two_read_permissions(app_client):
+def test_scope_grants_only_four_read_permissions(app_client):
     secret = _secret()
     me = app_client.get("/api/auth/me", headers=_bearer(secret)).json()
-    assert set(me["permissions"]) == {"finance.account.read", "finance.report.read"}
+    assert set(me["permissions"]) == {"finance.account.read", "finance.report.read", "finance.bill.read", "finance.vendor.read"}
 
 
 def test_listed_routes_are_reachable(app_client, seeded):
@@ -151,7 +151,13 @@ def test_listed_routes_are_reachable(app_client, seeded):
 @pytest.mark.parametrize("method,path", [
     ("POST", "/api/finance/accounts"),
     ("GET", "/api/finance/accounts/1"),                       # not listed (and the reveal flag lives here)
-    ("GET", "/api/finance/vendors"),
+    ("GET", "/api/finance/vendors/1/payment-instructions"),   # vendor bank details
+    ("GET", "/api/finance/vendors/1/360"),
+    ("GET", "/api/finance/bills/1/attachment"),
+    ("GET", "/api/finance/bills/summary"),
+    ("POST", "/api/finance/bills"),
+    ("POST", "/api/finance/imports/bills"),
+    ("GET", "/api/finance/transfers/1"),
     ("GET", "/api/finance/reports/compensation/company"),     # finance.report.read would open it; the allow-list does not
     ("GET", "/api/finance/reports/profit-and-loss"),
     ("GET", "/api/finance/accounts/1/checkpoints/1/attachment"),

@@ -14,6 +14,7 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.server.transport_security import TransportSecuritySettings
 
+import finance_records
 import finance_tools
 import tools
 from config import Config
@@ -148,6 +149,61 @@ def build_mcp(client: HRFlowClient) -> MCPServer:
         """Totals and counts of one account's ledger rows between two dates, grouped by month, category, payment_type or
         direction. Never converts currencies."""
         return finance_tools.finance_summarize_transactions(client, account, date_from, date_to, group_by)
+
+    @mcp.tool()
+    @_report_failures
+    @audited
+    def finance_list_transfers(date_from: str, date_to: str, account: Optional[str] = None, limit: int = 50,
+                               cursor: Optional[str] = None) -> dict:
+        """Own-account transfers and FX conversions between two dates (both required), with both legs: from and to
+        account, both amounts and currencies, rate, fee, status. At most 200 per call; use next_cursor for more."""
+        return finance_records.finance_list_transfers(client, date_from, date_to, account, limit, cursor)
+
+    @mcp.tool()
+    @_report_failures
+    @audited
+    def finance_list_bills(date_from: str, date_to: str, vendor: Optional[str] = None, status: Optional[str] = None,
+                           number_prefix: Optional[str] = None, paid_from_account: Optional[str] = None, limit: int = 50,
+                           cursor: Optional[str] = None) -> dict:
+        """Vendor bills issued between two dates (both required): number, vendor, dates, status, total, paid amount,
+        currency, category, paying account, capture source and import batch id. Filter by exact vendor name, status,
+        bill-number prefix or paying account. At most 200 per call."""
+        return finance_records.finance_list_bills(client, date_from, date_to, vendor, status, number_prefix,
+                                                  paid_from_account, limit, cursor)
+
+    @mcp.tool()
+    @_report_failures
+    @audited
+    def finance_list_cheques(date_from: str, date_to: str, status: Optional[str] = None, account: Optional[str] = None,
+                             limit: int = 50, cursor: Optional[str] = None) -> dict:
+        """Cheques issued between two dates (both required): number, dates, amount, currency, status, account, payee,
+        linked bill and import batch id. At most 200 per call."""
+        return finance_records.finance_list_cheques(client, date_from, date_to, status, account, limit, cursor)
+
+    @mcp.tool()
+    @_report_failures
+    @audited
+    def finance_list_reference_data(kind: str) -> dict:
+        """The exact names HRFlow knows, to check an import manifest against: kind is vendors, categories,
+        payment_types or accounts. Names and flags only, no contact or bank details."""
+        return finance_records.finance_list_reference_data(client, kind)
+
+    @mcp.tool()
+    @_report_failures
+    @audited
+    def finance_list_import_batches(kind: Optional[str] = None, date_from: Optional[str] = None,
+                                    date_to: Optional[str] = None, limit: int = 50, cursor: Optional[str] = None) -> dict:
+        """Committed finance bulk-import runs (kind: bills, cheques, invoices, transfers or bank_fees), newest first,
+        with how many rows were created and how many failed. Not the HR get_import_batch."""
+        return finance_records.finance_list_import_batches(client, kind, date_from, date_to, limit, cursor)
+
+    @mcp.tool()
+    @_report_failures
+    @audited
+    def finance_get_import_batch_rows(batch_id: int, limit: int = 50, cursor: Optional[str] = None) -> dict:
+        """What one finance import run created, row by row: the manifest row_ref, the kind of record, its id and its
+        number. Lets you confirm a manifest produced what it should."""
+        return finance_records.finance_get_import_batch_rows(client, batch_id, limit, cursor)
 
     return mcp
 

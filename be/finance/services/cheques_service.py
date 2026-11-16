@@ -91,6 +91,7 @@ class ChequesService:
             notes=cheque.notes or "",
             created_at=cheque.created_at,
             created_by=cheque.created_by,
+            import_batch_id=cheque.import_batch_id,
         )
 
     def list_cheques(

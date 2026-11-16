@@ -27,7 +27,8 @@ SCOPES = {
     "mcp:stage": frozenset({"hr.history_import.read", "hr.history_import.write"}),
     # Read-only company finance (FM-1). Permission keys are coarse (finance.report.read also opens payroll and
     # compensation reports), so this scope is paired with the route allow-list below.
-    "mcp:finance": frozenset({"finance.account.read", "finance.report.read"}),
+    "mcp:finance": frozenset({"finance.account.read", "finance.report.read", "finance.bill.read",
+                              "finance.vendor.read"}),
 }
 
 # Scopes whose tokens may only reach the listed GET routes under /api/finance. A scope without an entry here
@@ -38,7 +39,9 @@ FINANCE_ROUTE_ALLOW = {
         re.compile(r"^/api/finance/accounts/\d+/transactions$"),
         re.compile(r"^/api/finance/accounts/\d+/checkpoints$"),
         re.compile(r"^/api/finance/reports/(balances|fiscal-year-summary|transactions|category-summary)$"),
-        re.compile(r"^/api/finance/(categories|payment-types)$"),
+        re.compile(r"^/api/finance/(categories|payment-types|transfers|bills|cheques|vendors)$"),
+        re.compile(r"^/api/finance/imports/batches$"),
+        re.compile(r"^/api/finance/imports/batches/\d+/rows$"),
     ),
 }
 

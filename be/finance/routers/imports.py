@@ -11,14 +11,15 @@ three keys for the route-coverage walker, and the per-kind check below is the en
 """
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy.orm import Session
 
 from auth import get_current_user
-from core.permissions import AccessContext, get_access_context, get_current_user_permissions
+from core.permissions import AccessContext, get_access_context, get_current_user_permissions, require_permission
 from db import get_db
 from finance import import_config as cfg
 from finance.import_report import ImportLimitsResponse, ImportReport
+from finance.services import import_batches_read
 from finance.services.import_service import ImportActor, ImportService
 from finance.services import bills_importer  # noqa: F401  (registers the bills importer)
 from finance.services import cheques_importer  # noqa: F401  (registers the cheques importer)
@@ -82,6 +83,36 @@ def get_import_limits(
         allowed_extensions=list(cfg.ALLOWED_EXTENSIONS),
         low_confidence_threshold=cfg.LOW_CONFIDENCE_THRESHOLD,
     )
+
+
+@router.get("/batches")
+def list_import_batches(
+    kind: Optional[str] = Query(None, description="bills | cheques | invoices | transfers | bank_fees"),
+    date_from: Optional[str] = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$", description="Runs committed on or after (YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$", description="Runs committed on or before (YYYY-MM-DD)"),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    current_user: dict = Depends(require_permission("finance.account.read")),
+    db: Session = Depends(get_db),
+):
+    """Committed import runs with their counts, newest first. Read-only."""
+    return import_batches_read.list_batches(db, kind, date_from, date_to, limit, offset)
+
+
+@router.get("/batches/{batch_id}/rows")
+def list_import_batch_rows(
+    batch_id: int,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    current_user: dict = Depends(require_permission("finance.account.read")),
+    db: Session = Depends(get_db),
+):
+    """What a committed run created, row by row (row_ref, record kind, record id, number). Failed rows are not stored."""
+    found = import_batches_read.batch_rows(db, batch_id, limit, offset)
+    if found is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Import batch not found.")
+    batch, total, rows = found
+    return {"batch": batch, "matching_rows": total, "rows": rows}
 
 
 @router.post("/{kind}/dry-run", response_model=ImportReport)
