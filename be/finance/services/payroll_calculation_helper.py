@@ -270,24 +270,8 @@ def validate_and_calculate_internal_statutory(
             })
         else:
             dec_insured_base_egp = Decimal(str(round(float(insured_base), 2)))
-            # Rule 2: Insured Base (EGP) <= Recurring Internal Salary (EGP)
-            # Denominator deliberately excludes bonuses/commissions
-            if dec_insured_base_egp > recurring_internal_egp:
-                exceptions.append({
-                    "id": f"exc-ins-exceeds-{employee_id}",
-                    "employee_id": employee_id,
-                    "employee_name": employee_name,
-                    "severity": "blocking",
-                    "code": "INSURED_BASE_EXCEEDS_SALARY",
-                    "title": "Insured Base Exceeds Internal Salary",
-                    "description": (
-                        f"{employee_name}'s insured base ({float(dec_insured_base_egp):,.2f} EGP) exceeds their recurring internal base "
-                        f"({float(recurring_internal_egp):,.2f} EGP at locked FX rate {float(dec_fx):,.4f}). "
-                        "Adjust their insured base under Employee Profile > Social Insurance before running payroll."
-                    ),
-                    "correction_path": f"/admin?section=employees&employee_id={employee_id}",
-                    "is_resolved": False,
-                })
+            # Rule 2 (insured base <= recurring gross) runs after the recurring gross is known,
+            # because social insurance is compared against gross, not net.
 
     # Social Insurance calculation in EGP
     if not has_recurring_internal or not insured_flag or norm_currency != "EGP" or dec_insured_base_egp <= Decimal("0.00"):
@@ -377,8 +361,31 @@ def validate_and_calculate_internal_statutory(
         # Fallback if no recurring internal or missing tax settings
         recurring_gross_egp = recurring_internal_egp
 
+    # Rule 2: Insured Base (EGP) <= Recurring Gross Salary (EGP)
+    # Social insurance is based on gross, so a NET-basis salary is compared after gross-up.
+    # Bonuses/commissions are deliberately excluded.
+    if (
+        has_recurring_internal and insured_flag and norm_currency == "EGP"
+        and dec_insured_base_egp > recurring_gross_egp
+    ):
+        exceptions.append({
+            "id": f"exc-ins-exceeds-{employee_id}",
+            "employee_id": employee_id,
+            "employee_name": employee_name,
+            "severity": "blocking",
+            "code": "INSURED_BASE_EXCEEDS_SALARY",
+            "title": "Insured Base Exceeds Gross Salary",
+            "description": (
+                f"{employee_name}'s insured base ({float(dec_insured_base_egp):,.2f} EGP) exceeds their recurring gross salary "
+                f"({float(recurring_gross_egp):,.2f} EGP at locked FX rate {float(dec_fx):,.4f}). "
+                "Adjust their insured base under Employee Profile > Social Insurance before running payroll."
+            ),
+            "correction_path": f"/admin?section=employees&employee_id={employee_id}",
+            "is_resolved": False,
+        })
+
     # Taxable gross = recurring gross + bonus + commission
-    taxable_gross_egp = quantize_money(recurring_gross_egp + variable_gross_egp)
+    taxable_gross_egp =quantize_money(recurring_gross_egp + variable_gross_egp)
 
     # Annual taxed salary & Income Tax calculation
     if flat_active:

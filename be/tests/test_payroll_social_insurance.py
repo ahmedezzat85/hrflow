@@ -268,7 +268,7 @@ def test_2x2_blocking_and_calculation_matrix(app_client, db_session, setup_socia
     Verifies the full matrix under FUX-421:
     - internal_salary > 0 + flag=True + base=None -> BLOCKED (MISSING_INSURED_BASE)
     - internal_salary > 0 + flag=True + legacy currency='USD' -> BLOCKED (MISSING_INSURED_BASE)
-    - internal_salary > 0 + flag=True + base > salary * fx -> BLOCKED (INSURED_BASE_EXCEEDS_SALARY)
+    - internal_salary > 0 + flag=True + base > recurring gross -> BLOCKED (INSURED_BASE_EXCEEDS_SALARY)
     - internal_salary > 0 + flag=True + NET basis -> net_pay protected at 1000 USD, deduction=0, cost includes emp SI
     - internal_salary > 0 + flag=True + GROSS basis -> net_pay reduced by employee SI USD equivalent
     - internal_salary > 0 + flag=False -> deduction=0, cost=0
@@ -344,8 +344,8 @@ def test_2x2_blocking_and_calculation_matrix(app_client, db_session, setup_socia
     db_session.add(EmployeeSocialInsuranceDB(employee_id=emp_d.id, insured_flag=True, insured_base=5000.0, currency="EGP", effective_start_date="2026-01-01"))
     # emp_leg: legacy USD row
     db_session.add(EmployeeSocialInsuranceDB(employee_id=emp_leg.id, insured_flag=True, insured_base=500.0, currency="USD", effective_start_date="2026-01-01"))
-    # emp_exc: insured base 60,000 EGP > 1000 USD * 50 = 50,000 EGP
-    db_session.add(EmployeeSocialInsuranceDB(employee_id=emp_exc.id, insured_flag=True, insured_base=60000.0, currency="EGP", effective_start_date="2026-01-01"))
+    # emp_exc: insured base 150,000 EGP > gross of a 1000 USD net * 50 = 50,000 EGP net
+    db_session.add(EmployeeSocialInsuranceDB(employee_id=emp_exc.id, insured_flag=True, insured_base=150000.0, currency="EGP", effective_start_date="2026-01-01"))
     db_session.commit()
 
     service = PayrollService(db_session)
@@ -602,3 +602,23 @@ def test_locked_fx_rate_variance(db_session, setup_social_ins_env):
     assert l2["final_internal_payment_usd"] == 986
     assert l2["employee_social_insurance_usd_equivalent"] == 13.75
 
+
+
+def test_insured_base_is_compared_to_gross_not_net():
+    """A NET-basis salary is grossed up first: insured base above net but below gross is allowed."""
+    from finance.services.payroll_calculation_helper import validate_and_calculate_internal_statutory
+
+    def run(insured_base):
+        return validate_and_calculate_internal_statutory(
+            employee_id=1, employee_name="Said", internal_usd_amount=250.0, salary_basis="NET",
+            locked_fx_rate=30.85, insured_flag=True, insured_base=insured_base, insured_currency="EGP",
+            employee_rate=0.11, employer_rate=0.18, tax_method="flat", flat_rate=0.2,
+        )
+
+    # net = 7,712.50 EGP; gross = (net + SI) / 0.8 ~ 10,950 EGP
+    result, excs = run(9540.0)
+    assert not [e for e in excs if e["code"] == "INSURED_BASE_EXCEEDS_SALARY"]
+    assert 9540.0 < result["base_gross_egp"]
+
+    _, excs = run(20000.0)
+    assert [e for e in excs if e["code"] == "INSURED_BASE_EXCEEDS_SALARY"]
