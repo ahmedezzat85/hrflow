@@ -361,7 +361,8 @@ def validate_and_calculate_internal_statutory(
         # Fallback if no recurring internal or missing tax settings
         recurring_gross_egp = recurring_internal_egp
 
-    # Rule 2: Insured Base (EGP) <= Recurring Gross Salary (EGP)
+    # Rule 2: Insured Base (EGP) <= Recurring Gross Salary (EGP).
+    # Advisory only (warning): it is shown for review and never blocks the run.
     # Social insurance is based on gross, so a NET-basis salary is compared after gross-up.
     # Bonuses/commissions are deliberately excluded.
     if (
@@ -372,7 +373,7 @@ def validate_and_calculate_internal_statutory(
             "id": f"exc-ins-exceeds-{employee_id}",
             "employee_id": employee_id,
             "employee_name": employee_name,
-            "severity": "blocking",
+            "severity": "warning",
             "code": "INSURED_BASE_EXCEEDS_SALARY",
             "title": "Insured Base Exceeds Gross Salary",
             "description": (

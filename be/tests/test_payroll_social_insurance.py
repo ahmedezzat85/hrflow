@@ -268,7 +268,7 @@ def test_2x2_blocking_and_calculation_matrix(app_client, db_session, setup_socia
     Verifies the full matrix under FUX-421:
     - internal_salary > 0 + flag=True + base=None -> BLOCKED (MISSING_INSURED_BASE)
     - internal_salary > 0 + flag=True + legacy currency='USD' -> BLOCKED (MISSING_INSURED_BASE)
-    - internal_salary > 0 + flag=True + base > recurring gross -> BLOCKED (INSURED_BASE_EXCEEDS_SALARY)
+    - internal_salary > 0 + flag=True + base > recurring gross -> WARNING only (INSURED_BASE_EXCEEDS_SALARY)
     - internal_salary > 0 + flag=True + NET basis -> net_pay protected at 1000 USD, deduction=0, cost includes emp SI
     - internal_salary > 0 + flag=True + GROSS basis -> net_pay reduced by employee SI USD equivalent
     - internal_salary > 0 + flag=False -> deduction=0, cost=0
@@ -374,7 +374,7 @@ def test_2x2_blocking_and_calculation_matrix(app_client, db_session, setup_socia
     # Employee Exceeds: Insured base exceeds salary blocker
     exc_exc = next((e for e in preview["exceptions"] if e["employee_id"] == emp_exc.id), None)
     assert exc_exc is not None
-    assert exc_exc["severity"] == "blocking"
+    assert exc_exc["severity"] == "warning"
     assert exc_exc["code"] == "INSURED_BASE_EXCEEDS_SALARY"
 
     # 2. Check lines for Employee B (NET basis)
@@ -621,4 +621,5 @@ def test_insured_base_is_compared_to_gross_not_net():
     assert 9540.0 < result["base_gross_egp"]
 
     _, excs = run(20000.0)
-    assert [e for e in excs if e["code"] == "INSURED_BASE_EXCEEDS_SALARY"]
+    exceeds = [e for e in excs if e["code"] == "INSURED_BASE_EXCEEDS_SALARY"]
+    assert exceeds and exceeds[0]["severity"] == "warning"
