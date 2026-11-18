@@ -98,10 +98,10 @@ test.describe('Story 6.1: Statement Import Wizard', () => {
 
     // Verify Statement Balance Delta Check displays Balanced
     await expect(modal.locator('#stmtBalanceStatusBadge')).toHaveText('Balanced');
-    await expect(modal.locator('#stmtMathOpening')).toContainText('$5000.00');
-    await expect(modal.locator('#stmtMathNet')).toContainText('$1700.00');
-    await expect(modal.locator('#stmtMathCalcClosing')).toContainText('$6700.00');
-    await expect(modal.locator('#stmtMathStatedClosing')).toContainText('$6700.00');
+    await expect(modal.locator('#stmtMathOpening')).toContainText('$5,000.00');
+    await expect(modal.locator('#stmtMathNet')).toContainText('$1,700.00');
+    await expect(modal.locator('#stmtMathCalcClosing')).toContainText('$6,700.00');
+    await expect(modal.locator('#stmtMathStatedClosing')).toContainText('$6,700.00');
 
     // Advance to Step 4 (Confirm & Import)
     await modal.locator('#btnStmtWizardStep3Next').click();
@@ -114,6 +114,22 @@ test.describe('Story 6.1: Statement Import Wizard', () => {
     // Wizard closes and success notification displays
     await expect(modal).not.toBeVisible({ timeout: 5000 });
     await expect(page.locator('.toast').last()).toContainText('Statement imported successfully');
+  });
+
+  test('Balance check shows the amounts in the chosen account currency (EGP, not $)', async ({ page }) => {
+    const modal = page.locator('#financeStatementUploadModal');
+    await modal.locator('#stmtUploadAccountId').selectOption({ label: 'CIB EGP Operating (EGP) — Commercial International Bank' });
+    await modal.locator('#stmtUploadPeriodMonth').fill('2026-09');
+    await modal.locator('#stmtOpeningBalance').fill('5000.00');
+    await modal.locator('#stmtClosingBalance').fill('6700.00');
+    const csv = ["Date,Description,Debit,Credit,Reference", "2026-09-02,AWS Hosting,500.00,,REF-001", "2026-09-08,Client Inflow,,2200.00,REF-002"].join("\n") + "\n";
+    await modal.locator('#stmtUploadFile').setInputFiles({ name: 'egp.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
+    await modal.locator('#btnStmtWizardStep1Next').click();
+    await expect(modal.locator('#stmtWizardStep2')).toBeVisible();
+    await modal.locator('#stmtWizardStep2 button:has-text("Next: Validate")').click();
+    await expect(modal.locator('#stmtMathOpening')).toContainText('EGP 5,000.00');
+    await expect(modal.locator('#stmtMathOpening')).not.toContainText('$');
+    await modal.locator('.modal-close').click();
   });
 
   test('AC 3: Interrupted import can be safely discarded', async ({ page }) => {

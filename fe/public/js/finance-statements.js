@@ -260,6 +260,7 @@ async function openUploadStatementModal(presetAccountId) {
         if (a.is_active !== false && (a.account_type || "").toLowerCase() !== "cash") {
           const opt = document.createElement("option");
           opt.value = a.id;
+          opt.dataset.currency = a.currency || "USD";
           opt.textContent = `${a.account_name} (${a.currency || "USD"}) — ${a.bank_name || "Bank"}`;
           if (presetAccountId && String(a.id) === String(presetAccountId)) {
             opt.selected = true;
@@ -455,19 +456,19 @@ async function executeStatementPreview() {
     const netEl = document.getElementById("stmtKpiNetActivity");
     if (netEl) {
       const netVal = Number(summary.calculated_net || 0);
-      netEl.innerHTML = `${netVal >= 0 ? '+' : '-'}$${Math.abs(netVal).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+      netEl.innerHTML = `${netVal >= 0 ? '+' : '-'}${FinanceFormat.formatMoney(Math.abs(netVal), _stmtUploadCurrency())}`;
       netEl.style.color = netVal >= 0 ? 'var(--success)' : 'var(--danger)';
     }
 
     // Balance Math Check
     const openMath = document.getElementById("stmtMathOpening");
-    if (openMath) openMath.innerText = summary.opening_balance != null ? `$${Number(summary.opening_balance).toFixed(2)}` : '—';
+    if (openMath) openMath.innerText = summary.opening_balance != null ? FinanceFormat.formatMoney(summary.opening_balance, _stmtUploadCurrency()) : '—';
     const netMath = document.getElementById("stmtMathNet");
-    if (netMath) netMath.innerText = `$${Number(summary.calculated_net || 0).toFixed(2)}`;
+    if (netMath) netMath.innerText = FinanceFormat.formatMoney(summary.calculated_net || 0, _stmtUploadCurrency());
     const calcCloseMath = document.getElementById("stmtMathCalcClosing");
-    if (calcCloseMath) calcCloseMath.innerText = summary.expected_closing_balance != null ? `$${Number(summary.expected_closing_balance).toFixed(2)}` : '—';
+    if (calcCloseMath) calcCloseMath.innerText = summary.expected_closing_balance != null ? FinanceFormat.formatMoney(summary.expected_closing_balance, _stmtUploadCurrency()) : '—';
     const statedCloseMath = document.getElementById("stmtMathStatedClosing");
-    if (statedCloseMath) statedCloseMath.innerText = summary.closing_balance != null ? `$${Number(summary.closing_balance).toFixed(2)}` : '—';
+    if (statedCloseMath) statedCloseMath.innerText = summary.closing_balance != null ? FinanceFormat.formatMoney(summary.closing_balance, _stmtUploadCurrency()) : '—';
 
     const statusBadge = document.getElementById("stmtBalanceStatusBadge");
     const deltaRow = document.getElementById("stmtMathDeltaRow");
@@ -487,7 +488,7 @@ async function executeStatementPreview() {
         }
         if (deltaRow) {
           deltaRow.style.display = "block";
-          if (deltaVal) deltaVal.innerText = `$${Number(summary.balance_delta || 0).toFixed(2)}`;
+          if (deltaVal) deltaVal.innerText = FinanceFormat.formatMoney(summary.balance_delta || 0, _stmtUploadCurrency());
         }
       }
     } else {
@@ -592,7 +593,7 @@ function renderWizardPreviewRows(rows) {
         <td>${r.raw_description}</td>
         <td style="font-family:monospace;font-size:11px;">${r.raw_reference || '—'}</td>
         <td style="text-align:center;">${dirBadge}</td>
-        <td style="text-align:right; font-weight:600; color:${amtColor};">$${Number(r.raw_amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+        <td style="text-align:right; font-weight:600; color:${amtColor};">${FinanceFormat.formatMoney(r.raw_amount || 0, _stmtUploadCurrency())}</td>
       </tr>
     `;
   }).join("");
@@ -1209,7 +1210,7 @@ function updateReconcileSplitDiff() {
   if (sumEl) sumEl.textContent = formatCurrency(sum);
   if (diffEl) {
     if (Math.abs(diff) < 0.01) {
-      diffEl.textContent = "Balanced ($0.00)";
+      diffEl.textContent = "Balanced";
       diffEl.className = "status-badge status-success";
       if (btn) btn.disabled = false;
     } else {
@@ -1538,6 +1539,12 @@ function closeReconciliationCompletionReportModal() {
   closeModal("reconciliationCompletionReportModal");
 }
 
+// Currency of the bank account chosen in the statement upload wizard
+function _stmtUploadCurrency() {
+  const sel = document.getElementById("stmtUploadAccountId");
+  return (sel && sel.selectedOptions[0] && sel.selectedOptions[0].dataset.currency) || "USD";
+}
+
 function renderCompletionReport(r) {
   const container = document.getElementById("completionReportPrintArea");
   if (!container) return;
@@ -1550,7 +1557,7 @@ function renderCompletionReport(r) {
     : '<span class="status-badge status-success"><i class="fa-solid fa-check"></i> Reconciled</span>';
 
   const balancePill = isBalanced
-    ? '<span style="background:color-mix(in srgb, var(--success) 15%, transparent);color:var(--success);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;"><i class="fa-solid fa-check"></i> Balanced ($0.00)</span>'
+    ? '<span style="background:color-mix(in srgb, var(--success) 15%, transparent);color:var(--success);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;"><i class="fa-solid fa-check"></i> Balanced (' + FinanceFormat.formatMoney(0, r.currency) + ')</span>'
     : r.is_exception_override
     ? '<span class="badge-pill pill-warning"><i class="fa-solid fa-triangle-exclamation"></i> Exception Override</span>'
     : '<span style="background:color-mix(in srgb, var(--danger) 15%, transparent);color:var(--danger);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;"><i class="fa-solid fa-xmark"></i> Unbalanced</span>';
