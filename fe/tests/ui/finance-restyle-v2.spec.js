@@ -506,9 +506,9 @@ test.describe('Finance restyle v2: Reports and Settings (S8)', () => {
     expect(await css(page, '.fv-table--reports thead th', 'backgroundColor')).toBe(await rgb(page, 'var(--fv-surface)'));
     expect(await css(page, '#reportLibraryGrid .report-catalog-card button', 'height')).toBe('28px');
     await expect(page.locator('#reportLibraryCategoryPills .fv-pill')).toHaveCount(7);
-    await expect(page.locator('#reportLibraryCategoryPills [data-domain="all"] .fv-pill__count')).toHaveText('25');
+    await expect(page.locator('#reportLibraryCategoryPills [data-domain="all"] .fv-pill__count')).toHaveText('26');
     // one row per report, a dot and the domain name, the real basis from the library data
-    await expect(page.locator('#reportLibraryGrid .report-catalog-card')).toHaveCount(25);
+    await expect(page.locator('#reportLibraryGrid .report-catalog-card')).toHaveCount(26);
     await expect(page.locator('#reportLibraryGrid .report-catalog-card').first().locator('.fv-dot')).toHaveCount(1);
     await expect(page.locator('#reportLibraryGrid')).toContainText('Cash and accrual');
     await page.click('#reportLibraryCategoryPills [data-domain="Payroll"]');
@@ -522,7 +522,7 @@ test.describe('Finance restyle v2: Reports and Settings (S8)', () => {
       await openAdmin(page, theme);
       await openAdminPage(page, 'a-finance-settings');
       await expect(page.locator('#financeCategoriesTableBody tr').first()).toBeVisible();
-      await expect(page.locator('#financeSettingsSubNav .filter-tab')).toHaveText(['Transaction categories', 'Payment types', 'Products', 'Revenue sources', 'Import', 'Display']);
+      await expect(page.locator('#financeSettingsSubNav .filter-tab')).toHaveText(['Transaction categories', 'Payment types', 'Products', 'Salespeople', 'Revenue sources', 'Import', 'Display']);
       expect(await css(page, '#financeCategoriesTable thead th', 'backgroundColor')).toBe(await rgb(page, 'var(--fv-surface)'));
       expect(await css(page, '#financeAddCategoryBtn', 'height')).toBe('32px');
       await expect(page.locator('#financeCategoryStatusPills .fv-pill')).toHaveCount(4);
