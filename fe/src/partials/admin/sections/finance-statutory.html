@@ -107,7 +107,7 @@
                   </div>
                 </div>
                 <div class="form-grid" style="grid-template-columns:1fr; gap:14px;">
-                  <div class="form-group">
+                  <div class="form-field">
                     <label for="statConfirmAccruedAmount">Confirmed / Accrued Amount *</label>
                     <input type="number" id="statConfirmAccruedAmount" step="0.01" min="0" placeholder="0.00" oninput="calculateStatutoryConfirmVariance()" required>
                     <span class="help-text">The authoritative figure computed by the government portal.</span>
@@ -116,7 +116,7 @@
                     <span>Resulting Variance:</span>
                     <strong id="statConfirmVarianceDisplay">$0.00</strong>
                   </div>
-                  <div class="form-group">
+                  <div class="form-field">
                     <label for="statConfirmVarianceNote">Variance Explanation / Note</label>
                     <textarea id="statConfirmVarianceNote" rows="2" placeholder="e.g. Portal rounding + 20 USD government processing fee"></textarea>
                     <span class="help-text">Explain discrepancies between the internal estimate and government assessment.</span>
@@ -147,29 +147,29 @@
                   <!-- Dynamically populated -->
                 </div>
                 <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap:12px;">
-                  <div class="form-group">
+                  <div class="form-field">
                     <label for="statSettleAmount">Remittance Amount *</label>
                     <input type="number" id="statSettleAmount" step="0.01" min="0.01" required>
                   </div>
-                  <div class="form-group">
+                  <div class="form-field">
                     <label for="statSettleDate">Payment Date *</label>
                     <input type="date" id="statSettleDate" required>
                   </div>
-                  <div class="form-group" style="grid-column: 1 / -1;">
+                  <div class="form-field" style="grid-column: 1 / -1;">
                     <label for="statSettleBankAccount">Paying company bank account *</label>
                     <select id="statSettleBankAccount" required onchange="refreshStatutoryPaymentTypes()">
                       <!-- Dynamically populated with active bank accounts -->
                     </select>
                   </div>
-                  <div class="form-group">
+                  <div class="form-field">
                     <label for="statSettlePaymentType">Payment type *</label>
                     <select id="statSettlePaymentType"></select>
                   </div>
-                  <div class="form-group">
+                  <div class="form-field">
                     <label for="statSettleReference">Government / Payment Ref</label>
                     <input type="text" id="statSettleReference" placeholder="e.g. TAX-RECEIPT-9921">
                   </div>
-                  <div class="form-group" style="grid-column: 1 / -1;">
+                  <div class="form-field" style="grid-column: 1 / -1;">
                     <label for="statSettleFinal" style="display:flex; align-items:center; gap:8px; font-weight:400;">
                       <input type="checkbox" id="statSettleFinal">
                       <span>This is the final payment: close the obligation even if the amount paid differs from the calculated figure</span>

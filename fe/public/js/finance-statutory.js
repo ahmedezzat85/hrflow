@@ -421,7 +421,7 @@ async function openStatutorySettleModal(id) {
       for (const acc of accounts) {
         const opt = document.createElement("option");
         opt.value = acc.id;
-        opt.textContent = `${acc.account_name} (${acc.currency}) - Balance: $${Number(acc.current_balance || 0).toLocaleString()}`;
+        opt.textContent = `${acc.account_name} (${acc.currency}) - Balance: ${FinanceFormat.formatMoney(acc.current_balance || 0, acc.currency)}`;
         bankEl.appendChild(opt);
       }
     } catch (e) {
