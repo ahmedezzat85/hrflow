@@ -375,7 +375,9 @@ async function openAddInvoiceModal() {
   document.getElementById("invoiceStatus").value = "draft";
   document.getElementById("invoiceCurrency").value = "USD";
   if (document.getElementById("invoiceVatRate")) document.getElementById("invoiceVatRate").value = "0";
-  window._invoiceCustomerHasWht = false;
+  window._invoiceCustomerWhtRate = 0;
+  window._invoiceWhtFromCustomer = false;
+  if (document.getElementById("invoiceWhtApplies")) document.getElementById("invoiceWhtApplies").checked = false;
   if (document.getElementById("invoiceWhtRate")) document.getElementById("invoiceWhtRate").value = "0";
   if (document.getElementById("invoiceExpectedBankAccount")) document.getElementById("invoiceExpectedBankAccount").value = "";
   if (document.getElementById("invoiceRevenueChannel")) document.getElementById("invoiceRevenueChannel").value = "";
@@ -426,7 +428,9 @@ async function openEditInvoiceModal(invoiceId) {
     document.getElementById("invoiceStatus").value = inv.status === "draft" ? "draft" : "sent";
     document.getElementById("invoiceCurrency").value = inv.currency || "USD";
     if (document.getElementById("invoiceVatRate")) document.getElementById("invoiceVatRate").value = inv.vat_rate !== undefined ? inv.vat_rate : 0;
-    window._invoiceCustomerHasWht = false;
+    window._invoiceCustomerWhtRate = 0;
+    window._invoiceWhtFromCustomer = false;
+    if (document.getElementById("invoiceWhtApplies")) document.getElementById("invoiceWhtApplies").checked = (inv.withholding_tax_rate || 0) > 0;
     if (document.getElementById("invoiceWhtRate")) document.getElementById("invoiceWhtRate").value = inv.withholding_tax_rate || 0;
     if (document.getElementById("invoiceExpectedBankAccount")) {
       document.getElementById("invoiceExpectedBankAccount").value = inv.expected_bank_account_id ? String(inv.expected_bank_account_id) : "";
@@ -448,7 +452,7 @@ async function openEditInvoiceModal(invoiceId) {
 // D-022: once an invoice is issued its customer, currency, number, issue date and lines are locked
 // (void and reissue to correct). The backend enforces this; the form only reflects it.
 function _setInvoiceLocked(locked) {
-  ["invoiceCustomerId", "invoiceIssueDate", "invoiceCurrency", "invoiceVatRate", "invoiceWhtRate"].forEach((id) => {
+  ["invoiceCustomerId", "invoiceIssueDate", "invoiceCurrency", "invoiceVatRate", "invoiceWhtApplies", "invoiceWhtRate"].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.disabled = !!locked;
   });
@@ -546,13 +550,13 @@ function _updateInvoiceTotals() {
   if (subtotalEl) subtotalEl.textContent = subtotal.toFixed(2);
   if (vatEl) vatEl.textContent = vat.toFixed(2);
   if (totalEl) totalEl.textContent = (subtotal + vat).toFixed(2);
-  // D-024: withholding tax stays invisible unless a rate is set; it is taken on the net subtotal
-  const whtRate = parseFloat(document.getElementById("invoiceWhtRate")?.value) || 0;
+  // D-024: withholding tax is taken on the net subtotal; the rate shows only while "Withholding tax applies" is ticked
+  const whtOn = !!document.getElementById("invoiceWhtApplies")?.checked;
+  const whtRate = whtOn ? (parseFloat(document.getElementById("invoiceWhtRate")?.value) || 0) : 0;
   const whtField = document.getElementById("invoiceWhtField");
   const expWrap = document.getElementById("invoiceExpectedWrap");
   const expEl = document.getElementById("invoiceExpectedDisplay");
-  const show = whtRate > 0 || window._invoiceCustomerHasWht === true;
-  if (whtField) whtField.style.display = show ? "" : "none";
+  if (whtField) whtField.style.display = whtOn ? "" : "none";
   if (expWrap) expWrap.style.display = whtRate > 0 ? "" : "none";
   if (expEl) expEl.textContent = (subtotal + vat - Math.round(subtotal * whtRate) / 100).toFixed(2);
 }
@@ -566,8 +570,29 @@ async function _applyCustomerWithholding(customerId) {
     const cust = (FinanceState.customers || []).find((c) => String(c.id) === String(customerId)) || (customerId ? await FinanceApi.getCustomer(customerId) : null);
     rate = (cust && cust.withholding_tax_rate) || 0;
   } catch (_) {}
-  window._invoiceCustomerHasWht = rate > 0;
-  rateEl.value = rate;
+  window._invoiceCustomerWhtRate = rate;
+  const applies = document.getElementById("invoiceWhtApplies");
+  if (rate > 0) {
+    if (applies) applies.checked = true;
+    rateEl.value = rate;
+    window._invoiceWhtFromCustomer = true;
+  } else if (window._invoiceWhtFromCustomer) {
+    // the previous customer's default no longer applies; a rate the user ticked by hand stays
+    if (applies) applies.checked = false;
+    rateEl.value = 0;
+    window._invoiceWhtFromCustomer = false;
+  }
+  _updateInvoiceTotals();
+}
+
+// Withholding tax is off unless ticked; ticking applies the customer's default rate, else 3%
+const DEFAULT_INVOICE_WHT_RATE = 3;
+function _toggleInvoiceWithholding() {
+  const applies = document.getElementById("invoiceWhtApplies");
+  const rateEl = document.getElementById("invoiceWhtRate");
+  if (!applies || !rateEl) return;
+  window._invoiceWhtFromCustomer = false;
+  rateEl.value = applies.checked ? (window._invoiceCustomerWhtRate > 0 ? window._invoiceCustomerWhtRate : DEFAULT_INVOICE_WHT_RATE) : 0;
   _updateInvoiceTotals();
 }
 
@@ -635,7 +660,7 @@ async function saveInvoiceModal(targetStatus) {
     due_date: dueDate,
     currency: document.getElementById("invoiceCurrency").value,
     vat_rate: parseFloat(document.getElementById("invoiceVatRate")?.value) || 0,
-    withholding_tax_rate: parseFloat(document.getElementById("invoiceWhtRate")?.value) || 0,
+    withholding_tax_rate: document.getElementById("invoiceWhtApplies")?.checked ? (parseFloat(document.getElementById("invoiceWhtRate")?.value) || 0) : 0,
     expected_bank_account_id: expBankEl && expBankEl.value ? parseInt(expBankEl.value, 10) : null,
     revenue_channel: revChanEl && revChanEl.value ? revChanEl.value : null,
     notes: document.getElementById("invoiceNotes").value.trim(),
