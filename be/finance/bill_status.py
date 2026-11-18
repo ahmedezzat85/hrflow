@@ -102,7 +102,7 @@ def derive_payment_status(bill, active_cheque_linked: bool = False, amount_paid:
     if current in (DRAFT, PENDING_APPROVAL, REJECTED, VOID):
         return current
     if amount_paid is None:
-        amount_paid = sum(float(p.amount or 0.0) for p in (bill.payments or []) if not getattr(p, "is_reversed", False))
+        amount_paid = sum(float(p.amount or 0.0) + float(getattr(p, "withheld_amount", 0.0) or 0.0) for p in (bill.payments or []) if not getattr(p, "is_reversed", False))
     paid = round(float(amount_paid), 2)
     total = float(bill.total or 0.0)
     if paid > 0.001 or active_cheque_linked:

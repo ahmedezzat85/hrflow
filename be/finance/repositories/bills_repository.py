@@ -323,6 +323,7 @@ class BillsRepository:
             due_date=data.get("due_date") or None,
             status=data.get("status", bs.DRAFT),
             currency=data.get("currency", "EGP"),
+            withholding_amount=round(float(data.get("withholding_amount") or 0.0), 4),
             notes=data.get("notes", ""),
             capture_source=data.get("capture_source", "manual"),
             extraction_confidence=data.get("extraction_confidence"),
@@ -399,6 +400,8 @@ class BillsRepository:
             bill.due_date = data["due_date"]
         if "currency" in data and data["currency"] is not None:
             bill.currency = data["currency"]
+        if "withholding_amount" in data and data["withholding_amount"] is not None:
+            bill.withholding_amount = round(float(data["withholding_amount"]), 4)
         if "notes" in data and data["notes"] is not None:
             bill.notes = data["notes"]
         if "capture_source" in data and data["capture_source"] is not None:

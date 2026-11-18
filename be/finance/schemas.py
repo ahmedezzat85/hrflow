@@ -770,6 +770,7 @@ class BillBase(BaseModel):
     issue_date: Optional[str] = Field(None, description="Date issued (YYYY-MM-DD)")
     due_date: Optional[str] = Field(None, description="Payment due date (YYYY-MM-DD)")
     currency: str = Field("EGP", min_length=3, max_length=10)
+    withholding_amount: Optional[float] = Field(0.0, ge=0.0, description="Tax withheld from the vendor payment, typed from the paper bill (0 = none); at most the bill total")
     notes: Optional[str] = None
     capture_source: Optional[str] = Field("manual", max_length=20)
     extraction_confidence: Optional[float] = None
@@ -857,6 +858,7 @@ class BillUpdate(BaseModel):
     issue_date: Optional[str] = None
     due_date: Optional[str] = None
     currency: Optional[str] = Field(None, min_length=3, max_length=10)
+    withholding_amount: Optional[float] = Field(None, ge=0.0)
     notes: Optional[str] = None
     capture_source: Optional[str] = None
     extraction_confidence: Optional[float] = None
@@ -893,6 +895,7 @@ class BillResponse(BillBase):
     subtotal: float
     tax_amount: float
     total: float
+    net_payable: float = 0.0  # total minus withholding: the cash that settles the bill
     remaining_balance: float = 0.0
     created_at: Optional[datetime] = None
     vendor_name: Optional[str] = None

@@ -836,7 +836,7 @@ function toggleBillPaidNowSection(checked) {
     _populateBillPaidNowAccounts();
     const amountInput = document.getElementById("billPaidNowAmount");
     if (amountInput && (!amountInput.value || amountInput.dataset.autofilled === "true")) {
-      const currentTotal = _billTotalAmount();
+      const currentTotal = _billNetPayable();
       amountInput.value = currentTotal > 0 ? currentTotal.toFixed(2) : "";
       amountInput.dataset.autofilled = "true";
     }
@@ -1067,6 +1067,7 @@ function openAddBillModal() {
   document.getElementById("billLinesBody").innerHTML = "";
   const amountEl = document.getElementById("billAmount");
   if (amountEl) { amountEl.value = ""; amountEl.disabled = false; }
+  _setBillWithholding(0, false);
   const paidAmt = document.getElementById("billPaidNowAmount");
   if (paidAmt) { paidAmt.value = ""; delete paidAmt.dataset.autofilled; }
   ["billPaidNowReference", "billPaidNowDetails", "billPaidNowChequeNumber"].forEach((id) => { const el = document.getElementById(id); if (el) el.value = ""; });
@@ -1119,6 +1120,7 @@ async function openEditBillModal(billId) {
     document.getElementById("billIssueDate").value = bill.issue_date || "";
     document.getElementById("billDueDate").value = bill.due_date || "";
     document.getElementById("billCurrency").value = bill.currency || "USD";
+    _setBillWithholding(bill.withholding_amount || 0, (bill.amount_paid || 0) > 0);
     document.getElementById("billNotes").value = bill.notes || "";
 
     if (bill.attachment_name || bill.attachment_url) {
@@ -1315,14 +1317,63 @@ function _billTotalAmount() {
   return parseFloat(document.getElementById("billAmount")?.value) || 0;
 }
 
-function onBillAmountInput() {
+// Withholding tax (D-024 amendment): a typed amount, no rate; the payment is the total minus it
+function _setBillWithholding(amount, locked) {
+  const chk = document.getElementById("billWhtApplies");
+  const amt = document.getElementById("billWhtAmount");
+  if (chk) { chk.checked = amount > 0; chk.disabled = !!locked; }
+  if (amt) { amt.value = amount > 0 ? Number(amount).toFixed(2) : ""; amt.disabled = !!locked; }
+  _updateBillWhtHint();
+}
+
+function _billWithholding() {
+  if (!document.getElementById("billWhtApplies")?.checked) return 0;
+  return Math.round((parseFloat(document.getElementById("billWhtAmount")?.value) || 0) * 100) / 100;
+}
+
+function _billNetPayable() {
+  return Math.max(0, Math.round((_billTotalAmount() - _billWithholding()) * 100) / 100);
+}
+
+function _updateBillWhtHint() {
+  const field = document.getElementById("billWhtField");
+  const hint = document.getElementById("billWhtHint");
+  const on = !!document.getElementById("billWhtApplies")?.checked;
+  if (field) field.style.display = on ? "" : "none";
+  if (!hint) return;
+  const curr = document.getElementById("billCurrency")?.value || "EGP";
+  const wht = _billWithholding();
+  const total = _billTotalAmount();
+  hint.classList.toggle("fv-hint--danger", wht > total + 0.001);
+  hint.textContent = wht > total + 0.001
+    ? "The withholding cannot exceed the bill total."
+    : `Net payable to vendor: ${FinanceFormat.formatMoney(Math.max(0, total - wht), curr)}`;
+}
+
+function onBillWhtToggle() {
+  const on = !!document.getElementById("billWhtApplies")?.checked;
+  const amt = document.getElementById("billWhtAmount");
+  if (amt && !on) amt.value = "";
+  _updateBillWhtHint();
+  _syncBillPaidNowAmount();
+  if (on && amt) amt.focus();
+}
+
+function onBillWhtInput() {
+  _updateBillWhtHint();
   _syncBillPaidNowAmount();
 }
 
+function onBillAmountInput() {
+  _syncBillPaidNowAmount();
+  _updateBillWhtHint();
+}
+
 function _syncBillPaidNowAmount() {
+  _updateBillWhtHint();
   const paidNowAmount = document.getElementById("billPaidNowAmount");
   if (paidNowAmount && document.getElementById("billIsPaidNow")?.checked && (!paidNowAmount.value || paidNowAmount.dataset.autofilled === "true")) {
-    const total = _billTotalAmount();
+    const total = _billNetPayable();
     paidNowAmount.value = total > 0 ? total.toFixed(2) : "";
     paidNowAmount.dataset.autofilled = "true";
   }
@@ -1483,6 +1534,7 @@ async function saveBillModal(mode = "primary") {
     issue_date: issueDate || null,
     due_date: dueDate || null,
     currency: document.getElementById("billCurrency").value,
+    withholding_amount: _billWithholding(),
     notes: document.getElementById("billNotes").value.trim(),
     capture_source: document.getElementById("billCaptureSource").value || "manual",
     file_fingerprint: document.getElementById("billFileFingerprint").value || null,
@@ -1644,12 +1696,13 @@ async function openBillPaymentModal(billId) {
   try {
     const existingPayments = await FinanceApi.getBillPayments(billId);
     if (existingPayments && existingPayments.length) {
-      paidSoFar = existingPayments.filter((p) => !p.is_reversed).reduce((s, p) => s + (p.amount || 0), 0);
+      paidSoFar = existingPayments.filter((p) => !p.is_reversed).reduce((s, p) => s + (p.amount || 0) + (p.withheld_amount || 0), 0);
     }
   } catch (_) {}
 
   const total = bill ? bill.total : 0;
-  const remaining = Math.max(0, round(total - paidSoFar, 2));
+  const whtDue = bill && paidSoFar === 0 ? (bill.withholding_amount || 0) : 0; // withheld, not paid in cash
+  const remaining = Math.max(0, round(total - paidSoFar - whtDue, 2));
 
   const totalEl = document.getElementById("billPaymentTotalDisplay");
   const paidEl = document.getElementById("billPaymentPaidDisplay");

@@ -118,9 +118,18 @@ class SettlementService:
             .filter(PaymentDB.related_bill_id == bill.id, PaymentDB.is_reversed == False)  # noqa: E712
             .all()
         )
-        paid_so_far = sum(float(p.amount) for p in existing_payments)
+        paid_so_far = sum(float(p.amount) + float(p.withheld_amount or 0.0) for p in existing_payments)
         remaining = round(bill.total - paid_so_far, 2)
-        if payment_amount > remaining + 0.01:
+        withheld = round(float(bill.withholding_amount or 0.0), 2)
+        if withheld > 0:
+            # A bill with withholding is settled by one payment: total - withholding in cash, the withholding as withheld tax
+            cash_due = round(float(bill.total or 0.0) - withheld, 2)
+            if existing_payments or abs(payment_amount - cash_due) > 0.01:
+                raise rules.BillPaymentError(
+                    "withholding_payment_mismatch",
+                    f"This bill has {withheld:,.2f} withholding tax: one payment of {cash_due:,.2f} (the total minus the withholding) settles it.",
+                )
+        elif payment_amount > remaining + 0.01:
             raise ValueError(
                 f"Payment amount (${payment_amount:.2f}) exceeds remaining balance (${remaining:.2f})."
             )
@@ -138,6 +147,7 @@ class SettlementService:
             related_bill_id=bill.id,
             related_invoice_id=None,
             amount=payment_amount,
+            withheld_amount=withheld,
             currency=bill.currency,
             payment_date=payment_date,
             bank_account_id=account.id,
@@ -457,7 +467,7 @@ class SettlementService:
                     .filter(PaymentDB.related_bill_id == bill.id, PaymentDB.is_reversed == False)
                     .all()
                 )
-                paid_so_far = sum(float(p.amount) for p in existing_payments)
+                paid_so_far = sum(float(p.amount) + float(p.withheld_amount or 0.0) for p in existing_payments)
                 remaining = max(0.0, round(bill.total - paid_so_far, 2))
 
                 # Amount check: within 5% or exact
