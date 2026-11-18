@@ -292,6 +292,9 @@ class SettlementService:
         )
         self.db.add(payment)
         invoice.status = inv_status.derive_payment_status(invoice.total, paid_so_far + payment_amount + withheld)
+        if invoice.status == inv_status.PAID:
+            from finance.services.commissions_service import accrue_for_paid_invoice
+            accrue_for_paid_invoice(self.db, invoice, payment_date)
         return invoice, payment
 
     def settle_statutory_obligation(

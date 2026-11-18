@@ -72,6 +72,8 @@
     { key: "finance.invoice.write", group: "Finance / Sales", description: "Create, update, and void sales invoices", assignable: true, implies: ["finance.invoice.read"] },
     { key: "finance.product.read", group: "Finance / Sales", description: "View the product catalog", assignable: true, implies: [] },
     { key: "finance.product.write", group: "Finance / Sales", description: "Create, update, and deactivate catalog products", assignable: true, implies: ["finance.product.read"] },
+    { key: "finance.commission.read", group: "Finance / Sales", description: "View sales commissions and the quarterly commission report", assignable: true, implies: [] },
+    { key: "finance.commission.write", group: "Finance / Sales", description: "Manage salespeople who earn sales commission", assignable: true, implies: ["finance.commission.read"] },
     { key: "finance.vendor.read", group: "Finance / Spend", description: "View vendors", assignable: true, implies: [] },
     { key: "finance.vendor.write", group: "Finance / Spend", description: "Create, update, and manage vendors", assignable: true, implies: ["finance.vendor.read"] },
     { key: "finance.vendor_payment.manage", group: "Finance / Spend", description: "Add and update sensitive vendor payment details", assignable: true, implies: ["finance.vendor.read"] },
@@ -137,7 +139,7 @@
       user_count: 1,
       permissions: [
         "finance.customer.read", "finance.customer.write", "finance.invoice.read", "finance.invoice.write",
-        "finance.product.read", "finance.product.write",
+        "finance.product.read", "finance.product.write", "finance.commission.read", "finance.commission.write",
         "finance.vendor.read", "finance.vendor.write", "finance.vendor_payment.manage", "finance.vendor_payment.verify", "finance.vendor_payment.reveal",
         "finance.bill.read", "finance.bill.write", "finance.subscription.read", "finance.subscription.write",
         "finance.statutory.read", "finance.statutory.write", "finance.account.read", "finance.account.write",

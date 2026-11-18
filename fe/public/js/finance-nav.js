@@ -126,6 +126,7 @@ function switchFinanceSettingsSubTab(subTab, btn) {
   const paneCategories = document.getElementById("financeSettingsPaneCategories");
   const panePaymentTypes = document.getElementById("financeSettingsPanePaymentTypes");
   const paneProducts = document.getElementById("financeSettingsPaneProducts");
+  const paneSalespeople = document.getElementById("financeSettingsPaneSalespeople");
   const paneRevenueSources = document.getElementById("financeSettingsPaneRevenueSources");
   const paneDisplay = document.getElementById("financeSettingsPaneDisplay");
   const paneImport = document.getElementById("financeSettingsPaneImport");
@@ -137,6 +138,7 @@ function switchFinanceSettingsSubTab(subTab, btn) {
   if (paneCategories) paneCategories.style.display = subTab === "categories" ? "block" : "none";
   if (panePaymentTypes) panePaymentTypes.style.display = subTab === "payment_types" ? "block" : "none";
   if (paneProducts) paneProducts.style.display = subTab === "products" ? "block" : "none";
+  if (paneSalespeople) paneSalespeople.style.display = subTab === "salespeople" ? "block" : "none";
   if (paneRevenueSources) paneRevenueSources.style.display = subTab === "revenue_sources" ? "block" : "none";
   if (paneDisplay) paneDisplay.style.display = subTab === "display" ? "block" : "none";
   if (paneImport) paneImport.style.display = subTab === "import" ? "block" : "none";
@@ -145,6 +147,8 @@ function switchFinanceSettingsSubTab(subTab, btn) {
     loadFinancePaymentTypes();
   } else if (subTab === "products") {
     loadFinanceProducts();
+  } else if (subTab === "salespeople") {
+    loadFinanceSalespeople();
   } else if (subTab === "revenue_sources") {
     loadRevenueSources();
   } else if (subTab === "display") {

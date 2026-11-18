@@ -1294,6 +1294,18 @@ class ReportsService:
                 "badge": "Spend",
             },
             {
+                "key": "sales-commissions",
+                "title": "Sales Commissions",
+                "category": "Sales & Receivables",
+                "business_question": "How much commission did each salesperson earn this quarter, and on which invoices?",
+                "description": "Commission earned on fully paid invoices in a calendar quarter, per salesperson, with the invoice detail. Totals are per currency.",
+                "icon": "fa-solid fa-user-tie",
+                "supported_basis": ["cash"],
+                "supported_formats": ["json"],
+                "required_permission": "finance.commission.read",
+                "badge": "Sales",
+            },
+            {
                 "key": "withholding-credits",
                 "title": "Withholding Tax Credits",
                 "category": "Sales & Receivables",

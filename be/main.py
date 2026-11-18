@@ -52,6 +52,7 @@ from finance.routers import customers as finance_customers_router
 from finance.routers import vendors as finance_vendors_router
 from finance.routers import categories as finance_categories_router
 from finance.routers import products as finance_products_router
+from finance.routers import commissions as finance_commissions_router
 from finance.routers import revenue as finance_revenue_router
 from finance.routers import payment_types as finance_payment_types_router
 from finance.routers import transactions as finance_transactions_router
@@ -206,6 +207,7 @@ app.include_router(finance_customers_router.router)
 app.include_router(finance_vendors_router.router)
 app.include_router(finance_categories_router.router)
 app.include_router(finance_products_router.router)
+app.include_router(finance_commissions_router.router)
 app.include_router(finance_revenue_router.router)
 app.include_router(finance_payment_types_router.router)
 app.include_router(finance_transactions_router.router)

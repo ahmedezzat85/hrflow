@@ -51,9 +51,56 @@ class CustomerDB(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     withholding_tax_rate = Column(Rate, default=0.0, nullable=False, server_default="0")  # percent; default for new invoices (D-024)
     is_intercompany = Column(Boolean, default=False, nullable=False, server_default="0")  # the overseas entity or another group company (D-028)
+    salesperson_id = Column(Integer, ForeignKey("finance_salespeople.id", ondelete="SET NULL"), nullable=True, index=True)  # who earns commission on this customer's invoices
+    commission_rate = Column(Rate, default=0.0, nullable=False, server_default="0")  # percent of the net invoice subtotal, paid to the salesperson
     created_at = Column(DateTime, default=datetime.utcnow)
 
     invoices = relationship("SalesInvoiceDB", back_populates="customer")
+    salesperson = relationship("SalespersonDB", foreign_keys=[salesperson_id])
+
+
+class SalespersonDB(Base):
+    """A person who earns sales commission. May or may not be an employee (employee_id is optional)."""
+    __tablename__ = "finance_salespeople"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(255), nullable=False)
+    email = Column(String(255), nullable=True)
+    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="SET NULL"), nullable=True, index=True)  # set when the salesperson is on staff
+    notes = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class SalesCommissionDB(Base):
+    """
+    Commission earned on a fully paid sales invoice. One accrued row per invoice; reversing a receipt that
+    un-pays the invoice voids the row (never deleted). Rate and base are a snapshot taken when the invoice was
+    paid, so later changes to the customer do not rewrite history. Amounts are in the invoice currency.
+    """
+    __tablename__ = "finance_sales_commissions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    salesperson_id = Column(Integer, ForeignKey("finance_salespeople.id", ondelete="RESTRICT"), nullable=False, index=True)
+    customer_id = Column(Integer, ForeignKey("finance_customers.id", ondelete="RESTRICT"), nullable=False, index=True)
+    invoice_id = Column(Integer, ForeignKey("finance_sales_invoices.id", ondelete="RESTRICT"), nullable=False, index=True)
+    currency = Column(String(10), nullable=False)
+    base_amount = Column(Money, nullable=False)  # invoice net subtotal (excludes VAT)
+    rate = Column(Rate, nullable=False)  # percent
+    amount = Column(Money, nullable=False)
+    earned_date = Column(String(20), nullable=False)  # date the invoice became fully paid (YYYY-MM-DD); drives the quarter
+    status = Column(String(20), default="accrued", nullable=False, index=True)  # accrued | void
+    void_reason = Column(Text, nullable=True)
+    voided_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        CheckConstraint(_one_of("status", ("accrued", "void")), name="ck_finance_sales_commissions_status"),
+    )
+
+    salesperson = relationship("SalespersonDB")
+    customer = relationship("CustomerDB")
+    invoice = relationship("SalesInvoiceDB")
 
 
 class VendorDB(Base):

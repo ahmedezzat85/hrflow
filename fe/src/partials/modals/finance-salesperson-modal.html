@@ -1,0 +1,39 @@
+  <div class="modal-overlay fv fv-dialog fv-area-slate" id="financeSalespersonModal">
+    <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="financeSalespersonModalTitle">
+      <div class="modal-head">
+        <span class="modal-head-icon"><i class="fa-solid fa-user-tie" aria-hidden="true"></i></span>
+        <div class="modal-head-text">
+          <h3 id="financeSalespersonModalTitle">Add Salesperson</h3>
+          <p>A salesperson earns commission on the invoices of the customers linked to them. They do not have to be an employee.</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('financeSalespersonModal')" aria-label="Close dialog"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="fSalespersonId">
+        <div class="form-section">
+          <div class="form-grid">
+            <div class="form-field full">
+              <label for="fSalespersonName">Name <span class="req">*</span></label>
+              <input id="fSalespersonName" placeholder="e.g. Sarah Connor">
+            </div>
+            <div class="form-field">
+              <label for="fSalespersonEmail">Email</label>
+              <input id="fSalespersonEmail" type="email" placeholder="Optional">
+            </div>
+            <div class="form-field">
+              <label for="fSalespersonEmployee">Employee</label>
+              <select id="fSalespersonEmployee"><option value="">Not an employee</option></select>
+            </div>
+            <div class="form-field full">
+              <label for="fSalespersonNotes">Notes</label>
+              <textarea id="fSalespersonNotes" rows="2" placeholder="Optional"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="closeModal('financeSalespersonModal')">Cancel</button>
+        <button class="btn btn-fill" id="financeSalespersonSaveBtn" onclick="saveFinanceSalesperson()">Save Salesperson</button>
+      </div>
+    </div>
+  </div>

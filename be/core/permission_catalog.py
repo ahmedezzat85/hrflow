@@ -311,6 +311,18 @@ CATALOG: Tuple[PermissionDef, ...] = (
         implies=("finance.product.read",),
     ),
 
+    PermissionDef(
+        key="finance.commission.read",
+        group="Finance / Sales",
+        description="View sales commissions and the quarterly commission report",
+    ),
+    PermissionDef(
+        key="finance.commission.write",
+        group="Finance / Sales",
+        description="Manage salespeople who earn sales commission",
+        implies=("finance.commission.read",),
+    ),
+
     # Finance / Spend
     PermissionDef(
         key="finance.vendor.read",

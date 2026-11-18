@@ -456,6 +456,9 @@ class InvoicesRepository:
         if invoice.status != inv_status.VOID:
             remaining = inv_status.settled_amount([p for p in self.list_payments(invoice_id) if p.id != payment.id])
             invoice.status = inv_status.derive_payment_status(invoice.total, remaining)
+            if invoice.status != inv_status.PAID:
+                from finance.services.commissions_service import void_for_invoice
+                void_for_invoice(self.db, invoice_id, f"Receipt #{payment.id} reversed; the invoice is no longer fully paid")
 
         self.db.commit()
         self.db.refresh(payment)

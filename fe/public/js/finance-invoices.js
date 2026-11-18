@@ -1217,6 +1217,8 @@ function openAddCustomerModal() {
   if (document.getElementById("fCustomerCurrency")) document.getElementById("fCustomerCurrency").value = "USD";
   if (document.getElementById("fCustomerCountry")) document.getElementById("fCustomerCountry").value = "Egypt";
   if (document.getElementById("fCustomerOwner")) document.getElementById("fCustomerOwner").value = "";
+  if (document.getElementById("fCustomerCommission")) document.getElementById("fCustomerCommission").value = "0";
+  if (typeof fillCustomerSalespersonOptions === "function") fillCustomerSalespersonOptions("");
   if (document.getElementById("fCustomerAddress")) document.getElementById("fCustomerAddress").value = "";
   document.getElementById("fCustomerNotes").value = "";
 
@@ -1245,6 +1247,8 @@ function openEditCustomerModal(id) {
   if (document.getElementById("fCustomerCurrency")) document.getElementById("fCustomerCurrency").value = c.default_currency || "USD";
   if (document.getElementById("fCustomerCountry")) document.getElementById("fCustomerCountry").value = c.country || "Egypt";
   if (document.getElementById("fCustomerOwner")) document.getElementById("fCustomerOwner").value = c.owner || "";
+  if (document.getElementById("fCustomerCommission")) document.getElementById("fCustomerCommission").value = c.commission_rate || 0;
+  if (typeof fillCustomerSalespersonOptions === "function") fillCustomerSalespersonOptions(c.salesperson_id);
   if (document.getElementById("fCustomerAddress")) document.getElementById("fCustomerAddress").value = c.billing_address || "";
   document.getElementById("fCustomerNotes").value = c.notes || "";
 
@@ -1288,6 +1292,8 @@ async function saveCustomer() {
     default_currency: currency || "USD",
     country: country || "Egypt",
     owner: owner || null,
+    salesperson_id: parseInt(document.getElementById("fCustomerSalesperson")?.value, 10) || null,
+    commission_rate: parseFloat(document.getElementById("fCustomerCommission")?.value) || 0,
     billing_address: address || null,
     notes: notes || null,
   };

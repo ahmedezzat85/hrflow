@@ -392,6 +392,8 @@ class CustomerBase(BaseModel):
     withholding_tax_rate: Optional[float] = Field(0.0, ge=0.0, le=100.0, description="Default withholding tax percent copied to new invoices (normally 0)")
     is_intercompany: bool = Field(False, description="The overseas entity or another group company: receipts are eliminated in the Consolidated view (D-028)")
     owner: Optional[str] = Field(None, max_length=255)
+    salesperson_id: Optional[int] = Field(None, description="Salesperson who earns commission on this customer's paid invoices")
+    commission_rate: Optional[float] = Field(0.0, ge=0.0, le=100.0, description="Commission percent of the net invoice subtotal")
     notes: Optional[str] = None
 
 
@@ -412,6 +414,8 @@ class CustomerUpdate(BaseModel):
     default_currency: Optional[str] = Field(None, max_length=10)
     payment_terms_days: Optional[int] = Field(None, ge=0)
     owner: Optional[str] = Field(None, max_length=255)
+    salesperson_id: Optional[int] = None
+    commission_rate: Optional[float] = Field(None, ge=0.0, le=100.0)
     notes: Optional[str] = None
     is_active: Optional[bool] = None
 
@@ -426,6 +430,7 @@ class CustomerReceivableItem(BaseModel):
 
 class CustomerResponse(CustomerBase):
     id: int
+    salesperson_name: Optional[str] = None
     is_active: bool
     created_at: Optional[datetime] = None
     receivables: List[CustomerReceivableItem] = Field(default_factory=list)
@@ -3164,3 +3169,73 @@ class RevenueReceiptResponse(BaseModel):
     created_at: Optional[datetime] = None
     created_by: Optional[str] = None
 
+
+
+# ==========================================
+# Sales commission schemas
+# ==========================================
+class SalespersonBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    email: Optional[str] = Field(None, max_length=255)
+    employee_id: Optional[int] = Field(None, description="Set when the salesperson is an employee")
+    notes: Optional[str] = None
+
+
+class SalespersonCreate(SalespersonBase):
+    pass
+
+
+class SalespersonUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    email: Optional[str] = Field(None, max_length=255)
+    employee_id: Optional[int] = None
+    notes: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class SalespersonResponse(SalespersonBase):
+    id: int
+    employee_name: Optional[str] = None
+    is_active: bool
+    customer_count: int = 0
+    created_at: Optional[datetime] = None
+
+
+class CommissionLine(BaseModel):
+    id: int
+    salesperson_id: int
+    salesperson_name: str
+    customer_id: int
+    customer_name: str
+    invoice_id: int
+    invoice_number: str
+    currency: str
+    base_amount: float
+    rate: float
+    amount: float
+    earned_date: str
+    status: str
+    void_reason: Optional[str] = None
+
+
+class CommissionTotal(BaseModel):
+    currency: str
+    count: int
+    base_amount: float
+    amount: float
+
+
+class CommissionSalespersonReport(BaseModel):
+    salesperson_id: int
+    salesperson_name: str
+    totals: List[CommissionTotal]
+    lines: List[CommissionLine]
+
+
+class CommissionQuarterReport(BaseModel):
+    year: int
+    quarter: int
+    period_start: str
+    period_end: str
+    salespeople: List[CommissionSalespersonReport]
+    grand_totals: List[CommissionTotal]

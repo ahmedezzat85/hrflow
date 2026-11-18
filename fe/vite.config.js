@@ -34,6 +34,7 @@ const APP_SCRIPT_ORDER = [
   'finance-dashboard.js',
   'finance-invoices.js',
   'finance-products.js',
+  'finance-salespeople.js',
   'finance-revenue.js',
   'finance-bills.js',
   'payroll-cycle.js',
