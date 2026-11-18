@@ -66,6 +66,8 @@ function renderFinanceSalespeople(all) {
     </tr>`).join("");
 }
 
+let _salespersonEmployees = [];
+
 async function _fillSalespersonEmployeeOptions(selectedId) {
   const sel = document.getElementById("fSalespersonEmployee");
   if (!sel) return;
@@ -73,6 +75,7 @@ async function _fillSalespersonEmployeeOptions(selectedId) {
   try {
     if (typeof Api !== "undefined" && typeof Api.getEmployees === "function") employees = (await Api.getEmployees()) || [];
   } catch (_) { employees = []; }  // no HR access: the link stays optional
+  _salespersonEmployees = employees;
   const esc = FinanceUI.esc;
   sel.innerHTML = '<option value="">Not an employee</option>' + employees
     .map((e) => `<option value="${e.id}">${esc(e.name)}</option>`).join("");
@@ -105,10 +108,17 @@ async function openEditFinanceSalespersonModal(id) {
   openModal("financeSalespersonModal");
 }
 
-// Picking an employee suggests monthly settlement, clearing it suggests quarterly (still editable)
+// Picking an employee fills the name and email from the employee record and sets monthly settlement;
+// clearing the employee only switches the suggestion back to quarterly (the typed details stay, all editable)
 function onSalespersonEmployeeChanged() {
   const emp = document.getElementById("fSalespersonEmployee").value;
   document.getElementById("fSalespersonFrequency").value = emp ? "monthly" : "quarterly";
+  if (!emp) return;
+  const e = _salespersonEmployees.find((x) => String(x.id) === String(emp));
+  if (!e) return;
+  document.getElementById("fSalespersonName").value = e.name || "";
+  document.getElementById("fSalespersonEmail").value = e.email || "";
+  FinanceForm.clearErrors("financeSalespersonModal");
 }
 
 // Settling: the owner only reports; the payout itself is made by someone else

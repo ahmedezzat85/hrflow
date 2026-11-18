@@ -112,4 +112,24 @@ test.describe('Sales commissions', () => {
     await expect(omar).toContainText('settled monthly');
     await expect(omar.locator('[data-period-start="2026-07-01"]')).toContainText('Jul 2026');
   });
+
+  test('Salesperson dialog: choosing an employee fills name, email and monthly settlement', async ({ page }) => {
+    await page.route('**/api/employees', (route) => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify([{ id: 7, name: 'Omar Khaled', email: 'omar@example.com' }]),
+    }));
+    await openAdminPage(page, 'a-finance-settings');
+    await page.click('#subtabSettingsSalespeople');
+    await page.click('#financeAddSalespersonBtn');
+    await expect(page.locator('#fSalespersonFrequency')).toHaveValue('quarterly');
+    await expect(page.locator('#fSalespersonEmployee option[value="7"]')).toBeAttached();
+    await page.selectOption('#fSalespersonEmployee', '7');
+    await expect(page.locator('#fSalespersonName')).toHaveValue('Omar Khaled');
+    await expect(page.locator('#fSalespersonEmail')).toHaveValue('omar@example.com');
+    await expect(page.locator('#fSalespersonFrequency')).toHaveValue('monthly');
+    // clearing the employee keeps the typed details but suggests quarterly again
+    await page.selectOption('#fSalespersonEmployee', '');
+    await expect(page.locator('#fSalespersonName')).toHaveValue('Omar Khaled');
+    await expect(page.locator('#fSalespersonFrequency')).toHaveValue('quarterly');
+  });
 });
