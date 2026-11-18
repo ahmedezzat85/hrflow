@@ -210,6 +210,9 @@ class BillDB(Base):
     subtotal = Column(Money, default=0.0)
     tax_amount = Column(Money, default=0.0)
     total = Column(Money, default=0.0)
+    # Tax the company withholds from the vendor payment (rare; typed from the paper bill). 0 = none. The payment that settles
+    # the bill pays total - withholding in cash and records the withholding as withheld_amount (D-024 amendment).
+    withholding_amount = Column(Money, default=0.0, nullable=False, server_default="0")
     notes = Column(Text, nullable=True)
     capture_source = Column(String(20), default="manual", nullable=False)  # manual | upload | ocr | import (D-033)
     import_batch_id = Column(Integer, ForeignKey("finance_import_batches.id", ondelete="SET NULL"), nullable=True, index=True)
@@ -531,10 +534,11 @@ class PaymentDB(Base):
 
 
 # A bill's paid amount is never stored: it is the sum of its live (not reversed) payments, read in the same query.
+# It is the amount settled against the bill: cash plus any withheld tax, so total - amount_paid is what is still owed.
 # It is read-only. After adding or reversing a payment in a session, flush and expire it
 # (session.expire(bill, ["amount_paid"])) so the next read re-queries.
 BillDB.amount_paid = column_property(
-    select(func.coalesce(func.sum(PaymentDB.amount), 0.0))
+    select(func.coalesce(func.sum(PaymentDB.amount + func.coalesce(PaymentDB.withheld_amount, 0.0)), 0.0))
     .where(PaymentDB.related_bill_id == BillDB.id, PaymentDB.is_reversed == False)  # noqa: E712
     .correlate_except(PaymentDB)
     .scalar_subquery()

@@ -130,6 +130,17 @@
             <label for="billDueDate">Due date <span class="req">*</span></label>
             <input type="date" id="billDueDate" required>
           </div>
+          <div class="form-field" id="billWhtToggleField">
+            <label class="fv-dialog-check fv-dialog-check--bar" for="billWhtApplies">
+              <span>Withholding tax applies</span>
+              <input type="checkbox" id="billWhtApplies" onchange="onBillWhtToggle()">
+            </label>
+          </div>
+          <div class="form-field" id="billWhtField" style="display:none;">
+            <label for="billWhtAmount">Withholding amount</label>
+            <input type="number" id="billWhtAmount" min="0.01" step="0.01" placeholder="0.00" oninput="onBillWhtInput()">
+            <div id="billWhtHint" class="bill-hint"></div>
+          </div>
         </div>
       </div>
 

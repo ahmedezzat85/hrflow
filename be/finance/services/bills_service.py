@@ -113,6 +113,8 @@ class BillsService:
             subtotal=bill.subtotal,
             tax_amount=bill.tax_amount,
             total=bill.total,
+            withholding_amount=round(float(bill.withholding_amount or 0.0), 2),
+            net_payable=round((bill.total or 0.0) - float(bill.withholding_amount or 0.0), 2),
             remaining_balance=remaining,
             notes=bill.notes,
             capture_source=bill.capture_source or "manual",
@@ -164,6 +166,7 @@ class BillsService:
             related_invoice_id=payment.related_invoice_id,
             related_bill_id=payment.related_bill_id,
             amount=payment.amount,
+            withheld_amount=float(payment.withheld_amount or 0.0),
             currency=payment.currency,
             payment_date=payment.payment_date,
             bank_account_id=payment.bank_account_id,
@@ -383,6 +386,8 @@ class BillsService:
             ln.line_total if ln.line_total else (ln.quantity * ln.unit_price)
             for ln in payload.lines
         )
+        if round(float(payload.withholding_amount or 0.0), 2) > round(float(calc_total), 2) + 0.001:
+            raise HTTPException(status_code=400, detail="The withholding amount cannot exceed the bill total.")
         # An approver's (or super admin's) bill is Approved on save and marked auto-approved;
         # everyone else's starts as Draft and goes through submit -> approve.
         if payload.save_as_draft and payload.is_paid_now:
@@ -454,7 +459,7 @@ class BillsService:
                     {
                         "bank_account_id": pay.bank_account_id,
                         "payment_type_id": pay.payment_type_id,
-                        "amount": pay.amount if pay.amount is not None else bill.total,
+                        "amount": pay.amount if pay.amount is not None else round(float(bill.total) - float(bill.withholding_amount or 0.0), 4),
                         "payment_date": pay.payment_date,
                         "reference": pay.reference or "",
                         "details": pay.details,
@@ -619,6 +624,22 @@ class BillsService:
                 (ln.model_dump() if hasattr(ln, "model_dump") else ln.dict())
                 for ln in payload.lines
             ]
+
+        # Withholding: at most the bill total, and fixed once a payment exists (reverse the payment to change it)
+        if data.get("withholding_amount") is not None or lines_data is not None:
+            new_total = (
+                sum((ln.get("line_total") or ln.get("quantity", 1.0) * ln.get("unit_price", 0.0)) for ln in lines_data)
+                if lines_data is not None else float(bill.total or 0.0)
+            )
+            new_withholding = float(data["withholding_amount"]) if data.get("withholding_amount") is not None else float(bill.withholding_amount or 0.0)
+            if round(new_withholding, 2) > round(new_total, 2) + 0.001:
+                raise HTTPException(status_code=400, detail="The withholding amount cannot exceed the bill total.")
+            if (
+                data.get("withholding_amount") is not None
+                and round(new_withholding, 2) != round(float(bill.withholding_amount or 0.0), 2)
+                and self.repo.count_unreversed_payments(bill_id) > 0
+            ):
+                raise HTTPException(status_code=409, detail="The withholding amount cannot change once the bill has a payment; reverse the payment first.")
 
         # A material change (vendor, currency or lines/amount) to an Approved or Scheduled bill by a user
         # who cannot approve sends it back to Pending approval and clears the schedule.

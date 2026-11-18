@@ -72,7 +72,14 @@
     }
     const pAmt = parseFloat(payload.amount);
     const remaining = round(bill.total - paidSoFar, 2);
-    if (pAmt > remaining + 0.01) {
+    const wht = round(bill.withholding_amount || 0, 2);
+    if (wht > 0) {
+      // One payment of total - withholding settles a bill with withholding
+      const cashDue = round(bill.total - wht, 2);
+      if (paidSoFar > 0.001 || Math.abs(pAmt - cashDue) > 0.01) {
+        throw _paymentError("withholding_payment_mismatch", `This bill has ${wht.toFixed(2)} withholding tax: one payment of ${cashDue.toFixed(2)} (the total minus the withholding) settles it.`);
+      }
+    } else if (pAmt > remaining + 0.01) {
       throw new Error(`Payment amount ($${pAmt.toFixed(2)}) exceeds remaining balance ($${remaining.toFixed(2)}).`);
     }
     if (round(account.current_balance || 0, 4) + 0.0001 < pAmt) {
@@ -348,6 +355,8 @@
       const subtotal = lines.reduce((s, l) => s + l.line_total, 0);
 
       _refuseServerOwned(payload);
+      if (Number(payload.withholding_amount || 0) < 0) throw _validationError([{ loc: ["body", "withholding_amount"], msg: "Withholding cannot be negative", type: "value_error" }]);
+      if (round(Number(payload.withholding_amount || 0), 2) > round(subtotal, 2) + 0.001) throw new Error("The withholding amount cannot exceed the bill total.");
       if (payload.save_as_draft && payload.is_paid_now) throw new Error("A draft cannot be recorded as already paid");
       const autoApproved = _can("finance.bill.approve") && !payload.save_as_draft;
 
@@ -387,9 +396,10 @@
 
       if (payload.is_paid_now) {
         const subtotalNow = (payload.lines || []).reduce((sum, ln) => sum + (ln.line_total || ln.quantity * ln.unit_price), 0);
-        const payAmt = payload.payment.amount !== null && payload.payment.amount !== undefined ? payload.payment.amount : subtotalNow;
+        const whtNow = round(Number(payload.withholding_amount || 0), 2);
+        const payAmt = payload.payment.amount !== null && payload.payment.amount !== undefined ? payload.payment.amount : round(subtotalNow - whtNow, 2);
         // A refused payment leaves no bill behind
-        _checkBillPayment({ currency: payload.currency || "EGP", total: subtotalNow }, { ...payload.payment, amount: payAmt }, 0);
+        _checkBillPayment({ currency: payload.currency || "EGP", total: subtotalNow, withholding_amount: whtNow }, { ...payload.payment, amount: payAmt }, 0);
       }
 
       const newBill = {
@@ -404,6 +414,8 @@
         approved_by: autoApproved ? "admin@voyance.health" : null,
         vendor_name: vend ? vend.name : null,
         subtotal, tax_amount: 0, total: subtotal,
+        withholding_amount: round(Number(payload.withholding_amount || 0), 2),
+        net_payable: round(subtotal - Number(payload.withholding_amount || 0), 2),
         created_at: new Date().toISOString(),
         lines,
       };
@@ -415,7 +427,7 @@
           bank_account_id: payload.payment.bank_account_id,
           payment_type_id: payload.payment.payment_type_id,
           payment_date: payload.payment.payment_date,
-          amount: payload.payment.amount !== null && payload.payment.amount !== undefined ? payload.payment.amount : newBill.total,
+          amount: payload.payment.amount !== null && payload.payment.amount !== undefined ? payload.payment.amount : newBill.net_payable,
           reference: payload.payment.reference || "",
           details: payload.payment.details || null,
           cheque_number: payload.payment.cheque_number || null,
@@ -442,11 +454,23 @@
         || oldLines !== newLines;
       const sendBack = material && ["approved", "scheduled"].includes(bill.status) && !_can("finance.bill.approve");
 
+      const newTotal = payload.lines ? payload.lines.reduce((s, l) => s + (l.line_total || l.quantity * l.unit_price), 0) : bill.total;
+      const newWht = payload.withholding_amount !== undefined && payload.withholding_amount !== null ? round(Number(payload.withholding_amount), 2) : round(bill.withholding_amount || 0, 2);
+      if (newWht > round(newTotal, 2) + 0.001) throw new Error("The withholding amount cannot exceed the bill total.");
+      const hasLivePayments = (FinanceMockState.billPayments || []).some((p) => p.related_bill_id === bill.id && !p.is_reversed);
+      if (hasLivePayments && newWht !== round(bill.withholding_amount || 0, 2)) {
+        const err = new Error("The withholding amount cannot change once the bill has a payment; reverse the payment first.");
+        err.status = 409;
+        throw err;
+      }
+
       Object.assign(bill, payload);
       if (payload.lines) {
         bill.subtotal = payload.lines.reduce((s, l) => s + (l.line_total || l.quantity * l.unit_price), 0);
         bill.total = bill.subtotal;
       }
+      bill.withholding_amount = newWht;
+      bill.net_payable = round(bill.total - newWht, 2);
       if (sendBack) {
         bill.status = _billNext("send_back", bill);
         bill.scheduled_payment_date = null;
@@ -605,13 +629,15 @@
       const existingPayments = (FinanceMockState.billPayments || []).filter(
         (p) => p.related_bill_id === bill.id && !p.is_reversed
       );
-      const paidSoFar = existingPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+      const paidSoFar = existingPayments.reduce((sum, p) => sum + (p.amount || 0) + (p.withheld_amount || 0), 0);
       const { account, pt, pAmt } = _checkBillPayment(bill, payload, paidSoFar);
+      const withheld = round(bill.withholding_amount || 0, 2);
       const newPayment = {
         id: FinanceMockState.billPayments.length + 1,
         direction: "outgoing",
         related_bill_id: parseInt(billId, 10),
         amount: pAmt,
+        withheld_amount: withheld,
         currency: bill.currency,
         payment_date: payload.payment_date,
         bank_account_id: account.id,
@@ -622,7 +648,7 @@
       };
       FinanceMockState.billPayments.push(newPayment);
       account.current_balance = round(account.current_balance - pAmt, 2);
-      bill.amount_paid = round(paidSoFar + pAmt, 2);
+      bill.amount_paid = round(paidSoFar + pAmt + withheld, 2); // settled: cash plus withheld
       bill.status = _billDerivePaymentStatus(bill);
       return newPayment;
     }
@@ -648,7 +674,7 @@
       const remainingPayments = (FinanceMockState.billPayments || []).filter(
         (p) => p.related_bill_id === bill.id && !p.is_reversed
       );
-      const remainingPaid = remainingPayments.reduce((s, p) => s + (p.amount || 0), 0);
+      const remainingPaid = remainingPayments.reduce((s, p) => s + (p.amount || 0) + (p.withheld_amount || 0), 0);
       bill.amount_paid = round(remainingPaid, 2);
       if (bill.amount_paid <= 0.001) bill.amount_paid = 0.0;
       bill.status = _billDerivePaymentStatus(bill);
