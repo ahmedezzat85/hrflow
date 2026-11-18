@@ -1537,7 +1537,7 @@
         const pay = this.paymentValues();
         const q = (v) => '"' + String(v === null || v === undefined ? '' : v).replace(/"/g, '""') + '"';
         const lines = [['Employee ID', 'Name', 'External (USD)', 'Internal (USD)', 'Total Disbursement'].map(q).join(',')];
-        this.rows.forEach(r => {
+        this.payRows().forEach(r => {
           const v = pay.get(Number(r.id)) || { ext: 0, int: 0, net: 0 };
           lines.push([r.id, r.name, v.ext.toFixed(2), v.int.toFixed(2), v.net.toFixed(2)].map(q).join(','));
         });
@@ -1724,6 +1724,17 @@
     /* ==================== SCREEN 4: PAYMENT PREVIEW ==================== */
     // Per-employee external/internal payment amounts, shared by screens 4 and 5 and the journal
     // so every total on those screens is the sum of the rows displayed.
+    // The employees the saved run actually pays. A line removed from a draft run takes the person off the payment
+    // screens: without a saved run (or while it has no lines) everyone eligible is shown, as before.
+    payRows() {
+      const lines = (this.currentRun && this.currentRun.id && Array.isArray(this.currentRun.lines)) ? this.currentRun.lines : [];
+      if (!lines.length) return this.rows;
+      const onRun = new Set(lines.map(l => Number(l.employee_id)));
+      // Lines that belong to none of the people shown are not this roster's run lines: show the roster as before.
+      if (!this.rows.some(r => onRun.has(Number(r.id)))) return this.rows;
+      return this.rows.filter(r => onRun.has(Number(r.id)));
+    },
+
     paymentValues() {
       const runLines = (this.currentRun && this.currentRun.lines) || [];
       const previewRecipients = (this.currentPreview && this.currentPreview.recipients) || [];
@@ -1741,7 +1752,9 @@
         }
       });
       const byId = new Map();
+      const savedRun = runLines.length > 0 && !!(this.currentRun && this.currentRun.id) && this.rows.some(r => lineMap.has(Number(r.id)));
       this.rows.forEach(r => {
+        if (savedRun && !lineMap.has(Number(r.id))) { byId.set(Number(r.id), { ext: 0, int: 0, net: 0 }); return; }   // not on the saved run
         const c = this.computeRow(r);
         let ext = c.external;
         let int = c.internal;
@@ -1781,7 +1794,7 @@
       if (bExt) bExt.textContent = this.money(extBank);
       if (bInt) bInt.textContent = this.money(intCash);
       if (bNet) bNet.textContent = this.money(netTotal);
-      if (bHc) bHc.textContent = this.rows.length;
+      if (bHc) bHc.textContent = this.payRows().length;
 
       // Identify missing bank exceptions from real run/preview data
       const runExceptions = (this.currentRun && this.currentRun.exceptions) || (this.currentPreview && this.currentPreview.exceptions) || [];
@@ -1793,7 +1806,7 @@
 
       let missingBankCount = 0;
       let rowsHtml = '';
-      this.rows.forEach(r => {
+      this.payRows().forEach(r => {
         const { ext: extVal, int: intVal, net: netVal } = pay.get(Number(r.id));
 
         const hasExternal = extVal > 0 || r.baseExt > 0;
@@ -1859,7 +1872,7 @@
             rCard.style.borderColor = 'color-mix(in srgb, var(--warning) 40%, transparent)';
           }
           rVal.style.color = 'var(--warning-text, var(--warning))';
-          rVal.innerHTML = `<span id="p4MissingBankCount">${missingBankCount}</span> of <span id="p4Headcount">${this.rows.length}</span> flagged`;
+          rVal.innerHTML = `<span id="p4MissingBankCount">${missingBankCount}</span> of <span id="p4Headcount">${this.payRows().length}</span> flagged`;
           if (rSub) rSub.textContent = 'missing bank details · payment can still be recorded';
         } else {
           if (rCard) {
@@ -1867,13 +1880,13 @@
             rCard.style.borderColor = '';
           }
           rVal.style.color = 'var(--ink-strong)';
-          rVal.innerHTML = `<span id="p4MissingBankCount" style="display:none;">0</span><span id="p4Headcount">${this.rows.length}</span> recipients`;
+          rVal.innerHTML = `<span id="p4MissingBankCount" style="display:none;">0</span><span id="p4Headcount">${this.payRows().length}</span> recipients`;
           if (rSub) rSub.textContent = 'all recipients ready';
         }
       }
 
       const p4Lbl = document.getElementById('p4TotalsLabel');
-      if (p4Lbl) p4Lbl.textContent = `Totals \u00b7 ${this.rows.length} ${this.rows.length === 1 ? 'recipient' : 'recipients'}`;
+      if (p4Lbl) p4Lbl.textContent = `Totals \u00b7 ${this.payRows().length} ${this.payRows().length === 1 ? 'recipient' : 'recipients'}`;
 
       const fExt = document.getElementById('p4TotExt');
       const fInt = document.getElementById('p4TotInt');
@@ -1900,7 +1913,7 @@
       // Count recipients per rail
       let extRecipients = 0;
       let intRecipients = 0;
-      (this.rows || []).forEach(r => {
+      (this.payRows() || []).forEach(r => {
         const c = this.computeRow(r);
         if (c.external > 0 || r.baseExt > 0) extRecipients++;
         if (c.internal > 0 || r.baseInt > 0) intRecipients++;
@@ -2006,7 +2019,7 @@
         return;
       }
       const totals = this.paymentTotals();
-      const recipients = this.rows.length;
+      const recipients = this.payRows().length;
       const missing = this.missingBankCount();
 
       const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -2103,7 +2116,7 @@
       const missingIds = new Set(exceptions.filter(e => e.code === 'MISSING_BANK_DETAILS').map(e => Number(e.employee_id)));
       let totExt = 0, totInt = 0, totNet = 0;
 
-      tbody.innerHTML = (this.rows || []).map(r => {
+      tbody.innerHTML = (this.payRows() || []).map(r => {
         const v = pay.get(Number(r.id)) || { ext: 0, int: 0, net: 0 };
         totExt += v.ext; totInt += v.int; totNet += v.net;
 
