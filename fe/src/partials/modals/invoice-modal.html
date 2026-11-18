@@ -25,7 +25,7 @@
         <div class="form-grid">
           <div class="form-field full">
             <label for="invoiceCustomerId">Customer <span class="req">*</span></label>
-            <select id="invoiceCustomerId" onchange="_applyCustomerWithholding(this.value)" required>
+            <select id="invoiceCustomerId" onchange="_onInvoiceCustomerChanged(this.value)" required>
               <option value="">— Select customer —</option>
             </select>
           </div>
@@ -55,7 +55,7 @@
           </div>
           <div class="form-field">
             <label for="invoiceCurrency">Currency</label>
-            <select id="invoiceCurrency" onchange="_applyDefaultInvoiceVat()">
+            <select id="invoiceCurrency" onchange="if (event && event.isTrusted) this.dataset.manual = '1'; _applyDefaultInvoiceVat()">
               <option value="USD">USD — US Dollar</option>
               <option value="EUR">EUR — Euro</option>
               <option value="GBP">GBP — British Pound</option>
@@ -66,7 +66,7 @@
           </div>
           <div class="form-field">
             <label for="invoiceVatRate">VAT rate (%)</label>
-            <input type="number" id="invoiceVatRate" min="0" max="100" step="0.01" value="0" oninput="_updateInvoiceTotals()">
+            <input type="number" id="invoiceVatRate" min="0" max="100" step="0.01" value="0" oninput="this.dataset.manual = '1'; _updateInvoiceTotals()">
           </div>
           <div class="form-field" id="invoiceWhtToggleField">
             <label class="fv-dialog-check fv-dialog-check--bar" for="invoiceWhtApplies">

@@ -17,6 +17,7 @@ from finance.schemas import (
     PaymentResponse,
 )
 from finance.models import SalesInvoiceDB, PaymentDB, FinanceBankAccountDB
+from finance.services.vat_statutory_sync import sync_vat_obligation_safely
 
 
 from datetime import datetime, date
@@ -408,7 +409,11 @@ class InvoicesService:
             raise HTTPException(status_code=409, detail=e.detail())
 
         updated = self.repo.set_status(invoice_id, target)
-        return self._invoice_to_response(updated)
+        # D-060: an issued invoice's VAT is owed, so it joins the month's sales-tax obligation
+        notice = sync_vat_obligation_safely(self.repo.db, updated)
+        resp = self._invoice_to_response(updated)
+        resp.vat_obligation_notice = notice
+        return resp
 
     def void_invoice(self, invoice_id: int, reason: Optional[str] = None, actor: Optional[str] = None) -> SalesInvoiceResponse:
         invoice = self.repo.get_by_id(invoice_id)
@@ -438,7 +443,10 @@ class InvoicesService:
                 "voided_at": datetime.utcnow(),
             },
         )
-        return self._invoice_to_response(voided)
+        notice = sync_vat_obligation_safely(self.repo.db, voided)  # D-060: a void takes its VAT back out
+        resp = self._invoice_to_response(voided)
+        resp.vat_obligation_notice = notice
+        return resp
 
     # ------------------------------------------------------------------
     # Payment (incoming) on an invoice

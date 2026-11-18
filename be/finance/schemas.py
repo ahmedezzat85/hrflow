@@ -735,6 +735,7 @@ class SalesInvoiceResponse(SalesInvoiceBase):
     has_bank_discrepancy: bool = False
     attachment_count: int = 0
     has_scan: bool = False
+    vat_obligation_notice: Optional[str] = None  # set by send/void when the VAT obligation could not follow (D-060)
     lines: List[SalesInvoiceLineResponse] = []
 
     class Config:
