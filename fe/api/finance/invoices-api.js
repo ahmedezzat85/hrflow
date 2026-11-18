@@ -15,6 +15,43 @@
   const FinanceMockState = root.FinanceMockState || (root.FinanceMockState = {});
   const _mockProductName = (id) => { const p = id ? (FinanceMockState.products || []).find((x) => x.id === Number(id)) : null; return p ? p.name : null; };
 
+  // D-060: mock of the backend's VAT -> sales-tax obligation sync (one row per issue month and currency, due at quarter end)
+  const _mockQuarterEnd = (period) => {
+    const y = Number(period.slice(0, 4));
+    const endMonth = Math.ceil(Number(period.slice(5, 7)) / 3) * 3;
+    return `${y}-${String(endMonth).padStart(2, "0")}-${String(new Date(y, endMonth, 0).getDate()).padStart(2, "0")}`;
+  };
+  const _mockSyncVat = (inv) => {
+    const period = String(inv.issue_date || "").slice(0, 7);
+    const currency = String(inv.currency || "").toUpperCase();
+    if (period.length !== 7 || !currency) return null;
+    const list = FinanceMockState.statutoryObligations || (FinanceMockState.statutoryObligations = []);
+    const withVat = (FinanceMockState.invoices || []).filter((i) => i.currency === currency && ["sent", "partially_paid", "paid"].includes(i.status) && String(i.issue_date || "").slice(0, 7) === period && (i.tax_amount || 0) > 0);
+    const total = round(withVat.reduce((s, i) => s + (i.tax_amount || 0), 0), 2);
+    const note = `VAT from ${withVat.length} ${currency} invoice(s) issued in ${period}`;
+    const existing = list.find((o) => o.obligation_type === "sales_tax" && o.period === period && o.source_type === "invoice_tax_line" && o.currency === currency);
+    if (!existing) {
+      if (total <= 0) return null;
+      list.push({
+        id: Math.max(0, ...list.map((o) => o.id)) + 1, obligation_type: "sales_tax", period, amount_estimated: total, amount_accrued: total,
+        amount_remitted: 0.0, remaining_balance: total, variance_amount: 0.0, variance_note: null, currency, status: "estimated",
+        due_date: _mockQuarterEnd(period), source_type: "invoice_tax_line", source_id: null, notes: note,
+        created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      });
+      return null;
+    }
+    if (existing.status !== "estimated") {
+      if (round(existing.amount_accrued, 2) === total) return null;
+      return `The ${period} sales tax obligation is already ${existing.status} at ${Number(existing.amount_accrued).toFixed(2)} ${currency}, while this month's invoices now carry ${total.toFixed(2)} ${currency} VAT. It was left unchanged: adjust it in the Statutory tracker.`;
+    }
+    if (total <= 0) {
+      list.splice(list.indexOf(existing), 1);
+    } else {
+      Object.assign(existing, { amount_estimated: total, amount_accrued: total, remaining_balance: total, variance_amount: 0.0, notes: note, updated_at: new Date().toISOString() });
+    }
+    return null;
+  };
+
   // D-024: withholding is on the net subtotal; received plus withheld settles the invoice
   const _refreshWithholding = (inv) => {
     inv.withholding_tax_rate = Number(inv.withholding_tax_rate || 0);
@@ -209,6 +246,7 @@
       if (inv.status !== "draft") throw new Error(`invalid_transition: Cannot send an invoice in '${inv.status}' status`);
       inv.status = "sent";
       inv.next_action = "Awaiting Due Date / Payment";
+      inv.vat_obligation_notice = _mockSyncVat(inv);
       return inv;
     }
     return apiRequest("POST", `/api/finance/invoices/${id}/send`);
@@ -226,6 +264,7 @@
       inv.void_reason = reason || null;
       inv.voided_by = "admin@voyancemed.com";
       inv.voided_at = new Date().toISOString();
+      inv.vat_obligation_notice = _mockSyncVat(inv);
       inv.is_overdue = false;
       inv.next_action = "Archived (Voided)";
       return inv;

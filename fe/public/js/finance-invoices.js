@@ -320,7 +320,10 @@ function resumeInvoiceDraft() {
     if (d.issueDate) document.getElementById("invoiceIssueDate").value = d.issueDate;
     if (d.dueDate) document.getElementById("invoiceDueDate").value = d.dueDate;
     if (d.status) document.getElementById("invoiceStatus").value = d.status;
-    if (d.currency) document.getElementById("invoiceCurrency").value = d.currency;
+    if (d.currency) {
+      document.getElementById("invoiceCurrency").value = d.currency;
+      _applyDefaultInvoiceVat();
+    }
     if (d.expectedBank && document.getElementById("invoiceExpectedBankAccount")) {
       document.getElementById("invoiceExpectedBankAccount").value = d.expectedBank;
     }
@@ -374,6 +377,8 @@ async function openAddInvoiceModal() {
   document.getElementById("invoiceDueDate").value = "";
   document.getElementById("invoiceStatus").value = "draft";
   document.getElementById("invoiceCurrency").value = "USD";
+  document.getElementById("invoiceCurrency").dataset.manual = "0";
+  _markInvoiceVatManual(false);
   if (document.getElementById("invoiceVatRate")) document.getElementById("invoiceVatRate").value = "0";
   window._invoiceCustomerWhtRate = 0;
   window._invoiceWhtFromCustomer = false;
@@ -428,6 +433,7 @@ async function openEditInvoiceModal(invoiceId) {
     document.getElementById("invoiceStatus").value = inv.status === "draft" ? "draft" : "sent";
     document.getElementById("invoiceCurrency").value = inv.currency || "USD";
     if (document.getElementById("invoiceVatRate")) document.getElementById("invoiceVatRate").value = inv.vat_rate !== undefined ? inv.vat_rate : 0;
+    _markInvoiceVatManual(true); // the saved rate is the user's; changing the currency does not reset it
     window._invoiceCustomerWhtRate = 0;
     window._invoiceWhtFromCustomer = false;
     if (document.getElementById("invoiceWhtApplies")) document.getElementById("invoiceWhtApplies").checked = (inv.withholding_tax_rate || 0) > 0;
@@ -596,12 +602,37 @@ function _toggleInvoiceWithholding() {
   _updateInvoiceTotals();
 }
 
-// D-023: a new invoice starts at 14% VAT for EGP and 0% for other currencies; the rate stays editable while Draft
+// D-023: a new invoice starts at 14% VAT for EGP and 0% for other currencies; the rate stays editable while Draft.
+// A rate the user typed (or one saved on the invoice being edited) is never replaced by the currency default.
 function _applyDefaultInvoiceVat() {
   const rateEl = document.getElementById("invoiceVatRate");
   const cur = document.getElementById("invoiceCurrency")?.value;
-  if (rateEl && !rateEl.disabled) rateEl.value = cur === "EGP" ? "14" : "0";
+  if (rateEl && !rateEl.disabled && rateEl.dataset.manual !== "1") rateEl.value = cur === "EGP" ? "14" : "0";
   _updateInvoiceTotals();
+}
+
+function _markInvoiceVatManual(manual) {
+  const rateEl = document.getElementById("invoiceVatRate");
+  if (rateEl) rateEl.dataset.manual = manual ? "1" : "0";
+}
+
+// Picking a customer on a new invoice takes the customer's default currency (unless the user already chose one), then the VAT default follows
+async function _onInvoiceCustomerChanged(customerId) {
+  _applyCustomerWithholding(customerId);
+  const curEl = document.getElementById("invoiceCurrency");
+  if (!customerId || document.getElementById("invoiceModalId")?.value || !curEl || curEl.disabled || curEl.dataset.manual === "1") return;
+  let cust = (FinanceState.customers || []).find((c) => String(c.id) === String(customerId));
+  if (!cust) { try { cust = await FinanceApi.getCustomer(customerId); } catch (_) { return; } }
+  const dc = cust && cust.default_currency;
+  if (dc && [...curEl.options].some((o) => o.value === dc)) {
+    curEl.value = dc;
+    _applyDefaultInvoiceVat();
+  }
+}
+
+// Shows the server's note when the Statutory tracker could not follow an invoice action (D-060)
+function _toastVatObligationNotice(resp) {
+  if (resp && resp.vat_obligation_notice) showToast(resp.vat_obligation_notice, "warning");
 }
 
 async function _populateInvoiceCustomerDropdown() {
@@ -676,7 +707,7 @@ async function saveInvoiceModal(targetStatus) {
     if (invoiceId) {
       const updated = await FinanceApi.updateInvoice(invoiceId, payload);
       if (sendAfterSave && updated && updated.status === "draft") {
-        await FinanceApi.sendInvoice(invoiceId);
+        _toastVatObligationNotice(await FinanceApi.sendInvoice(invoiceId));
         showToast("Invoice updated and issued", "success");
       } else {
         showToast("Invoice updated", "success");
@@ -685,7 +716,7 @@ async function saveInvoiceModal(targetStatus) {
       const created = await FinanceApi.createInvoice(payload);
       if (sendAfterSave) {
         try {
-          await FinanceApi.sendInvoice(created.id);
+          _toastVatObligationNotice(await FinanceApi.sendInvoice(created.id));
         } catch (sendErr) {
           showToast("Invoice saved as draft but could not be issued: " + (sendErr.message || sendErr), "error");
           closeInvoiceModal();
@@ -708,7 +739,7 @@ async function saveInvoiceModal(targetStatus) {
 
 async function sendInvoiceAction(invoiceId) {
   try {
-    await FinanceApi.sendInvoice(invoiceId);
+    _toastVatObligationNotice(await FinanceApi.sendInvoice(invoiceId));
     showToast("Invoice issued successfully", "success");
     loadFinanceInvoices();
   } catch (err) {
@@ -734,7 +765,7 @@ async function confirmVoidInvoice(invoiceId) {
   if (!result.confirmed) return;
 
   try {
-    await FinanceApi.voidInvoice(invoiceId, result.reason);
+    _toastVatObligationNotice(await FinanceApi.voidInvoice(invoiceId, result.reason));
     showToast("Invoice voided successfully", "success");
     loadFinanceInvoices();
   } catch (err) {

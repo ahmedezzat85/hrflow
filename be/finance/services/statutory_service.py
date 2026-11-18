@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from finance.models import StatutoryObligationDB
 from finance.repositories.statutory_repository import StatutoryObligationsRepository
 from finance.services.payroll_statutory_sync import backfill_finalized_runs
+from finance.services.vat_statutory_sync import VAT_SOURCE_TYPE, find_vat_obligation, month_vat_total, quarter_end_date
 from finance.services.settlement_service import SettlementService, StatutoryPaymentError
 
 VALID_OBLIGATION_TYPES = {
@@ -128,30 +129,9 @@ class StatutoryObligationsService:
         that month (sent, partially paid or paid; drafts and void excluded). There is no scheduler.
         An obligation the user has already confirmed against the portal is never overwritten.
         """
-        from finance.models import SalesInvoiceDB
-
-        invoices = (
-            self.db.query(SalesInvoiceDB)
-            .filter(
-                SalesInvoiceDB.currency == "EGP",
-                SalesInvoiceDB.status.in_(["sent", "partially_paid", "paid"]),
-                SalesInvoiceDB.issue_date >= f"{period}-01",
-                SalesInvoiceDB.issue_date <= f"{period}-31",
-            )
-            .all()
-        )
-        estimate = round(sum(float(i.tax_amount or 0.0) for i in invoices), 2)
-        note = f"VAT estimate from {len(invoices)} EGP invoice(s) issued in {period}"
-
-        existing = (
-            self.db.query(StatutoryObligationDB)
-            .filter(
-                StatutoryObligationDB.obligation_type == "sales_tax",
-                StatutoryObligationDB.period == period,
-                StatutoryObligationDB.source_type == "invoice_tax_line",
-            )
-            .first()
-        )
+        estimate, count = month_vat_total(self.db, period, "EGP")
+        note = f"VAT from {count} EGP invoice(s) issued in {period}"
+        existing = find_vat_obligation(self.db, period, "EGP")
         if existing:
             if existing.status != "estimated":
                 raise HTTPException(
@@ -175,7 +155,8 @@ class StatutoryObligationsService:
             "amount_accrued": estimate,
             "status": "estimated",
             "currency": "EGP",
-            "source_type": "invoice_tax_line",
+            "source_type": VAT_SOURCE_TYPE,
+            "due_date": quarter_end_date(f"{period}-01"),
             "notes": note,
         })
         return self._to_response(obl)
