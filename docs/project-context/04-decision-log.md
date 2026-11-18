@@ -383,6 +383,7 @@ This document records durable product and architectural decisions approved by th
 - **Status:** Accepted by owner, October 10, 2026 (owner delegated the design). Implemented and merged to `main` (branch `feature/fin-f1-invoice-rules`) (slice F3, migration `0033_customer_withholding_tax`). Withheld tax on a receipt cannot exceed the invoice's expected withholding.
 - **Decision:** Optional withholding rate per customer (default 0) copied to the invoice and editable while Draft. The invoice shows the amount expected to be received; a receipt plus the withheld amount settles it. Withheld amounts are recorded on the payment without a bank movement and listed in a withholding-credits report.
 - **Rationale:** Customers withheld tax last year but not currently; the feature must stay invisible at rate 0.
+- **Amendment (invoice form):** the rate field is no longer hidden at rate 0. The invoice form has a "Withholding tax applies" checkbox, off by default; ticking it applies the customer's default rate, or 3% when the customer has none, and the rate stays editable while Draft. Needed so historical invoices that had withholding can be entered. No backend or schema change.
 
 ### D-025 — Payroll Paid Moves Net Pay Only; Payroll Posting Fixes
 
