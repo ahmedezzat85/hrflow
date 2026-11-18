@@ -25,7 +25,7 @@ test.describe('Story 7.1: Standard Report Library and Shell', () => {
 
     // Verify catalog cards are rendered
     const cards = page.locator('#reportLibraryGrid .report-catalog-card');
-    await expect(cards).toHaveCount(25);
+    await expect(cards).toHaveCount(26);
 
     // Search filter
     const searchInput = page.locator('#reportLibrarySearch');
@@ -35,7 +35,7 @@ test.describe('Story 7.1: Standard Report Library and Shell', () => {
 
     // Clear search
     await searchInput.fill('');
-    await expect(page.locator('#reportLibraryGrid .report-catalog-card')).toHaveCount(25);
+    await expect(page.locator('#reportLibraryGrid .report-catalog-card')).toHaveCount(26);
 
     // Domain pill filter
     await page.click('#reportLibraryCategoryPills button[data-domain="Audit & Compliance"]');

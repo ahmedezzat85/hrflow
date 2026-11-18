@@ -74,6 +74,15 @@
               <label for="fCustomerOwner">Account Owner</label>
               <input id="fCustomerOwner" placeholder="e.g. Sarah Connor">
             </div>
+            <div class="form-field">
+              <label for="fCustomerSalesperson">Salesperson</label>
+              <select id="fCustomerSalesperson"><option value="">No salesperson</option></select>
+            </div>
+            <div class="form-field">
+              <label for="fCustomerCommission">Commission (%)</label>
+              <input id="fCustomerCommission" type="number" min="0" max="100" step="0.01" value="0" placeholder="0 (no commission)">
+              <div class="fv-hint">Earned on the net invoice amount (excluding VAT) when an invoice is fully paid.</div>
+            </div>
             <div class="form-field full">
               <label for="fCustomerAddress">Billing Address</label>
               <input id="fCustomerAddress" placeholder="e.g. 100 Medical Center Blvd, Suite 400">

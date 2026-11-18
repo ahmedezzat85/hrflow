@@ -16,7 +16,7 @@ from finance.schemas import (
     Customer360Summary,
 )
 from finance import invoice_status as inv_status
-from finance.models import CustomerDB
+from finance.models import CustomerDB, SalespersonDB
 
 
 class CustomersService:
@@ -38,6 +38,9 @@ class CustomersService:
             withholding_tax_rate=customer.withholding_tax_rate or 0.0,
             is_intercompany=bool(customer.is_intercompany),
             owner=customer.owner,
+            salesperson_id=customer.salesperson_id,
+            salesperson_name=customer.salesperson.name if customer.salesperson else None,
+            commission_rate=customer.commission_rate or 0.0,
             notes=customer.notes,
             is_active=customer.is_active,
             receivables=receivables or [],
@@ -66,6 +69,21 @@ class CustomersService:
         receivables_map = self.repo.get_open_receivables_for_customers([customer_id])
         return self.to_response(customer, receivables=receivables_map.get(customer_id, []))
 
+    def _validate_commission(self, data: dict, current: Optional[CustomerDB] = None) -> None:
+        """A commission rate needs a salesperson, and a newly chosen salesperson must exist and be active."""
+        sp_id = data["salesperson_id"] if "salesperson_id" in data else (current.salesperson_id if current else None)
+        rate = data.get("commission_rate")
+        if rate is None:
+            rate = (current.commission_rate if current else 0.0) or 0.0
+        if sp_id and (current is None or sp_id != current.salesperson_id):
+            sp = self.repo.db.query(SalespersonDB).filter(SalespersonDB.id == sp_id).first()
+            if not sp:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Salesperson {sp_id} not found")
+            if not sp.is_active:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Salesperson '{sp.name}' is inactive")
+        if float(rate) > 0 and not sp_id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Choose a salesperson to earn the commission rate")
+
     def create_customer(self, payload: CustomerCreate) -> CustomerResponse:
         existing = self.repo.get_by_name(payload.name)
         if existing:
@@ -74,6 +92,7 @@ class CustomersService:
                 detail=f"A customer with name '{payload.name}' already exists",
             )
         data = payload.model_dump() if hasattr(payload, "model_dump") else payload.dict()
+        self._validate_commission(data)
         created = self.repo.create(data)
         return self.to_response(created)
 
@@ -94,6 +113,7 @@ class CustomersService:
                 )
 
         data = payload.model_dump(exclude_unset=True) if hasattr(payload, "model_dump") else payload.dict(exclude_unset=True)
+        self._validate_commission(data, customer)
         updated = self.repo.update(customer_id, data)
         return self.to_response(updated)
 

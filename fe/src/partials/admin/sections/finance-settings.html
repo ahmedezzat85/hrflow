@@ -4,6 +4,7 @@
               <button class="filter-tab active" id="subtabSettingsCategories" role="tab" aria-selected="true" tabindex="0" data-settings-tab="categories" onclick="switchFinanceSettingsSubTab('categories', this)">Transaction categories</button>
               <button class="filter-tab" id="subtabSettingsPaymentTypes" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="payment_types" onclick="switchFinanceSettingsSubTab('payment_types', this)">Payment types</button>
               <button class="filter-tab" id="subtabSettingsProducts" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="products" onclick="switchFinanceSettingsSubTab('products', this)">Products</button>
+              <button class="filter-tab" id="subtabSettingsSalespeople" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="salespeople" onclick="switchFinanceSettingsSubTab('salespeople', this)">Salespeople</button>
               <button class="filter-tab" id="subtabSettingsRevenueSources" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="revenue_sources" onclick="switchFinanceSettingsSubTab('revenue_sources', this)">Revenue sources</button>
               <button class="filter-tab" id="subtabSettingsImport" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="import" hidden onclick="switchFinanceSettingsSubTab('import', this)">Import</button>
               <button class="filter-tab" id="subtabSettingsDisplay" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="display" onclick="switchFinanceSettingsSubTab('display', this)">Display</button>
@@ -16,6 +17,9 @@
             </div>
             <div class="fv-head-actions" id="financeSettingsActionsRevenueSources" data-head-for="revenue_sources" style="display:none;">
               <button class="btn btn-fill" id="financeAddRevenueSourceBtn" onclick="openAddRevenueSourceModal()">Add source</button>
+            </div>
+            <div class="fv-head-actions" id="financeSettingsActionsSalespeople" data-head-for="salespeople" style="display:none;">
+              <button class="btn btn-fill" id="financeAddSalespersonBtn" onclick="openAddFinanceSalespersonModal()">Add salesperson</button>
             </div>
             <div class="fv-head-actions" id="financeSettingsActionsProducts" data-head-for="products" style="display:none;">
               <button class="btn btn-fill" id="financeAddProductBtn" onclick="openAddFinanceProductModal()">Add product</button>
@@ -146,6 +150,41 @@
                 <button class="btn btn-fill" onclick="openAddFinanceProductModal()">Add product</button>
               </div>
               <div class="fv-foot" id="financeProductsFooter">Products classify invoice lines and revenue. Deactivated products stay on past invoices.</div>
+            </div>
+          </div>
+
+          <!-- PANE: Salespeople (sales commissions) -->
+          <div id="financeSettingsPaneSalespeople" style="display:none;">
+            <div class="fv-pills-row">
+              <div class="fv-pills" id="financeSalespersonStatusPills" role="group" aria-label="Salesperson status">
+                <button class="filter-tab fv-pill active" aria-pressed="true" data-filter="all" onclick="filterFinanceSalespeople('all', this)">All <span class="fv-pill__count" id="spPillCountAll">0</span></button>
+                <button class="filter-tab fv-pill fv-pill--settled" aria-pressed="false" data-filter="active" onclick="filterFinanceSalespeople('active', this)"><span class="fv-pill__dot" aria-hidden="true"></span>Active <span class="fv-pill__count" id="spPillCountActive">0</span></button>
+                <button class="filter-tab fv-pill fv-pill--closed" aria-pressed="false" data-filter="inactive" onclick="filterFinanceSalespeople('inactive', this)"><span class="fv-pill__dot" aria-hidden="true"></span>Inactive <span class="fv-pill__count" id="spPillCountInactive">0</span></button>
+              </div>
+            </div>
+            <div class="fv-table-card">
+              <div class="section-loading-bar" id="financeSalespeopleLoadingBar"><span></span></div>
+              <div class="fv-table-scroll">
+                <table class="fv-table responsive-card-table" id="financeSalespeopleTable">
+                  <thead>
+                    <tr>
+                      <th>Salesperson</th>
+                      <th>Email</th>
+                      <th>Employee</th>
+                      <th>Settled</th>
+                      <th>Customers</th>
+                      <th>Status</th>
+                      <th class="col-actions"><span class="fv-sr-only">Actions</span></th>
+                    </tr>
+                  </thead>
+                  <tbody id="financeSalespeopleTableBody"></tbody>
+                </table>
+              </div>
+              <div class="empty-state fv-empty" id="financeSalespeopleEmpty" style="display: none;">
+                <p>No salespeople yet.</p>
+                <button class="btn btn-fill" onclick="openAddFinanceSalespersonModal()">Add salesperson</button>
+              </div>
+              <div class="fv-foot" id="financeSalespeopleFooter">Link a customer to a salesperson and a commission rate on the customer form. Commission is earned when an invoice is fully paid.</div>
             </div>
           </div>
 

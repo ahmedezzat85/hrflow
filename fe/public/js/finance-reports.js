@@ -161,6 +161,7 @@ async function openReportFromLibrary(reportKey) {
     "statutory-remitted",
     "payable-status",
     "withholding-credits",
+    "sales-commissions",
     "revenue-breakdown",
     "subscription-spend",
     "subscription-proofs-missing",
@@ -193,6 +194,7 @@ async function openReportFromLibrary(reportKey) {
           "statutory-remitted": "reportPaneStatutoryRemitted",
           "payable-status": "reportPanePayableStatus",
           "withholding-credits": "reportPaneWithholdingCredits",
+          "sales-commissions": "reportPaneSalesCommissions",
           "revenue-breakdown": "reportPaneRevenueBreakdown",
           "subscription-spend": "reportPaneSubscriptionSpend",
           "subscription-proofs-missing": "reportPaneSubscriptionProofsMissing",
@@ -255,6 +257,7 @@ function switchFinanceReportsTab(tabName, btn) {
     "statutory-remitted": "reportPaneStatutoryRemitted",
     "payable-status": "reportPanePayableStatus",
     "withholding-credits": "reportPaneWithholdingCredits",
+    "sales-commissions": "reportPaneSalesCommissions",
     "revenue-breakdown": "reportPaneRevenueBreakdown",
     "subscription-spend": "reportPaneSubscriptionSpend",
     "subscription-proofs-missing": "reportPaneSubscriptionProofsMissing",
@@ -319,6 +322,8 @@ function switchFinanceReportsTab(tabName, btn) {
     loadStatutoryRemittedReport();
   } else if (tabName === "withholding-credits") {
     loadWithholdingCreditsReport();
+  } else if (tabName === "sales-commissions") {
+    loadSalesCommissionsReport();
   } else if (tabName === "payable-status") {
     loadPayableStatusReport();
   } else if (tabName === "revenue-breakdown") {
@@ -482,6 +487,8 @@ function refreshActiveReport() {
     loadStatutoryRemittedReport();
   } else if (_currentReportsTab === "withholding-credits") {
     loadWithholdingCreditsReport();
+  } else if (_currentReportsTab === "sales-commissions") {
+    loadSalesCommissionsReport();
   } else if (_currentReportsTab === "payable-status") {
     loadPayableStatusReport();
   } else if (_currentReportsTab === "revenue-breakdown") {
@@ -2535,6 +2542,128 @@ async function loadStatutoryRemittedReport() {
     console.error("Failed to load statutory remitted report:", err);
   }
 }
+
+// Sales commissions: earned on fully paid invoices, by calendar quarter and salesperson
+let _lastCommissionReport = null;
+
+function _initCommissionReportControls() {
+  const yearSel = document.getElementById("reportCommYear");
+  const qSel = document.getElementById("reportCommQuarter");
+  if (yearSel && !yearSel.options.length) {
+    const now = new Date();
+    for (let y = now.getFullYear() + 1; y >= now.getFullYear() - 5; y--) yearSel.add(new Option(String(y), String(y)));
+    yearSel.value = String(now.getFullYear());
+    if (qSel) qSel.value = String(Math.floor(now.getMonth() / 3) + 1);
+  }
+}
+
+async function _fillCommissionSalespersonFilter() {
+  const sel = document.getElementById("reportCommSalesperson");
+  if (!sel || sel.dataset.filled === "1") return;
+  try {
+    const list = (await FinanceApi.getSalespeople()) || [];
+    sel.innerHTML = '<option value="">All salespeople</option>' + list
+      .map((s) => `<option value="${s.id}">${FinanceFormat.escapeHtml(s.name)}${s.is_active ? "" : " (inactive)"}</option>`).join("");
+    sel.dataset.filled = "1";
+  } catch (_) { /* the filter stays on All */ }
+}
+
+async function loadSalesCommissionsReport() {
+  _initCommissionReportControls();
+  await _fillCommissionSalespersonFilter();
+  const year = document.getElementById("reportCommYear")?.value;
+  const quarter = document.getElementById("reportCommQuarter")?.value;
+  const spId = document.getElementById("reportCommSalesperson")?.value;
+  const esc = FinanceFormat.escapeHtml;
+  try {
+    const data = await FinanceApi.getCommissionReport({ year, quarter, salesperson_id: spId || undefined });
+    _lastCommissionReport = data;
+    const period = document.getElementById("reportCommPeriod");
+    if (period) period.textContent = `Invoices fully paid between ${data.period_start} and ${data.period_end}. Commission is on the net amount (excluding VAT); each currency is totalled separately.`;
+    const grand = document.getElementById("reportCommGrandTotals");
+    if (grand) {
+      grand.innerHTML = (data.grand_totals || []).map((t) => `
+        <div class="card fr-u124">
+          <div class="fr-u68">Total commission (${esc(t.currency)})</div>
+          <div class="fr-u125">${FinanceUI.moneyHtml(t.amount, t.currency)}</div>
+          <div class="fr-u141">${t.count} invoice${t.count === 1 ? "" : "s"}, on ${FinanceUI.moneyHtml(t.base_amount, t.currency)} net</div>
+        </div>`).join("");
+    }
+    const holder = document.getElementById("reportCommSalespeople");
+    const empty = document.getElementById("reportCommEmpty");
+    const people = data.salespeople || [];
+    if (empty) empty.style.display = people.length ? "none" : "block";
+    if (!holder) return;
+    const lineRows = (lines) => lines.map((l) => `
+            <tr>
+              <td data-label="Paid on">${esc(l.earned_date)}</td>
+              <td data-label="Invoice">${esc(l.invoice_number)}</td>
+              <td data-label="Customer">${esc(l.customer_name)}</td>
+              <td data-label="Net amount" class="fr-u54">${FinanceUI.moneyHtml(l.base_amount, l.currency)}</td>
+              <td data-label="Rate" class="fr-u54">${l.rate}%</td>
+              <td data-label="Commission" class="fr-u54"><strong>${FinanceUI.moneyHtml(l.amount, l.currency)}</strong></td>
+              <td data-label="Settled">${l.settlement_id ? '<span class="badge-pill pill-success">Settled</span>' : '<span class="badge-pill pill-warning">Open</span>'}</td>
+            </tr>`).join("");
+    const periodHtml = (p, per) => {
+      const settleBtn = per.unsettled_count
+        ? `<button class="btn btn-fill btn-commission-settle" onclick="openCommissionSettleModal(${p.salesperson_id}, '${per.period_start}', '${per.period_end}', '${esc(per.label)}', '${esc(p.salesperson_name).replace(/'/g, "&#39;")}')">Confirm settlement (${per.unsettled_count})</button>`
+        : "";
+      const done = (per.settlements || []).map((st) => `
+        <div class="fv-hint" data-settlement-id="${st.id}">Settled on ${esc(st.settled_date)}${st.reference ? `, ref ${esc(st.reference)}` : ""}${st.settled_by ? ` by ${esc(st.settled_by)}` : ""}
+          <button class="btn btn-outline btn-commission-undo" onclick="undoCommissionSettlement(${st.id})">Undo</button></div>`).join("");
+      return `
+        <div class="fr-u18" data-period-start="${per.period_start}">
+          <strong>${esc(per.label)}</strong>
+          ${(per.totals || []).map((t) => `<span>${FinanceUI.moneyHtml(t.amount, t.currency)}</span>`).join(" ")}
+          ${settleBtn}
+        </div>
+        ${done}
+        <table class="responsive-card-table">
+          <thead>
+            <tr>
+              <th>Paid on</th><th>Invoice</th><th>Customer</th>
+              <th class="fr-u54">Net amount</th><th class="fr-u54">Rate</th><th class="fr-u54">Commission</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody>${lineRows(per.lines || [])}</tbody>
+        </table>`;
+    };
+    holder.innerHTML = people.map((p) => `
+      <div class="card" data-salesperson-id="${p.salesperson_id}">
+        <h4>${esc(p.salesperson_name)} <span class="fv-muted">settled ${p.settlement_frequency === "monthly" ? "monthly" : "quarterly"}</span></h4>
+        ${(p.periods || []).map((per) => periodHtml(p, per)).join("")}
+        <div class="fr-u62">${(p.totals || []).map((t) => `Total (${esc(t.currency)}), ${t.count} invoice${t.count === 1 ? "" : "s"}: ${FinanceUI.moneyHtml(t.amount, t.currency)}`).join(" | ")}</div>
+      </div>`).join("");
+  } catch (err) {
+    console.error("Failed to load sales commissions report:", err);
+    toast("Failed to load the sales commissions report: " + (err.message || err), "fa-solid fa-triangle-exclamation");
+  }
+}
+window.loadSalesCommissionsReport = loadSalesCommissionsReport;
+
+function exportSalesCommissionsCsv() {
+  const data = _lastCommissionReport;
+  if (!data || !(data.salespeople || []).length) {
+    toast("Nothing to export for this quarter", "fa-solid fa-circle-info");
+    return;
+  }
+  const cell = (v) => {
+    let t = String(v == null ? "" : v);
+    if (/^[=+\-@]/.test(t)) t = "'" + t; // keep spreadsheet apps from running a name as a formula
+    return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+  };
+  const rows = [["Salesperson", "Paid on", "Invoice", "Customer", "Currency", "Net amount", "Rate %", "Commission", "Status"]];
+  data.salespeople.forEach((p) => p.lines.forEach((l) => rows.push([p.salesperson_name, l.earned_date, l.invoice_number, l.customer_name, l.currency, l.base_amount, l.rate, l.amount, l.settlement_id ? "Settled" : "Open"])));
+  const blob = new Blob([rows.map((r) => r.map(cell).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `sales-commissions-${data.year}-Q${data.quarter}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+window.exportSalesCommissionsCsv = exportSalesCommissionsCsv;
 
 // D-024: tax withheld by customers on invoice receipts, by customer and month
 async function loadWithholdingCreditsReport() {

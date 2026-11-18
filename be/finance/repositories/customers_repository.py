@@ -54,6 +54,8 @@ class CustomersRepository:
             withholding_tax_rate=float(data.get("withholding_tax_rate") or 0.0),
             is_intercompany=bool(data.get("is_intercompany", False)),
             owner=data.get("owner", "").strip() if data.get("owner") else None,
+            salesperson_id=data.get("salesperson_id") or None,
+            commission_rate=float(data.get("commission_rate") or 0.0),
             notes=data.get("notes", "").strip() if data.get("notes") else None,
             is_active=bool(data.get("is_active", True)),
         )
@@ -91,6 +93,10 @@ class CustomersRepository:
             customer.is_intercompany = bool(data["is_intercompany"])
         if "owner" in data:
             customer.owner = data["owner"].strip() if data["owner"] else None
+        if "salesperson_id" in data:
+            customer.salesperson_id = data["salesperson_id"] or None
+        if "commission_rate" in data and data["commission_rate"] is not None:
+            customer.commission_rate = float(data["commission_rate"])
         if "notes" in data:
             customer.notes = data["notes"].strip() if data["notes"] else None
         if "is_active" in data and data["is_active"] is not None:

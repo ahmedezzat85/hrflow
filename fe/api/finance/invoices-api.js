@@ -372,6 +372,7 @@
       const newCust = {
         id: FinanceMockState.customers.length + 1,
         ...payload,
+        salesperson_name: root.FinanceCommissionsApi ? root.FinanceCommissionsApi._salespersonName(payload.salesperson_id) : null,
         is_active: true,
       };
       FinanceMockState.customers.push(newCust);
@@ -384,6 +385,7 @@
       const cust = FinanceMockState.customers.find((c) => c.id === parseInt(id, 10));
       if (!cust) throw new Error("Customer not found");
       Object.assign(cust, payload);
+      if ("salesperson_id" in payload) cust.salesperson_name = root.FinanceCommissionsApi ? root.FinanceCommissionsApi._salespersonName(payload.salesperson_id) : null;
       return cust;
     }
     return apiRequest("PUT", `/api/finance/customers/${id}`, payload);
