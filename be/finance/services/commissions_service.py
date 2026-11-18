@@ -11,24 +11,29 @@ Rules:
 - A customer without a salesperson, or with a 0 rate, earns nothing.
 """
 from calendar import monthrange
-from datetime import datetime
+from datetime import date, datetime
 from typing import Dict, List, Optional, Tuple
 
 from fastapi import HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from finance.models import CustomerDB, SalesCommissionDB, SalesInvoiceDB, SalespersonDB
+from finance.models import CommissionSettlementDB, CustomerDB, SalesCommissionDB, SalesInvoiceDB, SalespersonDB
 from finance.schemas import (
     CommissionLine,
+    CommissionPeriod,
     CommissionQuarterReport,
     CommissionSalespersonReport,
     CommissionTotal,
     SalespersonCreate,
     SalespersonResponse,
     SalespersonUpdate,
+    SettlementCreate,
+    SettlementResponse,
 )
 
+SETTLED = "settled"
+UNDONE = "undone"
 ACCRUED = "accrued"
 VOID = "void"
 
@@ -113,6 +118,7 @@ class CommissionsService:
             employee_name = emp.name if emp else None
         return SalespersonResponse(
             id=sp.id, name=sp.name, email=sp.email, employee_id=sp.employee_id, notes=sp.notes,
+            settlement_frequency=sp.settlement_frequency or "quarterly",
             employee_name=employee_name, is_active=sp.is_active, customer_count=customer_count, created_at=sp.created_at,
         )
 
@@ -149,6 +155,7 @@ class CommissionsService:
             email=(payload.email or "").strip() or None,
             employee_id=payload.employee_id or None,
             notes=(payload.notes or "").strip() or None,
+            settlement_frequency=payload.settlement_frequency or ("monthly" if payload.employee_id else "quarterly"),
         )
         self.db.add(sp)
         self.db.commit()
@@ -171,6 +178,8 @@ class CommissionsService:
             sp.employee_id = data["employee_id"] or None
         if "notes" in data:
             sp.notes = (data["notes"] or "").strip() or None
+        if data.get("settlement_frequency"):
+            sp.settlement_frequency = data["settlement_frequency"]
         if data.get("is_active") is not None:
             sp.is_active = bool(data["is_active"])
         self.db.commit()
@@ -205,23 +214,129 @@ class CommissionsService:
                 id=c.id, salesperson_id=c.salesperson_id, salesperson_name=sp_name, customer_id=c.customer_id,
                 customer_name=cust_name, invoice_id=c.invoice_id, invoice_number=inv_no, currency=c.currency,
                 base_amount=c.base_amount, rate=c.rate, amount=c.amount, earned_date=c.earned_date,
-                status=c.status, void_reason=c.void_reason,
+                status=c.status, void_reason=c.void_reason, settlement_id=c.settlement_id,
             )
             for c, sp_name, cust_name, inv_no in q.all()
         ]
 
+    # --- settlement ----------------------------------------------------------------------------------------
+    @staticmethod
+    def _period_label(start: str, end: str) -> str:
+        months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        s, e = int(start[5:7]), int(end[5:7])
+        return f"{months[s - 1]} {start[:4]}" if s == e else f"Q{(s - 1) // 3 + 1} {start[:4]}"
+
+    @staticmethod
+    def _parse(value: str, field: str) -> date:
+        try:
+            return datetime.strptime(str(value)[:10], "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"{field} must be a date (YYYY-MM-DD)")
+
+    def _check_period(self, frequency: str, start: str, end: str) -> None:
+        s, e = self._parse(start, "period_start"), self._parse(end, "period_end")
+        if frequency == "monthly":
+            ok = s.day == 1 and e == date(s.year, s.month, monthrange(s.year, s.month)[1])
+        else:
+            ok = s.day == 1 and s.month in (1, 4, 7, 10) and e == date(s.year, s.month + 2, monthrange(s.year, s.month + 2)[1])
+        if not ok:
+            raise HTTPException(
+                status_code=400,
+                detail=f"This salesperson is settled {frequency}: the period must be a whole calendar {'month' if frequency == 'monthly' else 'quarter'}",
+            )
+
+    def _settlement_response(self, st: CommissionSettlementDB) -> SettlementResponse:
+        rows = self.list_commissions(salesperson_id=st.salesperson_id, status="all")
+        lines = [r for r in rows if r.settlement_id == st.id]
+        return SettlementResponse(
+            id=st.id, salesperson_id=st.salesperson_id, period_start=st.period_start, period_end=st.period_end,
+            settled_date=st.settled_date, reference=st.reference, notes=st.notes, settled_by=st.settled_by,
+            status=st.status, line_count=len(lines), totals=_totals(lines),
+        )
+
+    def settle(self, payload: SettlementCreate, actor: Optional[str] = None) -> SettlementResponse:
+        sp = self.db.query(SalespersonDB).filter(SalespersonDB.id == payload.salesperson_id).first()
+        if not sp:
+            raise HTTPException(status_code=404, detail=f"Salesperson {payload.salesperson_id} not found")
+        self._check_period(sp.settlement_frequency or "quarterly", payload.period_start, payload.period_end)
+        self._parse(payload.settled_date, "settled_date")
+        rows = (
+            self.db.query(SalesCommissionDB)
+            .filter(
+                SalesCommissionDB.salesperson_id == sp.id,
+                SalesCommissionDB.status == ACCRUED,
+                SalesCommissionDB.settlement_id.is_(None),
+                SalesCommissionDB.earned_date >= payload.period_start,
+                SalesCommissionDB.earned_date <= payload.period_end,
+            )
+            .all()
+        )
+        if not rows:
+            raise HTTPException(status_code=400, detail="Nothing to settle: no unsettled commissions in this period")
+        st = CommissionSettlementDB(
+            salesperson_id=sp.id, period_start=payload.period_start, period_end=payload.period_end,
+            settled_date=payload.settled_date[:10], reference=(payload.reference or "").strip() or None,
+            notes=(payload.notes or "").strip() or None, settled_by=actor, status=SETTLED,
+        )
+        self.db.add(st)
+        self.db.flush()
+        for r in rows:
+            r.settlement_id = st.id
+        self.db.commit()
+        self.db.refresh(st)
+        return self._settlement_response(st)
+
+    def undo_settlement(self, settlement_id: int, actor: Optional[str] = None) -> SettlementResponse:
+        st = self.db.query(CommissionSettlementDB).filter(CommissionSettlementDB.id == settlement_id).first()
+        if not st:
+            raise HTTPException(status_code=404, detail=f"Settlement {settlement_id} not found")
+        if st.status != SETTLED:
+            raise HTTPException(status_code=409, detail="This settlement was already undone")
+        for r in self.db.query(SalesCommissionDB).filter(SalesCommissionDB.settlement_id == st.id).all():
+            r.settlement_id = None
+        st.status = UNDONE
+        st.undone_at = datetime.utcnow()
+        st.undone_by = actor
+        self.db.commit()
+        self.db.refresh(st)
+        return self._settlement_response(st)
+
+    # --- report --------------------------------------------------------------------------------------------
     def quarter_report(self, year: int, quarter: int, salesperson_id: Optional[int] = None) -> CommissionQuarterReport:
         start, end = quarter_bounds(year, quarter)
         lines = self.list_commissions(salesperson_id=salesperson_id, start=start, end=end, status=ACCRUED)
+        freq = {sp.id: sp.settlement_frequency or "quarterly" for sp in self.db.query(SalespersonDB).all()}
+        settlements = (
+            self.db.query(CommissionSettlementDB)
+            .filter(CommissionSettlementDB.status == SETTLED, CommissionSettlementDB.period_start >= start, CommissionSettlementDB.period_end <= end)
+            .all()
+        )
         grouped: Dict[int, List[CommissionLine]] = {}
         for ln in lines:
             grouped.setdefault(ln.salesperson_id, []).append(ln)
-        people = [
-            CommissionSalespersonReport(
-                salesperson_id=sid, salesperson_name=group[0].salesperson_name, totals=_totals(group), lines=group
-            )
-            for sid, group in grouped.items()
-        ]
+
+        def period_of(sid: int, earned: str) -> Tuple[str, str]:
+            if freq.get(sid) == "monthly":
+                y, m = int(earned[:4]), int(earned[5:7])
+                return f"{y:04d}-{m:02d}-01", f"{y:04d}-{m:02d}-{monthrange(y, m)[1]:02d}"
+            return start, end
+
+        people = []
+        for sid, group in grouped.items():
+            by_period: Dict[Tuple[str, str], List[CommissionLine]] = {}
+            for ln in group:
+                by_period.setdefault(period_of(sid, ln.earned_date), []).append(ln)
+            periods = []
+            for (ps, pe), plines in sorted(by_period.items()):
+                sts = [self._settlement_response(s) for s in settlements if s.salesperson_id == sid and s.period_start == ps and s.period_end == pe]
+                periods.append(CommissionPeriod(
+                    period_start=ps, period_end=pe, label=self._period_label(ps, pe), totals=_totals(plines), lines=plines,
+                    unsettled_count=sum(1 for l in plines if l.settlement_id is None), settlements=sts,
+                ))
+            people.append(CommissionSalespersonReport(
+                salesperson_id=sid, salesperson_name=group[0].salesperson_name, settlement_frequency=freq.get(sid, "quarterly"),
+                totals=_totals(group), lines=group, periods=periods,
+            ))
         people.sort(key=lambda p: p.salesperson_name.lower())
         return CommissionQuarterReport(
             year=year, quarter=quarter, period_start=start, period_end=end, salespeople=people, grand_totals=_totals(lines)

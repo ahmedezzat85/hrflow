@@ -131,3 +131,95 @@ def test_commission_permissions(app_client, admin_cookies, employee_cookies):
     assert app_client.get(REPORT, cookies=employee_cookies).status_code == 403
     assert app_client.get(SP, cookies=employee_cookies).status_code == 403
     assert app_client.post(SP, json={"name": "Nope"}, cookies=employee_cookies).status_code == 403
+
+
+# --- settlement confirmation (employees monthly, others quarterly; records only, no ledger posting) -------------
+
+SETTLE = "/api/finance/commissions/settlements"
+
+
+def _paid_invoice(client, cookies, acc, cust_id, amount, ref, date):
+    inv = create_invoice(client, cookies, cust_id, amount=amount, send=True)
+    assert receipt(client, cookies, inv["id"], acc, amount, reference=ref, date=date).status_code == 201
+    return inv
+
+
+def test_frequency_defaults_to_monthly_for_employees_and_quarterly_otherwise(app_client, admin_cookies):
+    other = _salesperson(app_client, admin_cookies, "Freelancer Fay")
+    assert other["settlement_frequency"] == "quarterly"
+    emps = app_client.get("/api/employees", cookies=admin_cookies).json()
+    emp_id = emps[0]["id"]
+    staff = _salesperson(app_client, admin_cookies, "Staff Stan", employee_id=emp_id)
+    assert staff["settlement_frequency"] == "monthly"
+    upd = app_client.patch(f"{SP}/{staff['id']}", json={"settlement_frequency": "quarterly"}, cookies=admin_cookies)
+    assert upd.status_code == 200 and upd.json()["settlement_frequency"] == "quarterly"
+    assert app_client.patch(f"{SP}/{staff['id']}", json={"settlement_frequency": "weekly"}, cookies=admin_cookies).status_code == 422
+
+
+def test_quarterly_salesperson_is_settled_per_quarter_and_undo_releases_it(app_client, admin_cookies):
+    sp = _salesperson(app_client, admin_cookies, "Quarterly Quinn")
+    cust = _customer(app_client, admin_cookies, "Quarterly Co", sp["id"], 10)
+    acc = make_account(app_client, admin_cookies, balance=0.0)
+    _paid_invoice(app_client, admin_cookies, acc, cust["id"], 1000.0, "Q-1", "2026-07-10")
+    _paid_invoice(app_client, admin_cookies, acc, cust["id"], 2000.0, "Q-2", "2026-09-20")
+
+    rep = _report(app_client, admin_cookies, salesperson_id=sp["id"])
+    person = rep["salespeople"][0]
+    assert person["settlement_frequency"] == "quarterly"
+    assert [(p["period_start"], p["period_end"], p["unsettled_count"]) for p in person["periods"]] == [("2026-07-01", "2026-09-30", 2)]
+
+    body = {"salesperson_id": sp["id"], "reference": "Wire 77", "settled_date": "2026-10-05"}
+    # a single month is not a valid period for a quarterly salesperson; nothing to settle in an empty quarter
+    bad = app_client.post(SETTLE, json={**body, "period_start": "2026-07-01", "period_end": "2026-07-31"}, cookies=admin_cookies)
+    assert bad.status_code == 400 and "quarter" in bad.json()["detail"]
+    empty = app_client.post(SETTLE, json={**body, "period_start": "2026-04-01", "period_end": "2026-06-30"}, cookies=admin_cookies)
+    assert empty.status_code == 400 and "Nothing to settle" in empty.json()["detail"]
+
+    ok = app_client.post(SETTLE, json={**body, "period_start": "2026-07-01", "period_end": "2026-09-30"}, cookies=admin_cookies)
+    assert ok.status_code == 201, ok.text
+    st = ok.json()
+    assert st["line_count"] == 2 and st["totals"][0]["amount"] == 300.0 and st["status"] == "settled" and st["reference"] == "Wire 77"
+    period = _report(app_client, admin_cookies, salesperson_id=sp["id"])["salespeople"][0]["periods"][0]
+    assert period["unsettled_count"] == 0 and period["settlements"][0]["id"] == st["id"]
+    # settling again finds nothing
+    assert app_client.post(SETTLE, json={**body, "period_start": "2026-07-01", "period_end": "2026-09-30"}, cookies=admin_cookies).status_code == 400
+
+    undo = app_client.post(f"{SETTLE}/{st['id']}/undo", cookies=admin_cookies)
+    assert undo.status_code == 200 and undo.json()["status"] == "undone"
+    period = _report(app_client, admin_cookies, salesperson_id=sp["id"])["salespeople"][0]["periods"][0]
+    assert period["unsettled_count"] == 2 and period["settlements"] == []
+    assert app_client.post(f"{SETTLE}/{st['id']}/undo", cookies=admin_cookies).status_code == 409
+
+
+def test_monthly_salesperson_is_settled_per_month_and_settled_commission_blocks_reversal(app_client, admin_cookies):
+    emp_id = app_client.get("/api/employees", cookies=admin_cookies).json()[0]["id"]
+    sp = _salesperson(app_client, admin_cookies, "Monthly Mo", employee_id=emp_id)
+    cust = _customer(app_client, admin_cookies, "Monthly Co", sp["id"], 5)
+    acc = make_account(app_client, admin_cookies, balance=0.0)
+    jul = _paid_invoice(app_client, admin_cookies, acc, cust["id"], 1000.0, "M-1", "2026-07-10")
+    _paid_invoice(app_client, admin_cookies, acc, cust["id"], 2000.0, "M-2", "2026-08-05")
+
+    person = _report(app_client, admin_cookies, salesperson_id=sp["id"])["salespeople"][0]
+    assert [(p["period_start"], p["unsettled_count"]) for p in person["periods"]] == [("2026-07-01", 1), ("2026-08-01", 1)]
+    # a quarter is not valid for a monthly salesperson
+    body = {"salesperson_id": sp["id"], "settled_date": "2026-08-15"}
+    assert app_client.post(SETTLE, json={**body, "period_start": "2026-07-01", "period_end": "2026-09-30"}, cookies=admin_cookies).status_code == 400
+
+    ok = app_client.post(SETTLE, json={**body, "period_start": "2026-07-01", "period_end": "2026-07-31"}, cookies=admin_cookies)
+    assert ok.status_code == 201 and ok.json()["totals"][0]["amount"] == 50.0
+    person = _report(app_client, admin_cookies, salesperson_id=sp["id"])["salespeople"][0]
+    assert [p["unsettled_count"] for p in person["periods"]] == [0, 1]   # August is still open
+
+    # the July receipt cannot be reversed while its commission is settled
+    pays = app_client.get(f"{BASE}/{jul['id']}/payments", cookies=admin_cookies).json()
+    rev_url = f"{BASE}/{jul['id']}/payments/{pays[0]['id']}/reverse"
+    blocked = app_client.post(rev_url, cookies=admin_cookies)
+    assert blocked.status_code == 400 and "settled" in blocked.json()["detail"]
+    assert app_client.post(f"{SETTLE}/{ok.json()['id']}/undo", cookies=admin_cookies).status_code == 200
+    assert app_client.post(rev_url, cookies=admin_cookies).status_code == 200
+
+
+def test_settlement_permissions(app_client, admin_cookies, employee_cookies):
+    body = {"salesperson_id": 1, "period_start": "2026-07-01", "period_end": "2026-09-30", "settled_date": "2026-10-05"}
+    assert app_client.post(SETTLE, json=body, cookies=employee_cookies).status_code == 403
+    assert app_client.post(f"{SETTLE}/1/undo", cookies=employee_cookies).status_code == 403

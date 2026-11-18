@@ -417,6 +417,13 @@ class InvoicesRepository:
             raise ValueError(f"Payment {payment_id} has already been reversed")
 
         invoice = self.db.query(SalesInvoiceDB).filter(SalesInvoiceDB.id == invoice_id).first()
+        from finance.models import SalesCommissionDB
+        if (
+            self.db.query(SalesCommissionDB)
+            .filter(SalesCommissionDB.invoice_id == invoice_id, SalesCommissionDB.status == "accrued", SalesCommissionDB.settlement_id.isnot(None))
+            .first()
+        ):
+            raise ValueError("The sales commission on this invoice is already settled. Undo that settlement before reversing the receipt.")
         if invoice.status != inv_status.VOID:
             inv_status.next_status("reverse_receipt", invoice.status)
 

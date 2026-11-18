@@ -34,6 +34,7 @@ DATE_COLUMNS: Dict[str, Dict[str, bool]] = {
     "finance_payroll_rate_settings": {"effective_from": False},
     "finance_payroll_runs": {"payment_date": True, "period_end": False, "period_start": False},
     "finance_payroll_tax_settings": {"effective_from": False},
+    "finance_commission_settlements": {"period_end": False, "period_start": False, "settled_date": False},
     "finance_sales_commissions": {"earned_date": False},
     "finance_sales_invoices": {"due_date": False, "issue_date": False},
     "finance_statement_lines": {"raw_date": False},

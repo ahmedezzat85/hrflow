@@ -82,4 +82,34 @@ test.describe('Sales commissions', () => {
     await page.selectOption('#reportCommQuarter', '1');
     await expect(page.locator('#reportCommEmpty')).toBeVisible();
   });
+
+  test('Settlement: quarterly salesperson per quarter, monthly employee per month, undo', async ({ page }) => {
+    await openAdminPage(page, 'a-finance-reports');
+    await page.evaluate(() => window.openReportFromLibrary('sales-commissions'));
+    await page.selectOption('#reportCommYear', '2026');
+    await page.selectOption('#reportCommQuarter', '3');
+
+    // Sarah is settled quarterly: one period for the whole quarter
+    const sarah = page.locator('#reportCommSalespeople [data-salesperson-id="1"]');
+    await expect(sarah).toContainText('settled quarterly');
+    await expect(sarah.locator('[data-period-start]')).toHaveCount(1);
+    await sarah.locator('.btn-commission-settle').click();
+    await expect(page.locator('#commissionSettleModal')).toBeVisible();
+    await page.fill('#fSettleDate', '2026-10-05');
+    await page.fill('#fSettleReference', 'Wire 77');
+    await page.click('#commissionSettleSaveBtn');
+    await expect(page.locator('#commissionSettleModal')).not.toBeVisible();
+    await expect(sarah).toContainText('Wire 77');
+    await expect(sarah.locator('.btn-commission-settle')).toHaveCount(0);
+
+    // Undo puts it back to open
+    await sarah.locator('.btn-commission-undo').click();
+    await page.click('button:has-text("Undo settlement")');
+    await expect(sarah.locator('.btn-commission-settle')).toHaveCount(1);
+
+    // Omar is an employee settled monthly: his July commission is its own period
+    const omar = page.locator('#reportCommSalespeople [data-salesperson-id="2"]');
+    await expect(omar).toContainText('settled monthly');
+    await expect(omar.locator('[data-period-start="2026-07-01"]')).toContainText('Jul 2026');
+  });
 });

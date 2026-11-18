@@ -56,6 +56,7 @@ function renderFinanceSalespeople(all) {
       <td data-label="Salesperson"><strong class="fv-strong-ink">${esc(s.name)}</strong></td>
       <td data-label="Email">${s.email ? esc(s.email) : dash}</td>
       <td data-label="Employee">${s.employee_name ? esc(s.employee_name) : dash}</td>
+      <td data-label="Settled">${s.settlement_frequency === "monthly" ? "Monthly" : "Quarterly"}</td>
       <td data-label="Customers" class="fv-num">${s.customer_count || 0}</td>
       <td data-label="Status">${FinanceUI.statusPill(s.is_active ? "active" : "inactive", s.is_active ? "Active" : "Inactive", "", "status-badge-wrap")}</td>
       <td class="col-actions">${FinanceUI.rowActions({
@@ -85,6 +86,7 @@ async function openAddFinanceSalespersonModal() {
   document.getElementById("fSalespersonName").value = "";
   document.getElementById("fSalespersonEmail").value = "";
   document.getElementById("fSalespersonNotes").value = "";
+  document.getElementById("fSalespersonFrequency").value = "quarterly";
   await _fillSalespersonEmployeeOptions("");
   openModal("financeSalespersonModal");
 }
@@ -98,8 +100,72 @@ async function openEditFinanceSalespersonModal(id) {
   document.getElementById("fSalespersonName").value = s.name;
   document.getElementById("fSalespersonEmail").value = s.email || "";
   document.getElementById("fSalespersonNotes").value = s.notes || "";
+  document.getElementById("fSalespersonFrequency").value = s.settlement_frequency || "quarterly";
   await _fillSalespersonEmployeeOptions(s.employee_id);
   openModal("financeSalespersonModal");
+}
+
+// Picking an employee suggests monthly settlement, clearing it suggests quarterly (still editable)
+function onSalespersonEmployeeChanged() {
+  const emp = document.getElementById("fSalespersonEmployee").value;
+  document.getElementById("fSalespersonFrequency").value = emp ? "monthly" : "quarterly";
+}
+
+// Settling: the owner only reports; the payout itself is made by someone else
+function openCommissionSettleModal(salespersonId, periodStart, periodEnd, label, name) {
+  FinanceForm.clearErrors("commissionSettleModal");
+  document.getElementById("fSettleSalespersonId").value = salespersonId;
+  document.getElementById("fSettlePeriodStart").value = periodStart;
+  document.getElementById("fSettlePeriodEnd").value = periodEnd;
+  document.getElementById("fSettleDate").value = new Date().toISOString().slice(0, 10);
+  document.getElementById("fSettleReference").value = "";
+  document.getElementById("fSettleNotes").value = "";
+  document.getElementById("commissionSettleSummary").textContent = `${name}, ${label}`;
+  openModal("commissionSettleModal");
+}
+
+async function saveCommissionSettlement() {
+  const ok = FinanceForm.validateRequiredFields("commissionSettleModal", [{ id: "fSettleDate", label: "Date paid" }]);
+  if (!ok) return;
+  const btn = document.getElementById("commissionSettleSaveBtn");
+  if (btn) btn.disabled = true;
+  try {
+    await FinanceApi.settleCommissions({
+      salesperson_id: parseInt(document.getElementById("fSettleSalespersonId").value, 10),
+      period_start: document.getElementById("fSettlePeriodStart").value,
+      period_end: document.getElementById("fSettlePeriodEnd").value,
+      settled_date: document.getElementById("fSettleDate").value,
+      reference: document.getElementById("fSettleReference").value.trim() || null,
+      notes: document.getElementById("fSettleNotes").value.trim() || null,
+    });
+    toast("Settlement confirmed", "fa-solid fa-circle-check");
+    closeModal("commissionSettleModal");
+    if (typeof loadSalesCommissionsReport === "function") await loadSalesCommissionsReport();
+  } catch (err) {
+    toast(err.message || "Failed to confirm the settlement", "fa-solid fa-triangle-exclamation");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function undoCommissionSettlement(id) {
+  const result = await FinanceCommand.confirmAction({
+    title: "Undo settlement",
+    summary: `Settlement #${id}`,
+    consequence: "The commissions in this settlement go back to unsettled. Their receipts can then be reversed again.",
+    actionLabel: "Undo settlement",
+    actionClass: "btn btn-danger",
+    requireReason: false,
+    severity: "warning",
+  });
+  if (!result.confirmed) return;
+  try {
+    await FinanceApi.undoCommissionSettlement(id);
+    toast("Settlement undone", "fa-solid fa-circle-check");
+    if (typeof loadSalesCommissionsReport === "function") await loadSalesCommissionsReport();
+  } catch (err) {
+    toast(err.message || "Failed to undo the settlement", "fa-solid fa-triangle-exclamation");
+  }
 }
 
 async function saveFinanceSalesperson() {
@@ -111,6 +177,7 @@ async function saveFinanceSalesperson() {
     name: document.getElementById("fSalespersonName").value.trim(),
     email: document.getElementById("fSalespersonEmail").value.trim() || null,
     employee_id: emp ? parseInt(emp, 10) : null,
+    settlement_frequency: document.getElementById("fSalespersonFrequency").value,
     notes: document.getElementById("fSalespersonNotes").value.trim() || null,
   };
   const btn = document.getElementById("financeSalespersonSaveBtn");
@@ -175,3 +242,7 @@ window.openEditFinanceSalespersonModal = openEditFinanceSalespersonModal;
 window.saveFinanceSalesperson = saveFinanceSalesperson;
 window.toggleFinanceSalespersonActive = toggleFinanceSalespersonActive;
 window.fillCustomerSalespersonOptions = fillCustomerSalespersonOptions;
+window.onSalespersonEmployeeChanged = onSalespersonEmployeeChanged;
+window.openCommissionSettleModal = openCommissionSettleModal;
+window.saveCommissionSettlement = saveCommissionSettlement;
+window.undoCommissionSettlement = undoCommissionSettlement;

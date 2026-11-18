@@ -19,6 +19,8 @@ from finance.schemas import (
     SalespersonCreate,
     SalespersonResponse,
     SalespersonUpdate,
+    SettlementCreate,
+    SettlementResponse,
 )
 from finance.services.commissions_service import CommissionsService, quarter_bounds
 
@@ -98,3 +100,26 @@ def commission_quarter_report(
     year = year or today.year
     quarter = quarter or (today.month - 1) // 3 + 1
     return service.quarter_report(year, quarter, salesperson_id=salesperson_id)
+
+
+def _actor(current_user) -> str:
+    return (current_user.get("email") or current_user.get("sub")) if isinstance(current_user, dict) else "user"
+
+
+@router.post("/commissions/settlements", response_model=SettlementResponse, status_code=status.HTTP_201_CREATED)
+def settle_commissions(
+    payload: SettlementCreate,
+    current_user: dict = Depends(require_permission("finance.commission.write")),
+    service: CommissionsService = Depends(get_commissions_service),
+):
+    """Confirm that a salesperson's unsettled commissions for a month (employees) or quarter (others) were paid out. Records only; posts nothing to the ledger."""
+    return service.settle(payload, actor=_actor(current_user))
+
+
+@router.post("/commissions/settlements/{settlement_id}/undo", response_model=SettlementResponse)
+def undo_commission_settlement(
+    settlement_id: int,
+    current_user: dict = Depends(require_permission("finance.commission.write")),
+    service: CommissionsService = Depends(get_commissions_service),
+):
+    return service.undo_settlement(settlement_id, actor=_actor(current_user))

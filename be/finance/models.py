@@ -68,8 +68,40 @@ class SalespersonDB(Base):
     email = Column(String(255), nullable=True)
     employee_id = Column(Integer, ForeignKey("employees.id", ondelete="SET NULL"), nullable=True, index=True)  # set when the salesperson is on staff
     notes = Column(Text, nullable=True)
+    settlement_frequency = Column(String(10), default="quarterly", nullable=False, server_default="quarterly")  # monthly (employees) | quarterly (others)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        CheckConstraint(_one_of("settlement_frequency", ("monthly", "quarterly")), name="ck_finance_salespeople_settlement_frequency"),
+    )
+
+
+class CommissionSettlementDB(Base):
+    """
+    Confirmation that a salesperson's commissions for a month or quarter were settled (paid out elsewhere).
+    HRFlow only records the confirmation; no ledger posting. Undoing keeps the row (status 'undone').
+    """
+    __tablename__ = "finance_commission_settlements"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    salesperson_id = Column(Integer, ForeignKey("finance_salespeople.id", ondelete="RESTRICT"), nullable=False, index=True)
+    period_start = Column(String(20), nullable=False)  # first day of the settled month or quarter
+    period_end = Column(String(20), nullable=False)
+    settled_date = Column(String(20), nullable=False)  # date the payout was made
+    reference = Column(String(255), nullable=True)
+    notes = Column(Text, nullable=True)
+    settled_by = Column(String(255), nullable=True)
+    status = Column(String(20), default="settled", nullable=False, index=True)  # settled | undone
+    undone_at = Column(DateTime, nullable=True)
+    undone_by = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        CheckConstraint(_one_of("status", ("settled", "undone")), name="ck_finance_commission_settlements_status"),
+    )
+
+    salesperson = relationship("SalespersonDB")
 
 
 class SalesCommissionDB(Base):
@@ -92,6 +124,7 @@ class SalesCommissionDB(Base):
     status = Column(String(20), default="accrued", nullable=False, index=True)  # accrued | void
     void_reason = Column(Text, nullable=True)
     voided_at = Column(DateTime, nullable=True)
+    settlement_id = Column(Integer, ForeignKey("finance_commission_settlements.id", ondelete="RESTRICT"), nullable=True, index=True)  # set while settled
     created_at = Column(DateTime, default=datetime.utcnow)
 
     __table_args__ = (

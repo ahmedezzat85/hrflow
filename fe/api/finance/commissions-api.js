@@ -11,9 +11,9 @@
 
   if (!FinanceMockState.salespeople) {
     FinanceMockState.salespeople = [
-      { id: 1, name: "Sarah Connor", email: "sarah@example.com", employee_id: null, employee_name: null, notes: null, is_active: true, customer_count: 2 },
-      { id: 2, name: "Omar Khaled", email: null, employee_id: 7, employee_name: "Omar Khaled", notes: "On staff", is_active: true, customer_count: 1 },
-      { id: 3, name: "Retired Rep", email: null, employee_id: null, employee_name: null, notes: null, is_active: false, customer_count: 0 },
+      { id: 1, name: "Sarah Connor", email: "sarah@example.com", employee_id: null, employee_name: null, notes: null, settlement_frequency: "quarterly", is_active: true, customer_count: 2 },
+      { id: 2, name: "Omar Khaled", email: null, employee_id: 7, employee_name: "Omar Khaled", notes: "On staff", settlement_frequency: "monthly", is_active: true, customer_count: 1 },
+      { id: 3, name: "Retired Rep", email: null, employee_id: null, employee_name: null, notes: null, settlement_frequency: "quarterly", is_active: false, customer_count: 0 },
     ];
   }
   if (!FinanceMockState.commissions) {
@@ -23,6 +23,8 @@
       { id: 3, salesperson_id: 2, salesperson_name: "Omar Khaled", customer_id: 3, customer_name: "Delta Imaging", invoice_id: 103, invoice_number: "INV-2026-103", currency: "USD", base_amount: 4000, rate: 2.5, amount: 100, earned_date: "2026-07-15", status: "accrued", void_reason: null },
     ];
   }
+
+  if (!FinanceMockState.commissionSettlements) FinanceMockState.commissionSettlements = [];
 
   const _round = (n) => Math.round(n * 100) / 100;
   const _name = (id) => { const s = id ? FinanceMockState.salespeople.find((x) => x.id === Number(id)) : null; return s ? s.name : null; };
@@ -65,7 +67,7 @@
       if (_isMock()) {
         const name = String(payload.name || "").trim();
         if (FinanceMockState.salespeople.some((s) => s.name.toLowerCase() === name.toLowerCase())) throw new Error(`A salesperson named '${name}' already exists`);
-        const s = { id: Math.max(0, ...FinanceMockState.salespeople.map((x) => x.id)) + 1, name, email: payload.email || null, employee_id: payload.employee_id || null, employee_name: null, notes: payload.notes || null, is_active: true, customer_count: 0 };
+        const s = { id: Math.max(0, ...FinanceMockState.salespeople.map((x) => x.id)) + 1, name, email: payload.email || null, employee_id: payload.employee_id || null, employee_name: null, notes: payload.notes || null, settlement_frequency: payload.settlement_frequency || (payload.employee_id ? "monthly" : "quarterly"), is_active: true, customer_count: 0 };
         FinanceMockState.salespeople.push(s);
         return s;
       }
@@ -92,11 +94,55 @@
           .sort((a, b) => a.salesperson_name.localeCompare(b.salesperson_name) || a.earned_date.localeCompare(b.earned_date));
         const grouped = {};
         lines.forEach((l) => { (grouped[l.salesperson_id] || (grouped[l.salesperson_id] = [])).push(l); });
-        const salespeople = Object.values(grouped).map((g) => ({ salesperson_id: g[0].salesperson_id, salesperson_name: g[0].salesperson_name, totals: _totals(g), lines: g }));
+        const salespeople = Object.values(grouped).map((g) => {
+          const sid = g[0].salesperson_id;
+          const freq = (FinanceMockState.salespeople.find((s) => s.id === sid) || {}).settlement_frequency || "quarterly";
+          const byPeriod = {};
+          g.forEach((l) => {
+            const key = freq === "monthly" ? l.earned_date.slice(0, 7) : "q";
+            (byPeriod[key] || (byPeriod[key] = [])).push(l);
+          });
+          const periods = Object.keys(byPeriod).sort().map((key) => {
+            const plines = byPeriod[key];
+            let ps = start, pe = end, label = `Q${quarter} ${year}`;
+            if (freq === "monthly") {
+              const y = Number(key.slice(0, 4)), m = Number(key.slice(5, 7));
+              ps = `${key}-01`; pe = `${key}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, "0")}`;
+              label = `${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][m - 1]} ${y}`;
+            }
+            const sts = FinanceMockState.commissionSettlements.filter((s) => s.status === "settled" && s.salesperson_id === sid && s.period_start === ps && s.period_end === pe);
+            return { period_start: ps, period_end: pe, label, totals: _totals(plines), lines: plines, unsettled_count: plines.filter((l) => !l.settlement_id).length, settlements: sts };
+          });
+          return { salesperson_id: sid, salesperson_name: g[0].salesperson_name, settlement_frequency: freq, totals: _totals(g), lines: g, periods };
+        });
         return { year, quarter, period_start: start, period_end: end, salespeople, grand_totals: _totals(lines) };
       }
       const qs = new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ""))).toString();
       return apiRequest("GET", `/api/finance/commissions/report${qs ? "?" + qs : ""}`);
+    },
+    async settleCommissions(payload) {
+      if (_isMock()) {
+        const sp = FinanceMockState.salespeople.find((s) => s.id === Number(payload.salesperson_id));
+        if (!sp) throw new Error("Salesperson not found");
+        const lines = FinanceMockState.commissions.filter((c) => c.salesperson_id === sp.id && c.status === "accrued" && !c.settlement_id && c.earned_date >= payload.period_start && c.earned_date <= payload.period_end);
+        if (!lines.length) throw new Error("Nothing to settle: no unsettled commissions in this period");
+        const st = { id: Math.max(0, ...FinanceMockState.commissionSettlements.map((x) => x.id)) + 1, salesperson_id: sp.id, period_start: payload.period_start, period_end: payload.period_end, settled_date: payload.settled_date, reference: payload.reference || null, notes: payload.notes || null, settled_by: "admin@hrflow.test", status: "settled", line_count: lines.length, totals: _totals(lines) };
+        FinanceMockState.commissionSettlements.push(st);
+        lines.forEach((l) => { l.settlement_id = st.id; });
+        return st;
+      }
+      return apiRequest("POST", "/api/finance/commissions/settlements", payload);
+    },
+    async undoCommissionSettlement(id) {
+      if (_isMock()) {
+        const st = FinanceMockState.commissionSettlements.find((x) => x.id === Number(id));
+        if (!st) throw new Error("Settlement not found");
+        if (st.status !== "settled") throw new Error("This settlement was already undone");
+        st.status = "undone";
+        FinanceMockState.commissions.forEach((l) => { if (l.settlement_id === st.id) l.settlement_id = null; });
+        return st;
+      }
+      return apiRequest("POST", `/api/finance/commissions/settlements/${id}/undo`);
     },
     _salespersonName: _name,
   };

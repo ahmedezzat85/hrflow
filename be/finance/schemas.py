@@ -3182,7 +3182,7 @@ class SalespersonBase(BaseModel):
 
 
 class SalespersonCreate(SalespersonBase):
-    pass
+    settlement_frequency: Optional[str] = Field(None, pattern="^(monthly|quarterly)$", description="Defaults to monthly for employees, quarterly otherwise")
 
 
 class SalespersonUpdate(BaseModel):
@@ -3190,11 +3190,13 @@ class SalespersonUpdate(BaseModel):
     email: Optional[str] = Field(None, max_length=255)
     employee_id: Optional[int] = None
     notes: Optional[str] = None
+    settlement_frequency: Optional[str] = Field(None, pattern="^(monthly|quarterly)$")
     is_active: Optional[bool] = None
 
 
 class SalespersonResponse(SalespersonBase):
     id: int
+    settlement_frequency: str = "quarterly"
     employee_name: Optional[str] = None
     is_active: bool
     customer_count: int = 0
@@ -3216,6 +3218,7 @@ class CommissionLine(BaseModel):
     earned_date: str
     status: str
     void_reason: Optional[str] = None
+    settlement_id: Optional[int] = None
 
 
 class CommissionTotal(BaseModel):
@@ -3225,11 +3228,46 @@ class CommissionTotal(BaseModel):
     amount: float
 
 
+class SettlementCreate(BaseModel):
+    salesperson_id: int
+    period_start: str = Field(..., description="First day of the month or quarter being settled")
+    period_end: str = Field(..., description="Last day of the month or quarter being settled")
+    settled_date: str = Field(..., description="Date the payout was made (YYYY-MM-DD)")
+    reference: Optional[str] = Field(None, max_length=255)
+    notes: Optional[str] = None
+
+
+class SettlementResponse(BaseModel):
+    id: int
+    salesperson_id: int
+    period_start: str
+    period_end: str
+    settled_date: str
+    reference: Optional[str] = None
+    notes: Optional[str] = None
+    settled_by: Optional[str] = None
+    status: str
+    line_count: int = 0
+    totals: List[CommissionTotal] = Field(default_factory=list)
+
+
+class CommissionPeriod(BaseModel):
+    period_start: str
+    period_end: str
+    label: str
+    totals: List[CommissionTotal]
+    lines: List[CommissionLine]
+    unsettled_count: int
+    settlements: List[SettlementResponse] = Field(default_factory=list)
+
+
 class CommissionSalespersonReport(BaseModel):
     salesperson_id: int
     salesperson_name: str
+    settlement_frequency: str = "quarterly"
     totals: List[CommissionTotal]
     lines: List[CommissionLine]
+    periods: List[CommissionPeriod] = Field(default_factory=list)
 
 
 class CommissionQuarterReport(BaseModel):

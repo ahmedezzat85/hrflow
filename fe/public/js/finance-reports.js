@@ -2594,21 +2594,7 @@ async function loadSalesCommissionsReport() {
     const people = data.salespeople || [];
     if (empty) empty.style.display = people.length ? "none" : "block";
     if (!holder) return;
-    holder.innerHTML = people.map((p) => `
-      <div class="card" data-salesperson-id="${p.salesperson_id}">
-        <h4>${esc(p.salesperson_name)}</h4>
-        <table class="responsive-card-table">
-          <thead>
-            <tr>
-              <th>Paid on</th>
-              <th>Invoice</th>
-              <th>Customer</th>
-              <th class="fr-u54">Net amount</th>
-              <th class="fr-u54">Rate</th>
-              <th class="fr-u54">Commission</th>
-            </tr>
-          </thead>
-          <tbody>${(p.lines || []).map((l) => `
+    const lineRows = (lines) => lines.map((l) => `
             <tr>
               <td data-label="Paid on">${esc(l.earned_date)}</td>
               <td data-label="Invoice">${esc(l.invoice_number)}</td>
@@ -2616,17 +2602,37 @@ async function loadSalesCommissionsReport() {
               <td data-label="Net amount" class="fr-u54">${FinanceUI.moneyHtml(l.base_amount, l.currency)}</td>
               <td data-label="Rate" class="fr-u54">${l.rate}%</td>
               <td data-label="Commission" class="fr-u54"><strong>${FinanceUI.moneyHtml(l.amount, l.currency)}</strong></td>
-            </tr>`).join("")}
-          </tbody>
-          <tfoot class="fr-u62">${(p.totals || []).map((t) => `
+              <td data-label="Settled">${l.settlement_id ? '<span class="badge-pill pill-success">Settled</span>' : '<span class="badge-pill pill-warning">Open</span>'}</td>
+            </tr>`).join("");
+    const periodHtml = (p, per) => {
+      const settleBtn = per.unsettled_count
+        ? `<button class="btn btn-fill btn-commission-settle" onclick="openCommissionSettleModal(${p.salesperson_id}, '${per.period_start}', '${per.period_end}', '${esc(per.label)}', '${esc(p.salesperson_name).replace(/'/g, "&#39;")}')">Confirm settlement (${per.unsettled_count})</button>`
+        : "";
+      const done = (per.settlements || []).map((st) => `
+        <div class="fv-hint" data-settlement-id="${st.id}">Settled on ${esc(st.settled_date)}${st.reference ? `, ref ${esc(st.reference)}` : ""}${st.settled_by ? ` by ${esc(st.settled_by)}` : ""}
+          <button class="btn btn-outline btn-commission-undo" onclick="undoCommissionSettlement(${st.id})">Undo</button></div>`).join("");
+      return `
+        <div class="fr-u18" data-period-start="${per.period_start}">
+          <strong>${esc(per.label)}</strong>
+          ${(per.totals || []).map((t) => `<span>${FinanceUI.moneyHtml(t.amount, t.currency)}</span>`).join(" ")}
+          ${settleBtn}
+        </div>
+        ${done}
+        <table class="responsive-card-table">
+          <thead>
             <tr>
-              <td colspan="3">Total (${esc(t.currency)}), ${t.count} invoice${t.count === 1 ? "" : "s"}</td>
-              <td class="fr-u54">${FinanceUI.moneyHtml(t.base_amount, t.currency)}</td>
-              <td></td>
-              <td class="fr-u54"><strong>${FinanceUI.moneyHtml(t.amount, t.currency)}</strong></td>
-            </tr>`).join("")}
-          </tfoot>
-        </table>
+              <th>Paid on</th><th>Invoice</th><th>Customer</th>
+              <th class="fr-u54">Net amount</th><th class="fr-u54">Rate</th><th class="fr-u54">Commission</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody>${lineRows(per.lines || [])}</tbody>
+        </table>`;
+    };
+    holder.innerHTML = people.map((p) => `
+      <div class="card" data-salesperson-id="${p.salesperson_id}">
+        <h4>${esc(p.salesperson_name)} <span class="fv-muted">settled ${p.settlement_frequency === "monthly" ? "monthly" : "quarterly"}</span></h4>
+        ${(p.periods || []).map((per) => periodHtml(p, per)).join("")}
+        <div class="fr-u62">${(p.totals || []).map((t) => `Total (${esc(t.currency)}), ${t.count} invoice${t.count === 1 ? "" : "s"}: ${FinanceUI.moneyHtml(t.amount, t.currency)}`).join(" | ")}</div>
       </div>`).join("");
   } catch (err) {
     console.error("Failed to load sales commissions report:", err);
@@ -2646,8 +2652,8 @@ function exportSalesCommissionsCsv() {
     if (/^[=+\-@]/.test(t)) t = "'" + t; // keep spreadsheet apps from running a name as a formula
     return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
   };
-  const rows = [["Salesperson", "Paid on", "Invoice", "Customer", "Currency", "Net amount", "Rate %", "Commission"]];
-  data.salespeople.forEach((p) => p.lines.forEach((l) => rows.push([p.salesperson_name, l.earned_date, l.invoice_number, l.customer_name, l.currency, l.base_amount, l.rate, l.amount])));
+  const rows = [["Salesperson", "Paid on", "Invoice", "Customer", "Currency", "Net amount", "Rate %", "Commission", "Status"]];
+  data.salespeople.forEach((p) => p.lines.forEach((l) => rows.push([p.salesperson_name, l.earned_date, l.invoice_number, l.customer_name, l.currency, l.base_amount, l.rate, l.amount, l.settlement_id ? "Settled" : "Open"])));
   const blob = new Blob([rows.map((r) => r.map(cell).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
