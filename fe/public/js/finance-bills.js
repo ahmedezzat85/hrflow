@@ -1719,7 +1719,8 @@ async function _saveBillPaymentImpl() {
     const paidSoFar = bill.amount_paid != null ? bill.amount_paid : 0;
     const remaining = round(bill.total - paidSoFar, 2);
     if (amount > remaining + 0.01) {
-      showToast(`Payment amount ($${amount.toFixed(2)}) exceeds remaining balance ($${remaining.toFixed(2)}).`, "error");
+      const billCurr = bill.currency || "USD";
+      showToast(`Payment amount (${FinanceFormat.formatMoney(amount, billCurr)}) exceeds remaining balance (${FinanceFormat.formatMoney(remaining, billCurr)}).`, "error");
       return;
     }
   }

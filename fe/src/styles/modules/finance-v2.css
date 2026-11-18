@@ -1476,6 +1476,11 @@
   white-space: nowrap;
 }
 
+/* Controls never fall back to the browser's Arial/monospace defaults (zero specificity, so explicit fonts still win) */
+.fv-dialog :where(input, select, textarea, button) {
+  font-family: inherit;
+}
+
 /* Dialog fields: .form-group and .form-field share one look */
 .fv-dialog .form-group label,
 .fv-dialog .form-field label {

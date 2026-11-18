@@ -63,11 +63,11 @@
       <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:14px;">
         Save the current filter configuration (period, basis, currency, comparison) for quick access in the future.
       </p>
-      <div class="form-group" style="margin-bottom:14px;">
+      <div class="form-field" style="margin-bottom:14px;">
         <label for="saveReportViewName" class="form-label" style="font-weight:600; font-size:0.85rem;">View Name *</label>
         <input type="text" id="saveReportViewName" class="form-input" placeholder="e.g., Monthly Cash Basis Review" style="width:100%;" required />
       </div>
-      <div class="form-group" style="margin-bottom:14px; display:flex; align-items:center; gap:8px;">
+      <div class="form-field" style="margin-bottom:14px; display:flex; align-items:center; gap:8px;">
         <input type="checkbox" id="saveReportViewIsDefault" style="width:16px; height:16px; cursor:pointer;" />
         <label for="saveReportViewIsDefault" style="font-size:0.85rem; cursor:pointer;">Set as my default view for this report</label>
       </div>
@@ -90,12 +90,12 @@
       <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:14px;">
         Schedules are saved, but reports are not emailed yet.
       </p>
-      <div class="form-group" style="margin-bottom:12px;">
+      <div class="form-field" style="margin-bottom:12px;">
         <label class="form-label" style="font-weight:600; font-size:0.85rem;">Target Report</label>
         <input type="text" id="scheduleReportTargetTitle" aria-label="Target report" class="form-input" style="width:100%; background:var(--bg-secondary);" readonly />
       </div>
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
-        <div class="form-group">
+        <div class="form-field">
           <label for="scheduleReportFrequency" class="form-label" style="font-weight:600; font-size:0.85rem;">Frequency *</label>
           <select id="scheduleReportFrequency" class="form-input" style="width:100%;">
             <option value="daily">Daily</option>
@@ -104,7 +104,7 @@
             <option value="quarterly">Quarterly</option>
           </select>
         </div>
-        <div class="form-group">
+        <div class="form-field">
           <label for="scheduleReportFormat" class="form-label" style="font-weight:600; font-size:0.85rem;">Export Format *</label>
           <select id="scheduleReportFormat" class="form-input" style="width:100%;">
             <option value="xlsx" selected>Excel (.xlsx)</option>
@@ -113,7 +113,7 @@
           </select>
         </div>
       </div>
-      <div class="form-group" style="margin-bottom:12px;">
+      <div class="form-field" style="margin-bottom:12px;">
         <label for="scheduleReportRecipients" class="form-label" style="font-weight:600; font-size:0.85rem;">Recipients (Comma-separated emails) *</label>
         <textarea id="scheduleReportRecipients" class="form-input" rows="2" placeholder="e.g. cfo@voyance.health, finance-team@voyance.health" style="width:100%; font-family:inherit;"></textarea>
       </div>
