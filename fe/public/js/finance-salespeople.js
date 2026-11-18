@@ -227,10 +227,14 @@ async function fillCustomerSalespersonOptions(selectedId) {
   const sel = document.getElementById("fCustomerSalesperson");
   if (!sel) return;
   let list = [];
-  try { list = (await FinanceApi.getSalespeople()) || []; } catch (_) { list = []; }
+  let failed = false;
+  try { list = (await FinanceApi.getSalespeople()) || []; } catch (_) { failed = true; }
   const esc = FinanceUI.esc;
   const usable = list.filter((s) => s.is_active || Number(s.id) === Number(selectedId));
-  sel.innerHTML = '<option value="">No salesperson</option>' + usable
+  const first = failed
+    ? "Could not load salespeople"
+    : (usable.length ? "No salesperson" : "No salespeople yet: add one in Settings > Salespeople");
+  sel.innerHTML = `<option value="">${first}</option>` + usable
     .map((s) => `<option value="${s.id}">${esc(s.name)}${s.is_active ? "" : " (inactive)"}</option>`).join("");
   sel.value = selectedId && usable.some((s) => Number(s.id) === Number(selectedId)) ? String(selectedId) : "";
 }
