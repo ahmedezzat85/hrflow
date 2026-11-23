@@ -206,6 +206,8 @@ class InvoicesService:
             reversed_at=payment.reversed_at,
             reversed_by=payment.reversed_by,
             reversal_reason=payment.reversal_reason,
+            reversal_date=payment.reversal_date,
+            reversal_kind=payment.reversal_kind,
             created_at=payment.created_at,
         )
 

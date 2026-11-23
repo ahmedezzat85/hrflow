@@ -431,3 +431,89 @@ def test_migration_backfills_reversed_payments_and_downgrades(tmp_path):
     cols = {c["name"] for c in sa.inspect(engine).get_columns("finance_payments")}
     assert "reversal_date" not in cols and "reversal_kind" not in cols and {"id", "amount", "reversal_reason"} <= cols
     assert sa.inspect(engine).get_check_constraints("finance_payments") == []
+
+
+# --- API (slice 2) ------------------------------------------------------------------------------------------------------------
+
+def _post_reverse(client, cookies, invoice_id, payment_id, **params):
+    return client.post(f"{BASE}/{invoice_id}/payments/{payment_id}/reverse", params=params, cookies=cookies)
+
+
+def test_api_dated_refund_returns_the_new_fields(app_client, admin_cookies):
+    acc = make_account(app_client, admin_cookies, balance=100000.0)
+    inv, pid = _receipt(app_client, admin_cookies, acc)
+    resp = _post_reverse(app_client, admin_cookies, inv["id"], pid, reason="Refunded", reversal_date=REFUND_DATE, kind="refund")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert (body["is_reversed"], body["reversal_date"], body["reversal_kind"], body["reversal_reason"]) == (True, REFUND_DATE, "refund", "Refunded")
+    assert [r["date"] for r in _ledger(acc)] == [RECEIPT_DATE, REFUND_DATE]
+    listed = app_client.get(f"{BASE}/{inv['id']}/payments", cookies=admin_cookies).json()
+    assert (listed[0]["reversal_date"], listed[0]["reversal_kind"]) == (REFUND_DATE, "refund")
+
+
+def test_api_old_call_is_unchanged(app_client, admin_cookies):
+    """Golden: the call with only `reason` behaves as before INV-REFUND-1 (dated today, same wording, same fields)."""
+    acc = make_account(app_client, admin_cookies, balance=0.0)
+    inv, pid = _receipt(app_client, admin_cookies, acc, amount=300.0, date="2025-02-02")
+    resp = app_client.post(f"{BASE}/{inv['id']}/payments/{pid}/reverse?reason=bounced", cookies=admin_cookies)
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["is_reversed"] is True and body["reversal_reason"] == "bounced" and body["reversed_at"]
+    assert body["amount"] == 300.0 and body["payment_date"] == "2025-02-02" and body["direction"] == "incoming"
+    assert (body["reversal_date"], body["reversal_kind"]) == (_today(), "correction")
+    rev = _ledger(acc)[-1]
+    assert (rev["date"], rev["description"], rev["source"]) == (_today(), f"Reversal of payment #{pid}: bounced", "payment_reversal")
+    assert app_client.get(f"{BASE}/{inv['id']}", cookies=admin_cookies).json()["status"] == "sent"
+
+
+@pytest.mark.parametrize("params,status,code", [
+    ({"reversal_date": "13-05-2025"}, 400, "reversal_date_invalid"),
+    ({"reversal_date": (datetime.utcnow() + timedelta(days=2)).strftime("%Y-%m-%d")}, 400, "reversal_date_future"),
+    ({"reversal_date": "2025-01-01"}, 400, "reversal_date_before_receipt"),
+    ({"kind": "gift"}, 400, "reversal_kind_invalid"),
+])
+def test_api_refusals_carry_their_code_and_write_nothing(app_client, admin_cookies, params, status, code):
+    acc = make_account(app_client, admin_cookies, balance=0.0)
+    inv, pid = _receipt(app_client, admin_cookies, acc, amount=75.0)
+    resp = _post_reverse(app_client, admin_cookies, inv["id"], pid, **params)
+    assert resp.status_code == status and resp.json()["detail"]["code"] == code
+    assert len(_ledger(acc)) == 1 and _payment(pid)["is_reversed"] is False
+
+
+def test_api_closed_month_is_409(app_client, admin_cookies):
+    acc = make_account(app_client, admin_cookies, balance=0.0)
+    inv, pid = _receipt(app_client, admin_cookies, acc, amount=75.0)
+    _close_month(acc, "2025-05")
+    resp = _post_reverse(app_client, admin_cookies, inv["id"], pid, reversal_date=REFUND_DATE, kind="refund")
+    assert resp.status_code == 409 and resp.json()["detail"]["code"] == "period_closed"
+    assert len(_ledger(acc)) == 1
+
+
+def test_api_permission_and_unknown_ids(app_client, admin_cookies, employee_cookies):
+    acc = make_account(app_client, admin_cookies, balance=0.0)
+    inv, pid = _receipt(app_client, admin_cookies, acc, amount=75.0)
+    assert _post_reverse(app_client, employee_cookies, inv["id"], pid, reversal_date=REFUND_DATE, kind="refund").status_code == 403
+    assert _payment(pid)["is_reversed"] is False
+    assert _post_reverse(app_client, admin_cookies, 999999, pid, kind="refund").status_code == 404
+    assert _post_reverse(app_client, admin_cookies, inv["id"], 999999, kind="refund").status_code == 404
+
+
+def test_bill_payment_responses_carry_null_reversal_fields(app_client, admin_cookies):
+    from finance.schemas import PaymentResponse
+    assert PaymentResponse.model_fields["reversal_date"].default is None and PaymentResponse.model_fields["reversal_kind"].default is None
+
+
+def test_mcp_lists_a_back_dated_reversal_on_its_own_date(app_client, admin_cookies):
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "mcp_server"))
+    import finance_tools
+    from test_finance_mcp_read import _mcp_client, _secret
+    acc = make_account(app_client, admin_cookies, balance=0.0, name="Refund MCP Account")
+    inv, pid = _receipt(app_client, admin_cookies, acc, amount=11168.0)
+    assert _post_reverse(app_client, admin_cookies, inv["id"], pid, reversal_date=REFUND_DATE, kind="refund").status_code == 200
+
+    client = _mcp_client(app_client, _secret())
+    jan = finance_tools.finance_list_transactions(client, "Refund MCP Account", "2025-01-01", "2025-01-31")
+    may = finance_tools.finance_list_transactions(client, "Refund MCP Account", "2025-05-01", "2025-05-31")
+    assert [t["source"] for t in jan["transactions"]] == ["invoice_payment"] and jan["total_in"] == 11168.0
+    assert [(t["date"], t["source"]) for t in may["transactions"]] == [(REFUND_DATE, "payment_reversal")] and may["total_out"] == 11168.0

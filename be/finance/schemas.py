@@ -1095,6 +1095,8 @@ class PaymentResponse(PaymentBase):
     reversed_at: Optional[datetime] = None
     reversed_by: Optional[str] = None
     reversal_reason: Optional[str] = None
+    reversal_date: Optional[str] = None   # the date the reversing ledger row carries (INV-REFUND-1); null for bill payments
+    reversal_kind: Optional[str] = None   # refund / correction; null for bill payments
 
     class Config:
         from_attributes = True
