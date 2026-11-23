@@ -8,7 +8,9 @@ from typing import List, Dict, Any, Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from finance.models import StatutoryObligationDB
+from sqlalchemy import func
+
+from finance.models import PaymentDB, StatutoryObligationDB
 from finance.repositories.statutory_repository import StatutoryObligationsRepository
 from finance.services.payroll_statutory_sync import backfill_finalized_runs
 from finance.services.vat_statutory_sync import VAT_SOURCE_TYPE, find_vat_obligation, month_vat_total, quarter_end_date
@@ -34,6 +36,12 @@ class StatutoryObligationsService:
     def _to_response(self, obl: StatutoryObligationDB) -> Dict[str, Any]:
         remaining = 0.0 if obl.status == "remitted" else max(0.0, round(obl.amount_accrued - (obl.amount_remitted or 0.0), 2))
         difference = round((obl.amount_remitted or 0.0) - obl.amount_accrued, 2) if obl.status == "remitted" else 0.0
+        # The date of the latest payment that is still in force (a reversed payment does not count); None until something is paid
+        paid_date = (
+            self.db.query(func.max(PaymentDB.payment_date))
+            .filter(PaymentDB.related_statutory_obligation_id == obl.id, PaymentDB.is_reversed == False)  # noqa: E712
+            .scalar()
+        )
         return {
             "id": obl.id,
             "obligation_type": obl.obligation_type,
@@ -48,6 +56,7 @@ class StatutoryObligationsService:
             "currency": obl.currency,
             "status": obl.status,
             "due_date": obl.due_date,
+            "paid_date": paid_date,
             "source_type": obl.source_type,
             "source_id": obl.source_id,
             "notes": obl.notes or "",

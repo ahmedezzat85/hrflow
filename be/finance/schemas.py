@@ -2743,6 +2743,7 @@ class StatutoryObligationResponse(BaseModel):
     currency: str = "EGP"
     status: str
     due_date: Optional[str] = None
+    paid_date: Optional[str] = None   # date of the latest payment still in force; null until something is paid
     source_type: str = "manual"
     source_id: Optional[int] = None
     notes: str = ""

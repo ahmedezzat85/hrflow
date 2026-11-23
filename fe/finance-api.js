@@ -8961,6 +8961,7 @@ async getEntityActivity(entityType, entityId) {
       currency: "EGP",
       status: "remitted",
       due_date: "2026-09-10",
+      paid_date: "2026-09-08",
       source_type: "invoice_tax_line",
       source_id: null,
       notes: "August sales tax / VAT remittance",
@@ -9131,6 +9132,7 @@ async getEntityActivity(entityType, entityId) {
       }
 
       obl.amount_remitted = round((obl.amount_remitted || 0) + settleAmt);
+      obl.paid_date = data.payment_date || new Date().toISOString().slice(0, 10);
       if (obl.amount_remitted >= obl.amount_accrued - 0.001 || data.final_payment) {
         obl.status = "remitted";
       } else {

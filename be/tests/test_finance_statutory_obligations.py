@@ -259,6 +259,28 @@ def test_settle_statutory_obligation(app_client, admin_cookies):
         assert all(tx.direction == "out" for tx in ledger_txs)
 
 
+def test_paid_date_is_the_latest_payment_date_and_empty_until_paid(app_client, admin_cookies):
+    """The Paid column of the statutory page: null until a payment is made, then the latest payment date."""
+    bank_id = _get_or_create_bank_account()
+    created = app_client.post("/api/finance/statutory-obligations", json={
+        "obligation_type": "withholding_tax", "period": "2026-08", "amount_accrued": 1000.0, "due_date": "2026-09-10",
+        "currency": "USD", "notes": "Paid date test"}, cookies=admin_cookies)
+    assert created.status_code == 201
+    obl_id = created.json()["id"]
+    assert created.json()["paid_date"] is None and created.json()["due_date"] == "2026-09-10"   # the due date is still stored
+
+    def pay(amount, date):
+        resp = app_client.post(f"/api/finance/statutory-obligations/{obl_id}/settle", json={
+            "amount": amount, "payment_date": date, "bank_account_id": bank_id, "currency": "USD"}, cookies=admin_cookies)
+        assert resp.status_code == 200, resp.text
+        return resp.json()
+
+    assert pay(400.0, "2026-09-08")["paid_date"] == "2026-09-08"
+    assert pay(600.0, "2026-09-12")["paid_date"] == "2026-09-12"
+    listed = {o["id"]: o for o in app_client.get("/api/finance/statutory-obligations", cookies=admin_cookies).json()}
+    assert listed[obl_id]["paid_date"] == "2026-09-12"
+
+
 def test_status_integrity_guard(app_client, admin_cookies):
     """FUX-408 status integrity guard: direct status manipulation via patch/update is rejected."""
     with get_db_context() as db:

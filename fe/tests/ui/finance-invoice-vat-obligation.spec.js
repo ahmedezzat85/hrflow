@@ -94,6 +94,6 @@ test.describe('Invoice VAT default and statutory obligation (D-060)', () => {
     const row = page.locator('#financeStatutoryTableBody tr:has-text("28,000")');
     await expect(row).toBeVisible();
     await expect(row).toContainText('Sales Tax');
-    await expect(row).toContainText('31');
+    await expect(row.locator('td').nth(1)).toHaveText('–');   // nothing paid yet (the quarter-end due date is checked in test_vat_statutory_sync.py)
   });
 });
