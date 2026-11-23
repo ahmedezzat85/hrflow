@@ -167,11 +167,16 @@ def reverse_invoice_payment(
     invoice_id: int,
     payment_id: int,
     reason: Optional[str] = Query(None, description="Reason for reversal"),
+    reversal_date: Optional[str] = Query(None, description="YYYY-MM-DD the money went back; default today. Not before the receipt, not in the future, not in a closed reconciliation month"),
+    kind: Optional[str] = Query(None, description="refund (money returned to the customer) or correction (entered wrongly, the default)"),
     current_user: dict = Depends(require_permission("finance.invoice.write")),
     service: InvoicesService = Depends(get_invoices_service),
 ):
-    """Reverse a previously recorded payment against an invoice."""
-    return service.reverse_payment(invoice_id, payment_id, reason=reason, actor=_actor_email(current_user))
+    """Reverse a previously recorded payment against an invoice, as of `reversal_date` (INV-REFUND-1)."""
+    return service.reverse_payment(
+        invoice_id, payment_id, reason=reason, actor=_actor_email(current_user),
+        reversal_date=reversal_date, reversal_kind=kind,
+    )
 
 
 @router.post("/{invoice_id}/remind")

@@ -37,8 +37,9 @@ VALID_REVENUE_CHANNELS = {
 
 
 class InvoicesService:
-    def __init__(self, repo: InvoicesRepository):
+    def __init__(self, repo: InvoicesRepository, audit=None):
         self.repo = repo
+        self.audit = audit
 
     def _validate_routing_and_channel(self, expected_bank_account_id: Optional[int], revenue_channel: Optional[str]):
         if revenue_channel and revenue_channel not in VALID_REVENUE_CHANNELS:
@@ -205,6 +206,8 @@ class InvoicesService:
             reversed_at=payment.reversed_at,
             reversed_by=payment.reversed_by,
             reversal_reason=payment.reversal_reason,
+            reversal_date=payment.reversal_date,
+            reversal_kind=payment.reversal_kind,
             created_at=payment.created_at,
         )
 
@@ -487,24 +490,50 @@ class InvoicesService:
 
         return self._payment_to_response(payment)
 
-    def reverse_payment(self, invoice_id: int, payment_id: int, reason: Optional[str] = None, actor: Optional[str] = None) -> PaymentResponse:
+    def reverse_payment(
+        self, invoice_id: int, payment_id: int, reason: Optional[str] = None, actor: Optional[str] = None,
+        reversal_date: Optional[str] = None, reversal_kind: Optional[str] = None,
+    ) -> PaymentResponse:
+        """Reverse a receipt as of `reversal_date` (default today) as a `refund` or a `correction` (default); INV-REFUND-1."""
         invoice = self.repo.get_by_id(invoice_id)
         if not invoice:
             raise HTTPException(status_code=404, detail=f"Invoice {invoice_id} not found")
 
         try:
-            reversed_payment = self.repo.reverse_payment(invoice_id, payment_id, reason=reason, reversed_by=actor)
+            reversed_payment = self.repo.reverse_payment(
+                invoice_id, payment_id, reason=reason, reversed_by=actor,
+                reversal_date=reversal_date, reversal_kind=reversal_kind,
+            )
         except LookupError as e:
             self.repo.db.rollback()
             raise HTTPException(status_code=404, detail=str(e))
         except inv_status.InvalidInvoiceTransition as e:
             self.repo.db.rollback()
             raise HTTPException(status_code=409, detail=e.detail())
+        except inv_status.ReceiptError as e:
+            self.repo.db.rollback()
+            raise HTTPException(status_code=409 if e.code == "period_closed" else 400, detail=e.detail())
         except ValueError as e:
             self.repo.db.rollback()
             raise HTTPException(status_code=400, detail=str(e))
 
+        self._audit_reversal(invoice_id, reversed_payment, actor, reason)
         return self._payment_to_response(reversed_payment)
+
+    def _audit_reversal(self, invoice_id: int, payment, actor: Optional[str], reason: Optional[str]) -> None:
+        """One activity entry per reversal, written after the reversal is committed (best effort, like the bill entries)."""
+        if not self.audit:
+            return
+        details = (
+            f"payment #{payment.id}; kind: {payment.reversal_kind}; reversal_date: {payment.reversal_date}; "
+            f"ledger row #{getattr(self.repo, 'last_reversal_ledger_id', None)}"
+        )
+        if reason and reason.strip():
+            details += f"; reason: {reason.strip()}"
+        try:
+            self.audit.log("invoice.payment_reversed", actor or "user", "invoice", invoice_id, details)
+        except Exception:
+            pass
 
     def send_reminder(self, invoice_id: int) -> dict:
         invoice = self.repo.get_by_id(invoice_id)

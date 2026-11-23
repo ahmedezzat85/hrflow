@@ -64,7 +64,8 @@ def get_invoices_repo(db: Session = Depends(get_db)) -> InvoicesRepository:
 def get_invoices_service(
     repo: InvoicesRepository = Depends(get_invoices_repo),
 ) -> InvoicesService:
-    return InvoicesService(repo)
+    from repositories.sql.audit import SqlAuditRepository
+    return InvoicesService(repo, audit=SqlAuditRepository())
 
 
 def get_bills_repo(db: Session = Depends(get_db)) -> BillsRepository:

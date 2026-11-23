@@ -703,6 +703,21 @@ async getEntityActivity(entityType, entityId) {
               currency: inv.currency || "USD",
               date: inv.issue_date,
             },
+            ...(FinanceMockState.payments || [])
+              .filter((p) => p.related_invoice_id === inv.id)
+              .map((p) => ({
+                entity_type: "payment",
+                entity_id: p.id,
+                title: `Payment #${p.id} (${p.method || "bank_transfer"})` + (p.is_reversed ? " [REVERSED]" : ""),
+                badge: p.is_reversed && p.reversal_date ? `${p.reversal_kind === "refund" ? "Refunded" : "Reversed"} on ${p.reversal_date}` : `Paid into ${p.bank_account_name || "Bank"}`,
+                amount: p.amount,
+                currency: p.currency || inv.currency || "USD",
+                date: p.payment_date,
+                is_reversed: !!p.is_reversed,
+                reversal_date: p.reversal_date || null,
+                reversal_kind: p.reversal_kind || null,
+                reversal_reason: p.reversal_reason || null,
+              })),
           ],
           attachments: [
             {

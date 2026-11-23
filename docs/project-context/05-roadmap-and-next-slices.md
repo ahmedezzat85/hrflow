@@ -385,6 +385,18 @@ Decision D-056 (proposed), open question Q-026. Plan: `docs/finance-module/bank-
 | 3 | Decision, open question, roadmap and module doc | S | 1-2 |
 | Later | Owner answers to Q-026; an `import_batch_id` on ledger rows if batch queries or a batch undo are wanted | S | Q-026 |
 
+## 3R. Dated Invoice Refund (D-061 proposed November 23, 2026; built, awaiting review)
+
+Decision D-061 (proposed), open question Q-028. Plan: `docs/finance-module/invoice-refund-dated-reversal.md`. Branch `feature/invoice-refund-dated-reversal`. Risk class high (ledger posting, closed-month lock), migration 0080, no new permission key.
+
+| Slice | Scope | Size | Depends on |
+| :--- | :--- | :--- | :--- |
+| 1 | Migration 0080 (`reversal_date`, `reversal_kind`), dated reversal and kind in the repository and service, closed-month lock for the reversing row, activity entry, service tests | M | COMM-1 |
+| 2 | Optional `reversal_date` and `kind` on the reverse route, response fields, API and MCP tests, golden test for the old call | S | 1 |
+| 3 | Invoice drawer receipts with a Reverse button, dialog, mock parity, Playwright | M | 2 |
+| 4 | Decision, open question, roadmap and module doc | S | 1-3 |
+| Later | Owner answers to Q-028; the same dating for bill payment reversals | S | Q-028 |
+
 ## 4. Deferred Until Decision
 
 The following initiatives remain on hold until formally decided in [04-decision-log.md](04-decision-log.md):

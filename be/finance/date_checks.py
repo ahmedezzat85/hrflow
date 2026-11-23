@@ -30,7 +30,7 @@ DATE_COLUMNS: Dict[str, Dict[str, bool]] = {
     "finance_cheques": {"clear_date": True, "issue_date": False},
     "finance_employee_compensation_plans": {"effective_end_date": True, "effective_start_date": False},
     "finance_ledger_transactions": {"date": False, "period_end": True, "period_start": True},
-    "finance_payments": {"payment_date": False},
+    "finance_payments": {"payment_date": False, "reversal_date": True},
     "finance_payroll_rate_settings": {"effective_from": False},
     "finance_payroll_runs": {"payment_date": True, "period_end": False, "period_start": False},
     "finance_payroll_tax_settings": {"effective_from": False},

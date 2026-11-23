@@ -1095,6 +1095,8 @@ class PaymentResponse(PaymentBase):
     reversed_at: Optional[datetime] = None
     reversed_by: Optional[str] = None
     reversal_reason: Optional[str] = None
+    reversal_date: Optional[str] = None   # the date the reversing ledger row carries (INV-REFUND-1); null for bill payments
+    reversal_kind: Optional[str] = None   # refund / correction; null for bill payments
 
     class Config:
         from_attributes = True
@@ -1699,6 +1701,11 @@ class RelatedRecordItem(BaseModel):
     amount: Optional[float] = None
     currency: Optional[str] = None
     date: Optional[str] = None
+    # Invoice receipts only (INV-REFUND-1): whether the receipt was reversed, as of when, and why
+    is_reversed: bool = False
+    reversal_date: Optional[str] = None
+    reversal_kind: Optional[str] = None
+    reversal_reason: Optional[str] = None
 
 
 class EntityActivityResponse(BaseModel):

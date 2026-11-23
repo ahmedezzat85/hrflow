@@ -597,6 +597,8 @@ class PaymentDB(Base):
     reversed_at = Column(DateTime, nullable=True)
     reversed_by = Column(String(255), nullable=True)
     reversal_reason = Column(Text, nullable=True)
+    reversal_date = Column(String(20), nullable=True)  # YYYY-MM-DD the reversing ledger row carries (INV-REFUND-1); reversed_at is when the user acted
+    reversal_kind = Column(String(20), nullable=True)  # refund (money went back to the customer) / correction (entered wrongly)
     # The ledger row this payment posted (one payment, one ledger row); NULL for payments recorded before the link existed
     ledger_transaction_id = Column(Integer, ForeignKey("finance_ledger_transactions.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -604,6 +606,7 @@ class PaymentDB(Base):
     __table_args__ = (
         Index("uq_finance_payments_ledger_transaction_id", "ledger_transaction_id", unique=True),
         CheckConstraint(_one_of("direction", ("incoming", "outgoing")), name="ck_finance_payments_direction"),
+        CheckConstraint("reversal_kind IS NULL OR " + _one_of("reversal_kind", ("refund", "correction")), name="ck_finance_payments_reversal_kind"),
     )
 
     ledger_transaction = relationship("LedgerTransactionDB", foreign_keys=[ledger_transaction_id])

@@ -979,24 +979,105 @@ async function sendInvoiceReminderAction(invoiceId) {
   }
 }
 
+// ── Reverse a receipt (INV-REFUND-1) ─────────────────────────────────────────
+// A dedicated dialog: FinanceCommand.confirmAction has only a reason field, and a refund also needs a kind and the
+// date the money went back. The server enforces the date rules and the closed-month lock; this dialog mirrors them.
+let _refundReceipt = null;
+
+function _todayIso() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 async function reversePaymentAction(invoiceId, paymentId) {
-  const res = await FinanceCommand.confirmAction({
-    title: "Reverse Payment",
-    summary: `Payment #${paymentId} against Invoice #${invoiceId}`,
-    consequence: "Reversing this payment will restore the outstanding balance on the invoice, debit the bank account balance, and create an audit log and reversing ledger entry.",
-    actionLabel: "Reverse Payment",
-    actionClass: "btn btn-danger",
-    requireReason: true,
-    severity: "danger",
-  });
-  if (!res.confirmed) return;
+  let payment = null;
+  try {
+    const payments = await FinanceApi.getInvoicePayments(invoiceId);
+    payment = (payments || []).find((p) => Number(p.id) === Number(paymentId));
+  } catch (err) {
+    showToast("Could not load the receipt: " + (err.message || err), "error");
+    return;
+  }
+  if (!payment) {
+    showToast("Receipt not found", "error");
+    return;
+  }
+  _refundReceipt = payment;
+  FinanceForm.clearErrors("invoiceRefundModal");
+  document.getElementById("invoiceRefundInvoiceId").value = invoiceId;
+  document.getElementById("invoiceRefundPaymentId").value = paymentId;
+  document.getElementById("invoiceRefundSummary").textContent =
+    `Receipt #${payment.id} · ${FinanceFormat.formatMoney(payment.amount, payment.currency)} received ${payment.payment_date}`;
+  document.getElementById("invoiceRefundKindRefund").checked = true;
+  const dateInput = document.getElementById("invoiceRefundDate");
+  dateInput.min = payment.payment_date;
+  dateInput.max = _todayIso();
+  dateInput.value = _todayIso();
+  document.getElementById("invoiceRefundReason").value = "";
+  document.getElementById("invoiceRefundDate_error").style.display = "none";
+  updateInvoiceRefundConsequence();
+  openModal("invoiceRefundModal");
+  setTimeout(() => document.getElementById("invoiceRefundDate").focus(), 50);
+}
+
+function _refundDateError() {
+  const p = _refundReceipt;
+  const v = document.getElementById("invoiceRefundDate").value;
+  if (!v) return "Enter the date the money went back.";
+  if (p && v < p.payment_date) return `The date cannot be before the receipt date (${p.payment_date}).`;
+  if (v > _todayIso()) return "The date cannot be in the future.";
+  return "";
+}
+
+function updateInvoiceRefundConsequence() {
+  const p = _refundReceipt;
+  if (!p) return;
+  const kind = document.querySelector('input[name="invoiceRefundKind"]:checked')?.value || "refund";
+  const date = document.getElementById("invoiceRefundDate").value || "the chosen date";
+  const account = p.bank_account_name || "the receiving account";
+  const verb = kind === "refund" ? "refund" : "reversal";
+  document.getElementById("invoiceRefundConsequence").textContent =
+    `This posts a ${verb} of ${FinanceFormat.formatMoney(p.amount, p.currency)} out of ${account} dated ${date}, restores the outstanding balance on the invoice, and writes an audit entry. Nothing is deleted; the original receipt stays in the ledger.`;
+  const reason = document.getElementById("invoiceRefundReason").value.trim();
+  document.getElementById("invoiceRefundSubmitBtn").disabled = !reason;
+}
+
+function closeInvoiceRefundModal() {
+  closeModal("invoiceRefundModal");
+  _refundReceipt = null;
+}
+
+function submitInvoiceRefund() {
+  return withSubmitLock("invoiceRefundSubmitBtn", _submitInvoiceRefundImpl);
+}
+
+async function _submitInvoiceRefundImpl() {
+  const invoiceId = document.getElementById("invoiceRefundInvoiceId").value;
+  const paymentId = document.getElementById("invoiceRefundPaymentId").value;
+  const reason = document.getElementById("invoiceRefundReason").value.trim();
+  const kind = document.querySelector('input[name="invoiceRefundKind"]:checked')?.value || "refund";
+  const date = document.getElementById("invoiceRefundDate").value;
+  const dateErr = _refundDateError();
+  const dateErrEl = document.getElementById("invoiceRefundDate_error");
+  dateErrEl.textContent = dateErr;
+  dateErrEl.style.display = dateErr ? "block" : "none";
+  if (dateErr || !reason) return;
 
   try {
-    await FinanceApi.reverseInvoicePayment(invoiceId, paymentId, res.reason);
-    showToast("Payment reversed successfully", "success");
+    await FinanceApi.reverseInvoicePayment(invoiceId, paymentId, reason, date, kind);
+    closeInvoiceRefundModal();
+    const remaining = (await FinanceApi.getInvoicePayments(invoiceId)).filter((p) => !p.is_reversed);
+    showToast(
+      remaining.length ? "Receipt reversed successfully" : "Receipt reversed. The invoice is open again and can now be voided.",
+      "success"
+    );
     loadFinanceInvoices();
+    if (window.FinanceDrawer && FinanceDrawer.current && FinanceDrawer.current.entityType === "invoice") {
+      FinanceDrawer.open("invoice", Number(invoiceId), FinanceDrawer.current.triggerEl, false);
+    }
   } catch (err) {
-    showToast("Failed to reverse payment: " + (err.message || err), "error");
+    const msg = (err && err.detail && err.detail.message) || err.message || String(err);
+    showToast("Failed to reverse receipt: " + msg, "error");
   }
 }
 
@@ -1405,6 +1486,9 @@ window.saveInvoicePayment = saveInvoicePayment;
 window.sendInvoiceAction = sendInvoiceAction;
 window.sendInvoiceReminderAction = sendInvoiceReminderAction;
 window.reversePaymentAction = reversePaymentAction;
+window.updateInvoiceRefundConsequence = updateInvoiceRefundConsequence;
+window.closeInvoiceRefundModal = closeInvoiceRefundModal;
+window.submitInvoiceRefund = submitInvoiceRefund;
 window.switchInvoiceSubTab = switchInvoiceSubTab;
 window.loadFinanceCustomers = loadFinanceCustomers;
 window.filterFinanceCustomers = filterFinanceCustomers;

@@ -364,7 +364,8 @@ body.modal-open {
 }
 
 /* The shared confirmation dialog must sit above any modal or drawer that opens it */
-#financeConfirmModal {
+#financeConfirmModal,
+#invoiceRefundModal {   /* reverse receipt opens from the invoice drawer */
   z-index: 9999;
 }
 

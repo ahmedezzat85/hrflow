@@ -493,14 +493,24 @@ if (typeof window !== "undefined") window._withBook = _withBook;
     }
     return apiRequest("POST", `/api/finance/invoices/${invoiceId}/payments`, payload);
   },
-  async reverseInvoicePayment(invoiceId, paymentId, reason = null) {
+  // reversalDate (YYYY-MM-DD, default today) and kind ("refund" | "correction", default correction) are optional (INV-REFUND-1)
+  async reverseInvoicePayment(invoiceId, paymentId, reason = null, reversalDate = null, kind = null) {
     if (_isMock()) {
       const payment = FinanceMockState.payments.find((p) => p.id === parseInt(paymentId, 10));
       if (!payment) throw new Error("Payment not found");
       if (payment.is_reversed) throw new Error("Payment already reversed");
+      const today = new Date().toISOString().slice(0, 10);
+      const date = reversalDate || today;
+      const fail = (code, message) => { const e = new Error(message); e.detail = { code, message }; throw e; };
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date))) fail("reversal_date_invalid", "The reversal date must be a date in the form YYYY-MM-DD");
+      if (date > today) fail("reversal_date_future", "The reversal date cannot be in the future");
+      if (date < payment.payment_date) fail("reversal_date_before_receipt", `The reversal date cannot be before the receipt date (${payment.payment_date})`);
+      if (kind && kind !== "refund" && kind !== "correction") fail("reversal_kind_invalid", "The reversal kind must be 'refund' or 'correction'");
       payment.is_reversed = true;
       payment.reversed_at = new Date().toISOString();
       payment.reversal_reason = reason || null;
+      payment.reversal_date = date;
+      payment.reversal_kind = kind || "correction";
       const inv = FinanceMockState.invoices.find((i) => i.id === parseInt(invoiceId, 10));
       if (inv) {
         const { settled: totalPaid } = _refreshSettlement(inv);
@@ -511,7 +521,12 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       }
       return payment;
     }
-    return apiRequest("POST", `/api/finance/invoices/${invoiceId}/payments/${paymentId}/reverse${reason ? `?reason=${encodeURIComponent(reason)}` : ""}`);
+    const params = new URLSearchParams();
+    if (reason) params.set("reason", reason);
+    if (reversalDate) params.set("reversal_date", reversalDate);
+    if (kind) params.set("kind", kind);
+    const qs = params.toString();
+    return apiRequest("POST", `/api/finance/invoices/${invoiceId}/payments/${paymentId}/reverse${qs ? `?${qs}` : ""}`);
   },
   async sendInvoiceReminder(invoiceId) {
     if (_isMock()) {
@@ -7017,6 +7032,21 @@ async getEntityActivity(entityType, entityId) {
               currency: inv.currency || "USD",
               date: inv.issue_date,
             },
+            ...(FinanceMockState.payments || [])
+              .filter((p) => p.related_invoice_id === inv.id)
+              .map((p) => ({
+                entity_type: "payment",
+                entity_id: p.id,
+                title: `Payment #${p.id} (${p.method || "bank_transfer"})` + (p.is_reversed ? " [REVERSED]" : ""),
+                badge: p.is_reversed && p.reversal_date ? `${p.reversal_kind === "refund" ? "Refunded" : "Reversed"} on ${p.reversal_date}` : `Paid into ${p.bank_account_name || "Bank"}`,
+                amount: p.amount,
+                currency: p.currency || inv.currency || "USD",
+                date: p.payment_date,
+                is_reversed: !!p.is_reversed,
+                reversal_date: p.reversal_date || null,
+                reversal_kind: p.reversal_kind || null,
+                reversal_reason: p.reversal_reason || null,
+              })),
           ],
           attachments: [
             {
