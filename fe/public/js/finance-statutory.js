@@ -231,7 +231,7 @@ function renderFinanceStatutoryTable() {
 
     tr.innerHTML = `
       <td><div class="fv-cell-main">${_statutorySourceTile(obl)}<div class="fv-cell-main__text"><span class="fv-cell-main__name">${esc(typeLabel)}</span><span class="fv-sub" title="${esc(obl.notes || "")}">${esc(_statutorySourceLabel(obl.source_type))} &middot; ${esc(_statutoryPeriodLabel(obl.period))}${(obl.source_type || "manual") === "manual" && obl.notes ? ` &middot; ${esc(obl.notes)}` : ""}</span></div></div></td>
-      <td>${obl.due_date ? esc(FinanceUI.formatDate(obl.due_date)) : "–"}</td>
+      <td>${obl.paid_date ? esc(FinanceUI.formatDate(obl.paid_date)) : "–"}</td>
       <td class="cell-money fv-num fv-muted">${obl.amount_estimated !== null && obl.amount_estimated !== undefined ? cell(obl.amount_estimated, cur) : "–"}</td>
       <td class="cell-money fv-num">${cell(obl.amount_accrued, cur)}</td>
       <td class="cell-money fv-num">${cell(obl.amount_remitted || 0, cur)}</td>
