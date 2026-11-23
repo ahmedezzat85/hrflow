@@ -34,6 +34,7 @@ This register tracks unresolved product, accounting, and technical architecture 
 | Q-024 | May a Payment Exceed an Account's Balance (Overdraft)? | Open (raised October 26, 2026; decision needed only if an overdraft or credit-card account exists) |
 | Q-025 | Insurance Claim Payment: Defaults Awaiting Owner Confirmation | Resolved November 10, 2026 by D-053: the owner accepted the built defaults |
 | Q-027 | Finance MCP: Amounts of Employee-Related Ledger Rows | Open (raised November 16, 2026 with D-058) |
+| Q-028 | Dated Invoice Refund: Defaults Awaiting Owner Confirmation | Open (raised November 23, 2026 with D-061) |
 
 Everything else is resolved and kept in the archive section below.
 
@@ -204,6 +205,27 @@ Everything else is resolved and kept in the archive section below.
 - **Related References:**
   - [04-decision-log.md](04-decision-log.md) (`D-058`)
   - `mcp_server/finance_tools.py` (`_tx_view`)
+
+### Q-028 — Dated Invoice Refund: Defaults Awaiting Owner Confirmation
+- **Status:** Open. Raised November 23, 2026 with D-061. Each item is built as a default and marked "PROPOSED DEFAULT (Q-028 x)" in code.
+- **Decider:** Owner
+- **Question:**
+  Reversing a customer receipt as of the date the money went back (D-061) was built with the defaults below. Confirm or change each.
+  - **a. Refund versus correction.** Two labels stored on the payment; without one the reversal is a `correction`. Alternative: a free-text reason only, or more kinds.
+  - **b. Refund amount different from the receipt.** Not supported: the reversal equals the receipt, and a different refunded amount (for example USD 11,200 refunded against USD 11,168 received) is a separate manual transaction (for example Bank Fees or Other). Alternative: allow an amount, with the difference posted to a chosen category.
+  - **c. Closed-period lock for default-today reversals.** The lock now also refuses a reversal that defaults to today when today's month is closed for the account; before D-061 that path bypassed it. Alternative: keep the old bypass for the default path.
+  - **d. Void date.** Voiding keeps today's timestamp; there is no separate void date. Alternative: let the user date the void.
+  - **e. Permission.** Dated refunds stay under `finance.invoice.write`. Alternative: a separate key for refunds, so a refund can be limited to finance administrators.
+  - **f. Overdraft.** The reversal posts without a balance check, as before; it follows Q-024.
+- **Why It Matters:**
+  A refund changes historical balances and cash-basis revenue in the month it is dated. The closed-month lock is the safeguard, so (c) decides whether the safeguard has a hole.
+- **Known Current Context:**
+  - The real case: Edusoft invoice 25060002, USD 11,168 received 2025-01-22, refunded USD 11,200 on 2025-05-13; the USD 32 difference remains a manual entry (b).
+- **Decision Needed from Owner:**
+  Accept or change each item, then record the outcome in [04-decision-log.md](04-decision-log.md) (D-061).
+- **Related References:**
+  - [04-decision-log.md](04-decision-log.md) (`D-061`, `D-022`, `D-059`)
+  - `docs/finance-module/invoice-refund-dated-reversal.md`
 
 ## Resolved Questions (Archive)
 
