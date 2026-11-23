@@ -84,6 +84,23 @@ class LedgerRepository:
             self.db.commit()
         return bank_account.current_balance
 
+    def assert_period_open(self, account_id: int, tx_date: str) -> None:
+        """The closed-reconciliation-month lock: nothing is posted to an account in a month whose statement is closed.
+        Every posting path uses it (create_transaction, and the dated receipt reversal, INV-REFUND-1)."""
+        from finance.models import BankStatementImportDB
+        period = tx_date[:7]
+        closed_stmt = (
+            self.db.query(BankStatementImportDB)
+            .filter(
+                BankStatementImportDB.account_id == account_id,
+                BankStatementImportDB.period_month == period,
+                BankStatementImportDB.status == "closed",
+            )
+            .first()
+        )
+        if closed_stmt:
+            raise ValueError(f"Cannot post or modify transactions in closed reconciliation period '{period}'. The period must be reopened first.")
+
     def create_transaction(
         self,
         account_id: int,
@@ -103,21 +120,7 @@ class LedgerRepository:
         if not bank_account:
             raise ValueError(f"Account with ID {account_id} not found")
 
-        # Closed Period Lock Check
-        from finance.models import BankStatementImportDB
-        tx_date = data["date"]
-        period = tx_date[:7]
-        closed_stmt = (
-            self.db.query(BankStatementImportDB)
-            .filter(
-                BankStatementImportDB.account_id == account_id,
-                BankStatementImportDB.period_month == period,
-                BankStatementImportDB.status == "closed",
-            )
-            .first()
-        )
-        if closed_stmt:
-            raise ValueError(f"Cannot post or modify transactions in closed reconciliation period '{period}'. The period must be reopened first.")
+        self.assert_period_open(account_id, data["date"])  # Closed Period Lock Check
 
         amount = float(data["amount"])
         direction = data["direction"]

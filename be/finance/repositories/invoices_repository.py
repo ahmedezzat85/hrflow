@@ -397,12 +397,18 @@ class InvoicesRepository:
         return payment
 
     def reverse_payment(
-        self, invoice_id: int, payment_id: int, reason: Optional[str] = None, reversed_by: Optional[str] = None
+        self, invoice_id: int, payment_id: int, reason: Optional[str] = None, reversed_by: Optional[str] = None,
+        reversal_date: Optional[str] = None, reversal_kind: Optional[str] = None,
     ) -> PaymentDB:
         """
         Atomically reverse a receipt: mark it reversed, post a reversing ledger row (never deleted),
         recompute the account balance from the ledger, and derive the invoice status from the
         receipts that remain.
+
+        INV-REFUND-1: the reversing row is dated `reversal_date` (default today, UTC): the day the money went back.
+        It is not before the receipt, not in the future and not in a closed reconciliation month (also when defaulted
+        to today). `reversal_kind` is `refund` or `correction` (default). Refusals are ReceiptError with a code and
+        nothing is written. The reversal equals the receipt amount; a different refunded amount is a separate manual row.
         """
         from finance.repositories.ledger_repository import LedgerRepository
 
@@ -413,6 +419,37 @@ class InvoicesRepository:
         )
         if not payment:
             raise LookupError(f"Payment {payment_id} not found for invoice {invoice_id}")
+
+        today = datetime.utcnow().strftime("%Y-%m-%d")
+        # PROPOSED DEFAULT (Q-028 a): two kinds; without one the reversal is a correction, as before this change
+        kind = reversal_kind if reversal_kind is not None else "correction"
+        rev_date = reversal_date if reversal_date is not None else today
+        # 1 to 3: the date
+        try:
+            if len(rev_date) != 10 or datetime.strptime(rev_date, "%Y-%m-%d").strftime("%Y-%m-%d") != rev_date:
+                raise ValueError
+        except (ValueError, TypeError):
+            raise inv_status.ReceiptError("reversal_date_invalid", "The reversal date must be a date in the form YYYY-MM-DD")
+        if rev_date > today:
+            raise inv_status.ReceiptError("reversal_date_future", "The reversal date cannot be in the future")
+        if rev_date < payment.payment_date:
+            raise inv_status.ReceiptError("reversal_date_before_receipt", f"The reversal date cannot be before the receipt date ({payment.payment_date})")
+
+        bank_account = (
+            self.db.query(FinanceBankAccountDB)
+            .filter(FinanceBankAccountDB.id == payment.bank_account_id)
+            .first()
+        )
+        if not bank_account:
+            raise ValueError(f"Bank account {payment.bank_account_id} not found")
+        # 4: the same closed-month lock as every ledger posting. PROPOSED DEFAULT (Q-028 c): it also applies when the
+        # date defaults to today (before this change that path bypassed the lock).
+        try:
+            LedgerRepository(self.db).assert_period_open(bank_account.id, rev_date)
+        except ValueError as exc:
+            raise inv_status.ReceiptError("period_closed", str(exc))
+
+        # 5: the refusals that existed before
         if payment.is_reversed:
             raise ValueError(f"Payment {payment_id} has already been reversed")
 
@@ -426,38 +463,38 @@ class InvoicesRepository:
             raise ValueError("The sales commission on this invoice is already settled. Undo that settlement before reversing the receipt.")
         if invoice.status != inv_status.VOID:
             inv_status.next_status("reverse_receipt", invoice.status)
-
-        bank_account = (
-            self.db.query(FinanceBankAccountDB)
-            .filter(FinanceBankAccountDB.id == payment.bank_account_id)
-            .first()
-        )
-        if not bank_account:
-            raise ValueError(f"Bank account {payment.bank_account_id} not found")
+        # 6
+        if kind not in ("refund", "correction"):
+            raise inv_status.ReceiptError("reversal_kind_invalid", "The reversal kind must be 'refund' or 'correction'")
 
         payment.is_reversed = True
         payment.reversed_at = datetime.utcnow()
         payment.reversed_by = reversed_by
         payment.reversal_reason = (reason or "").strip() or None
+        payment.reversal_date = rev_date
+        payment.reversal_kind = kind
 
         rev_cat = self.db.query(TransactionCategoryDB).filter(TransactionCategoryDB.name == "Revenue").first()
-        self.db.add(LedgerTransactionDB(
+        label = "Refund" if kind == "refund" else "Reversal"
+        reversal_tx = LedgerTransactionDB(
             account_id=bank_account.id,
-            date=datetime.utcnow().strftime("%Y-%m-%d"),
+            date=rev_date,
             amount=payment.amount,
             direction="out",
             currency=payment.currency,
             category_id=rev_cat.id if rev_cat else None,
             reference=f"REV-{payment.reference or payment.id}",
-            description=f"Reversal of payment #{payment.id}" + (f": {reason.strip()}" if reason and reason.strip() else ""),
+            description=f"{label} of payment #{payment.id}" + (f": {reason.strip()}" if reason and reason.strip() else ""),
             source="payment_reversal",
             linked_invoice_id=invoice_id,
             customer_id=invoice.customer_id,
             revenue_source_id=revenue_mod.invoice_source_id(self.db),
             running_balance=0.0,
             created_by=reversed_by,
-        ))
+        )
+        self.db.add(reversal_tx)
         self.db.flush()
+        self.last_reversal_ledger_id = reversal_tx.id
         LedgerRepository(self.db).recalculate_account_running_balances(bank_account.id, commit=False)
 
         if invoice.status != inv_status.VOID:
