@@ -1701,6 +1701,11 @@ class RelatedRecordItem(BaseModel):
     amount: Optional[float] = None
     currency: Optional[str] = None
     date: Optional[str] = None
+    # Invoice receipts only (INV-REFUND-1): whether the receipt was reversed, as of when, and why
+    is_reversed: bool = False
+    reversal_date: Optional[str] = None
+    reversal_kind: Optional[str] = None
+    reversal_reason: Optional[str] = None
 
 
 class EntityActivityResponse(BaseModel):

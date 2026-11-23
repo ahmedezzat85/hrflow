@@ -1,0 +1,40 @@
+<!-- fe/src/partials/modals/invoice-refund-modal.html -->
+<!-- Reverse a customer receipt as of the date the money went back (INV-REFUND-1) -->
+<div id="invoiceRefundModal" class="modal-overlay fv fv-dialog fv-area-danger">
+  <div class="modal modal-v2" role="dialog" aria-modal="true" aria-labelledby="invoiceRefundTitle" aria-describedby="invoiceRefundConsequence">
+    <div class="modal-head">
+      <div class="modal-head-icon"><i class="fa-solid fa-rotate-left"></i></div>
+      <div class="modal-head-text">
+        <h3 id="invoiceRefundTitle">Reverse receipt</h3>
+        <p id="invoiceRefundSummary" class="fv-sub"></p>
+      </div>
+      <button type="button" class="modal-close" onclick="closeInvoiceRefundModal()" aria-label="Close dialog"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="invoiceRefundInvoiceId">
+      <input type="hidden" id="invoiceRefundPaymentId">
+      <div class="form-grid">
+        <fieldset class="form-field full fv-radio-group">
+          <legend>What happened to this receipt? <span class="req">*</span></legend>
+          <label class="fv-radio"><input type="radio" name="invoiceRefundKind" id="invoiceRefundKindRefund" value="refund" checked onchange="updateInvoiceRefundConsequence()"> Refunded to the customer</label>
+          <label class="fv-radio"><input type="radio" name="invoiceRefundKind" id="invoiceRefundKindCorrection" value="correction" onchange="updateInvoiceRefundConsequence()"> Entered by mistake</label>
+        </fieldset>
+        <div class="form-field full">
+          <label for="invoiceRefundDate">Date the money went back <span class="req">*</span></label>
+          <input type="date" id="invoiceRefundDate" onchange="updateInvoiceRefundConsequence()" required>
+          <div id="invoiceRefundDate_error" class="field-error-message" role="alert" style="display:none;"></div>
+        </div>
+        <div class="form-field full">
+          <label for="invoiceRefundReason">Reason <span class="req">*</span></label>
+          <textarea id="invoiceRefundReason" rows="2" placeholder="State the reason for audit and financial history..." oninput="updateInvoiceRefundConsequence()"></textarea>
+          <div id="invoiceRefundReason_error" class="field-error-message" role="alert" style="display:none;"></div>
+        </div>
+      </div>
+      <p id="invoiceRefundConsequence" class="fv-callout fv-callout--danger"></p>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" onclick="closeInvoiceRefundModal()">Cancel</button>
+      <button type="button" class="btn btn-danger" id="invoiceRefundSubmitBtn" onclick="submitInvoiceRefund()" disabled>Reverse receipt</button>
+    </div>
+  </div>
+</div>

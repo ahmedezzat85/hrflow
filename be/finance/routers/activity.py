@@ -197,11 +197,18 @@ def get_entity_activity(
             related.append(RelatedRecordItem(
                 entity_type="payment",
                 entity_id=p.id,
-                title=f"Payment #{p.id} ({p.method})",
-                badge=f"Paid into {bank_name}",
+                title=f"Payment #{p.id} ({p.method})" + (" [REVERSED]" if p.is_reversed else ""),
+                badge=(
+                    f"{'Refunded' if p.reversal_kind == 'refund' else 'Reversed'} on {p.reversal_date}"
+                    if p.is_reversed and p.reversal_date else f"Paid into {bank_name}"
+                ),
                 amount=p.amount,
                 currency=p.currency,
                 date=p.payment_date,
+                is_reversed=bool(p.is_reversed),
+                reversal_date=p.reversal_date,
+                reversal_kind=p.reversal_kind,
+                reversal_reason=p.reversal_reason,
             ))
 
         # Build timeline

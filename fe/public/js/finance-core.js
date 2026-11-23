@@ -1691,10 +1691,12 @@ const FinanceDrawer = {
                 <span class="badge badge-grey" style="font-size:0.72rem;">${rec.badge || rec.entity_type}</span>
                 ${rec.date ? `<span style="font-size:0.78rem; color:var(--text3);">${FinanceFormat.formatFinanceDate(rec.date)}</span>` : ""}
               </div>
+              ${rec.entity_type === "payment" && rec.is_reversed && rec.reversal_reason ? `<div class="fv-receipt-reversed">Reason: ${typeof escapeHtml === "function" ? escapeHtml(rec.reversal_reason) : rec.reversal_reason}</div>` : ""}
             </div>
             <div style="display:flex; align-items:center; gap:8px;">
               ${rec.amount !== null && rec.amount !== undefined ? `<div style="font-weight:700; font-size:0.95rem; font-variant-numeric:tabular-nums;">${FinanceFormat.renderMoneyHtml(rec.amount, rec.currency || "USD")}</div>` : ""}
               ${rec.entity_type === "payment" && !rec.is_reversed && this.current?.entityType === "bill" ? `<button class="btn btn-sm btn-danger btn-reverse-payment" onclick="event.stopPropagation(); confirmReverseBillPayment(${this.current.entityId}, ${rec.entity_id}, ${rec.amount})" style="font-size:0.75rem; padding: 2px 7px;" title="Reverse Payment"><i class="fa-solid fa-rotate-left"></i> Reverse</button>` : ""}
+              ${rec.entity_type === "payment" && !rec.is_reversed && this.current?.entityType === "invoice" && (typeof SessionInfo === "undefined" || SessionInfo.hasPermission("finance.invoice.write")) ? `<button type="button" class="btn btn-sm btn-danger btn-reverse-receipt" onclick="event.stopPropagation(); reversePaymentAction(${this.current.entityId}, ${rec.entity_id})" title="Reverse receipt"><i class="fa-solid fa-rotate-left"></i> Reverse</button>` : ""}
               <i class="fa-solid fa-chevron-right" style="font-size:0.8rem; color:var(--text3);"></i>
             </div>
           </div>

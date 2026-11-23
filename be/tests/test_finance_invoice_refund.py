@@ -517,3 +517,19 @@ def test_mcp_lists_a_back_dated_reversal_on_its_own_date(app_client, admin_cooki
     may = finance_tools.finance_list_transactions(client, "Refund MCP Account", "2025-05-01", "2025-05-31")
     assert [t["source"] for t in jan["transactions"]] == ["invoice_payment"] and jan["total_in"] == 11168.0
     assert [(t["date"], t["source"]) for t in may["transactions"]] == [(REFUND_DATE, "payment_reversal")] and may["total_out"] == 11168.0
+
+
+def test_invoice_drawer_lists_receipts_with_their_reversal(app_client, admin_cookies):
+    """The drawer the UI reads: a live receipt is plain, a refunded one carries its date, kind and reason."""
+    acc = make_account(app_client, admin_cookies, balance=0.0)
+    inv, pid = _receipt(app_client, admin_cookies, acc, amount=200.0)
+    live = app_client.get(f"/api/finance/activity/invoice/{inv['id']}", cookies=admin_cookies).json()
+    rec = next(r for r in live["related_records"] if r["entity_type"] == "payment")
+    assert (rec["is_reversed"], rec["reversal_date"], rec["badge"].startswith("Paid into")) == (False, None, True)
+
+    assert _post_reverse(app_client, admin_cookies, inv["id"], pid, reason="Money returned", reversal_date=REFUND_DATE, kind="refund").status_code == 200
+    out = app_client.get(f"/api/finance/activity/invoice/{inv['id']}", cookies=admin_cookies).json()
+    rec = next(r for r in out["related_records"] if r["entity_type"] == "payment")
+    assert rec["is_reversed"] is True and rec["badge"] == f"Refunded on {REFUND_DATE}"
+    assert (rec["reversal_date"], rec["reversal_kind"], rec["reversal_reason"]) == (REFUND_DATE, "refund", "Money returned")
+    assert "[REVERSED]" in rec["title"]
