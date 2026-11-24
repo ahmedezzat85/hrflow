@@ -39,7 +39,8 @@ test.describe('Story 1.2 — Shared Finance Data Table', () => {
     await expect(totalHeader).toBeVisible();
     await expect(totalHeader).toHaveAttribute('role', 'columnheader');
 
-    // Due starts with its arrow pointing down (newest first); the first click flips it to ascending
+    // The list opens ordered by Issued, newest first; Due has no starting arrow, so its first click sorts ascending
+    await expect(table.locator('th[data-sort="issue_date"]')).toHaveAttribute('aria-sort', 'descending');
     await totalHeader.click();
     await expect(totalHeader).toHaveAttribute('aria-sort', 'ascending');
 
@@ -47,18 +48,21 @@ test.describe('Story 1.2 — Shared Finance Data Table', () => {
     let firstRowText = await table.locator('tbody tr:first-child').textContent();
     expect(firstRowText).toContain('15 Aug 2026');
 
-    // Click Due header again -> the sort clears and the original order returns
+    // Second click flips to descending, third click clears the sort and the default order returns
     await totalHeader.click();
-    await expect(totalHeader).toHaveAttribute('aria-sort', 'descending'); // back to its starting arrow
+    await expect(totalHeader).toHaveAttribute('aria-sort', 'descending');
+    await totalHeader.click();
+    await expect(totalHeader).toHaveAttribute('aria-sort', 'none');
+    await expect(table.locator('th[data-sort="issue_date"]')).toHaveAttribute('aria-sort', 'descending');
 
-    // Test Keyboard navigation (Enter key on Customer Name header)
-    const customerHeader = table.locator('th[data-sort="customer_name"]');
-    await customerHeader.focus();
+    // Test Keyboard navigation (Enter key on the Invoice header, which sorts by invoice number)
+    const invoiceHeader = table.locator('th[data-sort="invoice_number"]');
+    await invoiceHeader.focus();
     await page.keyboard.press('Enter');
-    await expect(customerHeader).toHaveAttribute('aria-sort', 'ascending');
+    await expect(invoiceHeader).toHaveAttribute('aria-sort', 'ascending');
 
     firstRowText = await table.locator('tbody tr:first-child').textContent();
-    expect(firstRowText).toContain('Apex Health Partners');
+    expect(firstRowText).toContain('INV-2026-001');
   });
 
   test('Acceptance Criteria 3: Pagination controls paginate records, display summary, and change page size', async ({ page }) => {

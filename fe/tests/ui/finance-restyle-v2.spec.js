@@ -282,9 +282,10 @@ test.describe('Finance restyle v2: Sales (S4)', () => {
     await page.click('#custPillLate');
     await expect(page.locator('#financeCustomersTableBody tr')).toHaveCount(1);
     await page.click('#financeCustomerStatusPills [data-filter="all"]');
-    // the 360 drawer opens from the "Invoices" row action; the old "View 360" button is gone
+    // the 360 drawer opens from the customer name; the invoice list lives on the Invoices page (customer filter), so no row button
     await expect(page.locator('#financeCustomersTable')).not.toContainText('View 360');
-    await apex.locator('.btn-customer-invoices').click();
+    await expect(page.locator('.btn-customer-invoices')).toHaveCount(0);
+    await apex.locator('.fv-name-btn').click();
     await expect(page.locator('#financeDetailDrawerOverlay')).toBeVisible();
   });
 

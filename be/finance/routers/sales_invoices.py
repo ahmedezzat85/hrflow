@@ -87,7 +87,7 @@ def create_sales_invoice(
         idempotency_key=idempotency_key,
         user_email=user_email,
         endpoint_path="/api/finance/invoices:create",
-        operation_fn=lambda: service.create_invoice(payload),
+        operation_fn=lambda: service.create_invoice(payload, actor=user_email),
     )
 
 
@@ -99,7 +99,7 @@ def update_sales_invoice(
     service: InvoicesService = Depends(get_invoices_service),
 ):
     """Update an invoice's fields and/or replace its line items."""
-    return service.update_invoice(invoice_id, payload)
+    return service.update_invoice(invoice_id, payload, actor=_actor_email(current_user))
 
 
 @router.post("/{invoice_id}/send", response_model=SalesInvoiceResponse)
@@ -109,7 +109,7 @@ def send_sales_invoice(
     service: InvoicesService = Depends(get_invoices_service),
 ):
     """Transition an invoice to sent/issued status."""
-    return service.send_invoice(invoice_id)
+    return service.send_invoice(invoice_id, actor=_actor_email(current_user))
 
 
 @router.delete("/{invoice_id}", response_model=SalesInvoiceResponse)

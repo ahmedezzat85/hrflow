@@ -212,6 +212,9 @@ class SalesInvoiceDB(Base):
     voided_by = Column(String(255), nullable=True)
     voided_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(String(255), nullable=True)  # who entered the invoice (activity timeline)
+    sent_by = Column(String(255), nullable=True)  # who issued it; sent_at is when (NULL for invoices issued before it was recorded)
+    sent_at = Column(DateTime, nullable=True)
     import_batch_id = Column(Integer, ForeignKey("finance_import_batches.id", ondelete="SET NULL"), nullable=True, index=True)  # D-033
 
     __table_args__ = (
@@ -602,6 +605,7 @@ class PaymentDB(Base):
     # The ledger row this payment posted (one payment, one ledger row); NULL for payments recorded before the link existed
     ledger_transaction_id = Column(Integer, ForeignKey("finance_ledger_transactions.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(String(255), nullable=True)  # who recorded the payment (activity timeline)
 
     __table_args__ = (
         Index("uq_finance_payments_ledger_transaction_id", "ledger_transaction_id", unique=True),

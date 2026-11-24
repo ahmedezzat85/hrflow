@@ -23,6 +23,53 @@ function onInvoiceOverdueOnlyChange(checked) {
   applyAndRenderInvoices();
 }
 
+let _invoiceCustomerId = "";
+
+function onInvoiceCustomerFilterChange(value) {
+  _invoiceCustomerId = value || "";
+  const state = FinanceTable.getState("finance_invoices");
+  state.page = 1;
+  FinanceTable.saveState("finance_invoices", state);
+  applyAndRenderInvoices();
+}
+
+// One option per customer that has an invoice, by name. A selection survives a reload of the list.
+function _populateInvoiceCustomerFilter(all) {
+  const sel = document.getElementById("financeInvoiceCustomerFilter");
+  if (!sel) return;
+  const byId = new Map();
+  (all || []).forEach((inv) => {
+    if (inv.customer_id != null && !byId.has(String(inv.customer_id))) byId.set(String(inv.customer_id), inv.customer_name || `Customer ${inv.customer_id}`);
+  });
+  if (_invoiceCustomerId && !byId.has(_invoiceCustomerId)) _invoiceCustomerId = "";
+  const names = [...byId.entries()].sort((a, b) => a[1].localeCompare(b[1], undefined, { sensitivity: "base" }));
+  sel.innerHTML = "";
+  const addOption = (value, label) => {
+    const opt = document.createElement("option");
+    opt.value = value;
+    opt.textContent = label;
+    sel.appendChild(opt);
+  };
+  addOption("", "All customers");
+  names.forEach(([id, name]) => addOption(id, name));
+  sel.value = _invoiceCustomerId;
+}
+
+// Invoice numbers sort the way people read them (INV-2 before INV-10); other columns use the shared sorter.
+// With no column chosen the list is newest issue date first, then invoice number, so the order never depends on the server.
+const _invoiceNumberCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
+function _sortInvoices(items, sortBy, sortDir) {
+  if (sortBy === "invoice_number") {
+    const dir = sortDir === "desc" ? -1 : 1;
+    return [...items].sort((a, b) => _invoiceNumberCollator.compare(a.invoice_number || "", b.invoice_number || "") * dir);
+  }
+  if (sortBy) return FinanceTable.sortItems(items, sortBy, sortDir);
+  return [...items].sort((a, b) =>
+    String(b.issue_date || "").localeCompare(String(a.issue_date || "")) ||
+    _invoiceNumberCollator.compare(b.invoice_number || "", a.invoice_number || "")
+  );
+}
+
 function _updateInvoiceWorkQueueTabsUi(activeQueue) {
   const tabs = document.querySelectorAll("#financeInvoiceWorkQueueTabs .filter-tab");
   tabs.forEach((tab) => {
@@ -72,6 +119,7 @@ async function loadFinanceInvoices() {
     // The whole list is loaded: pills, counts and the overdue toggle filter on the client.
     const items = await FinanceApi.getInvoices();
     FinanceState.invoices = items || [];
+    _populateInvoiceCustomerFilter(FinanceState.invoices);
     applyAndRenderInvoices();
   } catch (err) {
     console.error("Failed to load finance invoices:", err);
@@ -100,6 +148,9 @@ function applyAndRenderInvoices() {
   if (_invoiceOverdueOnly) {
     items = items.filter((inv) => inv.is_overdue);
   }
+  if (_invoiceCustomerId) {
+    items = items.filter((inv) => String(inv.customer_id) === _invoiceCustomerId);
+  }
   if (currentSearch) {
     const q = currentSearch.toLowerCase();
     items = items.filter(
@@ -109,9 +160,7 @@ function applyAndRenderInvoices() {
     );
   }
 
-  if (state.sortBy) {
-    items = FinanceTable.sortItems(items, state.sortBy, state.sortDir);
-  }
+  items = _sortInvoices(items, state.sortBy, state.sortDir);
 
   const meta = FinanceTable.paginate(items, state.page, state.pageSize);
   state.page = meta.page;
@@ -1247,7 +1296,6 @@ function renderFinanceCustomers(items) {
         <td>${FinanceUI.statusPill(c.is_active ? "active" : "inactive", c.is_active ? "Active" : "Inactive", "", "status-badge-wrap")}</td>
         <td class="fv-num">${_customerOpenBalance(c)}</td>
         <td>${FinanceUI.rowActions({
-          primary: { label: "Invoices", kind: "outline", className: "btn-customer-invoices", onclick: `openCustomer360Drawer(${c.id})`, attrs: 'title="View complete 360 overview &amp; invoices"' },
           icons: [
             { icon: "fa-pen", label: "Edit Customer", onclick: `openEditCustomerModal(${c.id})` },
             { icon: c.is_active ? "fa-power-off" : "fa-check", label: c.is_active ? "Deactivate" : "Activate", onclick: `toggleCustomerActive(${c.id}, ${c.is_active})` },
@@ -1471,6 +1519,7 @@ async function toggleCustomerActive(id, currentlyActive) {
 window.loadFinanceInvoices = loadFinanceInvoices;
 window.setInvoiceWorkQueue = setInvoiceWorkQueue;
 window.onInvoiceOverdueOnlyChange = onInvoiceOverdueOnlyChange;
+window.onInvoiceCustomerFilterChange = onInvoiceCustomerFilterChange;
 window.setCustomerStatusFilter = setCustomerStatusFilter;
 window.filterFinanceInvoices = filterFinanceInvoices;
 window.openAddInvoiceModal = openAddInvoiceModal;

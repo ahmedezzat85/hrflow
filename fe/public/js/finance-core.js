@@ -1665,10 +1665,10 @@ const FinanceDrawer = {
             <div class="timeline-item">
               <span class="timeline-icon"></span>
               <div class="timeline-header">
-                <span class="timeline-actor"><i class="fa-regular fa-user" style="opacity:0.6; margin-right:4px;"></i>${evt.actor || "System"}</span>
+                <span class="timeline-actor"><i class="fa-regular fa-user" style="opacity:0.6; margin-right:4px;"></i>${FinanceUI.esc(evt.actor || "System")}</span>
                 <span class="timeline-time">${FinanceFormat.formatFinanceDate(evt.timestamp, true)}</span>
               </div>
-              <div class="timeline-text">${evt.plain_text}</div>
+              <div class="timeline-text">${FinanceUI.esc(evt.plain_text)}</div>
               ${transitionHtml}
             </div>
           `;

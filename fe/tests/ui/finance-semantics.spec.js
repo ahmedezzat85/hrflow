@@ -171,8 +171,8 @@ test.describe('Story 0.2 — Shared Money, Date, and Status Semantics', () => {
     await expect(invTotalHeader).toBeVisible();
     await expect(invTotalHeader).toContainText('Balance');
 
-    // Verify first row has right-aligned money with currency symbol $
-    const firstInvAmount = page.locator('#financeInvoicesTableBody td.cell-money').first();
+    // Verify the row has right-aligned money with currency symbol $ (the list opens newest issue date first, so pick by number)
+    const firstInvAmount = page.locator('#financeInvoicesTableBody tr:has-text("INV-2026-001") td.cell-money');
     await expect(firstInvAmount).toBeVisible();
     await expect(firstInvAmount).toContainText('$12,500.00');
 
