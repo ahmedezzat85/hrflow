@@ -442,6 +442,35 @@ def _find_in_legacy_dirs(ref: str, root: str) -> Optional[str]:
     return None
 
 
+def _legacy_allowed_dirs() -> list:
+    """Directories (besides the files root) that may hold legacy stored files."""
+    dirs = []
+    for key in ("BILL_UPLOADS_DIR", "FINANCE_UPLOADS_DIR", "LOCAL_STORAGE_PATH"):
+        val = (os.environ.get(key) or "").strip()
+        if val:
+            dirs.append(val)
+    dirs.append(os.path.join(_BE_DIR, "uploads"))
+    dirs.append(os.path.join(_BE_DIR, "storage"))
+    return dirs
+
+
+def _is_within(path: str, base: str) -> bool:
+    try:
+        real_path = os.path.normcase(os.path.realpath(path))
+        real_base = os.path.normcase(os.path.realpath(base))
+        return os.path.commonpath([real_base, real_path]) == real_base
+    except ValueError:
+        return False
+
+
+def _ensure_allowed(path: str, root: str, storage_ref: str) -> str:
+    """Refuses any resolved path whose real location is outside the files root and the legacy dirs."""
+    for base in [root] + _legacy_allowed_dirs():
+        if _is_within(path, base):
+            return path
+    raise ValueError(f"Security error: path outside storage root '{storage_ref}'")
+
+
 def resolve_path(
     storage_ref: str,
     root: Optional[str] = None,
@@ -469,15 +498,17 @@ def resolve_path(
     is_absolute = os.path.isabs(raw_ref) or (len(raw_ref) > 1 and raw_ref[1] == ":") or raw_ref.startswith("/") or raw_ref.startswith("\\")
     if is_absolute:
         abs_candidate = os.path.abspath(raw_ref)
+        # Only files under the files root or a legacy upload dir may be reached by absolute path.
+        # Anything else (e.g. /etc/passwd, /proc/self/environ) is refused, whether or not it exists.
         if os.path.isfile(abs_candidate):
-            return abs_candidate
+            return _ensure_allowed(abs_candidate, target_root, storage_ref)
         # Check legacy directories by basename if absolute file not found at original path
         legacy_found = _find_in_legacy_dirs(abs_candidate, target_root)
         if legacy_found:
-            return legacy_found
+            return _ensure_allowed(legacy_found, target_root, storage_ref)
         if must_exist:
             raise FileNotFoundError(f"File not found: {storage_ref}")
-        return abs_candidate
+        return _ensure_allowed(abs_candidate, target_root, storage_ref)
 
     # Relative path resolution against target_root
     clean_rel = os.path.normpath(clean_posix).lstrip("/\\")
@@ -503,14 +534,14 @@ def resolve_path(
         if common_real != real_root:
             raise ValueError(f"Security error: Symlink escape attempt '{storage_ref}'")
 
-    # If the file exists at the expected new path, return it
+    # If the file exists at the expected new path, return it (symlinked parents are checked too)
     if os.path.isfile(resolved):
-        return resolved
+        return _ensure_allowed(resolved, target_root, storage_ref)
 
     # Check legacy fallbacks
     legacy_found = _find_in_legacy_dirs(clean_rel, target_root)
     if legacy_found:
-        return legacy_found
+        return _ensure_allowed(legacy_found, target_root, storage_ref)
 
     if must_exist:
         raise FileNotFoundError(f"File not found: {storage_ref}")
@@ -612,4 +643,8 @@ def delete_file(
             return True
         return False
     except FileNotFoundError:
+        return False
+    except ValueError:
+        # Reference outside the storage root: never delete it
+        logger.warning("Refused to delete file outside storage root (ref=%r)", storage_ref)
         return False

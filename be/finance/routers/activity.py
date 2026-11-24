@@ -5,6 +5,7 @@ Provides unified activity, timeline history, linked records, and permission-awar
 for all finance entities (invoices, bills, transfers, cheques, transactions, accounts).
 """
 import os
+import file_layout
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status, Request
@@ -415,10 +416,10 @@ def get_entity_activity(
         if bill.attachment_name or bill.attachment_url:
             file_name = bill.attachment_name or "bill_document"
             file_size = 0
-            if bill.attachment_url and os.path.isfile(bill.attachment_url):
+            if bill.attachment_url:
                 try:
-                    file_size = os.path.getsize(bill.attachment_url)
-                except OSError:
+                    file_size = os.path.getsize(file_layout.resolve_path(bill.attachment_url, must_exist=True))
+                except (OSError, ValueError):
                     pass
             bill_attachments.append(FinanceAttachmentResponse(
                 id=bill.id,
