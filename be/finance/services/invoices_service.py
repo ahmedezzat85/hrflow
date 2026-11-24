@@ -41,6 +41,15 @@ class InvoicesService:
         self.repo = repo
         self.audit = audit
 
+    def _audit(self, action: str, actor: Optional[str], invoice_id: int, details: str = "") -> None:
+        """One activity entry per invoice action, written after the action is committed (best effort)."""
+        if not self.audit:
+            return
+        try:
+            self.audit.log(action, actor or "user", "invoice", invoice_id, details)
+        except Exception:
+            pass
+
     def _validate_routing_and_channel(self, expected_bank_account_id: Optional[int], revenue_channel: Optional[str]):
         if revenue_channel and revenue_channel not in VALID_REVENUE_CHANNELS:
             raise HTTPException(
@@ -260,7 +269,9 @@ class InvoicesService:
             raise HTTPException(status_code=404, detail=f"Invoice {invoice_id} not found")
         return self._invoice_to_response(invoice)
 
-    def create_invoice(self, payload: SalesInvoiceCreate, import_batch_id: Optional[int] = None) -> SalesInvoiceResponse:
+    def create_invoice(
+        self, payload: SalesInvoiceCreate, import_batch_id: Optional[int] = None, actor: Optional[str] = None
+    ) -> SalesInvoiceResponse:
         if payload.issue_date and payload.due_date and payload.due_date < payload.issue_date:
             raise HTTPException(
                 status_code=400,
@@ -283,7 +294,9 @@ class InvoicesService:
         ]
         if import_batch_id is not None:
             data["import_batch_id"] = import_batch_id  # set by the bulk importer only (D-033)
+        data["created_by"] = actor
         invoice = self.repo.create(data, lines_data)
+        self._audit("invoice.created", actor, invoice.id, f"invoice {invoice.invoice_number}")
         return self._invoice_to_response(invoice)
 
     # ------------------------------------------------------------------
@@ -325,7 +338,7 @@ class InvoicesService:
         ]
         return norm(current) != norm(new_lines)
 
-    def update_invoice(self, invoice_id: int, payload: SalesInvoiceUpdate) -> SalesInvoiceResponse:
+    def update_invoice(self, invoice_id: int, payload: SalesInvoiceUpdate, actor: Optional[str] = None) -> SalesInvoiceResponse:
         invoice = self.repo.get_by_id(invoice_id)
         if not invoice:
             raise HTTPException(status_code=404, detail=f"Invoice {invoice_id} not found")
@@ -400,9 +413,11 @@ class InvoicesService:
             lines_data = None
 
         updated = self.repo.update(invoice_id, data, lines_data)
+        edited = sorted(data.keys()) + (["lines"] if lines_data is not None else [])
+        self._audit("invoice.updated", actor, invoice_id, "fields: " + ", ".join(edited) if edited else "no field changed")
         return self._invoice_to_response(updated)
 
-    def send_invoice(self, invoice_id: int) -> SalesInvoiceResponse:
+    def send_invoice(self, invoice_id: int, actor: Optional[str] = None) -> SalesInvoiceResponse:
         invoice = self.repo.get_by_id(invoice_id)
         if not invoice:
             raise HTTPException(status_code=404, detail=f"Invoice {invoice_id} not found")
@@ -411,7 +426,8 @@ class InvoicesService:
         except inv_status.InvalidInvoiceTransition as e:
             raise HTTPException(status_code=409, detail=e.detail())
 
-        updated = self.repo.set_status(invoice_id, target)
+        updated = self.repo.set_status(invoice_id, target, {"sent_by": actor, "sent_at": datetime.utcnow()})
+        self._audit("invoice.sent", actor, invoice_id, f"invoice {updated.invoice_number}")
         # D-060: an issued invoice's VAT is owed, so it joins the month's sales-tax obligation
         notice = sync_vat_obligation_safely(self.repo.db, updated)
         resp = self._invoice_to_response(updated)
@@ -446,6 +462,7 @@ class InvoicesService:
                 "voided_at": datetime.utcnow(),
             },
         )
+        self._audit("invoice.voided", actor, invoice_id, f"reason: {reason.strip()}" if reason and reason.strip() else "")
         notice = sync_vat_obligation_safely(self.repo.db, voided)  # D-060: a void takes its VAT back out
         resp = self._invoice_to_response(voided)
         resp.vat_obligation_notice = notice
@@ -488,6 +505,7 @@ class InvoicesService:
             self.repo.db.rollback()
             raise HTTPException(status_code=400, detail=str(e))
 
+        self._audit("invoice.payment_recorded", actor, invoice_id, f"payment #{payment.id}; amount: {payment.amount}; received: {payment.payment_date}")
         return self._payment_to_response(payment)
 
     def reverse_payment(

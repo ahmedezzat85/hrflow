@@ -10,7 +10,8 @@ test.describe('Story 1.3 — Detail Drawer and Activity Timeline', () => {
   });
 
   test('Acceptance Criteria 1: Clicking View button opens detail drawer with record summary, counterparty, amount, and attributes', async ({ page }) => {
-    const firstRow = page.locator('#financeInvoicesTable tbody tr').first();
+    // the list opens newest issue date first, so pick the invoice by number
+    const firstRow = page.locator('#financeInvoicesTable tbody tr:has-text("INV-2026-001")');
     const viewBtn = firstRow.locator('.btn-view-invoice');
     await expect(viewBtn).toBeVisible();
 
@@ -55,7 +56,7 @@ test.describe('Story 1.3 — Detail Drawer and Activity Timeline', () => {
     // Verify plain language text and actor
     const firstItemText = await items.first().textContent();
     expect(firstItemText).toContain('created');
-    expect(firstItemText).toContain('admin@voyancemed.com');
+    expect(firstItemText).toContain('mock.admin@hrflow.test');
   });
 
   test('Acceptance Criteria 3: Related Records allow drilling into linked records without losing navigation context', async ({ page }) => {
@@ -123,7 +124,7 @@ test.describe('Story 1.3 — Detail Drawer and Activity Timeline', () => {
   });
 
   test('Acceptance Criteria 6: Browser Back button closes drawer and restores URL state', async ({ page }) => {
-    const viewBtn = page.locator('#financeInvoicesTable tbody tr .btn-view-invoice').first();
+    const viewBtn = page.locator('#financeInvoicesTable tbody tr:has-text("INV-2026-001") .btn-view-invoice');
     await viewBtn.click();
     await expect(page.locator('#financeDetailDrawer')).toBeVisible();
 

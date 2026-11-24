@@ -29,6 +29,9 @@
                 <button type="button" class="filter-tab fv-pill fv-pill--settled" id="tabQueuePaid" data-queue="paid" role="tab" aria-selected="false" onclick="setInvoiceWorkQueue('paid')"><span class="fv-pill__dot" aria-hidden="true"></span>Paid <span class="fv-pill__count" id="badgeQueuePaid">0</span></button>
                 <button type="button" class="filter-tab fv-pill fv-pill--closed" id="tabQueueVoid" data-queue="void" role="tab" aria-selected="false" onclick="setInvoiceWorkQueue('void')"><span class="fv-pill__dot" aria-hidden="true"></span>Void <span class="fv-pill__count" id="badgeQueueVoid">0</span></button>
               </div>
+              <select id="financeInvoiceCustomerFilter" data-hv-dropdown="sm" aria-label="Filter by customer" onchange="onInvoiceCustomerFilterChange(this.value)">
+                <option value="">All customers</option>
+              </select>
               <label for="financeInvoiceOverdueOnly" class="fv-toggle">
                 <input type="checkbox" id="financeInvoiceOverdueOnly" onchange="onInvoiceOverdueOnlyChange(this.checked)"> Overdue only <span class="fv-toggle__count" id="financeInvoiceOverdueCount">0</span>
               </label>
@@ -40,9 +43,9 @@
                 <table class="fv-table fv-table--invoices responsive-card-table sticky-actions" id="financeInvoicesTable">
                   <thead>
                     <tr>
-                      <th data-sort="customer_name">Invoice</th>
-                      <th data-sort="issue_date">Issued</th>
-                      <th data-sort="due_date" data-sort-default="desc">Due</th>
+                      <th data-sort="invoice_number">Invoice</th>
+                      <th data-sort="issue_date" data-sort-default="desc">Issued</th>
+                      <th data-sort="due_date">Due</th>
                       <th>Route</th>
                       <th data-sort="status">Status</th>
                       <th class="cell-money fv-num" data-sort="balance">Balance</th>

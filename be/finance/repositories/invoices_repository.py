@@ -210,6 +210,7 @@ class InvoicesRepository:
             revenue_channel=data.get("revenue_channel"),
             notes=data.get("notes", ""),
             import_batch_id=data.get("import_batch_id"),
+            created_by=data.get("created_by"),
         )
         self.db.add(invoice)
         self.db.flush()  # obtain invoice.id before inserting lines
@@ -356,9 +357,10 @@ class InvoicesRepository:
             reference=ref,
             withheld_amount=float(data.get("withheld_amount") or 0.0),
         )
+        payment.created_by = data.get("created_by")
         self.db.flush()
 
-        account = self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == payment.bank_account_id).first()
+        account =self.db.query(FinanceBankAccountDB).filter(FinanceBankAccountDB.id == payment.bank_account_id).first()
         if data.get("payment_type_id"):
             payment_type = self.db.query(PaymentTypeDB).filter(PaymentTypeDB.id == data["payment_type_id"]).first()
         else:

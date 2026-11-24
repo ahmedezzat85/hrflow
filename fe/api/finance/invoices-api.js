@@ -262,7 +262,7 @@
       if (inv.status === "void") throw new Error("invalid_transition: Cannot void an invoice in 'void' status");
       inv.status = "void";
       inv.void_reason = reason || null;
-      inv.voided_by = "admin@voyancemed.com";
+      inv.voided_by = "mock.admin@hrflow.test";
       inv.voided_at = new Date().toISOString();
       inv.vat_obligation_notice = _mockSyncVat(inv);
       inv.is_overdue = false;

@@ -727,7 +727,7 @@ async getEntityActivity(entityType, entityId) {
               mime_type: "application/pdf",
               storage_ref: "gdrive://invoices/inv.pdf",
               uploaded_at: inv.created_at || "2026-09-01T08:00:00Z",
-              uploaded_by: "billing@voyancemed.com",
+              uploaded_by: "mock.admin@hrflow.test",
             },
           ],
           timeline: [
@@ -736,7 +736,7 @@ async getEntityActivity(entityType, entityId) {
               timestamp: inv.created_at || `${inv.issue_date} 08:00:00`,
               event: "created",
               plain_text: `Invoice ${inv.invoice_number} created with total ${(inv.total || 0).toLocaleString()} ${inv.currency || "USD"}`,
-              actor: "admin@voyancemed.com",
+              actor: "mock.admin@hrflow.test",
               state_transition: { from_state: null, to_state: "draft" },
             },
             {
@@ -744,7 +744,7 @@ async getEntityActivity(entityType, entityId) {
               timestamp: `${inv.issue_date} 09:30:00`,
               event: "sent",
               plain_text: `Invoice ${inv.invoice_number} issued and sent to ${inv.customer_name}`,
-              actor: "billing@voyancemed.com",
+              actor: "mock.admin@hrflow.test",
               state_transition: { from_state: "draft", to_state: "sent" },
             },
           ],
