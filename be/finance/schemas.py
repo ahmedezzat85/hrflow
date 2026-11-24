@@ -783,7 +783,6 @@ class BillBase(BaseModel):
     missing_fields: Optional[str] = None
     department: Optional[str] = Field(None, max_length=100)
     legal_entity: Optional[str] = Field("Voyance Health Inc", max_length=100)
-    attachment_url: Optional[str] = None
     attachment_name: Optional[str] = None
     file_fingerprint: Optional[str] = None
     is_duplicate_override: Optional[bool] = False
@@ -871,7 +870,6 @@ class BillUpdate(BaseModel):
     missing_fields: Optional[str] = None
     department: Optional[str] = None
     legal_entity: Optional[str] = None
-    attachment_url: Optional[str] = None
     attachment_name: Optional[str] = None
     file_fingerprint: Optional[str] = None
     is_duplicate_override: Optional[bool] = None
@@ -881,6 +879,8 @@ class BillUpdate(BaseModel):
 
 class BillResponse(BillBase):
     id: int
+    # Read-only: set only by the upload handler, never accepted from clients (audit C-1)
+    attachment_url: Optional[str] = None
     status: str
     is_overdue: bool = False
     is_reviewed: Optional[bool] = True

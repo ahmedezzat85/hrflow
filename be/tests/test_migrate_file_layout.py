@@ -32,6 +32,7 @@ def test_dry_run_leaves_files_untouched_and_reports_pending(db_session, monkeypa
 
     # Create legacy file in legacy uploads directory
     legacy_dir = tmp_path / "legacy_bills"
+    monkeypatch.setenv("BILL_UPLOADS_DIR", str(legacy_dir))
     legacy_dir.mkdir()
     legacy_file = legacy_dir / "old_bill_123.pdf"
     content = b"%PDF-1.4 dummy bill content for dry run"
@@ -81,6 +82,7 @@ def test_apply_migration_moves_file_verifies_sha256_and_updates_db(db_session, m
 
     # Create legacy file
     legacy_dir = tmp_path / "legacy_bills"
+    monkeypatch.setenv("BILL_UPLOADS_DIR", str(legacy_dir))
     legacy_dir.mkdir()
     legacy_file = legacy_dir / "old_bill_apply.pdf"
     content = b"%PDF-1.4 real migration content with unique hash"

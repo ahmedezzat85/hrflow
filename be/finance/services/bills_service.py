@@ -410,7 +410,7 @@ class BillsService:
             )
         else:
             # A Draft needs a vendor or an attachment; everything else may be filled in later
-            if payload.vendor_id is None and not (payload.attachment_name or payload.attachment_url):
+            if payload.vendor_id is None and not payload.attachment_name:
                 raise HTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail=[{"loc": ["body", "vendor_id"], "msg": "A draft needs a vendor or an attachment", "type": "missing_field"}],
