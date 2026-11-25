@@ -7126,21 +7126,19 @@ async getEntityActivity(entityType, entityId) {
 
           timeline.push({
             id: `inv-${inv.id}-created`,
-            timestamp: `${inv.issue_date || today} 09:00:00`,
+            timestamp: inv.sent_at || String(inv.issue_date || today),
             event: "invoice_issued",
-            plain_text: `Invoice ${inv.invoice_number} issued for ${inv.currency || "USD"} ${(inv.total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
-            actor: "mock.finance@hrflow.test",
-            state_transition: { from_state: "draft", to_state: derivedStatus },
+            plain_text: `Invoice ${inv.invoice_number} issued for ${inv.currency || "USD"} ${(inv.total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })} (issue date ${inv.issue_date})`,
+            actor: inv.sent_by || "",
           });
 
           for (const p of payments) {
             timeline.push({
-              id: `pmt-${p.id}-received`,
-              timestamp: `${p.payment_date || today} 14:00:00`,
-              event: "payment_received",
-              plain_text: `Payment of ${p.currency || "USD"} ${(p.amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })} recorded (Ref: ${p.reference || "N/A"})`,
-              actor: "mock.finance@hrflow.test",
-              state_transition: { from_state: "sent", to_state: "paid" },
+              id: `inv-${inv.id}-pay-${p.id}`,
+              timestamp: p.created_at || String(p.payment_date || today),
+              event: "payment_recorded",
+              plain_text: `Payment of ${p.currency || "USD"} ${(p.amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })} received ${p.payment_date} on invoice ${inv.invoice_number} (Ref: ${p.reference || "N/A"})`,
+              actor: p.created_by || "",
             });
           }
         }
@@ -7214,11 +7212,10 @@ async getEntityActivity(entityType, entityId) {
 
         const timeline = bills.map((b) => ({
           id: `bill-${b.id}-issued`,
-          timestamp: `${b.issue_date || "2026-09-01"} 09:00:00`,
+          timestamp: b.created_at || String(b.issue_date || ""),
           event: "bill_received",
-          plain_text: `Bill ${b.bill_number} recorded for ${b.currency || "USD"} ${(b.total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
-          actor: b.created_by || "mock.finance@hrflow.test",
-          state_transition: { from_state: "draft", to_state: b.status || "draft" },
+          plain_text: `Bill ${b.bill_number} recorded for ${b.currency || "USD"} ${(b.total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })} (now ${b.status || "draft"})`,
+          actor: b.created_by || "",
         }));
 
         const attrs = [
@@ -7430,8 +7427,8 @@ async getEntityActivity(entityType, entityId) {
               timestamp: "2026-09-01 10:00:00",
               event: "posted",
               plain_text: `Transaction TXN-${String(id).padStart(4, "0")} posted: Inflow of $12,500.00 into Voyance Operating USD`,
-              actor: "system@hrflow.internal",
-              state_transition: { from_state: null, to_state: "settled" },
+              actor: "mock.admin@hrflow.test",
+              state_transition: null,
             },
           ],
         };
