@@ -81,7 +81,7 @@ def update_manual_transaction(
     Updates a manual ledger transaction and recomputes continuous running balances.
     Only manual-source transactions can be edited directly.
     """
-    return service.update_manual_transaction(transaction_id, payload)
+    return service.update_manual_transaction(transaction_id, payload, user_email=current_user.get("email"))
 
 
 @router.delete("/{transaction_id}")
@@ -95,4 +95,4 @@ def delete_manual_transaction(
     Deletes/voids a manual ledger transaction and recomputes continuous running balances.
     Only manual-source transactions can be deleted.
     """
-    return service.delete_manual_transaction(transaction_id, reason=reason)
+    return service.delete_manual_transaction(transaction_id, reason=reason, user_email=current_user.get("email"))

@@ -2,6 +2,8 @@
 be/finance/services/ledger_service.py
 Business logic and validation for the transaction ledger (Phase 1 Revision 2).
 """
+import json
+from datetime import datetime
 from typing import List, Optional
 from fastapi import HTTPException, status
 
@@ -16,6 +18,18 @@ from finance.schemas import (
     TransactionPreviewResponse,
 )
 from finance.models import LedgerTransactionDB
+from models_db import AuditLogDB
+
+# Fields of a manual ledger row recorded in the audit entry of an edit or a delete.
+_AUDIT_FIELDS = (
+    "account_id", "date", "amount", "direction", "currency", "category_id", "payment_type_id", "entry_type",
+    "counterparty", "payee_type", "payee_id", "payee_name", "tax_amount", "base_amount", "reason", "reference",
+    "description", "cheque_number", "fx_rate", "linked_invoice_id", "created_by",
+)
+
+
+def _snapshot(tx: LedgerTransactionDB) -> dict:
+    return {f: getattr(tx, f, None) for f in _AUDIT_FIELDS}
 
 
 class LedgerService:
@@ -463,6 +477,7 @@ class LedgerService:
         self,
         tx_id: int,
         payload: "LedgerTransactionUpdate",
+        user_email: Optional[str] = None,
     ) -> LedgerTransactionResponse:
         tx = self.repo.get_by_id(tx_id)
         if not tx:
@@ -517,16 +532,26 @@ class LedgerService:
             self._validate_and_resolve_payee(merged_payee_data)
             data.update(merged_payee_data)
 
+        before = _snapshot(tx)
         try:
-            updated = self.repo.update_transaction(tx_id, data)
-            return self.to_response(updated)
+            # The closed-reconciliation-month lock applies to the month the row is in and the month it moves to
+            self.repo.assert_period_open(tx.account_id, tx.date)
+            if data.get("date") and data["date"] != tx.date:
+                self.repo.assert_period_open(tx.account_id, data["date"])
+            updated = self.repo.update_transaction(tx_id, data, commit=False)
+            after = _snapshot(updated)
+            changes = {k: {"from": before[k], "to": after[k]} for k in _AUDIT_FIELDS if before[k] != after[k]}
+            self._audit("finance.transaction.updated", user_email, tx_id, {"changes": changes})
+            self.repo.db.commit()
+            return self.to_response(self.repo.get_by_id(tx_id))
         except ValueError as e:
+            self.repo.db.rollback()
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=str(e),
             )
 
-    def delete_manual_transaction(self, tx_id: int, reason: Optional[str] = None) -> dict:
+    def delete_manual_transaction(self, tx_id: int, reason: Optional[str] = None, user_email: Optional[str] = None) -> dict:
         tx = self.repo.get_by_id(tx_id)
         if not tx:
             raise HTTPException(
@@ -546,14 +571,31 @@ class LedgerService:
                 detail=f"Cannot delete transaction {tx_id}: it is linked to a posted financial document.",
             )
 
+        removed = _snapshot(tx)
         try:
-            self.repo.delete_transaction(tx_id)
+            self.repo.assert_period_open(tx.account_id, tx.date)
+            self.repo.delete_transaction(tx_id, commit=False)
+            self._audit("finance.transaction.deleted", user_email, tx_id,
+                        {"reason": (reason or "").strip(), "removed": removed})
+            self.repo.db.commit()
             return {"message": "Transaction deleted successfully", "id": tx_id, "reason": reason or ""}
         except ValueError as e:
+            self.repo.db.rollback()
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=str(e),
             )
+
+    def _audit(self, action: str, user_email: Optional[str], tx_id: int, details: dict) -> None:
+        """Adds the audit row to the open transaction, so it is committed with the change or not at all."""
+        self.repo.db.add(AuditLogDB(
+            timestamp=datetime.utcnow().isoformat() + "Z",
+            actor_email=user_email or "",
+            action=action,
+            target_type="ledger_transaction",
+            target_id=str(tx_id),
+            details=json.dumps(details, default=str),
+        ))
 
     def get_petty_summary(
         self,
