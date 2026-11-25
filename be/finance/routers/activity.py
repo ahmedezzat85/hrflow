@@ -4,6 +4,7 @@ Production router for Finance Entity Activity Timelines and Detail Summaries (St
 Provides unified activity, timeline history, linked records, and permission-aware sensitive masking
 for all finance entities (invoices, bills, transfers, cheques, transactions, accounts).
 """
+import json
 import os
 import file_layout
 from typing import Optional, List, Dict, Any
@@ -14,8 +15,6 @@ from sqlalchemy.orm import Session
 from db import get_db
 from auth import get_current_user
 from core.permissions import get_current_user_permissions
-from repositories.deps import get_audit_repo
-from repositories.interfaces import AuditRepository
 from finance import invoice_status as inv_status
 from finance.models import (
     SalesInvoiceDB,
@@ -62,7 +61,7 @@ _DERIVED_INVOICE_AUDITS = {
 }
 
 
-def _build_invoice_timeline(inv: SalesInvoiceDB, cust_name: str, audit_repo: AuditRepository) -> List[TimelineEvent]:
+def _build_invoice_timeline(db: Session, inv: SalesInvoiceDB, cust_name: str) -> List[TimelineEvent]:
     """
     Invoice activity from stored facts only: who and when come from the columns the actions write
     (created_by/created_at, sent_by/sent_at, payment created_by/created_at, reversal and void fields) and from the
@@ -130,24 +129,206 @@ def _build_invoice_timeline(inv: SalesInvoiceDB, cust_name: str, audit_repo: Aud
             state_transition={"from_state": "sent" if inv.sent_at or inv.sent_by else "draft", "to_state": "void"},
         ))
 
-    for a in audit_repo.list_all():
-        if a.get("target_type") != "invoice" or str(a.get("target_id")) != str(inv.id):
-            continue
-        action = a.get("action") or "audit_action"
+    for a in _audits_for(db, ["invoice"], inv.id):
+        action = a.action or "audit_action"
         if action in _DERIVED_INVOICE_AUDITS:
             continue
         label = "Invoice edited" if action == "invoice.updated" else action
-        details = a.get("details")
+        details = a.details
         events.append(TimelineEvent(
-            id=f"audit-{a.get('id')}",
-            timestamp=a.get("timestamp") or "",
+            id=f"audit-{a.id}",
+            timestamp=a.timestamp or "",
             event=action,
             plain_text=f"{label} ({details})" if details else label,
-            actor=a.get("actor_email") or "",
+            actor=a.actor_email or "",
         ))
 
     events.sort(key=lambda e: e.timestamp)
     return lead + events
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Timelines for the other entities follow the same rule (audit 2026-11, H-1): only stored facts. Who and when come from
+# the record's own columns (created_by/created_at, voided_*, a payment's created_* and reversed_*) and from the audit log:
+# the named entries services write (bill.approved, finance.transfer.voided, ...) and the automatic trail of every change
+# (finance/audit_trail.py). A fact that was never stored is left out, or shown with its date only and no actor.
+# ---------------------------------------------------------------------------------------------------------------------
+
+def _audits_for(db: Session, target_types, target_id) -> list:
+    """Audit rows of one record, oldest first. Filtered in the database instead of loading the whole audit log."""
+    from models_db import AuditLogDB
+    return (db.query(AuditLogDB)
+            .filter(AuditLogDB.target_type.in_(list(target_types)), AuditLogDB.target_id == str(target_id))
+            .order_by(AuditLogDB.id).all())
+
+
+def _fmt_change(field: str, change: dict) -> str:
+    return f"{field.replace('_', ' ')}: {change.get('from') if change.get('from') is not None else '—'} → " \
+           f"{change.get('to') if change.get('to') is not None else '—'}"
+
+
+def _trail_change_events(db: Session, table: str, entity_id, label: str, skip_fields=frozenset()) -> List[TimelineEvent]:
+    """One line per recorded change of a record (the automatic audit trail), with its real actor and time."""
+    events = []
+    for a in _audits_for(db, [table], entity_id):
+        if not (a.action or "").endswith(".updated"):
+            continue
+        try:
+            changes = (json.loads(a.details or "{}") or {}).get("changes") or {}
+        except ValueError:
+            continue
+        shown = {k: v for k, v in changes.items() if k not in skip_fields}
+        if not shown:
+            continue
+        state = shown.get("status")
+        events.append(TimelineEvent(
+            id=f"audit-{a.id}",
+            timestamp=a.timestamp or "",
+            event="status_changed" if state and len(shown) == 1 else "updated",
+            plain_text=f"{label}: " + "; ".join(_fmt_change(k, v) for k, v in sorted(shown.items())),
+            actor=a.actor_email or "",
+            state_transition={"from_state": state.get("from"), "to_state": state.get("to")} if state else None,
+        ))
+    return events
+
+
+def _payment_events(prefix: str, payments, describe) -> List[TimelineEvent]:
+    """Recorded and reversed payments, timed by when they were entered and attributed to who entered them."""
+    events = []
+    for p in sorted(payments or [], key=lambda x: x.id):
+        events.append(TimelineEvent(
+            id=f"{prefix}-pay-{p.id}",
+            timestamp=_ts(p.created_at) or str(p.payment_date),
+            event="payment_recorded",
+            plain_text=describe(p),
+            actor=p.created_by or "",
+            linked_record={"entity_type": "payment", "entity_id": p.id, "title": f"Payment #{p.id}"},
+        ))
+        if p.is_reversed:
+            label = "Refund" if p.reversal_kind == "refund" else "Reversal"
+            note = f"{label} of payment #{p.id} ({p.amount:,.2f} {p.currency})"
+            if p.reversal_reason:
+                note += f": {p.reversal_reason}"
+            events.append(TimelineEvent(
+                id=f"{prefix}-pay-{p.id}-reversed",
+                timestamp=_ts(p.reversed_at) or str(p.reversal_date or p.payment_date),
+                event="payment_reversed",
+                plain_text=note,
+                actor=p.reversed_by or "",
+                linked_record={"entity_type": "payment", "entity_id": p.id, "title": f"Payment #{p.id}"},
+            ))
+    return events
+
+
+def _build_bill_timeline(db: Session, bill: BillDB, vendor_name: str) -> List[TimelineEvent]:
+    """Bills write a named audit entry for every action (bill.created, bill.approve, bill.payment_recorded, bill.void,
+    ...: who, when, from -> to, reason). Those are the timeline. The stored columns fill in only what has no entry,
+    which is the case for bills recorded before the entries existed."""
+    rows = _audits_for(db, ["bill"], bill.id)
+    actions = {a.action for a in rows}
+    events: List[TimelineEvent] = []
+    for a in rows:
+        action = a.action or "audit_action"
+        transition = None
+        details = a.details or ""
+        if "->" in details:
+            frm, _, rest = details.partition("->")
+            to = rest.split(";")[0].strip()
+            transition = {"from_state": None if frm.strip() in ("", "-") else frm.strip(),
+                          "to_state": None if to in ("", "-") else to}
+        if action == "bill.created":
+            label = f"Vendor bill {bill.bill_number or 'draft'} received from {vendor_name} for {bill.total:,.2f} {bill.currency}"
+        else:
+            label = "Bill " + action.split(".", 1)[-1].replace("_", " ")
+        events.append(TimelineEvent(
+            id=f"audit-{a.id}",
+            timestamp=a.timestamp or "",
+            event=action,
+            plain_text=f"{label} ({details})" if details else label,
+            actor=a.actor_email or "",
+            state_transition=transition,
+        ))
+
+    if "bill.created" not in actions:
+        born = "approved" if (bill.approval_status or "") == "auto" else "draft"
+        events.append(TimelineEvent(
+            id=f"bill-{bill.id}-created",
+            timestamp=_ts(bill.created_at) or str(bill.issue_date or ""),
+            event="created",
+            plain_text=f"Vendor bill {bill.bill_number or 'draft'} received from {vendor_name} for {bill.total:,.2f} {bill.currency}",
+            actor=bill.created_by or "",
+            state_transition={"from_state": None, "to_state": born},
+        ))
+    if not actions & {"bill.payment_recorded", "bill.payment_reversed"}:
+        events += _payment_events(f"bill-{bill.id}", bill.payments,
+                                  lambda p: f"Payment of {p.amount:,.2f} {p.currency} to {vendor_name} on {p.payment_date}")
+    if bill.status == "void" and "bill.void" not in actions:
+        reason = f": {bill.void_reason}" if bill.void_reason else ""
+        events.append(TimelineEvent(
+            id=f"bill-{bill.id}-void",
+            timestamp=_ts(bill.voided_at),
+            event="voided",
+            plain_text=f"Vendor bill {bill.bill_number or ''} voided{reason}".replace("  ", " "),
+            actor=bill.voided_by or "",
+            state_transition={"from_state": None, "to_state": "void"},
+        ))
+    events.sort(key=lambda e: (e.timestamp == "", e.timestamp))  # a fact with no stored time goes last
+    return events
+
+
+# Fields of a transfer whose change the void line already explains
+_TRANSFER_VOID_FIELDS = frozenset({"voided_at", "voided_by", "void_reason", "settlement_status"})
+
+
+def _build_transfer_timeline(db: Session, trf: AccountTransferDB, from_name: str, to_name: str) -> List[TimelineEvent]:
+    events = [TimelineEvent(
+        id=f"trf-{trf.id}-init",
+        timestamp=_ts(trf.created_at) or str(trf.date),
+        event="created",
+        plain_text=f"Account transfer initiated: {trf.from_amount:,.2f} {trf.from_currency} from {from_name} to {to_name} on {trf.date}",
+        actor=trf.created_by or "",
+        state_transition=None,
+    )]
+    voided = bool(trf.voided_at)
+    events += _trail_change_events(db, "finance_account_transfers", trf.id, "Transfer updated",
+                                   skip_fields=_TRANSFER_VOID_FIELDS if voided else frozenset())
+    if voided:
+        reason = f": {trf.void_reason}" if trf.void_reason else ""
+        events.append(TimelineEvent(
+            id=f"trf-{trf.id}-void",
+            timestamp=_ts(trf.voided_at),
+            event="voided",
+            plain_text=f"Transfer voided and its ledger rows removed{reason}",
+            actor=trf.voided_by or "",
+            state_transition={"from_state": None, "to_state": "voided"},
+        ))
+    events.sort(key=lambda e: (e.timestamp, 0 if e.event == "created" else 1))
+    return events
+
+
+def _build_cheque_timeline(db: Session, chq: FinanceChequeDB, acc_name: str) -> List[TimelineEvent]:
+    events = [TimelineEvent(
+        id=f"chq-{chq.id}-issued",
+        timestamp=_ts(chq.created_at) or str(chq.issue_date),
+        event="issued",
+        plain_text=f"Cheque #{chq.cheque_number} issued to {chq.payee} for {chq.amount:,.2f} {chq.currency}, dated {chq.issue_date}",
+        actor=chq.created_by or "",
+        state_transition={"from_state": None, "to_state": "issued"},
+    )]
+    changes = _trail_change_events(db, "finance_cheques", chq.id, "Cheque updated")
+    events += changes
+    # Older cheques have no recorded change: the stored clear date is the only fact, shown without a time or person.
+    if chq.status == "cleared" and chq.clear_date and not any(e.state_transition for e in changes):
+        events.append(TimelineEvent(
+            id=f"chq-{chq.id}-cleared",
+            timestamp=str(chq.clear_date),
+            event="cleared",
+            plain_text=f"Cheque #{chq.cheque_number} cleared through {acc_name} (clear date {chq.clear_date})",
+            actor="",
+            state_transition={"from_state": "issued", "to_state": "cleared"},
+        ))
+    events.sort(key=lambda e: e.timestamp)
+    return events
 
 
 # Read key required to view each entity type's activity
@@ -208,7 +389,6 @@ def get_entity_activity(
     request: Request,
     current_user: dict = Depends(require_entity_read_permission),
     db: Session = Depends(get_db),
-    audit_repo: AuditRepository = Depends(get_audit_repo),
 ):
     """
     Returns the comprehensive detail summary, related records, attachments, and chronological
@@ -311,7 +491,7 @@ def get_entity_activity(
             ))
 
         # Build timeline
-        timeline = _build_invoice_timeline(inv, cust_name, audit_repo)
+        timeline = _build_invoice_timeline(db, inv, cust_name)
 
         return EntityActivityResponse(
             entity_type="invoice",
@@ -367,50 +547,7 @@ def get_entity_activity(
                 date=p.payment_date,
             ))
 
-        timeline = []
-        created_ts = bill.created_at.strftime("%Y-%m-%d %H:%M:%S") if bill.created_at else f"{bill.issue_date} 09:00:00"
-        timeline.append(TimelineEvent(
-            id=f"bill-{bill.id}-created",
-            timestamp=created_ts,
-            event="created",
-            plain_text=f"Vendor bill {bill.bill_number} received from {vendor_name} for {bill.total:,.2f} {bill.currency}",
-            actor="ap@voyancemed.com",
-            state_transition={"from_state": None, "to_state": "draft"},
-        ))
-
-        for p in (bill.payments or []):
-            timeline.append(TimelineEvent(
-                id=f"bill-{bill.id}-pay-{p.id}",
-                timestamp=f"{p.payment_date} 14:00:00",
-                event="payment_recorded",
-                plain_text=f"Outflow payment of {p.amount:,.2f} {p.currency} executed to {vendor_name}",
-                actor="admin@voyancemed.com",
-                state_transition={"from_state": "approved", "to_state": "paid"} if bill.status == "paid" else None,
-                linked_record={"entity_type": "payment", "entity_id": p.id, "title": f"Payment #{p.id}"},
-            ))
-
-        if bill.status == "void":
-            timeline.append(TimelineEvent(
-                id=f"bill-{bill.id}-void",
-                timestamp=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
-                event="voided",
-                plain_text=f"Vendor bill {bill.bill_number} voided with audit consequence tracking",
-                actor="admin@voyancemed.com",
-                state_transition={"from_state": "approved", "to_state": "void"},
-            ))
-
-        all_audits = audit_repo.list_all()
-        for a in all_audits:
-            if a.get("target_type") == "bill" and str(a.get("target_id")) == str(bill.id):
-                timeline.append(TimelineEvent(
-                    id=f"audit-{a.get('id')}",
-                    timestamp=a.get("timestamp") or "",
-                    event=a.get("action") or "audit_action",
-                    plain_text=f"Audit Event: {a.get('action')} - {a.get('details') or 'Action recorded'}",
-                    actor=a.get("actor_email") or "",
-                ))
-
-        timeline.sort(key=lambda e: e.timestamp)
+        timeline = _build_bill_timeline(db, bill, vendor_name)
 
         bill_attachments = []
         if bill.attachment_name or bill.attachment_url:
@@ -469,7 +606,7 @@ def get_entity_activity(
             amount=trf.from_amount,
             currency=trf.from_currency,
             date=trf.date,
-            status="completed",
+            status=trf.settlement_status or "settled",
             notes=trf.note or "",
             sensitive_masked=not is_admin,
             attributes=attributes,
@@ -488,38 +625,13 @@ def get_entity_activity(
                 date=tx.date,
             ))
 
-        created_ts = trf.created_at.strftime("%Y-%m-%d %H:%M:%S") if trf.created_at else f"{trf.date} 10:00:00"
-        timeline = [
-            TimelineEvent(
-                id=f"trf-{trf.id}-init",
-                timestamp=created_ts,
-                event="created",
-                plain_text=f"Account transfer initiated: {trf.from_amount:,.2f} {trf.from_currency} from {from_name} to {to_name}",
-                actor=trf.created_by or "treasury@voyancemed.com",
-                state_transition={"from_state": None, "to_state": "completed"},
-            )
-        ]
-        if trf.confirmed_leg == "both":
-            confirm_ts = (
-                (trf.created_at.strftime("%Y-%m-%d %H:%M:%S") if trf.created_at else f"{trf.date} 10:05:00")
-            )
-            timeline.append(TimelineEvent(
-                id=f"trf-{trf.id}-confirm",
-                timestamp=confirm_ts,
-                event="legs_settled",
-                plain_text=f"Both debit and credit ledger legs synchronized successfully",
-                actor="system@hrflow.internal",
-            ))
-
-        # Preserve creation as first event if timestamps match
-        timeline.sort(key=lambda e: (e.timestamp, 0 if e.event == "created" else 1))
-
+        timeline = _build_transfer_timeline(db, trf, from_name, to_name)
 
         return EntityActivityResponse(
             entity_type="transfer",
             entity_id=trf.id,
             title=f"Transfer TRF-{trf.id:04d}",
-            status="completed",
+            status=trf.settlement_status or "settled",
             summary=summary,
             related_records=related,
             attachments=[],
@@ -589,38 +701,7 @@ def get_entity_activity(
                 date=chq.linked_bill.issue_date,
             ))
 
-        created_ts = chq.created_at.strftime("%Y-%m-%d %H:%M:%S") if chq.created_at else f"{chq.issue_date} 09:30:00"
-        timeline = [
-            TimelineEvent(
-                id=f"chq-{chq.id}-issued",
-                timestamp=created_ts,
-                event="issued",
-                plain_text=f"Cheque #{chq.cheque_number} issued to {chq.payee} for {chq.amount:,.2f} {chq.currency}",
-                actor=chq.created_by or "treasury@voyancemed.com",
-                state_transition={"from_state": None, "to_state": "issued"},
-            )
-        ]
-        if chq.clear_date or chq.status == "cleared":
-            clear_ts = f"{chq.clear_date} 16:00:00" if chq.clear_date else f"{chq.issue_date} 16:00:00"
-            timeline.append(TimelineEvent(
-                id=f"chq-{chq.id}-cleared",
-                timestamp=clear_ts,
-                event="cleared",
-                plain_text=f"Cheque #{chq.cheque_number} cleared through {acc_name}",
-                actor="treasury@voyancemed.com",
-                state_transition={"from_state": "issued", "to_state": "cleared"},
-            ))
-        elif chq.status == "voided":
-            timeline.append(TimelineEvent(
-                id=f"chq-{chq.id}-voided",
-                timestamp=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
-                event="voided",
-                plain_text=f"Cheque #{chq.cheque_number} voided and returned to bookkeeper",
-                actor="admin@voyancemed.com",
-                state_transition={"from_state": "issued", "to_state": "voided"},
-            ))
-
-        timeline.sort(key=lambda e: e.timestamp)
+        timeline = _build_cheque_timeline(db, chq, acc_name)
 
         return EntityActivityResponse(
             entity_type="cheque",
@@ -697,18 +778,18 @@ def get_entity_activity(
                 date=tx.linked_transfer.date,
             ))
 
-        created_ts = tx.created_at.strftime("%Y-%m-%d %H:%M:%S") if tx.created_at else f"{tx.date} 10:00:00"
         timeline = [
             TimelineEvent(
                 id=f"tx-{tx.id}-posted",
-                timestamp=created_ts,
+                timestamp=_ts(tx.created_at) or str(tx.date),
                 event="posted",
-                plain_text=f"Transaction #{tx.id} posted to {acc_name}: {tx.direction.upper()} of {tx.amount:,.2f} {tx.currency}",
-                actor=tx.created_by or "system@hrflow.internal",
-                state_transition={"from_state": None, "to_state": "settled"},
+                plain_text=f"Transaction #{tx.id} posted to {acc_name}: {tx.direction.upper()} of {tx.amount:,.2f} {tx.currency} dated {tx.date}",
+                actor=tx.created_by or "",
+                state_transition=None,
             )
         ]
-
+        # Every later change with who and when (edits, links to a bill or invoice); balances are not changes
+        timeline += _trail_change_events(db, "finance_ledger_transactions", tx.id, "Transaction updated")
         timeline.sort(key=lambda e: e.timestamp)
 
         return EntityActivityResponse(
@@ -771,26 +852,28 @@ def get_entity_activity(
                 date=str(inv.issue_date) if inv.issue_date else None,
             ))
 
-            iss_date_str = str(inv.issue_date) if inv.issue_date else (inv.created_at.strftime("%Y-%m-%d") if inv.created_at else str(today))
-            timeline.append(TimelineEvent(
-                id=f"inv-{inv.id}-created",
-                timestamp=f"{iss_date_str} 09:00:00",
-                event="invoice_issued",
-                plain_text=f"Invoice {inv.invoice_number} issued for {inv.currency} {float(inv.total):,.2f}",
-                actor="finance@voyance.health",
-                state_transition={"from_state": "draft", "to_state": derived_status},
-            ))
-
-            for p in valid_payments:
-                p_date_str = str(p.payment_date) if p.payment_date else str(today)
+            # Issued when it was sent (sent_at/sent_by); a draft shows when it was created; older invoices sent
+            # before sent_at was stored show their issue date with no time and no person.
+            if inv.sent_at or (inv.status or "") != "draft":
                 timeline.append(TimelineEvent(
-                    id=f"pmt-{p.id}-received",
-                    timestamp=f"{p_date_str} 14:00:00",
-                    event="payment_received",
-                    plain_text=f"Payment of {p.currency} {float(p.amount):,.2f} recorded (Ref: {p.reference or 'N/A'})",
-                    actor="finance@voyance.health",
-                    state_transition={"from_state": "sent", "to_state": "paid" if inv_balance <= 0.001 else "partially_paid"},
+                    id=f"inv-{inv.id}-issued",
+                    timestamp=_ts(inv.sent_at) or str(inv.issue_date or ""),
+                    event="invoice_issued",
+                    plain_text=f"Invoice {inv.invoice_number} issued for {inv.currency} {float(inv.total):,.2f} (issue date {inv.issue_date})",
+                    actor=inv.sent_by or "",
                 ))
+            else:
+                timeline.append(TimelineEvent(
+                    id=f"inv-{inv.id}-created",
+                    timestamp=_ts(inv.created_at) or str(inv.issue_date or ""),
+                    event="invoice_created",
+                    plain_text=f"Draft invoice {inv.invoice_number} created for {inv.currency} {float(inv.total):,.2f}",
+                    actor=inv.created_by or "",
+                ))
+            timeline += _payment_events(
+                f"inv-{inv.id}", inv.payments,
+                lambda p, n=inv.invoice_number: f"Payment of {p.currency} {float(p.amount):,.2f} received {p.payment_date} on invoice {n} (Ref: {p.reference or 'N/A'})",
+            )
 
         timeline.sort(key=lambda e: e.timestamp, reverse=True)
 
@@ -857,11 +940,10 @@ def get_entity_activity(
             ))
             timeline.append(TimelineEvent(
                 id=f"bill-{b.id}-issued",
-                timestamp=f"{b.issue_date or today} 09:00:00",
+                timestamp=_ts(b.created_at) or str(b.issue_date or ""),
                 event="bill_received",
-                plain_text=f"Bill {b.bill_number} recorded for {b.currency} {float(b.total):,.2f}",
-                actor=b.created_by or "finance@voyance.health",
-                state_transition={"from_state": "draft", "to_state": b_status},
+                plain_text=f"Bill {b.bill_number or 'draft'} recorded for {b.currency} {float(b.total or 0.0):,.2f} (now {b_status})",
+                actor=b.created_by or "",
             ))
 
         # Payment instructions info
