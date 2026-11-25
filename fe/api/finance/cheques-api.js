@@ -32,7 +32,7 @@
       fiscal_year: 2026,
       notes: "AWS cloud hosting payment",
       created_at: "2026-09-02T10:00:00",
-      attachments: [{ id: 1, cheque_id: 1, file_name: "cheque-001011-front.pdf", file_size: 48213, mime_type: "application/pdf", uploaded_by: "admin@voyance.health" }],
+      attachments: [{ id: 1, cheque_id: 1, file_name: "cheque-001011-front.pdf", file_size: 48213, mime_type: "application/pdf", uploaded_by: "mock.admin@hrflow.test" }],
     },
     {
       id: 2,
@@ -119,7 +119,7 @@
       if (!c) throw new Error("Cheque not found");
       c.attachments = c.attachments || [];
       const created = Array.from(files || []).map((f) => {
-        const att = { id: Date.now() + Math.floor(Math.random() * 1000), cheque_id: c.id, file_name: f.name || "scan.pdf", file_size: f.size || 0, mime_type: f.type || "application/pdf", uploaded_by: "admin@voyance.health" };
+        const att = { id: Date.now() + Math.floor(Math.random() * 1000), cheque_id: c.id, file_name: f.name || "scan.pdf", file_size: f.size || 0, mime_type: f.type || "application/pdf", uploaded_by: "mock.admin@hrflow.test" };
         c.attachments.push(att);
         return att;
       });

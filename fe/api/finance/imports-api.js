@@ -227,7 +227,7 @@
               capture_source: "import", is_reviewed: false, import_batch_id: batchId,
               ...(v.paid_date && v.paid_from_account ? { status: "paid", amount_paid: Number(v.total_amount) || 0 } : {}),
               attachment_name: v.source_file || null, notes: `Imported (batch ${batchId}, row ${v.row_ref}).`,
-              created_by: "admin@voyance.health", created_at: new Date().toISOString(), lines: [],
+              created_by: "mock.admin@hrflow.test", created_at: new Date().toISOString(), lines: [],
             });
             r.created_id = id;
           } else if (kind === "cheques") {
@@ -241,8 +241,8 @@
               id, cheque_number: v.cheque_number, account_id: acct.id, account_name: acct.account_name, issue_date: v.issue_date,
               amount: Number(v.amount), currency: v.currency || acct.currency, payee: v.payee, purpose_type: "other", status: "draft",
               posting_policy: "at_issue", fiscal_year: Number(v.issue_date.slice(0, 4)), import_batch_id: batchId,
-              notes: `Imported (batch ${batchId}, row ${v.row_ref}).`, created_at: new Date().toISOString(), created_by: "admin@voyance.health",
-              attachments: v.source_file ? [{ id: id * 10, cheque_id: id, file_name: v.source_file, file_size: 0, mime_type: "application/pdf", uploaded_by: "admin@voyance.health" }] : [],
+              notes: `Imported (batch ${batchId}, row ${v.row_ref}).`, created_at: new Date().toISOString(), created_by: "mock.admin@hrflow.test",
+              attachments: v.source_file ? [{ id: id * 10, cheque_id: id, file_name: v.source_file, file_size: 0, mime_type: "application/pdf", uploaded_by: "mock.admin@hrflow.test" }] : [],
             });
             r.created_id = id;
           } else if (kind === "invoices") {

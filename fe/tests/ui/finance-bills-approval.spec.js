@@ -47,9 +47,9 @@ test.describe('Story 4.2 — Bill approval and payment', () => {
     const billRow = page.locator('#financeBillsTableBody tr:has-text("BILL-2026-005")');
     await expect(billRow).toBeVisible();
 
-    // 1. Simulate current user being the creator (creator@voyance.health)
+    // 1. Simulate current user being the creator (mock.creator@hrflow.test)
     await page.evaluate(() => {
-      window.currentUser = { email: 'creator@voyance.health', role: 'admin' };
+      window.currentUser = { email: 'mock.creator@hrflow.test', role: 'admin' };
     });
 
     // Click Approve button to open modal
@@ -67,9 +67,9 @@ test.describe('Story 4.2 — Bill approval and payment', () => {
     await page.click('#billApprovalModal .modal-close');
     await expect(page.locator('#billApprovalModal')).not.toBeVisible();
 
-    // 2. Switch to an independent approver (manager@voyance.health)
+    // 2. Switch to an independent approver (mock.manager@hrflow.test)
     await page.evaluate(() => {
-      window.currentUser = { email: 'manager@voyance.health', role: 'admin' };
+      window.currentUser = { email: 'mock.manager@hrflow.test', role: 'admin' };
     });
 
     // Open approval modal again
