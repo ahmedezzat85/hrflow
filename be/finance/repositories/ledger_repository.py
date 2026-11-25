@@ -86,7 +86,8 @@ class LedgerRepository:
 
     def assert_period_open(self, account_id: int, tx_date: str) -> None:
         """The closed-reconciliation-month lock: nothing is posted to an account in a month whose statement is closed.
-        Every posting path uses it (create_transaction, and the dated receipt reversal, INV-REFUND-1)."""
+        Used by create_transaction, the dated receipt reversal (INV-REFUND-1) and the manual-transaction edit and delete
+        (LedgerService). Other posting paths do not call it yet (audit 2026-11, finding H-3)."""
         from finance.models import BankStatementImportDB
         period = tx_date[:7]
         closed_stmt = (
@@ -187,7 +188,7 @@ class LedgerRepository:
         self.recalculate_account_running_balances(account_id, commit=commit)
         return self.get_by_id(tx.id)
 
-    def update_transaction(self, tx_id: int, data: dict) -> LedgerTransactionDB:
+    def update_transaction(self, tx_id: int, data: dict, commit: bool = True) -> LedgerTransactionDB:
         tx = self.get_by_id(tx_id)
         if not tx:
             raise ValueError(f"Transaction with ID {tx_id} not found")
@@ -204,17 +205,17 @@ class LedgerRepository:
                     setattr(tx, key, None)
 
         self.db.flush()
-        self.recalculate_account_running_balances(tx.account_id)
+        self.recalculate_account_running_balances(tx.account_id, commit=commit)
         return self.get_by_id(tx.id)
 
-    def delete_transaction(self, tx_id: int) -> int:
+    def delete_transaction(self, tx_id: int, commit: bool = True) -> int:
         tx = self.get_by_id(tx_id)
         if not tx:
             raise ValueError(f"Transaction with ID {tx_id} not found")
         account_id = tx.account_id
         self.db.delete(tx)
         self.db.flush()
-        self.recalculate_account_running_balances(account_id)
+        self.recalculate_account_running_balances(account_id, commit=commit)
         return account_id
 
     def get_petty_summary(
