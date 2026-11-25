@@ -23,6 +23,7 @@ from fastapi.responses import JSONResponse
 
 from auth import set_session_cookie
 from config import Config
+from finance.period_lock import PeriodClosedError
 from logging_config import setup_logging, get_logger
 
 from routers import auth as auth_router
@@ -131,6 +132,14 @@ async def database_rule_handler(request: Request, exc: IntegrityError):
     logger.warning("Database rule refused %s %s: %s", request.method, request.url.path, str(getattr(exc, "orig", exc))[:300])
     return JSONResponse(status_code=409, content={"detail": "The data breaks a rule of the database (for example a date that is not "
                                                             "YYYY-MM-DD, a duplicate, or a reference to something that does not exist)."})
+
+
+@app.exception_handler(PeriodClosedError)
+async def closed_period_handler(request: Request, exc: PeriodClosedError):
+    """A ledger posting into a closed reconciliation month reached the flush-time lock (finance/period_lock.py)
+    without the service turning it into an HTTP error first. Same 400 and message the posting paths give."""
+    logger.warning("Closed-period lock refused %s %s: %s", request.method, request.url.path, exc)
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
 
 
 @app.middleware("http")
