@@ -622,7 +622,8 @@ def export_report_file(
     Records an immutable audit event for every export operation.
     """
     user_email = current_user.get("email") if isinstance(current_user, dict) else None
-    can_view_sensitive = "finance.bank.manage" in user_perms or "finance.admin" in user_perms or "admin" in user_perms
+    # Unmasked account numbers in the export follow the catalog's reveal key (super admins hold every key)
+    can_view_sensitive = "finance.bank_account.reveal" in user_perms
 
     file_bytes, file_name, mime_type = service.generate_report_export(
         report_key=req.report_key,

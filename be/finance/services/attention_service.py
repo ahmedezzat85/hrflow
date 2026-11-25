@@ -51,11 +51,12 @@ class AttentionQueueService:
         can_invoices = is_admin or "finance.invoice.read" in user_permissions
         can_bills = is_admin or "finance.bill.read" in user_permissions
         can_accounts = is_admin or "finance.account.read" in user_permissions
-        can_transfers = is_admin or "finance.transfer.read" in user_permissions
+        # The same keys the routes behind each item require (transfers, statements and cheques are account data)
+        can_transfers = is_admin or "finance.account.read" in user_permissions
         can_payroll = is_admin or "finance.payroll.read" in user_permissions
-        can_statements = is_admin or "finance.statement.read" in user_permissions
-        can_cheques = is_admin or "finance.cheque.read" in user_permissions or "finance.report.read" in user_permissions
-        can_statutory = is_admin or "finance.spend.read" in user_permissions or "finance.bill.read" in user_permissions
+        can_statements = is_admin or "finance.account.read" in user_permissions
+        can_cheques = is_admin or "finance.account.read" in user_permissions or "finance.report.read" in user_permissions
+        can_statutory = is_admin or "finance.statutory.read" in user_permissions
 
         # 1. Fetch reviewed items
         reviewed_query = self.db.query(FinanceAttentionReviewDB).all()
@@ -151,7 +152,7 @@ class AttentionQueueService:
                         target_route="a-finance-cheques",
                         target_id=chq.id,
                         target_filter={"status": "bounced"},
-                        permission="finance.cheque.read",
+                        permission="finance.account.read",
                         priority_score=105,
                         can_resolve=True,
                         can_mark_reviewed=True,
@@ -355,7 +356,7 @@ class AttentionQueueService:
                         target_route="a-finance-transfers",
                         target_id=tr.id,
                         target_filter={"transfer_id": tr.id},
-                        permission="finance.transfer.read",
+                        permission="finance.account.read",
                         priority_score=75,
                         can_resolve=True,
                         can_mark_reviewed=True,
@@ -455,7 +456,7 @@ class AttentionQueueService:
                         target_route="a-finance-statements",
                         target_id=imp.id,
                         target_filter={"import_id": imp.id},
-                        permission="finance.statement.read",
+                        permission="finance.account.read",
                         priority_score=65,
                         can_resolve=True,
                         can_mark_reviewed=True,
@@ -696,7 +697,7 @@ class AttentionQueueService:
                         target_route="a-finance-statutory",
                         target_id=obl.id,
                         target_filter={"obligation_id": obl.id},
-                        permission="finance.spend.read",
+                        permission="finance.statutory.read",
                         priority_score=score,
                         can_resolve=True,
                         can_mark_reviewed=True,
