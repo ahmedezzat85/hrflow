@@ -86,21 +86,12 @@ class LedgerRepository:
 
     def assert_period_open(self, account_id: int, tx_date: str) -> None:
         """The closed-reconciliation-month lock: nothing is posted to an account in a month whose statement is closed.
-        Used by create_transaction, the dated receipt reversal (INV-REFUND-1) and the manual-transaction edit and delete
-        (LedgerService). Other posting paths do not call it yet (audit 2026-11, finding H-3)."""
-        from finance.models import BankStatementImportDB
-        period = tx_date[:7]
-        closed_stmt = (
-            self.db.query(BankStatementImportDB)
-            .filter(
-                BankStatementImportDB.account_id == account_id,
-                BankStatementImportDB.period_month == period,
-                BankStatementImportDB.status == "closed",
-            )
-            .first()
-        )
-        if closed_stmt:
-            raise ValueError(f"Cannot post or modify transactions in closed reconciliation period '{period}'. The period must be reopened first.")
+        Callers use it to refuse early with a clear message; finance/period_lock.py enforces the same rule on every
+        ledger row at flush time, so a posting path that forgets this call is still refused (audit 2026-11, H-3)."""
+        from finance.period_lock import PeriodClosedError, closed_message, first_closed
+        period = first_closed(self.db, [(account_id, (tx_date or "")[:7])])
+        if period:
+            raise PeriodClosedError(closed_message(period))
 
     def create_transaction(
         self,

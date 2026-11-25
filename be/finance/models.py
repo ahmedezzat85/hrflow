@@ -1242,3 +1242,6 @@ class PayrollTaxSettingsDB(Base):
     updated_by = Column(String(255), nullable=True)
 
 
+# The closed-reconciliation-month lock on every ledger row (before_flush hook); imported here so it is
+# registered wherever the finance models are loaded.
+import finance.period_lock  # noqa: E402,F401
