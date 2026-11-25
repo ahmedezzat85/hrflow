@@ -309,7 +309,7 @@ async function _populateInvoiceBankDropdown() {
   if (!sel) return;
   try {
     const accounts = await FinanceApi.getAccounts({ is_active: true });
-    sel.innerHTML = `<option value="">— Any / Unspecified —</option>` + (accounts || []).map((a) => `<option value="${a.id}">${a.account_name} (${a.currency})</option>`).join("");
+    sel.innerHTML = `<option value="">— Any / Unspecified —</option>` + (accounts || []).map((a) => `<option value="${a.id}">${escapeHtml(a.account_name)} (${a.currency})</option>`).join("");
   } catch (_) {}
 }
 
@@ -689,7 +689,7 @@ async function _populateInvoiceCustomerDropdown() {
   if (!sel) return;
   try {
     const customers = await FinanceApi.getCustomers({ is_active: true });
-    sel.innerHTML = `<option value="">— Select customer —</option>` + customers.map((c) => `<option value="${c.id}">${c.name}</option>`).join("");
+    sel.innerHTML = `<option value="">— Select customer —</option>` + customers.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("");
   } catch (_) {}
 }
 
@@ -799,7 +799,7 @@ async function sendInvoiceAction(invoiceId) {
 async function confirmVoidInvoice(invoiceId) {
   const inv = (FinanceState.invoices || []).find((i) => i.id === parseInt(invoiceId, 10));
   const invSummary = inv
-    ? `<strong>${inv.invoice_number}</strong> · ${inv.customer_name || "Customer"} · ${FinanceFormat.renderMoneyHtml(inv.total || 0, inv.currency || "USD")}`
+    ? `<strong>${escapeHtml(inv.invoice_number)}</strong> · ${escapeHtml(inv.customer_name || "Customer")} · ${FinanceFormat.renderMoneyHtml(inv.total || 0, inv.currency || "USD")}`
     : `Invoice #${invoiceId}`;
 
   const result = await FinanceCommand.confirmAction({
@@ -852,7 +852,7 @@ async function openPaymentModal(invoiceId) {
 
   const infoEl = document.getElementById("paymentInvoiceInfo");
   if (infoEl && inv) {
-    infoEl.innerHTML = `Invoice <strong>${inv.invoice_number}</strong> &middot; Total: ${FinanceFormat.renderMoneyHtml(inv.total, inv.currency || "USD")} &middot; Remaining Balance: <strong id="paymentRemainingBalanceDisplay">${FinanceFormat.renderMoneyHtml(balance, inv.currency || "USD")}</strong>`;
+    infoEl.innerHTML = `Invoice <strong>${escapeHtml(inv.invoice_number)}</strong> &middot; Total: ${FinanceFormat.renderMoneyHtml(inv.total, inv.currency || "USD")} &middot; Remaining Balance: <strong id="paymentRemainingBalanceDisplay">${FinanceFormat.renderMoneyHtml(balance, inv.currency || "USD")}</strong>`;
   }
   // D-024: with withholding, the expected receipt is the balance minus the tax still to be withheld
   const whtLeft = inv ? Math.max(0, (inv.withholding_amount || 0) - (inv.withheld_total || 0)) : 0;
@@ -875,7 +875,7 @@ async function openPaymentModal(invoiceId) {
       // D-022: a receipt goes into an account in the invoice's currency (no exchange rate); the server enforces it
       const allAccounts = await FinanceApi.getAccounts({ is_active: true });
       const accounts = (allAccounts || []).filter((a) => !inv || (a.currency || "").toUpperCase() === (inv.currency || "").toUpperCase());
-      accSel.innerHTML = `<option value="">— Select account —</option>` + (accounts || []).map((a) => `<option value="${a.id}">${a.account_name} (${a.currency} ${Number(a.current_balance).toLocaleString("en-US", { minimumFractionDigits: 2 })})</option>`).join("");
+      accSel.innerHTML = `<option value="">— Select account —</option>` + (accounts || []).map((a) => `<option value="${a.id}">${escapeHtml(a.account_name)} (${a.currency} ${Number(a.current_balance).toLocaleString("en-US", { minimumFractionDigits: 2 })})</option>`).join("");
       if (expBankId && accounts.some((a) => String(a.id) === String(expBankId))) {
         accSel.value = String(expBankId);
       }
@@ -999,7 +999,7 @@ async function sendInvoiceReminderAction(invoiceId) {
   if (!email) {
     await FinanceCommand.confirmAction({
       title: "Cannot Send Reminder",
-      summary: `<strong>${inv.invoice_number}</strong> · ${inv.customer_name || "Customer"}`,
+      summary: `<strong>${escapeHtml(inv.invoice_number)}</strong> · ${escapeHtml(inv.customer_name || "Customer")}`,
       consequence: "This customer has no contact email address on file. Please edit the customer profile and add a billing email before sending reminders.",
       actionLabel: "Understood",
       actionClass: "btn btn-fill",
@@ -1011,7 +1011,7 @@ async function sendInvoiceReminderAction(invoiceId) {
 
   const res = await FinanceCommand.confirmAction({
     title: "Send Payment Reminder",
-    summary: `<strong>${inv.invoice_number}</strong> · ${inv.customer_name || "Customer"} · Recipient: <strong>${email}</strong>`,
+    summary: `<strong>${escapeHtml(inv.invoice_number)}</strong> · ${escapeHtml(inv.customer_name || "Customer")} · Recipient: <strong>${escapeHtml(email)}</strong>`,
     consequence: "An overdue payment reminder and collection instructions will be dispatched to the customer's email.",
     actionLabel: "Send Reminder",
     actionClass: "btn btn-fill",
@@ -1348,7 +1348,7 @@ async function onCustomerFieldInput() {
         if (bannerText) {
           const fld = top.matched_field || top.matching_field || "identity";
           const val = top[fld] || top.name;
-          bannerText.innerHTML = `Existing customer <strong>"${top.name}"</strong> matches on <em>${fld}</em> (${val}).`;
+          bannerText.innerHTML = `Existing customer <strong>"${escapeHtml(top.name)}"</strong> matches on <em>${fld}</em> (${val}).`;
         }
       } else {
         banner.style.display = "none";
@@ -1486,7 +1486,7 @@ async function toggleCustomerActive(id, currentlyActive) {
 
   const result = await FinanceCommand.confirmAction({
     title: `${currentlyActive ? "Deactivate" : "Reactivate"} Customer`,
-    summary: cust ? `<strong>${cust.name}</strong>` : `Customer #${id}`,
+    summary: cust ? `<strong>${escapeHtml(cust.name)}</strong>` : `Customer #${id}`,
     consequence: currentlyActive
       ? "Deactivating will hide this customer from new invoice selectors. Existing invoices are preserved."
       : "Reactivating will make this customer selectable again on invoices.",

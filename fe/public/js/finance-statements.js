@@ -511,7 +511,7 @@ async function executeStatementPreview() {
             <td><code>${e.column}</code></td>
             <td style="color:var(--danger);font-family:monospace;">${e.value || '—'}</td>
             <td>
-              <div>${e.message}</div>
+              <div>${escapeHtml(e.message)}</div>
               ${e.correction_path ? `<div style="font-size:11px;color:var(--text3);margin-top:2px;"><i class="fa-solid fa-wrench"></i> ${e.correction_path}</div>` : ''}
             </td>
           </tr>
@@ -589,8 +589,8 @@ function renderWizardPreviewRows(rows) {
       <tr>
         <td style="color:var(--text3); font-family:monospace;">#${r.row_index}</td>
         <td style="font-family:monospace;">${r.raw_date}</td>
-        <td>${r.raw_description}</td>
-        <td style="font-family:monospace;font-size:11px;">${r.raw_reference || '—'}</td>
+        <td>${escapeHtml(r.raw_description)}</td>
+        <td style="font-family:monospace;font-size:11px;">${escapeHtml(r.raw_reference || '—')}</td>
         <td style="text-align:center;">${dirBadge}</td>
         <td style="text-align:right; font-weight:600; color:${amtColor};">$${Number(r.raw_amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
       </tr>

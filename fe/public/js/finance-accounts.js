@@ -467,7 +467,7 @@ async function toggleCompanyBankAccountActive(id, currentActive) {
 
   const result = await FinanceCommand.confirmAction({
     title: `${currentActive ? "Deactivate" : "Reactivate"} company bank account`,
-    summary: acc ? `<strong>${acc.account_name}</strong> · ${acc.currency} · Balance: ${FinanceFormat.renderMoneyHtml(acc.current_balance || 0, acc.currency)}` : `Account #${id}`,
+    summary: acc ? `<strong>${escapeHtml(acc.account_name)}</strong> · ${acc.currency} · Balance: ${FinanceFormat.renderMoneyHtml(acc.current_balance || 0, acc.currency)}` : `Account #${id}`,
     consequence: currentActive
       ? "Deactivating this account will prevent new payments, cheques, or transfers from using it. Existing transaction history remains intact."
       : "Reactivating will restore this account to active payment and ledger selections.",
@@ -804,7 +804,7 @@ async function _populateWorkspaceFilterDropdowns() {
     if (catSel && catSel.options.length <= 1) {
       catSel.innerHTML = '<option value="">All Categories</option>' +
         (FinanceState.categories || [])
-          .map((c) => `<option value="${c.id}">${c.name}${c.is_petty ? " (Petty)" : ""}</option>`)
+          .map((c) => `<option value="${c.id}">${escapeHtml(c.name)}${c.is_petty ? " (Petty)" : ""}</option>`)
           .join("");
     }
 
@@ -812,7 +812,7 @@ async function _populateWorkspaceFilterDropdowns() {
     if (ptSel && ptSel.options.length <= 1) {
       ptSel.innerHTML = '<option value="">All Payment Types</option>' +
         (FinanceState.paymentTypes || [])
-          .map((p) => `<option value="${p.id}">${p.name} (${p.code})</option>`)
+          .map((p) => `<option value="${p.id}">${escapeHtml(p.name)} (${p.code})</option>`)
           .join("");
     }
   } catch (_) {}
@@ -897,10 +897,10 @@ async function loadWorkspaceStatements() {
         (s) => `
       <tr>
         <td data-label="Period"><strong>${s.period_month || "—"}</strong></td>
-        <td data-label="File Name"><i class="fa-regular fa-file-lines" style="color:var(--text3);margin-right:4px;"></i> ${s.file_name || s.filename || "Statement"}</td>
+        <td data-label="File Name"><i class="fa-regular fa-file-lines" style="color:var(--text3);margin-right:4px;"></i> ${escapeHtml(s.file_name || s.filename || "Statement")}</td>
         <td data-label="Total Lines">${s.lines_count || s.total_lines || 0}</td>
         <td data-label="Matched">${s.matched_lines || s.resolved_lines || 0}</td>
-        <td data-label="Status"><span class="badge ${s.status === 'reconciled' ? 'badge-approved' : 'badge-pending'}">${(s.status || 'PENDING').toUpperCase()}</span></td>
+        <td data-label="Status"><span class="badge ${s.status === 'reconciled' ? 'badge-approved' : 'badge-pending'}">${escapeHtml((s.status || 'PENDING').toUpperCase())}</span></td>
         <td data-label="Uploaded At" style="font-size:12px;color:var(--text3);">${s.created_at ? s.created_at.slice(0, 10) : '—'}</td>
         <td data-label="Actions" class="col-actions" style="text-align:center;">
           <button class="btn btn-sm btn-outline" onclick="switchWorkspaceTab('reconcile')">
@@ -929,7 +929,7 @@ async function loadWorkspaceReconcile() {
         <div style="margin-bottom:14px; padding:12px 16px; background:var(--surface2); border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
           <div>
             <strong>Active Statement Period: ${pendingStmt.period_month}</strong>
-            <div style="font-size:12px; color:var(--text3);">${pendingStmt.file_name || "Bank Statement"} · ${pendingStmt.lines_count || 0} lines</div>
+            <div style="font-size:12px; color:var(--text3);">${escapeHtml(pendingStmt.file_name || "Bank Statement")} · ${pendingStmt.lines_count || 0} lines</div>
           </div>
           <button class="btn btn-sm btn-fill" onclick="openReconciliationForStatement(${pendingStmt.id})">
             <i class="fa-solid fa-play"></i> Open Matcher
@@ -1178,7 +1178,7 @@ async function toggleFinanceCategoryActive(id, currentActive) {
 
   const result = await FinanceCommand.confirmAction({
     title: `${currentActive ? "Deactivate" : "Reactivate"} Category`,
-    summary: cat ? `<strong>${cat.name}</strong> (${cat.kind})` : `Category #${id}`,
+    summary: cat ? `<strong>${escapeHtml(cat.name)}</strong> (${cat.kind})` : `Category #${id}`,
     consequence: currentActive
       ? "Deactivating this category will hide it from new transaction forms. Deactivated categories remain on historical records."
       : "Reactivating will make this category available again for new transactions.",
@@ -1368,7 +1368,7 @@ async function toggleFinancePaymentTypeActive(id, currentActive) {
 
   const result = await FinanceCommand.confirmAction({
     title: `${currentActive ? "Deactivate" : "Reactivate"} Payment Type`,
-    summary: pt ? `<strong>${pt.name}</strong> (${pt.code})` : `Payment Type #${id}`,
+    summary: pt ? `<strong>${escapeHtml(pt.name)}</strong> (${pt.code})` : `Payment Type #${id}`,
     consequence: currentActive
       ? "Deactivating this payment type will hide it from new transaction forms. Historical records are preserved."
       : "Reactivating will restore this payment type to active form dropdowns.",
@@ -1526,7 +1526,7 @@ async function _populateLedgerFilterDropdowns() {
     if (catSel) {
       catSel.innerHTML = '<option value="">All Categories</option>' +
         (FinanceState.categories || [])
-          .map((c) => `<option value="${c.id}">${c.name}${c.is_petty ? " (Petty)" : ""}</option>`)
+          .map((c) => `<option value="${c.id}">${escapeHtml(c.name)}${c.is_petty ? " (Petty)" : ""}</option>`)
           .join("");
     }
 
@@ -1534,7 +1534,7 @@ async function _populateLedgerFilterDropdowns() {
     if (ptSel) {
       ptSel.innerHTML = '<option value="">All Payment Types</option>' +
         (FinanceState.paymentTypes || [])
-          .map((p) => `<option value="${p.id}">${p.name} (${p.code})</option>`)
+          .map((p) => `<option value="${p.id}">${escapeHtml(p.name)} (${p.code})</option>`)
           .join("");
     }
   } catch (_) {}
@@ -1685,7 +1685,7 @@ async function _populateTransactionModalDropdowns() {
       catSel.innerHTML = '<option value="">— Select Category —</option>' +
         (FinanceState.categories || [])
           .filter((c) => c.is_active)
-          .map((c) => `<option value="${c.id}">${c.name}${c.is_petty ? " [Petty]" : ""}</option>`)
+          .map((c) => `<option value="${c.id}">${escapeHtml(c.name)}${c.is_petty ? " [Petty]" : ""}</option>`)
           .join("");
     }
 
@@ -1694,7 +1694,7 @@ async function _populateTransactionModalDropdowns() {
       ptSel.innerHTML = '<option value="">— Select Payment Type —</option>' +
         (FinanceState.paymentTypes || [])
           .filter((p) => p.is_active)
-          .map((p) => `<option value="${p.id}">${p.name} (${p.code})</option>`)
+          .map((p) => `<option value="${p.id}">${escapeHtml(p.name)} (${p.code})</option>`)
           .join("");
     }
 
@@ -1723,7 +1723,7 @@ async function _populateTransactionModalDropdowns() {
         vendorSel.innerHTML = '<option value="">— Select Vendor —</option>' +
           (FinanceState.vendors || [])
             .filter((v) => v.is_active !== false)
-            .map((v) => `<option value="${v.id}">${v.name}</option>`)
+            .map((v) => `<option value="${v.id}">${escapeHtml(v.name)}</option>`)
             .join("");
       }
     } catch (_) {}
@@ -1739,7 +1739,7 @@ async function _populateTransactionModalDropdowns() {
       if (empSel) {
         const emps = window.employees || [];
         empSel.innerHTML = '<option value="">— Select Employee (or enter name below) —</option>' +
-          emps.map((e) => `<option value="${e.id}">${e.name || e.full_name || 'Employee #' + e.id} (${e.dept || e.department || 'Staff'})</option>`).join("");
+          emps.map((e) => `<option value="${e.id}">${e.name || e.full_name || 'Employee #' + e.id} (${escapeHtml(e.dept || e.department || 'Staff')})</option>`).join("");
       }
     } catch (_) {}
 
@@ -1753,7 +1753,7 @@ async function _populateTransactionModalDropdowns() {
         custSel.innerHTML = '<option value="">— Select Customer (or enter name below) —</option>' +
           (FinanceState.customers || [])
             .filter((c) => c.is_active !== false)
-            .map((c) => `<option value="${c.id}">${c.name}</option>`)
+            .map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`)
             .join("");
       }
     } catch (_) {}
@@ -1853,7 +1853,7 @@ async function onTxVendorSelected() {
           billSel.innerHTML = '<option value="">No specific bill (general vendor disbursement)</option>' +
             openBills.map((b) => {
               const remaining = Math.max(0, (b.total || 0) - (b.amount_paid || 0));
-              return `<option value="${b.id}">${b.bill_number} · ${b.currency} ${remaining.toFixed(2)} remaining (Due: ${b.due_date || 'N/A'})</option>`;
+              return `<option value="${b.id}">${escapeHtml(b.bill_number)} · ${b.currency} ${remaining.toFixed(2)} remaining (Due: ${b.due_date || 'N/A'})</option>`;
             }).join("");
           if (linkedBillGroup) linkedBillGroup.style.display = "block";
         } else {
@@ -1923,7 +1923,7 @@ async function onTxCustomerSelected() {
           invSel.innerHTML = '<option value="">No specific invoice (unallocated customer payment)</option>' +
             openInvoices.map((i) => {
               const bal = i.balance !== undefined ? i.balance : Math.max(0, (i.total || 0) - (i.amount_paid || 0));
-              return `<option value="${i.id}">${i.invoice_number} · ${i.currency} ${bal.toFixed(2)} remaining (Due: ${i.due_date || 'N/A'})</option>`;
+              return `<option value="${i.id}">${escapeHtml(i.invoice_number)} · ${i.currency} ${bal.toFixed(2)} remaining (Due: ${i.due_date || 'N/A'})</option>`;
             }).join("");
           if (linkedInvoiceGroup) linkedInvoiceGroup.style.display = "block";
         } else {
@@ -2347,7 +2347,7 @@ async function openAddFinanceTransactionModal(defaultType = "money_out", isGloba
       selectEl.innerHTML = `
         <option value="">— Select Target Bank / Cash Account —</option>
         ${activeAccounts.map((a) => `
-          <option value="${a.id}">${a.account_name} (${a.currency}) · ${(a.account_type || "").toUpperCase()}</option>
+          <option value="${a.id}">${escapeHtml(a.account_name)} (${a.currency}) · ${escapeHtml((a.account_type || "").toUpperCase())}</option>
         `).join("")}
       `;
       if (_currentLedgerAccountId && activeAccounts.some((a) => a.id === parseInt(_currentLedgerAccountId, 10))) {
@@ -2725,7 +2725,7 @@ async function loadFinanceTransfers() {
       }
       accFilter.innerHTML = '<option value="">All accounts</option>' +
         (FinanceState.accounts || [])
-          .map((a) => `<option value="${a.id}">${a.account_name} (${a.currency})</option>`)
+          .map((a) => `<option value="${a.id}">${escapeHtml(a.account_name)} (${a.currency})</option>`)
           .join("");
     }
 
@@ -2844,7 +2844,7 @@ async function openRecordFinanceTransferModal(presetFromAccountId = null) {
 
   const accountOptions = '<option value="">-- Select Account --</option>' +
     activeAccounts
-      .map((a) => `<option value="${a.id}" data-currency="${a.currency}" data-balance="${a.current_balance}">${a.account_name} (${a.currency} • ${a.currency === "EGP" ? "EGP " : "$"}${Number(a.current_balance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })})</option>`)
+      .map((a) => `<option value="${a.id}" data-currency="${a.currency}" data-balance="${a.current_balance}">${escapeHtml(a.account_name)} (${a.currency} • ${a.currency === "EGP" ? "EGP " : "$"}${Number(a.current_balance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })})</option>`)
       .join("");
 
   if (fromSel) fromSel.innerHTML = accountOptions;

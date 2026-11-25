@@ -316,7 +316,7 @@ function showKpiDefinition(kpiKey) {
   const summary = FinanceState.summary;
   const kpi = summary?.kpis?.[kpiKey];
   if (kpi) {
-    showToast(`<strong>${kpi.label}</strong><br>${kpi.definition}<br><small style="opacity:0.85;">Formula: ${kpi.formula}</small>`, "info", 5000);
+    showToast(`<strong>${escapeHtml(kpi.label)}</strong><br>${kpi.definition}<br><small style="opacity:0.85;">Formula: ${kpi.formula}</small>`, "info", 5000);
   }
 }
 

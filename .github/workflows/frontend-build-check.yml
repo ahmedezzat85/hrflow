@@ -34,6 +34,10 @@ jobs:
         working-directory: fe
         run: npm run check:finance-api-bundle
 
+      - name: No new unescaped text in HTML templates (stored XSS ratchet)
+        working-directory: fe
+        run: npm run lint:html-escape
+
       - name: Build
         working-directory: fe
         run: npm run build

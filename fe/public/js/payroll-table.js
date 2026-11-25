@@ -224,7 +224,7 @@ const PayrollTableController = {
           <tr class="payroll-group-header-row" style="background:var(--bg-secondary); border-top:2px solid var(--border-color); border-bottom:1px solid var(--border-color);">
             <td colspan="9" style="padding:10px 14px; font-weight:700; color:var(--text-primary); font-size:0.85rem;">
               <i class="fa-solid fa-layer-group" style="color:var(--accent-text); margin-right:8px;"></i>
-              Account Group: <strong>${groupName}</strong>
+              Account Group: <strong>${escapeHtml(groupName)}</strong>
               <span class="badge" style="margin-left:8px; background:var(--surface); border:1px solid var(--border-color); color:var(--text-muted); font-size:0.75rem; font-weight:600;">
                 ${rows.length} ${rows.length === 1 ? 'employee' : 'employees'}
               </span>
@@ -254,7 +254,7 @@ const PayrollTableController = {
               <td style="padding:10px 14px;">
                 <div style="font-weight:600; color:var(--text-primary);"><a class="payroll-emp-link" href="#/hr/employee-detail/${encodeURIComponent(r.id)}" data-action="open-employee-profile" data-employee-id="${escapeHtml(r.id)}">${escapeHtml(r.name)}</a></div>
                 <div style="font-size:0.75rem; color:var(--text-muted);">
-                  <span>${r.id}</span> · <span>${r.department}</span>
+                  <span>${r.id}</span> · <span>${escapeHtml(r.department)}</span>
                 </div>
               </td>
               <td style="padding:10px 14px; text-align:right; font-variant-numeric:tabular-nums;">
@@ -298,17 +298,17 @@ const PayrollTableController = {
               <td style="padding:10px 14px; text-align:center;">
                 ${canEdit ? `
                   <button type="button"
-                          class="source-chip source-chip--${r.source.toLowerCase()}"
+                          class="source-chip source-chip--${escapeHtml(r.source.toLowerCase())}"
                           id="btnSourceToggle_${r.id}"
                           data-emp-id="${r.id}"
                           onclick="PayrollTableController.toggleRowSource('${r.id}')"
                           title="Click to toggle Internal/External source"
                           style="border-radius:20px; padding:3px 10px; font-size:0.75rem; font-weight:700; cursor:pointer; border:1.5px solid; transition:all 0.15s ease; ${r.source === 'INT' ? 'border-color:var(--success); color:var(--success); background:color-mix(in srgb, var(--success) 8%, transparent);' : 'border-color:var(--accent); color:var(--accent); background:color-mix(in srgb, var(--accent) 8%, transparent);'}">
-                    ${r.source}
+                    ${escapeHtml(r.source)}
                   </button>
                 ` : `
                   <span class="badge" style="${r.source === 'INT' ? 'background:var(--success-soft); color:var(--success); border:1px solid color-mix(in srgb, var(--success) 30%, transparent);' : 'background:var(--info-soft); color:var(--accent); border:1px solid color-mix(in srgb, var(--info) 30%, transparent);'} font-size:0.75rem; font-weight:700;">
-                    ${r.source}
+                    ${escapeHtml(r.source)}
                   </span>
                 `}
               </td>
@@ -330,7 +330,7 @@ const PayrollTableController = {
         html += `
           <tr class="payroll-group-totals-row" id="groupTotals_${groupName.replace(/\s+/g, '_')}" style="background:var(--bg-secondary); border-bottom:2px solid var(--border-color); font-weight:700;">
             <td style="padding:10px 14px; text-align:left; color:var(--text-muted); font-size:0.8rem; text-transform:uppercase;">
-              <i class="fa-solid fa-calculator" style="margin-right:6px;"></i> TOTAL (${groupName})
+              <i class="fa-solid fa-calculator" style="margin-right:6px;"></i> TOTAL (${escapeHtml(groupName)})
             </td>
             <td style="padding:10px 14px; text-align:right; font-variant-numeric:tabular-nums;" class="gt-base">${this.formatMoney(groupTotals.baseSalary)}</td>
             <td style="padding:10px 14px; text-align:right; font-variant-numeric:tabular-nums;" class="gt-ot">${this.formatMoney(groupTotals.overtime)}</td>

@@ -192,7 +192,7 @@ async function _populateSubscriptionVendorDropdown(selectedId = null) {
   try {
     const vendors = await FinanceApi.getVendors({ is_active: true });
     sel.innerHTML = '<option value="">— Select vendor —</option>' +
-      (vendors || []).map((v) => `<option value="${v.id}">${v.name} (${v.category || "General"})</option>`).join("");
+      (vendors || []).map((v) => `<option value="${v.id}">${escapeHtml(v.name)} (${escapeHtml(v.category || "General")})</option>`).join("");
     if (selectedId) sel.value = String(selectedId);
   } catch (_) {}
 }
@@ -373,7 +373,7 @@ async function openLogSubscriptionChargeModal(subId) {
     try {
       const accounts = await FinanceApi.getAccounts({ is_active: true });
       bankSel.innerHTML = '<option value="">— Don\'t record ledger outflow —</option>' +
-        (accounts || []).map((a) => `<option value="${a.id}">${a.account_name} (${a.currency}) - Bal: ${a.currency === 'EGP' ? 'EGP ' : '$'}${Number(a.current_balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</option>`).join("");
+        (accounts || []).map((a) => `<option value="${a.id}">${escapeHtml(a.account_name)} (${a.currency}) - Bal: ${a.currency === 'EGP' ? 'EGP ' : '$'}${Number(a.current_balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</option>`).join("");
     } catch (_) {
       bankSel.innerHTML = '<option value="">— Don\'t record ledger outflow —</option>';
     }
@@ -461,11 +461,11 @@ async function openSubscriptionHistoryModal(subId) {
       if (c.variance_amount && Math.abs(c.variance_amount) > 0.009) {
         const sign = c.variance_amount > 0 ? "+" : "";
         const badgeClass = c.variance_amount > 0 ? "badge-danger" : "badge-approved";
-        varianceBadge = `<span class="badge ${badgeClass}" style="font-size:10px; margin-left:6px;" title="Variance: ${sign}${c.variance_amount.toFixed(2)}${c.variance_reason ? ' (' + c.variance_reason + ')' : ''}">${sign}${c.variance_amount.toFixed(2)}</span>`;
+        varianceBadge = `<span class="badge ${badgeClass}" style="font-size:10px; margin-left:6px;" title="Variance: ${sign}${c.variance_amount.toFixed(2)}${c.variance_reason ? ' (' + escapeHtml(c.variance_reason) + ')' : ''}">${sign}${c.variance_amount.toFixed(2)}</span>`;
       }
 
       const varianceReasonText = c.variance_reason
-        ? `<div style="font-size:11px; color:var(--text3); font-style:italic; margin-top:2px;">Variance: ${c.variance_reason}</div>`
+        ? `<div style="font-size:11px; color:var(--text3); font-style:italic; margin-top:2px;">Variance: ${escapeHtml(c.variance_reason)}</div>`
         : "";
       
       const ledgerBadge = c.linked_transaction_id
@@ -479,7 +479,7 @@ async function openSubscriptionHistoryModal(subId) {
       const attachmentLinks = (c.attachments || []).length
         ? c.attachments.map((att) => `
             <a href="/api/finance/attachments/${att.id}/download" target="_blank" class="btn btn-sm btn-outline" style="font-size:11px; padding:3px 8px; gap:4px;" title="Download private accounting receipt">
-              <i class="fa-solid fa-paperclip"></i> ${att.file_name}
+              <i class="fa-solid fa-paperclip"></i> ${escapeHtml(att.file_name)}
             </a>
           `).join(" ")
         : '<span style="color:var(--text3); font-size:12px;">No file</span>';
@@ -492,7 +492,7 @@ async function openSubscriptionHistoryModal(subId) {
           ${varianceBadge}
         </td>
         <td>
-          ${c.note || '<span style="opacity:0.4;">--</span>'}
+          ${c.note ? escapeHtml(c.note) : '<span style="opacity:0.4;">--</span>'}
           ${varianceReasonText}
         </td>
         <td>
@@ -506,7 +506,7 @@ async function openSubscriptionHistoryModal(subId) {
       `;
     }).join("");
   } catch (err) {
-    if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--danger); padding:1.5rem;">Failed to load charges: ${err.message || err}</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--danger); padding:1.5rem;">Failed to load charges: ${escapeHtml(err.message || err)}</td></tr>`;
   }
 }
 

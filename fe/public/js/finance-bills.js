@@ -534,7 +534,7 @@ async function _populateBillCategoryDropdown() {
   try {
     const categories = await FinanceApi.getCategories({ is_active: true });
     const sorted = (categories || []).slice().sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || a.name.localeCompare(b.name));
-    sel.innerHTML = `<option value="">— Select Category —</option>` + sorted.map((c) => `<option value="${c.id}">${c.name}</option>`).join("");
+    sel.innerHTML = `<option value="">— Select Category —</option>` + sorted.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("");
   } catch (_) {
     sel.innerHTML = `<option value="">— Select Category —</option>`;
   }
@@ -545,7 +545,7 @@ async function _populateBillVendorDropdown() {
   if (!sel) return;
   try {
     const vendors = await FinanceApi.getVendors({ is_active: true });
-    sel.innerHTML = `<option value="">— Select vendor —</option>` + vendors.map((v) => `<option value="${v.id}" data-default-category-id="${v.default_category_id || ''}">${v.name}</option>`).join("");
+    sel.innerHTML = `<option value="">— Select vendor —</option>` + vendors.map((v) => `<option value="${v.id}" data-default-category-id="${v.default_category_id || ''}">${escapeHtml(v.name)}</option>`).join("");
   } catch (_) {}
 }
 
@@ -889,7 +889,7 @@ async function _fillBillPaymentTypes(accountSelId, typeSelId, chequeGroupId) {
     types = await FinanceApi.getPaymentTypes({ usage: "bill_payment", account_type: acc.account_type });
   } catch (_) {}
   const defaultCode = acc.account_type === "cash" ? "CASH" : "OUTBOUND_TRANS";
-  typeSel.innerHTML = types.map((t) => `<option value="${t.id}" data-code="${t.code}"${t.code === defaultCode ? " selected" : ""}>${t.name}</option>`).join("");
+  typeSel.innerHTML = types.map((t) => `<option value="${t.id}" data-code="${t.code}"${t.code === defaultCode ? " selected" : ""}>${escapeHtml(t.name)}</option>`).join("");
   onBillPaymentTypeChange(typeSelId, chequeGroupId);
 }
 
@@ -1611,7 +1611,7 @@ async function confirmDiscardDraft(billId) {
   const bill = (FinanceState.bills || []).find((b) => b.id === parseInt(billId, 10));
   const result = await FinanceCommand.confirmAction({
     title: "Discard draft",
-    summary: bill ? `<strong>${bill.bill_number || "Draft"}</strong> · ${bill.vendor_name || bill.suggested_vendor_name || "No vendor yet"}` : `Draft #${billId}`,
+    summary: bill ? `<strong>${escapeHtml(bill.bill_number || "Draft")}</strong> · ${escapeHtml(bill.vendor_name || bill.suggested_vendor_name || "No vendor yet")}` : `Draft #${billId}`,
     consequence: "Discarding deletes this draft and its uploaded file permanently. Only drafts can be discarded; other bills are voided.",
     actionLabel: "Discard draft",
     actionClass: "btn btn-danger",
@@ -2184,7 +2184,7 @@ async function onVendorFieldInput() {
         const top = filtered[0];
         banner.style.display = "block";
         if (bannerText) {
-          bannerText.innerHTML = `Existing vendor <strong>"${top.name}"</strong> matches on <em>${top.matched_field}</em>.`;
+          bannerText.innerHTML = `Existing vendor <strong>"${escapeHtml(top.name)}"</strong> matches on <em>${top.matched_field}</em>.`;
         }
       } else {
         banner.style.display = "none";
@@ -2218,8 +2218,8 @@ async function renderVendorPaymentInstructionsInModal(vendorId) {
     container.innerHTML = list.map((pi) => `
       <div class="card" style="padding:10px 14px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; background:var(--surface); border:1px solid var(--border);">
         <div>
-          <div style="font-weight:700; font-size:0.9rem;">${pi.bank_name || 'Bank'} <span class="badge ${pi.verification_status === 'verified' ? 'badge-success' : 'badge-warning'}" style="margin-left:6px; font-size:0.7rem;">${pi.verification_status.toUpperCase()}</span></div>
-          <div style="font-size:0.8rem; color:var(--text2); font-family:monospace; margin-top:2px;">Acct: ${pi.account_number || '—'} ${pi.routing_number ? `| Routing: ${pi.routing_number}` : ''}</div>
+          <div style="font-weight:700; font-size:0.9rem;">${escapeHtml(pi.bank_name || 'Bank')} <span class="badge ${pi.verification_status === 'verified' ? 'badge-success' : 'badge-warning'}" style="margin-left:6px; font-size:0.7rem;">${escapeHtml(pi.verification_status.toUpperCase())}</span></div>
+          <div style="font-size:0.8rem; color:var(--text2); font-family:monospace; margin-top:2px;">Acct: ${escapeHtml(pi.account_number || '—')} ${pi.routing_number ? `| Routing: ${pi.routing_number}` : ''}</div>
           <div style="font-size:0.75rem; color:var(--text3);">${pi.account_holder_name ? `Holder: ${pi.account_holder_name}` : ''} ${pi.verified_by ? `• Verified by ${pi.verified_by}` : ''}</div>
         </div>
         <div>
@@ -2232,7 +2232,7 @@ async function renderVendorPaymentInstructionsInModal(vendorId) {
       </div>
     `).join("");
   } catch (err) {
-    container.innerHTML = `<div style="font-size:0.8rem; color:var(--danger);">${err.message || 'Failed to load payment instructions'}</div>`;
+    container.innerHTML = `<div style="font-size:0.8rem; color:var(--danger);">${escapeHtml(err.message || 'Failed to load payment instructions')}</div>`;
   }
 }
 
@@ -2297,7 +2297,7 @@ async function _populateVendorCategoryDropdown() {
   try {
     const categories = await FinanceApi.getCategories({ is_active: true });
     const sorted = (categories || []).slice().sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || a.name.localeCompare(b.name));
-    sel.innerHTML = `<option value="">— None (Select per bill) —</option>` + sorted.map((c) => `<option value="${c.id}">${c.name}</option>`).join("");
+    sel.innerHTML = `<option value="">— None (Select per bill) —</option>` + sorted.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("");
   } catch (_) {
     sel.innerHTML = `<option value="">— None (Select per bill) —</option>`;
   }
@@ -2444,7 +2444,7 @@ async function toggleVendorActive(id, currentlyActive) {
 
   const result = await FinanceCommand.confirmAction({
     title: `${currentlyActive ? "Deactivate" : "Reactivate"} Vendor`,
-    summary: vendor ? `<strong>${vendor.name}</strong>` : `Vendor #${id}`,
+    summary: vendor ? `<strong>${escapeHtml(vendor.name)}</strong>` : `Vendor #${id}`,
     consequence: currentlyActive
       ? "Deactivating will hide this vendor from new bill entry. Existing bills and history are preserved."
       : "Reactivating will restore this vendor to active billing lists.",
@@ -2675,7 +2675,7 @@ async function renderBillDrawerActions(data) {
 
   const allowed = bill.allowed_actions || [];
   const btns = [];
-  const add = (cls, icon, label, onclick, title) => btns.push(`<button type="button" class="btn btn-sm ${cls}" onclick="${onclick}" title="${title || label}"><i class="fa-solid ${icon}"></i> ${label}</button>`);
+  const add = (cls, icon, label, onclick, title) => btns.push(`<button type="button" class="btn btn-sm ${cls}" onclick="${onclick}" title="${escapeHtml(title || label)}"><i class="fa-solid ${icon}"></i> ${label}</button>`);
   if (bill.status === "draft") {
     add("btn-outline btn-drawer-submit", "fa-paper-plane", "Submit for approval", `submitBillForApproval(${id})`);
     add("btn-outline btn-drawer-edit", "fa-pen", "Edit", `FinanceDrawer.close(); openEditBillModal(${id})`);
