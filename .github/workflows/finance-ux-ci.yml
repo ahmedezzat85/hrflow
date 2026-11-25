@@ -70,12 +70,14 @@ jobs:
         with:
           python-version: '3.12'
           cache: pip
-          cache-dependency-path: be/requirements.txt
+          cache-dependency-path: |
+            be/requirements.txt
+            be/requirements-dev.txt
 
       - name: Install backend dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt
+          python -m pip install -r requirements-dev.txt
 
       # Migrations first: importing main runs init_db(), which would pre-create the tables.
       - name: Verify Alembic migrations (fresh database)
