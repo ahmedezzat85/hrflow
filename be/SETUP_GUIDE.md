@@ -120,7 +120,7 @@ python scripts/export_sheets_cold_storage.py
 ## 5. Configure and Run
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-dev.txt   # the app's packages plus pytest; production installs requirements.txt only
 cp ../.env.example ../.env   # repo-root .env; fill in values as needed
 alembic upgrade head   # ensure schema is up-to-date
 uvicorn main:app --reload --host 0.0.0.0 --port 5000
