@@ -1245,3 +1245,5 @@ class PayrollTaxSettingsDB(Base):
 # The closed-reconciliation-month lock on every ledger row (before_flush hook); imported here so it is
 # registered wherever the finance models are loaded.
 import finance.period_lock  # noqa: E402,F401
+# The automatic audit trail of finance records (after_flush hook, audit 2026-11 H-4).
+import finance.audit_trail  # noqa: E402,F401

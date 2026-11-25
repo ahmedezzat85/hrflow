@@ -31,6 +31,7 @@ from config import Config
 from db import get_db
 from logging_config import get_logger
 from token_crypto import decrypt_token, encrypt_token
+from finance.audit_trail import set_actor as set_audit_actor
 
 logger = get_logger("main")
 
@@ -310,6 +311,7 @@ def _authenticate_api_token(request: Request, db: Session, secret: str) -> dict:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This API token's scopes do not allow this route.")
     ctx = api_tokens.narrow_context(resolve_access(db, {"uid": row.user_id}), row.scopes)
     request.state.access_context = ctx
+    set_audit_actor(db, ctx.email)
     user_dict = {
         "user_id": ctx.user_id,
         "id": ctx.user_id,
@@ -355,6 +357,7 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> dict:
     from core.permissions import resolve_access
     ctx = resolve_access(db, payload)
     request.state.access_context = ctx
+    set_audit_actor(db, ctx.email)
 
     if payload.get("sid"):
         _check_and_renew_session(db, request, payload, ctx.user_id)
