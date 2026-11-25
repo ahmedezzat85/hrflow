@@ -1214,7 +1214,9 @@ for (const theme of ['light', 'dark']) {
       // 4. Style assertions
       await expect(page.locator('#payrollViewSettings button:has-text("Back to payroll runs")')).toHaveCount(0);
       await expectStyle(card1, { borderRadius: '14px' });
-      await expectStyle(card1.locator('.payroll-settings-card-header'), { justifyContent: 'flex-start' });
+      // payroll-v3.css sets `justify-content: flex-start`; Chrome 158+ serializes
+      // that computed value as `flow-start`, older builds as `flex-start`.
+      await expectStyle(card1.locator('.payroll-settings-card-header'), { justifyContent: /^(flex-start|flow-start)$/ });
       await expectStyle(saveBar, { marginTop: '0px' });
 
       // 5. Revert Run modal
