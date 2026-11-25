@@ -16,6 +16,7 @@ import io
 from fastapi import HTTPException, status
 
 from models_db import EmployeeDB, EmployeeBankAccountDB, AuditLogDB, EmployeeSocialInsuranceDB
+from finance.services.excel_exporter import sanitize_csv_cell
 from finance.models import (
     PayrollRunDB,
     PayrollLineDB,
@@ -2255,7 +2256,7 @@ class PayrollService:
             tax_method_csv = (int_line.tax_method_snapshot or "progressive") if int_line else ""
             tax_rate_csv = f"{int_line.tax_rate_snapshot:.4f}" if (int_line and int_line.tax_rate_snapshot is not None) else ""
 
-            writer.writerow([
+            writer.writerow([sanitize_csv_cell(v) for v in [
                 eid,
                 name,
                 dept,
@@ -2280,7 +2281,7 @@ class PayrollService:
                 fx_rate,
                 tax_method_csv,
                 tax_rate_csv,
-            ])
+            ]])
 
         return output.getvalue()
 

@@ -31,12 +31,14 @@ from finance.current_pay import current_pay_map, zero_pay
 from services.employee_derived import next_raise_map, vacation_days_used_map
 from finance.pay_history import history_view
 from logging_config import get_logger
+from finance.services.excel_exporter import sanitize_csv_cell
 
 logger = get_logger("services.export")
 
 
 def format_csv(headers: List[str], rows: List[List[Any]]) -> bytes:
-    """Encodes headers and row data into a UTF-8 with BOM (utf-8-sig) CSV byte buffer."""
+    """Encodes headers and row data into a UTF-8 with BOM (utf-8-sig) CSV byte buffer. Text cells that a spreadsheet
+    would run as a formula (=, +, -, @ ...) are prefixed with an apostrophe; numbers are left as they are."""
     output = io.StringIO()
     writer = csv.writer(output, quoting=csv.QUOTE_MINIMAL)
     writer.writerow(headers)
@@ -49,7 +51,7 @@ def format_csv(headers: List[str], rows: List[List[Any]]) -> bytes:
             elif isinstance(cell, float):
                 clean_row.append(f"{cell:.2f}" if cell % 1 != 0 else f"{cell:.0f}")
             else:
-                clean_row.append(str(cell))
+                clean_row.append(sanitize_csv_cell(str(cell)))
         writer.writerow(clean_row)
 
     return output.getvalue().encode("utf-8-sig")

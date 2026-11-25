@@ -4,6 +4,7 @@ Generates professionally styled Excel (.xlsx) workbooks for Finance reports usin
 Includes frozen headers, dark navy branding, currency/date formats, and auto column widths.
 """
 import io
+import re
 import csv
 from typing import Dict, Any, List, Optional
 import openpyxl
@@ -50,6 +51,18 @@ def sanitize_cell_value(val: Any) -> Any:
         if val[0] in ("=", "+", "-", "@", "\t", "\r"):
             return f"'{val}"
     return val
+
+
+_PLAIN_NUMBER = re.compile(r"^[+-]?\d[\d,]*(\.\d+)?$")
+
+
+def sanitize_csv_cell(val: Any) -> Any:
+    """sanitize_cell_value for CSV cells that may hold numbers already formatted as text: a plain number such as
+    "-12.50" stays as it is (it cannot run as a formula), anything else that starts with = + - @ tab or CR is
+    prefixed with an apostrophe so a spreadsheet shows it as text (audit 2026-11, M-1)."""
+    if isinstance(val, str) and _PLAIN_NUMBER.match(val):
+        return val
+    return sanitize_cell_value(val)
 
 
 def mask_account_number(acc_num: Optional[str]) -> str:
