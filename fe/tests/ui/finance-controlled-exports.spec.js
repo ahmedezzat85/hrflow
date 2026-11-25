@@ -54,7 +54,7 @@ test.describe('Story 7.3: Controlled Exports and Scheduled Delivery', () => {
     // Configure schedule
     await page.selectOption('#scheduleReportFrequency', 'weekly');
     await page.selectOption('#scheduleReportFormat', 'xlsx');
-    await page.fill('#scheduleReportRecipients', 'executives@voyance.health, cfo@voyance.health');
+    await page.fill('#scheduleReportRecipients', 'mock.executives@hrflow.test, mock.cfo@hrflow.test');
 
     // Submit schedule
     await page.click('#submitScheduleReportBtn');

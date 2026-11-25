@@ -1342,17 +1342,17 @@ if (typeof window !== "undefined") window._withBook = _withBook;
 
   if (!FinanceMockState.bills) {
     FinanceMockState.bills = [
-    { id: 1, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-001", category_id: 8, category: "Infrastructure", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-01", due_date: "2026-09-30", status: "approved", currency: "USD", subtotal: 4200.0, tax_amount: 0.0, total: 4200.0, amount_paid: 0.0, requires_approval: false, capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "September cloud hosting", created_at: "2026-09-01T08:00:00", created_by: "ap@voyance.health", lines: [{ id: 1, bill_id: 1, description: "EC2 + S3 usage", quantity: 1, unit_price: 4200.0, line_total: 4200.0 }] },
-    { id: 2, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-002", category_id: 9, category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: "2026-09-03", due_date: "2026-09-18", status: "paid", currency: "USD", subtotal: 320.0, tax_amount: 0.0, total: 320.0, amount_paid: 320.0, requires_approval: false, capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "Team plan renewal", created_at: "2026-09-03T09:00:00", created_by: "ap@voyance.health", lines: [{ id: 2, bill_id: 2, description: "Slack Business+ (40 seats)", quantity: 40, unit_price: 8.0, line_total: 320.0 }] },
-    { id: 3, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-003", category_id: null, category: "", department: "", legal_entity: "Voyance Health Inc", issue_date: "2026-09-08", due_date: "2026-10-08", status: "draft", currency: "USD", subtotal: 1850.0, tax_amount: 0.0, total: 1850.0, amount_paid: 0.0, requires_approval: false, capture_source: "upload", extraction_confidence: 0.82, missing_fields: "category,department", is_reviewed: false, file_fingerprint: "sha256-aws-oct", attachment_name: "aws_september_invoice.pdf", attachment_url: "/api/finance/bills/3/attachment", notes: "Scanned PDF invoice awaiting coding", created_at: "2026-09-08T11:00:00", created_by: "ap@voyance.health", lines: [{ id: 3, bill_id: 3, description: "Database Aurora Serverless", quantity: 1, unit_price: 1850.0, line_total: 1850.0 }] },
-    { id: 4, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-004", category_id: 9, category: "SaaS", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-05", due_date: "2026-09-25", status: "draft", currency: "USD", subtotal: 750.0, tax_amount: 0.0, total: 750.0, amount_paid: 0.0, requires_approval: false, capture_source: "upload", extraction_confidence: 0.94, missing_fields: "cost_center", is_reviewed: false, notes: "Needs cost center assignment", created_at: "2026-09-05T09:30:00", created_by: "ap@voyance.health", lines: [{ id: 4, bill_id: 4, description: "Slack Enterprise Grid Add-on", quantity: 1, unit_price: 750.0, line_total: 750.0 }] },
-    { id: 5, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-005", category_id: 8, category: "Infrastructure", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-09", due_date: "2026-10-09", status: "pending_approval", currency: "USD", subtotal: 8900.0, tax_amount: 0.0, total: 8900.0, amount_paid: 0.0, requires_approval: true, approval_status: "pending", capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "Requires VP approval for >$5k", created_at: "2026-09-09T14:00:00", created_by: "creator@voyance.health", lines: [{ id: 5, bill_id: 5, description: "Direct Connect 10G link", quantity: 1, unit_price: 8900.0, line_total: 8900.0 }] },
-    { id: 6, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-006", category_id: 9, category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: "2026-09-03", due_date: "2026-09-18", status: "rejected", currency: "USD", subtotal: 320.0, tax_amount: 0.0, total: 320.0, amount_paid: 0.0, requires_approval: false, capture_source: "upload", extraction_confidence: 0.70, file_fingerprint: "sha256-slack-dup-10", attachment_name: "slack_renewal_receipt.pdf", attachment_url: "/api/finance/bills/6/attachment", is_reviewed: false, approval_status: "rejected", approval_comment: "Duplicate of BILL-2026-002", notes: "Suspected duplicate of BILL-2026-002", created_at: "2026-09-03T10:00:00", created_by: "ap@voyance.health", lines: [{ id: 6, bill_id: 6, description: "Slack duplicate upload", quantity: 1, unit_price: 320.0, line_total: 320.0 }] },
-    { id: 7, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-007", category_id: 8, category: "Infrastructure", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-20", due_date: _mockIsoDay(30), status: "scheduled", scheduled_payment_date: _mockIsoDay(25), currency: "USD", subtotal: 640.0, tax_amount: 0.0, total: 640.0, amount_paid: 0.0, approval_status: "approved", capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "Scheduled support plan", created_at: "2026-09-20T09:00:00", created_by: "ap@voyance.health", lines: [{ id: 7, bill_id: 7, description: "Support plan", quantity: 1, unit_price: 640.0, line_total: 640.0 }] },
-    { id: 8, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-008", category_id: 9, category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: "2026-09-02", due_date: "2026-09-30", status: "void", void_reason: "Duplicate", voided_by: "admin@voyance.health", currency: "USD", subtotal: 99.0, tax_amount: 0.0, total: 99.0, amount_paid: 0.0, capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "Cancelled add-on", created_at: "2026-09-02T09:00:00", created_by: "ap@voyance.health", lines: [{ id: 8, bill_id: 8, description: "Add-on", quantity: 1, unit_price: 99.0, line_total: 99.0 }] },
+    { id: 1, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-001", category_id: 8, category: "Infrastructure", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-01", due_date: "2026-09-30", status: "approved", currency: "USD", subtotal: 4200.0, tax_amount: 0.0, total: 4200.0, amount_paid: 0.0, requires_approval: false, capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "September cloud hosting", created_at: "2026-09-01T08:00:00", created_by: "mock.ap@hrflow.test", lines: [{ id: 1, bill_id: 1, description: "EC2 + S3 usage", quantity: 1, unit_price: 4200.0, line_total: 4200.0 }] },
+    { id: 2, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-002", category_id: 9, category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: "2026-09-03", due_date: "2026-09-18", status: "paid", currency: "USD", subtotal: 320.0, tax_amount: 0.0, total: 320.0, amount_paid: 320.0, requires_approval: false, capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "Team plan renewal", created_at: "2026-09-03T09:00:00", created_by: "mock.ap@hrflow.test", lines: [{ id: 2, bill_id: 2, description: "Slack Business+ (40 seats)", quantity: 40, unit_price: 8.0, line_total: 320.0 }] },
+    { id: 3, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-003", category_id: null, category: "", department: "", legal_entity: "Voyance Health Inc", issue_date: "2026-09-08", due_date: "2026-10-08", status: "draft", currency: "USD", subtotal: 1850.0, tax_amount: 0.0, total: 1850.0, amount_paid: 0.0, requires_approval: false, capture_source: "upload", extraction_confidence: 0.82, missing_fields: "category,department", is_reviewed: false, file_fingerprint: "sha256-aws-oct", attachment_name: "aws_september_invoice.pdf", attachment_url: "/api/finance/bills/3/attachment", notes: "Scanned PDF invoice awaiting coding", created_at: "2026-09-08T11:00:00", created_by: "mock.ap@hrflow.test", lines: [{ id: 3, bill_id: 3, description: "Database Aurora Serverless", quantity: 1, unit_price: 1850.0, line_total: 1850.0 }] },
+    { id: 4, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-004", category_id: 9, category: "SaaS", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-05", due_date: "2026-09-25", status: "draft", currency: "USD", subtotal: 750.0, tax_amount: 0.0, total: 750.0, amount_paid: 0.0, requires_approval: false, capture_source: "upload", extraction_confidence: 0.94, missing_fields: "cost_center", is_reviewed: false, notes: "Needs cost center assignment", created_at: "2026-09-05T09:30:00", created_by: "mock.ap@hrflow.test", lines: [{ id: 4, bill_id: 4, description: "Slack Enterprise Grid Add-on", quantity: 1, unit_price: 750.0, line_total: 750.0 }] },
+    { id: 5, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-005", category_id: 8, category: "Infrastructure", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-09", due_date: "2026-10-09", status: "pending_approval", currency: "USD", subtotal: 8900.0, tax_amount: 0.0, total: 8900.0, amount_paid: 0.0, requires_approval: true, approval_status: "pending", capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "Requires VP approval for >$5k", created_at: "2026-09-09T14:00:00", created_by: "mock.creator@hrflow.test", lines: [{ id: 5, bill_id: 5, description: "Direct Connect 10G link", quantity: 1, unit_price: 8900.0, line_total: 8900.0 }] },
+    { id: 6, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-006", category_id: 9, category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: "2026-09-03", due_date: "2026-09-18", status: "rejected", currency: "USD", subtotal: 320.0, tax_amount: 0.0, total: 320.0, amount_paid: 0.0, requires_approval: false, capture_source: "upload", extraction_confidence: 0.70, file_fingerprint: "sha256-slack-dup-10", attachment_name: "slack_renewal_receipt.pdf", attachment_url: "/api/finance/bills/6/attachment", is_reviewed: false, approval_status: "rejected", approval_comment: "Duplicate of BILL-2026-002", notes: "Suspected duplicate of BILL-2026-002", created_at: "2026-09-03T10:00:00", created_by: "mock.ap@hrflow.test", lines: [{ id: 6, bill_id: 6, description: "Slack duplicate upload", quantity: 1, unit_price: 320.0, line_total: 320.0 }] },
+    { id: 7, vendor_id: 1, vendor_name: "Amazon Web Services", bill_number: "BILL-2026-007", category_id: 8, category: "Infrastructure", department: "Engineering", legal_entity: "Voyance Health Inc", issue_date: "2026-09-20", due_date: _mockIsoDay(30), status: "scheduled", scheduled_payment_date: _mockIsoDay(25), currency: "USD", subtotal: 640.0, tax_amount: 0.0, total: 640.0, amount_paid: 0.0, approval_status: "approved", capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "Scheduled support plan", created_at: "2026-09-20T09:00:00", created_by: "mock.ap@hrflow.test", lines: [{ id: 7, bill_id: 7, description: "Support plan", quantity: 1, unit_price: 640.0, line_total: 640.0 }] },
+    { id: 8, vendor_id: 2, vendor_name: "Slack Technologies", bill_number: "BILL-2026-008", category_id: 9, category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: "2026-09-02", due_date: "2026-09-30", status: "void", void_reason: "Duplicate", voided_by: "mock.admin@hrflow.test", currency: "USD", subtotal: 99.0, tax_amount: 0.0, total: 99.0, amount_paid: 0.0, capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, notes: "Cancelled add-on", created_at: "2026-09-02T09:00:00", created_by: "mock.ap@hrflow.test", lines: [{ id: 8, bill_id: 8, description: "Add-on", quantity: 1, unit_price: 99.0, line_total: 99.0 }] },
     // Overseas book demo (Bills redesign): a subscription bill paid from the Overseas account, and a later unpaid bill of the same vendor that inherits that book
-    { id: 9, vendor_id: 3, vendor_name: "Google Workspace", bill_number: "SUB-3-Google_Workspace-" + _mockIsoDay(-12).replace(/-/g, ""), category_id: 9, category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: _mockIsoDay(-12), due_date: _mockIsoDay(-2), status: "paid", currency: "USD", subtotal: 412.6, tax_amount: 0.0, total: 412.6, amount_paid: 412.6, requires_approval: false, capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, subscription_name: "Google Workspace", notes: "Monthly workspace charge", created_at: "2026-09-12T09:00:00", created_by: "ap@voyance.health", lines: [{ id: 9, bill_id: 9, description: "Workspace Business Plus", quantity: 1, unit_price: 412.6, line_total: 412.6 }] },
-    { id: 10, vendor_id: 3, vendor_name: "Google Workspace", bill_number: "SUB-3-Google_Workspace-" + _mockIsoDay(-40).replace(/-/g, ""), category_id: 9, category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: _mockIsoDay(-40), due_date: _mockIsoDay(-6), status: "approved", currency: "USD", subtotal: 398.2, tax_amount: 0.0, total: 398.2, amount_paid: 0.0, requires_approval: false, approval_status: "approved", capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, subscription_name: "Google Workspace", notes: "Awaiting payment", created_at: "2026-09-12T09:30:00", created_by: "ap@voyance.health", lines: [{ id: 10, bill_id: 10, description: "Workspace Business Plus", quantity: 1, unit_price: 398.2, line_total: 398.2 }] },
+    { id: 9, vendor_id: 3, vendor_name: "Google Workspace", bill_number: "SUB-3-Google_Workspace-" + _mockIsoDay(-12).replace(/-/g, ""), category_id: 9, category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: _mockIsoDay(-12), due_date: _mockIsoDay(-2), status: "paid", currency: "USD", subtotal: 412.6, tax_amount: 0.0, total: 412.6, amount_paid: 412.6, requires_approval: false, capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, subscription_name: "Google Workspace", notes: "Monthly workspace charge", created_at: "2026-09-12T09:00:00", created_by: "mock.ap@hrflow.test", lines: [{ id: 9, bill_id: 9, description: "Workspace Business Plus", quantity: 1, unit_price: 412.6, line_total: 412.6 }] },
+    { id: 10, vendor_id: 3, vendor_name: "Google Workspace", bill_number: "SUB-3-Google_Workspace-" + _mockIsoDay(-40).replace(/-/g, ""), category_id: 9, category: "SaaS", department: "Operations", legal_entity: "Voyance Health Inc", issue_date: _mockIsoDay(-40), due_date: _mockIsoDay(-6), status: "approved", currency: "USD", subtotal: 398.2, tax_amount: 0.0, total: 398.2, amount_paid: 0.0, requires_approval: false, approval_status: "approved", capture_source: "manual", extraction_confidence: 1.0, is_reviewed: true, subscription_name: "Google Workspace", notes: "Awaiting payment", created_at: "2026-09-12T09:30:00", created_by: "mock.ap@hrflow.test", lines: [{ id: 10, bill_id: 10, description: "Workspace Business Plus", quantity: 1, unit_price: 398.2, line_total: 398.2 }] },
   ];
   }
 
@@ -1583,9 +1583,9 @@ if (typeof window !== "undefined") window._withBook = _withBook;
         save_as_draft: undefined,
         amount_paid: 0.0,
         is_reviewed: isRev,
-        created_by: "admin@voyance.health",
+        created_by: "mock.admin@hrflow.test",
         approval_status: autoApproved ? "auto" : null,
-        approved_by: autoApproved ? "admin@voyance.health" : null,
+        approved_by: autoApproved ? "mock.admin@hrflow.test" : null,
         vendor_name: vend ? vend.name : null,
         subtotal, tax_amount: 0, total: subtotal,
         withholding_amount: round(Number(payload.withholding_amount || 0), 2),
@@ -1671,7 +1671,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       }
       bill.status = target;
       bill.void_reason = reason && reason.trim() ? reason.trim() : null;
-      bill.voided_by = "admin@voyance.health";
+      bill.voided_by = "mock.admin@hrflow.test";
       bill.voided_at = new Date().toISOString();
       return bill;
     }
@@ -1709,7 +1709,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
           bill_number: null, issue_date: null, due_date: null, status: "draft", currency: "EGP",
           subtotal: 0, tax_amount: 0, total: 0, amount_paid: 0, capture_source: "upload", is_reviewed: false,
           attachment_name: name, attachment_url: `/api/finance/bills/${id}/attachment`,
-          file_fingerprint: `sha256-mock-${name}-${id}`, created_by: "admin@voyance.health", created_at: new Date().toISOString(), lines: [],
+          file_fingerprint: `sha256-mock-${name}-${id}`, created_by: "mock.admin@hrflow.test", created_at: new Date().toISOString(), lines: [],
         };
         FinanceMockState.bills.push(bill);
         results.push({ filename: name, bill, error: null, duplicate_of: null });
@@ -1760,7 +1760,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       const decision = payload.decision || "approve";
       if (decision !== "approve" && decision !== "reject") throw new Error(`Invalid decision '${decision}'. Must be 'approve' or 'reject'.`);
       const target = _billNext(decision, bill);
-      const approverEmail = payload.approver_email || "admin@voyance.health";
+      const approverEmail = payload.approver_email || "mock.admin@hrflow.test";
       const isSuper = typeof SessionInfo !== "undefined" && (SessionInfo.getRoles() || []).includes("Super-Admin");
       if (bill.created_by && bill.created_by.toLowerCase() === approverEmail.toLowerCase() && !isSuper) {
         throw new Error("Self-approval is prohibited by segregation of duties policy.");
@@ -1842,7 +1842,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       if (payAccount) payAccount.current_balance = round(payAccount.current_balance + payment.amount, 2);
       payment.is_reversed = true;
       payment.reversed_at = new Date().toISOString();
-      payment.reversed_by = "admin@voyance.health";
+      payment.reversed_by = "mock.admin@hrflow.test";
       payment.reversal_reason = (payload.reason || "").trim();
 
       const remainingPayments = (FinanceMockState.billPayments || []).filter(
@@ -2259,7 +2259,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
   }
   if (!FinanceMockState.accountCheckpoints) {
     FinanceMockState.accountCheckpoints = [
-      { id: 1, account_id: 5, date: "2026-09-30", balance: 31250.0, note: "From the overseas bank portal", has_attachment: false, attachment_name: null, created_by: "admin@voyance.health" },
+      { id: 1, account_id: 5, date: "2026-09-30", balance: 31250.0, note: "From the overseas bank portal", has_attachment: false, attachment_name: null, created_by: "mock.admin@hrflow.test" },
     ];
   }
   // Fiscal-year opening balances (BI-1, D-043). The mock has no ledger: every mock year moves the balance by a fixed
@@ -2269,7 +2269,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
   const MOCK_FIRST_YEAR = 2023;
   if (!FinanceMockState.accountYearOpenings) {
     FinanceMockState.accountYearOpenings = [
-      { account_id: 1, fiscal_year: new Date().getFullYear(), opening_balance: 120000.0, note: "From the January bank statement", updated_by: "admin@voyance.health", updated_at: "2026-10-26T09:00:00Z" },
+      { account_id: 1, fiscal_year: new Date().getFullYear(), opening_balance: 120000.0, note: "From the January bank statement", updated_by: "mock.admin@hrflow.test", updated_at: "2026-10-26T09:00:00Z" },
     ];
   }
   const _yearOpeningItems = (acc) => {
@@ -2534,7 +2534,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       const acc = FinanceMockState.accounts.find((a) => a.id === parseInt(accountId, 10));
       if (!acc) throw new Error("Account not found");
       if (acc.visibility !== "partial") throw new Error("Balance checkpoints are for partial-visibility accounts. Set the account visibility to partial first.");
-      const cp = { id: Math.max(0, ...FinanceMockState.accountCheckpoints.map((c) => c.id)) + 1, account_id: acc.id, date: payload.date, balance: Number(payload.balance), note: payload.note || null, has_attachment: false, attachment_name: null, created_by: "admin@voyance.health" };
+      const cp = { id: Math.max(0, ...FinanceMockState.accountCheckpoints.map((c) => c.id)) + 1, account_id: acc.id, date: payload.date, balance: Number(payload.balance), note: payload.note || null, has_attachment: false, attachment_name: null, created_by: "mock.admin@hrflow.test" };
       FinanceMockState.accountCheckpoints.push(cp);
       return _checkpointView(cp);
     }
@@ -2557,7 +2557,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       const rows = FinanceMockState.accountYearOpenings;
       const existing = rows.find((r) => r.account_id === acc.id && r.fiscal_year === y);
       const row = existing || { account_id: acc.id, fiscal_year: y };
-      Object.assign(row, { opening_balance: Number(payload.opening_balance), note: (payload.note || "").trim(), updated_by: "admin@voyance.health", updated_at: new Date().toISOString() });
+      Object.assign(row, { opening_balance: Number(payload.opening_balance), note: (payload.note || "").trim(), updated_by: "mock.admin@hrflow.test", updated_at: new Date().toISOString() });
       if (!existing) rows.push(row);
       return _yearOpeningItems(acc).find((i) => i.fiscal_year === y) || { fiscal_year: y, entered: true, opening: row.opening_balance, source: "entered", previous_closing: 0, variance: row.opening_balance, note: row.note };
     }
@@ -3131,7 +3131,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       });
       FinanceMockState.transactions = (FinanceMockState.transactions || []).filter((t) => t.linked_transfer_id !== transfer.id);
       transfer.voided_at = new Date().toISOString();
-      transfer.voided_by = "cfo@voyance.health";
+      transfer.voided_by = "mock.cfo@hrflow.test";
       transfer.void_reason = String(reason).trim();
       transfer.settlement_status = "voided";
       return transfer;
@@ -3435,7 +3435,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       fiscal_year: 2026,
       notes: "AWS cloud hosting payment",
       created_at: "2026-09-02T10:00:00",
-      attachments: [{ id: 1, cheque_id: 1, file_name: "cheque-001011-front.pdf", file_size: 48213, mime_type: "application/pdf", uploaded_by: "admin@voyance.health" }],
+      attachments: [{ id: 1, cheque_id: 1, file_name: "cheque-001011-front.pdf", file_size: 48213, mime_type: "application/pdf", uploaded_by: "mock.admin@hrflow.test" }],
     },
     {
       id: 2,
@@ -3522,7 +3522,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       if (!c) throw new Error("Cheque not found");
       c.attachments = c.attachments || [];
       const created = Array.from(files || []).map((f) => {
-        const att = { id: Date.now() + Math.floor(Math.random() * 1000), cheque_id: c.id, file_name: f.name || "scan.pdf", file_size: f.size || 0, mime_type: f.type || "application/pdf", uploaded_by: "admin@voyance.health" };
+        const att = { id: Date.now() + Math.floor(Math.random() * 1000), cheque_id: c.id, file_name: f.name || "scan.pdf", file_size: f.size || 0, mime_type: f.type || "application/pdf", uploaded_by: "mock.admin@hrflow.test" };
         c.attachments.push(att);
         return att;
       });
@@ -5031,7 +5031,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       report_key: "profit-and-loss",
       report_title: "Profit & Loss Statement (P&L)",
       frequency: "monthly",
-      recipients: ["finance-team@voyance.health", "cfo@voyance.health"],
+      recipients: ["mock.finance-team@hrflow.test", "mock.cfo@hrflow.test"],
       export_format: "xlsx",
       filters: { basis: "accrual", currency: "USD" },
       is_active: true,
@@ -5043,7 +5043,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       report_key: "ar-aging",
       report_title: "Accounts Receivable (AR) Aging",
       frequency: "weekly",
-      recipients: ["collections@voyance.health"],
+      recipients: ["mock.collections@hrflow.test"],
       export_format: "csv",
       filters: { currency: "USD" },
       is_active: true,
@@ -7129,7 +7129,7 @@ async getEntityActivity(entityType, entityId) {
             timestamp: `${inv.issue_date || today} 09:00:00`,
             event: "invoice_issued",
             plain_text: `Invoice ${inv.invoice_number} issued for ${inv.currency || "USD"} ${(inv.total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
-            actor: "finance@voyance.health",
+            actor: "mock.finance@hrflow.test",
             state_transition: { from_state: "draft", to_state: derivedStatus },
           });
 
@@ -7139,7 +7139,7 @@ async getEntityActivity(entityType, entityId) {
               timestamp: `${p.payment_date || today} 14:00:00`,
               event: "payment_received",
               plain_text: `Payment of ${p.currency || "USD"} ${(p.amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })} recorded (Ref: ${p.reference || "N/A"})`,
-              actor: "finance@voyance.health",
+              actor: "mock.finance@hrflow.test",
               state_transition: { from_state: "sent", to_state: "paid" },
             });
           }
@@ -7217,7 +7217,7 @@ async getEntityActivity(entityType, entityId) {
           timestamp: `${b.issue_date || "2026-09-01"} 09:00:00`,
           event: "bill_received",
           plain_text: `Bill ${b.bill_number} recorded for ${b.currency || "USD"} ${(b.total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
-          actor: b.created_by || "finance@voyance.health",
+          actor: b.created_by || "mock.finance@hrflow.test",
           state_transition: { from_state: "draft", to_state: b.status || "draft" },
         }));
 
@@ -7280,7 +7280,7 @@ async getEntityActivity(entityType, entityId) {
             timestamp: bill.created_at || `${bill.issue_date} 08:00:00`,
             event: "created",
             plain_text: `Vendor bill ${bill.bill_number} received from ${bill.vendor_name || vendor.name}`,
-            actor: bill.created_by || "ap@voyance.health",
+            actor: bill.created_by || "mock.ap@hrflow.test",
             state_transition: { from_state: null, to_state: bill.status || "draft" },
           },
         ];
@@ -7302,7 +7302,7 @@ async getEntityActivity(entityType, entityId) {
             timestamp: bill.created_at || `${bill.issue_date} 10:00:00`,
             event: "scheduled",
             plain_text: `Payment scheduled for ${bill.scheduled_payment_date}`,
-            actor: "finance@voyance.health",
+            actor: "mock.finance@hrflow.test",
             state_transition: { from_state: "approved", to_state: "scheduled" },
           });
         }
@@ -7313,7 +7313,7 @@ async getEntityActivity(entityType, entityId) {
             timestamp: `${p.payment_date || bill.issue_date} 12:00:00`,
             event: "payment",
             plain_text: `Payment of ${p.amount.toLocaleString()} ${p.currency || "USD"} recorded (Ref: ${p.reference || "N/A"})`,
-            actor: "ap@voyance.health",
+            actor: "mock.ap@hrflow.test",
             state_transition: { from_state: "approved", to_state: "partially_paid" },
           });
           if (p.is_reversed) {
@@ -7322,7 +7322,7 @@ async getEntityActivity(entityType, entityId) {
               timestamp: p.reversed_at || new Date().toISOString(),
               event: "reversal",
               plain_text: `Payment #${p.id} reversed: ${p.reversal_reason || "Voided by user"}`,
-              actor: p.reversed_by || "admin@voyance.health",
+              actor: p.reversed_by || "mock.admin@hrflow.test",
               state_transition: { from_state: "paid", to_state: "approved" },
             });
           }
@@ -7385,7 +7385,7 @@ async getEntityActivity(entityType, entityId) {
               mime_type: "application/pdf",
               storage_ref: `/api/finance/bills/${bill.id}/attachment`,
               uploaded_at: bill.created_at || "2026-09-01T08:00:00Z",
-              uploaded_by: bill.created_by || "ap@voyancemed.com",
+              uploaded_by: bill.created_by || "mock.ap@hrflow.test",
             },
           ] : [],
           timeline,
@@ -7497,7 +7497,7 @@ async getEntityActivity(entityType, entityId) {
       same.employee_rate = Number(employeeRate);
       same.employer_rate = Number(employerRate);
     } else {
-      rows.push({ id: rows.length + 1, effective_from: effectiveFrom, employee_rate: Number(employeeRate), employer_rate: Number(employerRate), created_by: "admin@voyance.health" });
+      rows.push({ id: rows.length + 1, effective_from: effectiveFrom, employee_rate: Number(employeeRate), employer_rate: Number(employerRate), created_by: "mock.admin@hrflow.test" });
     }
     const now = _mockRateInForce(new Date().toISOString().slice(0, 7) + "-01");
     const st = _mockPayrollSettings();
@@ -7516,7 +7516,7 @@ async getEntityActivity(entityType, entityId) {
         external_funding_account_id: 1,
         internal_funding_account_id: 2,
         updated_at: new Date().toISOString(),
-        updated_by: "admin@voyance.health",
+        updated_by: "mock.admin@hrflow.test",
       };
     }
     const st = FinanceMockState.payrollSettings;
@@ -7552,15 +7552,15 @@ async getEntityActivity(entityType, entityId) {
         fx_rate_source: "first_of_month",
         fx_rate_value: 48.5,
         created_at: "2026-08-25T09:00:00Z",
-        created_by: "payroll@voyance.health",
+        created_by: "mock.payroll@hrflow.test",
         submitted_at: "2026-08-26T10:00:00Z",
-        submitted_by: "payroll@voyance.health",
+        submitted_by: "mock.payroll@hrflow.test",
         approved_at: "2026-08-28T10:00:00Z",
-        approved_by: "cfo@voyance.health",
+        approved_by: "mock.cfo@hrflow.test",
         finalized_at: "2026-08-29T11:00:00Z",
-        finalized_by: "payroll@voyance.health",
+        finalized_by: "mock.payroll@hrflow.test",
         paid_at: "2026-08-31T14:30:00Z",
-        paid_by: "payroll@voyance.health",
+        paid_by: "mock.payroll@hrflow.test",
         journal_transaction_id: 101,
         has_blocking_exceptions: false,
         exceptions: [],
@@ -8060,7 +8060,7 @@ async getEntityActivity(entityType, entityId) {
           external_reference: payload.external_reference || null,
           origin: "MANUAL",
           status: "DRAFT",
-          created_by: "admin@voyance.health",
+          created_by: "mock.admin@hrflow.test",
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
@@ -8190,7 +8190,7 @@ async getEntityActivity(entityType, entityId) {
           internal_funding_account_id: prev.internal_funding_account_id,
           internal_funding_account_name: prev.internal_funding_account_name,
           created_at: new Date().toISOString(),
-          created_by: "admin@voyance.health",
+          created_by: "mock.admin@hrflow.test",
           has_blocking_exceptions: prev.has_blocking_exceptions,
           exceptions: prev.exceptions,
           historical_period: prev.historical_period,
@@ -8239,9 +8239,9 @@ async getEntityActivity(entityType, entityId) {
           preview_version: payload.preview_version || prev.preview_version,
           source_version: payload.source_version || prev.source_version,
           created_at: new Date().toISOString(),
-          created_by: "preparer@voyance.health",
+          created_by: "mock.preparer@hrflow.test",
           submitted_at: submitForApproval ? new Date().toISOString() : null,
-          submitted_by: submitForApproval ? "preparer@voyance.health" : null,
+          submitted_by: submitForApproval ? "mock.preparer@hrflow.test" : null,
           approved_at: null,
           approved_by: null,
           finalized_at: null,
@@ -8293,7 +8293,7 @@ async getEntityActivity(entityType, entityId) {
         }
         run.status = "submitted";
         run.submitted_at = new Date().toISOString();
-        run.submitted_by = "preparer@voyance.health";
+        run.submitted_by = "mock.preparer@hrflow.test";
         return run;
       }
       return apiRequest("POST", `/api/finance/payroll/runs/${runId}/submit`);
@@ -8311,7 +8311,7 @@ async getEntityActivity(entityType, entityId) {
         }
         run.status = "approved";
         run.approved_at = new Date().toISOString();
-        run.approved_by = "cfo@voyance.health";
+        run.approved_by = "mock.cfo@hrflow.test";
         return run;
       }
       const query = allowSelfApproval ? "?allow_self_approval=true" : "";
@@ -8337,7 +8337,7 @@ async getEntityActivity(entityType, entityId) {
         if (fundingNow.internal_funding_account_id) run.internal_funding_account_id = fundingNow.internal_funding_account_id;
         run.status = "finalized";
         run.finalized_at = new Date().toISOString();
-        run.finalized_by = "cfo@voyance.health";
+        run.finalized_by = "mock.cfo@hrflow.test";
         return run;
       }
       return apiRequest("POST", `/api/finance/payroll/runs/${runId}/finalize`);
@@ -8420,7 +8420,7 @@ async getEntityActivity(entityType, entityId) {
           run.status = "paid";
           run.paid_at = now;
         }
-        run.paid_by = "payroll@voyance.health";
+        run.paid_by = "mock.payroll@hrflow.test";
         return run;
       }
       return apiRequest("POST", `/api/finance/payroll/runs/${runId}/pay`, {
@@ -8836,7 +8836,7 @@ async getEntityActivity(entityType, entityId) {
           external_funding_account_id: payload.external_funding_account_id != null ? Number(payload.external_funding_account_id) : cur.external_funding_account_id,
           internal_funding_account_id: payload.internal_funding_account_id != null ? Number(payload.internal_funding_account_id) : cur.internal_funding_account_id,
           updated_at: new Date().toISOString(),
-          updated_by: "admin@voyance.health"
+          updated_by: "mock.admin@hrflow.test"
         };
         return _mockPayrollSettings();
       }
@@ -9431,7 +9431,7 @@ async getEntityActivity(entityType, entityId) {
               capture_source: "import", is_reviewed: false, import_batch_id: batchId,
               ...(v.paid_date && v.paid_from_account ? { status: "paid", amount_paid: Number(v.total_amount) || 0 } : {}),
               attachment_name: v.source_file || null, notes: `Imported (batch ${batchId}, row ${v.row_ref}).`,
-              created_by: "admin@voyance.health", created_at: new Date().toISOString(), lines: [],
+              created_by: "mock.admin@hrflow.test", created_at: new Date().toISOString(), lines: [],
             });
             r.created_id = id;
           } else if (kind === "cheques") {
@@ -9445,8 +9445,8 @@ async getEntityActivity(entityType, entityId) {
               id, cheque_number: v.cheque_number, account_id: acct.id, account_name: acct.account_name, issue_date: v.issue_date,
               amount: Number(v.amount), currency: v.currency || acct.currency, payee: v.payee, purpose_type: "other", status: "draft",
               posting_policy: "at_issue", fiscal_year: Number(v.issue_date.slice(0, 4)), import_batch_id: batchId,
-              notes: `Imported (batch ${batchId}, row ${v.row_ref}).`, created_at: new Date().toISOString(), created_by: "admin@voyance.health",
-              attachments: v.source_file ? [{ id: id * 10, cheque_id: id, file_name: v.source_file, file_size: 0, mime_type: "application/pdf", uploaded_by: "admin@voyance.health" }] : [],
+              notes: `Imported (batch ${batchId}, row ${v.row_ref}).`, created_at: new Date().toISOString(), created_by: "mock.admin@hrflow.test",
+              attachments: v.source_file ? [{ id: id * 10, cheque_id: id, file_name: v.source_file, file_size: 0, mime_type: "application/pdf", uploaded_by: "mock.admin@hrflow.test" }] : [],
             });
             r.created_id = id;
           } else if (kind === "invoices") {

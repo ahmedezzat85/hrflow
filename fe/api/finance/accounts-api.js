@@ -36,7 +36,7 @@
   }
   if (!FinanceMockState.accountCheckpoints) {
     FinanceMockState.accountCheckpoints = [
-      { id: 1, account_id: 5, date: "2026-09-30", balance: 31250.0, note: "From the overseas bank portal", has_attachment: false, attachment_name: null, created_by: "admin@voyance.health" },
+      { id: 1, account_id: 5, date: "2026-09-30", balance: 31250.0, note: "From the overseas bank portal", has_attachment: false, attachment_name: null, created_by: "mock.admin@hrflow.test" },
     ];
   }
   // Fiscal-year opening balances (BI-1, D-043). The mock has no ledger: every mock year moves the balance by a fixed
@@ -46,7 +46,7 @@
   const MOCK_FIRST_YEAR = 2023;
   if (!FinanceMockState.accountYearOpenings) {
     FinanceMockState.accountYearOpenings = [
-      { account_id: 1, fiscal_year: new Date().getFullYear(), opening_balance: 120000.0, note: "From the January bank statement", updated_by: "admin@voyance.health", updated_at: "2026-10-26T09:00:00Z" },
+      { account_id: 1, fiscal_year: new Date().getFullYear(), opening_balance: 120000.0, note: "From the January bank statement", updated_by: "mock.admin@hrflow.test", updated_at: "2026-10-26T09:00:00Z" },
     ];
   }
   const _yearOpeningItems = (acc) => {
@@ -311,7 +311,7 @@
       const acc = FinanceMockState.accounts.find((a) => a.id === parseInt(accountId, 10));
       if (!acc) throw new Error("Account not found");
       if (acc.visibility !== "partial") throw new Error("Balance checkpoints are for partial-visibility accounts. Set the account visibility to partial first.");
-      const cp = { id: Math.max(0, ...FinanceMockState.accountCheckpoints.map((c) => c.id)) + 1, account_id: acc.id, date: payload.date, balance: Number(payload.balance), note: payload.note || null, has_attachment: false, attachment_name: null, created_by: "admin@voyance.health" };
+      const cp = { id: Math.max(0, ...FinanceMockState.accountCheckpoints.map((c) => c.id)) + 1, account_id: acc.id, date: payload.date, balance: Number(payload.balance), note: payload.note || null, has_attachment: false, attachment_name: null, created_by: "mock.admin@hrflow.test" };
       FinanceMockState.accountCheckpoints.push(cp);
       return _checkpointView(cp);
     }
@@ -334,7 +334,7 @@
       const rows = FinanceMockState.accountYearOpenings;
       const existing = rows.find((r) => r.account_id === acc.id && r.fiscal_year === y);
       const row = existing || { account_id: acc.id, fiscal_year: y };
-      Object.assign(row, { opening_balance: Number(payload.opening_balance), note: (payload.note || "").trim(), updated_by: "admin@voyance.health", updated_at: new Date().toISOString() });
+      Object.assign(row, { opening_balance: Number(payload.opening_balance), note: (payload.note || "").trim(), updated_by: "mock.admin@hrflow.test", updated_at: new Date().toISOString() });
       if (!existing) rows.push(row);
       return _yearOpeningItems(acc).find((i) => i.fiscal_year === y) || { fiscal_year: y, entered: true, opening: row.opening_balance, source: "entered", previous_closing: 0, variance: row.opening_balance, note: row.note };
     }
@@ -908,7 +908,7 @@
       });
       FinanceMockState.transactions = (FinanceMockState.transactions || []).filter((t) => t.linked_transfer_id !== transfer.id);
       transfer.voided_at = new Date().toISOString();
-      transfer.voided_by = "cfo@voyance.health";
+      transfer.voided_by = "mock.cfo@hrflow.test";
       transfer.void_reason = String(reason).trim();
       transfer.settlement_status = "voided";
       return transfer;

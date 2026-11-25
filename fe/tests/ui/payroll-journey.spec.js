@@ -119,7 +119,7 @@ test.describe('U8 payroll journey', () => {
   test('reverting a finalized run goes through the server call and unlocks the run', async ({ page }) => {
     await openRun(page);
     const result = await page.evaluate(async () => {
-      FinanceMockState.payrollRuns.push({ id: 9001, period_label: '2025-02', period_start: '2025-02-01', period_end: '2025-02-28', payment_date: '2025-02-28', status: 'finalized', finalized_by: 'cfo@voyance.health', lines: [], exceptions: [] });
+      FinanceMockState.payrollRuns.push({ id: 9001, period_label: '2025-02', period_start: '2025-02-01', period_end: '2025-02-28', payment_date: '2025-02-28', status: 'finalized', finalized_by: 'mock.cfo@hrflow.test', lines: [], exceptions: [] });
       PayrollApp.currentRun = { id: 9001, status: 'finalized' };
       document.getElementById('payrollRevertReason').value = 'Wrong bonus entered';
       await PayrollApp.confirmRevert();

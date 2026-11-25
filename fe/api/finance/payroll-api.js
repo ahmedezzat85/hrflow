@@ -42,7 +42,7 @@
       same.employee_rate = Number(employeeRate);
       same.employer_rate = Number(employerRate);
     } else {
-      rows.push({ id: rows.length + 1, effective_from: effectiveFrom, employee_rate: Number(employeeRate), employer_rate: Number(employerRate), created_by: "admin@voyance.health" });
+      rows.push({ id: rows.length + 1, effective_from: effectiveFrom, employee_rate: Number(employeeRate), employer_rate: Number(employerRate), created_by: "mock.admin@hrflow.test" });
     }
     const now = _mockRateInForce(new Date().toISOString().slice(0, 7) + "-01");
     const st = _mockPayrollSettings();
@@ -61,7 +61,7 @@
         external_funding_account_id: 1,
         internal_funding_account_id: 2,
         updated_at: new Date().toISOString(),
-        updated_by: "admin@voyance.health",
+        updated_by: "mock.admin@hrflow.test",
       };
     }
     const st = FinanceMockState.payrollSettings;
@@ -97,15 +97,15 @@
         fx_rate_source: "first_of_month",
         fx_rate_value: 48.5,
         created_at: "2026-08-25T09:00:00Z",
-        created_by: "payroll@voyance.health",
+        created_by: "mock.payroll@hrflow.test",
         submitted_at: "2026-08-26T10:00:00Z",
-        submitted_by: "payroll@voyance.health",
+        submitted_by: "mock.payroll@hrflow.test",
         approved_at: "2026-08-28T10:00:00Z",
-        approved_by: "cfo@voyance.health",
+        approved_by: "mock.cfo@hrflow.test",
         finalized_at: "2026-08-29T11:00:00Z",
-        finalized_by: "payroll@voyance.health",
+        finalized_by: "mock.payroll@hrflow.test",
         paid_at: "2026-08-31T14:30:00Z",
-        paid_by: "payroll@voyance.health",
+        paid_by: "mock.payroll@hrflow.test",
         journal_transaction_id: 101,
         has_blocking_exceptions: false,
         exceptions: [],
@@ -605,7 +605,7 @@
           external_reference: payload.external_reference || null,
           origin: "MANUAL",
           status: "DRAFT",
-          created_by: "admin@voyance.health",
+          created_by: "mock.admin@hrflow.test",
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
@@ -735,7 +735,7 @@
           internal_funding_account_id: prev.internal_funding_account_id,
           internal_funding_account_name: prev.internal_funding_account_name,
           created_at: new Date().toISOString(),
-          created_by: "admin@voyance.health",
+          created_by: "mock.admin@hrflow.test",
           has_blocking_exceptions: prev.has_blocking_exceptions,
           exceptions: prev.exceptions,
           historical_period: prev.historical_period,
@@ -784,9 +784,9 @@
           preview_version: payload.preview_version || prev.preview_version,
           source_version: payload.source_version || prev.source_version,
           created_at: new Date().toISOString(),
-          created_by: "preparer@voyance.health",
+          created_by: "mock.preparer@hrflow.test",
           submitted_at: submitForApproval ? new Date().toISOString() : null,
-          submitted_by: submitForApproval ? "preparer@voyance.health" : null,
+          submitted_by: submitForApproval ? "mock.preparer@hrflow.test" : null,
           approved_at: null,
           approved_by: null,
           finalized_at: null,
@@ -838,7 +838,7 @@
         }
         run.status = "submitted";
         run.submitted_at = new Date().toISOString();
-        run.submitted_by = "preparer@voyance.health";
+        run.submitted_by = "mock.preparer@hrflow.test";
         return run;
       }
       return apiRequest("POST", `/api/finance/payroll/runs/${runId}/submit`);
@@ -856,7 +856,7 @@
         }
         run.status = "approved";
         run.approved_at = new Date().toISOString();
-        run.approved_by = "cfo@voyance.health";
+        run.approved_by = "mock.cfo@hrflow.test";
         return run;
       }
       const query = allowSelfApproval ? "?allow_self_approval=true" : "";
@@ -882,7 +882,7 @@
         if (fundingNow.internal_funding_account_id) run.internal_funding_account_id = fundingNow.internal_funding_account_id;
         run.status = "finalized";
         run.finalized_at = new Date().toISOString();
-        run.finalized_by = "cfo@voyance.health";
+        run.finalized_by = "mock.cfo@hrflow.test";
         return run;
       }
       return apiRequest("POST", `/api/finance/payroll/runs/${runId}/finalize`);
@@ -965,7 +965,7 @@
           run.status = "paid";
           run.paid_at = now;
         }
-        run.paid_by = "payroll@voyance.health";
+        run.paid_by = "mock.payroll@hrflow.test";
         return run;
       }
       return apiRequest("POST", `/api/finance/payroll/runs/${runId}/pay`, {
@@ -1381,7 +1381,7 @@
           external_funding_account_id: payload.external_funding_account_id != null ? Number(payload.external_funding_account_id) : cur.external_funding_account_id,
           internal_funding_account_id: payload.internal_funding_account_id != null ? Number(payload.internal_funding_account_id) : cur.internal_funding_account_id,
           updated_at: new Date().toISOString(),
-          updated_by: "admin@voyance.health"
+          updated_by: "mock.admin@hrflow.test"
         };
         return _mockPayrollSettings();
       }

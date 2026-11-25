@@ -800,7 +800,7 @@ async getEntityActivity(entityType, entityId) {
             timestamp: `${inv.issue_date || today} 09:00:00`,
             event: "invoice_issued",
             plain_text: `Invoice ${inv.invoice_number} issued for ${inv.currency || "USD"} ${(inv.total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
-            actor: "finance@voyance.health",
+            actor: "mock.finance@hrflow.test",
             state_transition: { from_state: "draft", to_state: derivedStatus },
           });
 
@@ -810,7 +810,7 @@ async getEntityActivity(entityType, entityId) {
               timestamp: `${p.payment_date || today} 14:00:00`,
               event: "payment_received",
               plain_text: `Payment of ${p.currency || "USD"} ${(p.amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })} recorded (Ref: ${p.reference || "N/A"})`,
-              actor: "finance@voyance.health",
+              actor: "mock.finance@hrflow.test",
               state_transition: { from_state: "sent", to_state: "paid" },
             });
           }
@@ -888,7 +888,7 @@ async getEntityActivity(entityType, entityId) {
           timestamp: `${b.issue_date || "2026-09-01"} 09:00:00`,
           event: "bill_received",
           plain_text: `Bill ${b.bill_number} recorded for ${b.currency || "USD"} ${(b.total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
-          actor: b.created_by || "finance@voyance.health",
+          actor: b.created_by || "mock.finance@hrflow.test",
           state_transition: { from_state: "draft", to_state: b.status || "draft" },
         }));
 
@@ -951,7 +951,7 @@ async getEntityActivity(entityType, entityId) {
             timestamp: bill.created_at || `${bill.issue_date} 08:00:00`,
             event: "created",
             plain_text: `Vendor bill ${bill.bill_number} received from ${bill.vendor_name || vendor.name}`,
-            actor: bill.created_by || "ap@voyance.health",
+            actor: bill.created_by || "mock.ap@hrflow.test",
             state_transition: { from_state: null, to_state: bill.status || "draft" },
           },
         ];
@@ -973,7 +973,7 @@ async getEntityActivity(entityType, entityId) {
             timestamp: bill.created_at || `${bill.issue_date} 10:00:00`,
             event: "scheduled",
             plain_text: `Payment scheduled for ${bill.scheduled_payment_date}`,
-            actor: "finance@voyance.health",
+            actor: "mock.finance@hrflow.test",
             state_transition: { from_state: "approved", to_state: "scheduled" },
           });
         }
@@ -984,7 +984,7 @@ async getEntityActivity(entityType, entityId) {
             timestamp: `${p.payment_date || bill.issue_date} 12:00:00`,
             event: "payment",
             plain_text: `Payment of ${p.amount.toLocaleString()} ${p.currency || "USD"} recorded (Ref: ${p.reference || "N/A"})`,
-            actor: "ap@voyance.health",
+            actor: "mock.ap@hrflow.test",
             state_transition: { from_state: "approved", to_state: "partially_paid" },
           });
           if (p.is_reversed) {
@@ -993,7 +993,7 @@ async getEntityActivity(entityType, entityId) {
               timestamp: p.reversed_at || new Date().toISOString(),
               event: "reversal",
               plain_text: `Payment #${p.id} reversed: ${p.reversal_reason || "Voided by user"}`,
-              actor: p.reversed_by || "admin@voyance.health",
+              actor: p.reversed_by || "mock.admin@hrflow.test",
               state_transition: { from_state: "paid", to_state: "approved" },
             });
           }
@@ -1056,7 +1056,7 @@ async getEntityActivity(entityType, entityId) {
               mime_type: "application/pdf",
               storage_ref: `/api/finance/bills/${bill.id}/attachment`,
               uploaded_at: bill.created_at || "2026-09-01T08:00:00Z",
-              uploaded_by: bill.created_by || "ap@voyancemed.com",
+              uploaded_by: bill.created_by || "mock.ap@hrflow.test",
             },
           ] : [],
           timeline,
