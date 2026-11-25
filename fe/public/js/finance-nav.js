@@ -340,7 +340,7 @@ const SpendTabs = {
         } else if (!active) {
           action = `if(window.AdminNav)AdminNav.go('${t.page}')`;
         }
-        return `<button class="filter-tab${active ? ' active' : ''}" id="${bar.ids[t.key]}" role="tab" aria-selected="${active}" tabindex="${active ? 0 : -1}"${action ? ` onclick="${action}"` : ''}>${t.label}</button>`;
+        return `<button class="filter-tab${active ? ' active' : ''}" id="${bar.ids[t.key]}" role="tab" aria-selected="${active}" tabindex="${active ? 0 : -1}"${action ? ` onclick="${action}"` : ''}>${escapeHtml(t.label)}</button>`;
       }).join('');
       if (typeof initAccessibleTablist === 'function') initAccessibleTablist(el);
     });

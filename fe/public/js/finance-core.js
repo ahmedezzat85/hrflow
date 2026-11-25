@@ -1581,7 +1581,7 @@ const FinanceDrawer = {
       if (titleEl) titleEl.textContent = "Error loading record";
       const body = document.getElementById("financeDrawerSummaryPanel");
       if (body) {
-        body.innerHTML = `<div class="empty-state"><i class="fa-solid fa-circle-exclamation" style="color:var(--danger);"></i><p>Failed to load record detail: ${err.message || err}</p></div>`;
+        body.innerHTML = `<div class="empty-state"><i class="fa-solid fa-circle-exclamation" style="color:var(--danger);"></i><p>Failed to load record detail: ${escapeHtml(err.message || err)}</p></div>`;
       }
     } finally {
       if (loading) loading.style.display = "none";
@@ -1627,7 +1627,7 @@ const FinanceDrawer = {
       const attrs = data.summary?.attributes || [];
       attrsList.innerHTML = attrs.map((a) => `
         <div class="drawer-attr-item">
-          <div class="drawer-attr-label">${a.label}</div>
+          <div class="drawer-attr-label">${escapeHtml(a.label)}</div>
           <div class="drawer-attr-value">${a.value}</div>
         </div>
       `).join("");
@@ -1684,9 +1684,9 @@ const FinanceDrawer = {
         relatedList.innerHTML = getEmptyStateHtml("No linked financial records found.", "fa-solid fa-link");
       } else {
         relatedList.innerHTML = records.map((rec) => `
-          <div class="related-record-card" role="button" tabindex="0" data-rel-type="${rec.entity_type}" data-rel-id="${rec.entity_id}" aria-label="Open related ${rec.title}">
+          <div class="related-record-card" role="button" tabindex="0" data-rel-type="${rec.entity_type}" data-rel-id="${rec.entity_id}" aria-label="Open related ${escapeHtml(rec.title)}">
             <div style="display:flex; flex-direction:column; gap:3px;">
-              <div style="font-weight:700; font-size:0.92rem; color:var(--text);">${rec.title}</div>
+              <div style="font-weight:700; font-size:0.92rem; color:var(--text);">${escapeHtml(rec.title)}</div>
               <div style="display:flex; align-items:center; gap:6px;">
                 <span class="badge badge-grey" style="font-size:0.72rem;">${rec.badge || rec.entity_type}</span>
                 ${rec.date ? `<span style="font-size:0.78rem; color:var(--text3);">${FinanceFormat.formatFinanceDate(rec.date)}</span>` : ""}
@@ -1737,7 +1737,7 @@ const FinanceDrawer = {
             <div style="display:flex; align-items:center; gap:10px;">
               <i class="fa-solid fa-file-pdf" style="font-size:1.4rem; color:var(--danger);"></i>
               <div>
-                <div style="font-weight:600; font-size:0.88rem; color:var(--text);">${att.file_name}</div>
+                <div style="font-weight:600; font-size:0.88rem; color:var(--text);">${escapeHtml(att.file_name)}</div>
                 <div style="font-size:0.75rem; color:var(--text3);">${att.file_size ? `${(att.file_size / 1024).toFixed(1)} KB • ` : ""}Uploaded ${att.uploaded_at ? FinanceFormat.formatFinanceDate(att.uploaded_at) : "recently"}</div>
               </div>
             </div>

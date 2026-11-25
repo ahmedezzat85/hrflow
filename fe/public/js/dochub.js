@@ -302,7 +302,7 @@ function previewCompanyDocument(docId, name, fileType){
       ? `<img src="${url}" style="max-width:100%;max-height:100%;object-fit:contain;">`
       : `<iframe src="${url}" style="width:100%;height:100%;border:none;"></iframe>`;
   }).catch(err => {
-    if(container) container.innerHTML = `<div style="color:var(--danger);font-size:13px;padding:20px;text-align:center;">${err.message}</div>`;
+    if(container) container.innerHTML = `<div style="color:var(--danger);font-size:13px;padding:20px;text-align:center;">${escapeHtml(err.message)}</div>`;
   });
 }
 function downloadCompanyDocument(docId){

@@ -1,0 +1,23 @@
+{
+  "public/js/app.js": 4,
+  "public/js/dochub.js": 8,
+  "public/js/employees.js": 11,
+  "public/js/finance-accounts.js": 9,
+  "public/js/finance-bills.js": 10,
+  "public/js/finance-cheques.js": 4,
+  "public/js/finance-core.js": 9,
+  "public/js/finance-invoices.js": 3,
+  "public/js/finance-payroll.js": 21,
+  "public/js/finance-products.js": 1,
+  "public/js/finance-reports.js": 5,
+  "public/js/finance-salespeople.js": 2,
+  "public/js/finance-statements.js": 2,
+  "public/js/finance-statutory.js": 5,
+  "public/js/finance-subscriptions.js": 5,
+  "public/js/insurance.js": 3,
+  "public/js/invoices.js": 7,
+  "public/js/payroll-table.js": 2,
+  "public/js/requests.js": 6,
+  "public/js/search.js": 2,
+  "public/js/ui.js": 5
+}

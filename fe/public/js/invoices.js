@@ -486,7 +486,7 @@ function previewInvoicePdf(invoiceId, invoiceNumber){
     }
   }).catch(err => {
     if (container) {
-      container.innerHTML = `<div style="color:var(--danger);font-size:13px;padding:20px;text-align:center;">${err.message}</div>`;
+      container.innerHTML = `<div style="color:var(--danger);font-size:13px;padding:20px;text-align:center;">${escapeHtml(err.message)}</div>`;
     }
   });
 }

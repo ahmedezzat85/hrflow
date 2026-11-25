@@ -231,7 +231,7 @@ function openChequeActionModal(chequeId, targetStatus) {
   const card = document.getElementById("chequeActionSummaryCard");
   if (card) {
     card.innerHTML = chq
-      ? `<strong>Cheque #${chq.cheque_number}</strong> · ${chq.payee} · <strong>${FinanceFormat.renderMoneyHtml(chq.amount || 0, chq.currency || "USD")}</strong> (Account: ${chq.account_name || 'Bank'})`
+      ? `<strong>Cheque #${escapeHtml(chq.cheque_number)}</strong> · ${escapeHtml(chq.payee)} · <strong>${FinanceFormat.renderMoneyHtml(chq.amount || 0, chq.currency || "USD")}</strong> (Account: ${escapeHtml(chq.account_name || 'Bank')})`
       : `Cheque #${chequeId}`;
   }
 
@@ -293,7 +293,7 @@ function openChequeReplaceModal(chequeId) {
   const summaryEl = document.getElementById("chequeReplaceOldSummary");
   if (summaryEl) {
     summaryEl.innerHTML = chq
-      ? `<strong>Original Cheque #${chq.cheque_number}</strong> · Payee: <strong>${chq.payee}</strong> · Amount: <strong>${FinanceFormat.renderMoneyHtml(chq.amount || 0, chq.currency || "USD")}</strong> (Account: ${chq.account_name || 'Bank'})`
+      ? `<strong>Original Cheque #${escapeHtml(chq.cheque_number)}</strong> · Payee: <strong>${escapeHtml(chq.payee)}</strong> · Amount: <strong>${FinanceFormat.renderMoneyHtml(chq.amount || 0, chq.currency || "USD")}</strong> (Account: ${escapeHtml(chq.account_name || 'Bank')})`
       : `Cheque #${chequeId}`;
   }
 
@@ -398,7 +398,7 @@ async function openIssueChequeModal() {
   if (bankSel) {
     const banks = (FinanceState.accounts || []).filter((a) => (a.account_type === "bank" || !a.account_type || a.account_type !== "cash") && a.is_active);
     bankSel.innerHTML = '<option value="">— Select company bank account —</option>' +
-      banks.map((a) => `<option value="${a.id}" data-currency="${a.currency}">${a.account_name} (${a.currency}) - Bal: ${a.currency === 'EGP' ? 'EGP ' : '$'}${Number(a.current_balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</option>`).join("");
+      banks.map((a) => `<option value="${a.id}" data-currency="${a.currency}">${escapeHtml(a.account_name)} (${a.currency}) - Bal: ${a.currency === 'EGP' ? 'EGP ' : '$'}${Number(a.current_balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</option>`).join("");
   }
 
   const cashSel = document.getElementById("chequeDestinationCashAccountId");
@@ -406,7 +406,7 @@ async function openIssueChequeModal() {
     let cashAccounts = (FinanceState.accounts || []).filter((a) => a.account_type === "cash" && a.is_active);
     if (!cashAccounts.length) cashAccounts = (FinanceState.accounts || []).filter((a) => a.is_active);
     cashSel.innerHTML = '<option value="">— Select cash account to fund —</option>' +
-      cashAccounts.map((a) => `<option value="${a.id}">${a.account_name} (${a.currency})</option>`).join("");
+      cashAccounts.map((a) => `<option value="${a.id}">${escapeHtml(a.account_name)} (${a.currency})</option>`).join("");
   }
 
   const billSel = document.getElementById("chequeLinkedBillId");
@@ -729,7 +729,7 @@ async function openWithdrawCashModal() {
   if (bankSel) {
     const banks = (FinanceState.accounts || []).filter((a) => (a.account_type === "bank" || !a.account_type || a.account_type !== "cash") && a.is_active);
     bankSel.innerHTML = '<option value="">— Select bank —</option>' +
-      banks.map((a) => `<option value="${a.id}" data-currency="${a.currency}">${a.account_name} (${a.currency}) - Bal: ${a.currency === 'EGP' ? 'EGP ' : '$'}${Number(a.current_balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</option>`).join("");
+      banks.map((a) => `<option value="${a.id}" data-currency="${a.currency}">${escapeHtml(a.account_name)} (${a.currency}) - Bal: ${a.currency === 'EGP' ? 'EGP ' : '$'}${Number(a.current_balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</option>`).join("");
   }
 
   const cashSel = document.getElementById("withdrawDestCashAccountId");
@@ -737,7 +737,7 @@ async function openWithdrawCashModal() {
     let cashAccounts = (FinanceState.accounts || []).filter((a) => a.account_type === "cash" && a.is_active);
     if (!cashAccounts.length) cashAccounts = (FinanceState.accounts || []).filter((a) => a.is_active);
     cashSel.innerHTML = '<option value="">— Select cash drawer —</option>' +
-      cashAccounts.map((a) => `<option value="${a.id}" data-currency="${a.currency}">${a.account_name} (${a.currency})</option>`).join("");
+      cashAccounts.map((a) => `<option value="${a.id}" data-currency="${a.currency}">${escapeHtml(a.account_name)} (${a.currency})</option>`).join("");
   }
 
   document.getElementById("withdrawAmount").value = "";

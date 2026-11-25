@@ -127,7 +127,7 @@ async function openReportFromLibrary(reportKey) {
   const qEl = document.getElementById("reportShellQuestion");
 
   if (titleEl && meta) {
-    titleEl.innerHTML = `<i class="${meta.icon || 'fa-solid fa-chart-pie'}"></i> ${meta.title}`;
+    titleEl.innerHTML = `<i class="${meta.icon || 'fa-solid fa-chart-pie'}"></i> ${escapeHtml(meta.title)}`;
   }
   if (catBadge && meta) catBadge.textContent = meta.category;
   if (basisBadge && meta) {
@@ -280,7 +280,7 @@ function switchFinanceReportsTab(tabName, btn) {
     const catBadge = document.getElementById("reportShellCategoryBadge");
     const basisBadge = document.getElementById("reportShellBasisBadge");
     const qEl = document.getElementById("reportShellQuestion");
-    if (titleEl) titleEl.innerHTML = `<i class="${meta.icon || 'fa-solid fa-chart-pie'}"></i> ${meta.title}`;
+    if (titleEl) titleEl.innerHTML = `<i class="${meta.icon || 'fa-solid fa-chart-pie'}"></i> ${escapeHtml(meta.title)}`;
     if (catBadge) catBadge.textContent = meta.category;
     if (basisBadge) {
       basisBadge.textContent =
@@ -676,7 +676,7 @@ async function openReportDrilldown(drilldownType, targetId, title) {
   const empty = document.getElementById("reportDrilldownEmpty");
   const loading = document.getElementById("reportDrilldownLoadingBar");
 
-  if (tEl) tEl.innerHTML = `<i class="fa-solid fa-search-dollar"></i> ${title || 'Transaction Drill-Down'}`;
+  if (tEl) tEl.innerHTML = `<i class="fa-solid fa-search-dollar"></i> ${escapeHtml(title || 'Transaction Drill-Down')}`;
   if (subEl) subEl.textContent = `Granular ledger transactions for ${title || 'selected item'}`;
   if (ctxText) ctxText.textContent = `${(drilldownType || '').toUpperCase()}: ${title || targetId}`;
   if (tbody) tbody.innerHTML = "";
@@ -713,9 +713,9 @@ async function openReportDrilldown(drilldownType, targetId, title) {
       const isOut = (r.direction || "out") === "out";
       tr.innerHTML = `
         <td>${FinanceFormat.formatFinanceDate(r.date)}</td>
-        <td><span class="badge ${isOut ? 'badge-danger' : 'badge-success'}">${(r.type || 'expense').toUpperCase()}</span></td>
-        <td><code>${r.reference || '—'}</code></td>
-        <td><strong>${r.description || '—'}</strong></td>
+        <td><span class="badge ${isOut ? 'badge-danger' : 'badge-success'}">${escapeHtml((r.type || 'expense').toUpperCase())}</span></td>
+        <td><code>${escapeHtml(r.reference || '—')}</code></td>
+        <td><strong>${escapeHtml(r.description || '—')}</strong></td>
         <td>${r.account || '—'}</td>
         <td style="text-align:center;"><span class="badge ${isOut ? 'badge-danger' : 'badge-success'}">${(r.direction || 'out').toUpperCase()}</span></td>
         <td class="cell-money" style="text-align:right; font-weight:600; color:${isOut ? 'var(--danger)' : 'var(--success)'};">
@@ -1097,7 +1097,7 @@ async function loadReportCategorySummary() {
       tr.onclick = () => openReportDrilldown("category", cat.category_id || cat.category_name, cat.category_name);
 
       tr.innerHTML = `
-        <td><strong style="color:var(--accent-text);">${cat.category_name} <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.75rem; margin-left:4px;"></i></strong></td>
+        <td><strong style="color:var(--accent-text);">${escapeHtml(cat.category_name)} <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.75rem; margin-left:4px;"></i></strong></td>
         <td><span class="badge ${cat.kind === 'cost' ? 'badge-danger' : 'badge-neutral'}">${(cat.kind || 'cost').toUpperCase()}</span></td>
         <td style="text-align:center;">${cat.transaction_count || 0}</td>
         <td class="cell-money" style="text-align:right; font-weight:600;">${FinanceFormat.renderMoneyHtml(amt, reportCurr)}</td>
@@ -1188,7 +1188,7 @@ async function loadReportMatrix() {
 
     // Build Body Rows
     rows.forEach((r) => {
-      let rHtml = `<tr><td><strong>${r.category_name}</strong></td>`;
+      let rHtml = `<tr><td><strong>${escapeHtml(r.category_name)}</strong></td>`;
       periods.forEach((p) => {
         const val = Number((r.period_values && r.period_values[p]) || 0);
         rHtml += `<td class="cell-money" style="text-align:right; ${val > 0 ? 'font-weight:600;' : 'color:var(--text-muted);'}">
@@ -1281,14 +1281,14 @@ async function loadReportBalances() {
 
       tr.innerHTML = `
         <td>
-          <div style="font-weight:600; color:var(--accent-text);">${acc.account_name} <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.75rem; margin-left:4px;"></i></div>
+          <div style="font-weight:600; color:var(--accent-text);">${escapeHtml(acc.account_name)} <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.75rem; margin-left:4px;"></i></div>
         </td>
         <td>
           <span class="badge ${isBank ? 'badge-neutral' : 'badge-info'}">
-            <i class="fa-solid ${isBank ? 'fa-building-columns' : 'fa-wallet'}"></i> ${acc.account_type.toUpperCase()}
+            <i class="fa-solid ${isBank ? 'fa-building-columns' : 'fa-wallet'}"></i> ${escapeHtml(acc.account_type.toUpperCase())}
           </span>
         </td>
-        <td>${acc.bank_name || "—"}</td>
+        <td>${escapeHtml(acc.bank_name || "—")}</td>
         <td><code style="font-size:0.85rem;">${FinanceFormat.formatMaskedAccountNumber(acc.account_number, !isBank)}</code></td>
         <td>${acc.country || "—"}</td>
         <td><strong>${acc.currency}</strong></td>
@@ -1495,10 +1495,10 @@ async function loadReportTransactions() {
 
       tr.innerHTML = `
         <td>${FinanceFormat.formatFinanceDate(tx.transaction_date || tx.date)}</td>
-        <td><strong>${tx.account_name}</strong></td>
-        <td><span class="badge badge-neutral">${tx.category_name}</span></td>
-        <td>${payeeName}${payeeBadge}</td>
-        <td style="font-size:0.85rem; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${tx.description || "—"}</td>
+        <td><strong>${escapeHtml(tx.account_name)}</strong></td>
+        <td><span class="badge badge-neutral">${escapeHtml(tx.category_name)}</span></td>
+        <td>${escapeHtml(payeeName)}${payeeBadge}</td>
+        <td style="font-size:0.85rem; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(tx.description || "—")}</td>
         <td style="text-align:center;">
           <span class="badge ${isOut ? 'badge-danger' : 'badge-success'}">
             <i class="fa-solid ${isOut ? 'fa-arrow-up' : 'fa-arrow-down'}"></i> ${tx.direction.toUpperCase()}
@@ -1605,15 +1605,15 @@ async function loadReportCheques() {
       const amt = Number(chk.amount || 0);
 
       tr.innerHTML = `
-        <td><strong><i class="fa-solid fa-money-check"></i> ${chk.cheque_number}</strong></td>
+        <td><strong><i class="fa-solid fa-money-check"></i> ${escapeHtml(chk.cheque_number)}</strong></td>
         <td>${FinanceFormat.formatFinanceDate(chk.issue_date)}</td>
         <td>${FinanceFormat.formatFinanceDate(chk.clear_date)}</td>
-        <td>${chk.account_name}</td>
-        <td><strong>${chk.payee}</strong></td>
+        <td>${escapeHtml(chk.account_name)}</td>
+        <td><strong>${escapeHtml(chk.payee)}</strong></td>
         <td><span style="font-size:0.85rem; color:var(--text-muted);">${(chk.purpose_type || 'other').replace('_', ' ')}</span></td>
         <td class="cell-money" style="text-align:right; font-weight:700;">${FinanceFormat.renderMoneyHtml(amt, chk.currency || "USD")}</td>
         <td>${FinanceFormat.formatStatusBadge("cheque", chk.status)}</td>
-        <td style="font-size:0.85rem; color:var(--text-muted);">${chk.notes || "—"}</td>
+        <td style="font-size:0.85rem; color:var(--text-muted);">${escapeHtml(chk.notes || "—")}</td>
       `;
       tbody.appendChild(tr);
     });
@@ -1735,7 +1735,7 @@ async function loadReportProfitAndLoss() {
               </div>
             </td>
             <td style="text-align:center;">
-              <button class="btn btn-sm btn-outline" onclick="openReportDrilldown('category', '${_esc(it.category_name)}', '${_esc(it.category_name)}')">
+              <button class="btn btn-sm btn-outline" onclick="openReportDrilldown('category', ${_esc(JSON.stringify(String(it.category_name ?? '')))}, ${_esc(JSON.stringify(String(it.category_name ?? '')))})">
                 <i class="fa-solid fa-search"></i>
               </button>
             </td>
@@ -1763,7 +1763,7 @@ async function loadReportProfitAndLoss() {
               </div>
             </td>
             <td style="text-align:center;">
-              <button class="btn btn-sm btn-outline" onclick="openReportDrilldown('category', '${_esc(it.category_name)}', '${_esc(it.category_name)}')">
+              <button class="btn btn-sm btn-outline" onclick="openReportDrilldown('category', ${_esc(JSON.stringify(String(it.category_name ?? '')))}, ${_esc(JSON.stringify(String(it.category_name ?? '')))})">
                 <i class="fa-solid fa-search"></i>
               </button>
             </td>
@@ -2328,7 +2328,7 @@ async function loadCompanyCompensationReport(dFrom, dTo, currency) {
     const empSelect = document.getElementById("reportCompEmployeeSelect");
     if (empSelect) {
       empSelect.innerHTML = '<option value="">Choose Employee for Drilldown...</option>' +
-        _cachedCompanyEmployees.map(e => `<option value="${e.employee_id}">${e.employee_name} (${e.department || 'General'})</option>`).join("");
+        _cachedCompanyEmployees.map(e => `<option value="${e.employee_id}">${escapeHtml(e.employee_name)} (${escapeHtml(e.department || 'General')})</option>`).join("");
     }
 
     // Render Company Spend Table
@@ -2348,8 +2348,8 @@ async function loadCompanyCompensationReport(dFrom, dTo, currency) {
 
     tbody.innerHTML = _cachedCompanyEmployees.map(e => `
       <tr>
-        <td><strong>${e.employee_name}</strong></td>
-        <td><span class="badge badge-neutral">${e.department || 'General'}</span></td>
+        <td><strong>${escapeHtml(e.employee_name)}</strong></td>
+        <td><span class="badge badge-neutral">${escapeHtml(e.department || 'General')}</span></td>
         <td style="text-align:right;">${formatCurrency(e.total_external)}</td>
         <td style="text-align:right;">${formatCurrency(e.total_internal)}</td>
         <td style="text-align:right;">${formatCurrency(e.total_commission)}</td>
@@ -2392,7 +2392,7 @@ async function loadEmployeeCompensationReport(empId, dFrom, dTo, currency) {
 
     const titleEl = document.getElementById("reportEmployeeSpendTitle");
     if (titleEl) {
-      titleEl.innerHTML = `<i class="fa-solid fa-user"></i> ${data.employee_name} <span class="badge badge-info" style="font-size:0.75rem; font-weight:normal; margin-left:8px;">${data.department || 'General'}</span> — Total Spend: <strong>${formatCurrency(data.grand_total)}</strong>`;
+      titleEl.innerHTML = `<i class="fa-solid fa-user"></i> ${escapeHtml(data.employee_name)} <span class="badge badge-info" style="font-size:0.75rem; font-weight:normal; margin-left:8px;">${escapeHtml(data.department || 'General')}</span> — Total Spend: <strong>${formatCurrency(data.grand_total)}</strong>`;
     }
 
     const tbody = document.getElementById("reportEmployeeSpendTableBody");
@@ -2411,7 +2411,7 @@ async function loadEmployeeCompensationReport(empId, dFrom, dTo, currency) {
 
       return `
         <tr>
-          <td><strong>${l.period_label || 'Current'}</strong></td>
+          <td><strong>${escapeHtml(l.period_label || 'Current')}</strong></td>
           <td>${typeLabel}</td>
           <td style="text-align:right;">${formatCurrency(l.base_salary)}</td>
           <td style="text-align:right; color:var(--danger);">${formatCurrency((l.tax_amount || 0) + (l.deductions_total || 0))}</td>
@@ -2520,7 +2520,7 @@ async function loadStatutoryRemittedReport() {
         <tr>
           <td><strong>${it.period}</strong></td>
           <td><span class="badge badge-neutral">${typeLabel}</span></td>
-          <td>${it.notes || '—'}</td>
+          <td>${escapeHtml(it.notes || '—')}</td>
           <td style="text-align:right; font-weight:700; color:var(--success);">${formatCurrency(it.amount_remitted)}</td>
           <td style="text-align:right; color:var(--text-muted);">${formatCurrency(it.amount_accrued)}</td>
           <td style="text-align:center;"><span class="badge badge-success">Settled</span></td>

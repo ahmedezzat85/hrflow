@@ -677,7 +677,7 @@ async function openBehalfClaimModal(empId = null) {
   const sel = document.getElementById('bcCategory');
   sel.innerHTML = (insuranceCategories || []).map(c => {
     const name = c.name || c.category || c.Name || c.Category;
-    return name ? `<option value="${name}">${name}</option>` : '';
+    return name ? `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>` : '';
   }).filter(Boolean).join('');
   document.getElementById('bcProvider').value = '';
   document.getElementById('bcAmount').value = '';
@@ -768,7 +768,7 @@ function previewEmployeeDocument(docId, name, fileType) {
       container.innerHTML = `<iframe src="${url}" style="width:100%;height:75vh;border:none;background:var(--surface);"></iframe>`;
     }
   }).catch(err => {
-    container.innerHTML = `<div style="color:var(--danger);font-size:13px;padding:20px;text-align:center;">${err.message}</div>`;
+    container.innerHTML = `<div style="color:var(--danger);font-size:13px;padding:20px;text-align:center;">${escapeHtml(err.message)}</div>`;
   });
 }
 

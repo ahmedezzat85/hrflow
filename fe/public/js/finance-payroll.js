@@ -774,7 +774,7 @@
         return `
           <button type="button" class="payroll-step-pill step ${cls}" onclick="PayrollApp.setStep(${idx})">
             <span class="payroll-step-num stepn">${idx + 1}</span>
-            <span>${meta.label}</span>
+            <span>${escapeHtml(meta.label)}</span>
           </button>
         `;
       }).join('');
@@ -1258,7 +1258,7 @@
       const bonuses = (row && row.bonuses) || [];
       const existingHtml = bonuses.length > 0
         ? `<div class="existing"><b>Existing additions</b>${bonuses.map((b, idx) => `
-            <span class="tag">${b.type || 'Bonus'} · ${this.money(b.amount)} · ${b.source === 'external' ? 'EXT' : 'INT'}
+            <span class="tag">${escapeHtml(b.type || 'Bonus')} · ${this.money(b.amount)} · ${b.source === 'external' ? 'EXT' : 'INT'}
               <i class="fa-solid fa-xmark" style="cursor:pointer; margin-left:4px; opacity:0.7;" onclick="PayrollApp.deleteBonus(${empId}, ${idx}, ${b.id || 'null'})" title="Remove"></i>
             </span>`).join('')}</div>`
         : `<div class="existing"><b>Add a variable component for this employee</b></div>`;
@@ -2169,8 +2169,8 @@
 
       rowsEl.innerHTML = `
         <div class="jr"><span>6100 - Payroll employee disbursements</span><span>${this.money(netTotal)}</span><span>—</span></div>
-        <div class="jr"><span>${extBankName}</span><span>—</span><span>${this.money(extTotal)}</span></div>
-        <div class="jr"><span>${intBankName}</span><span>—</span><span>${this.money(intTotal)}</span></div>
+        <div class="jr"><span>${escapeHtml(extBankName)}</span><span>—</span><span>${this.money(extTotal)}</span></div>
+        <div class="jr"><span>${escapeHtml(intBankName)}</span><span>—</span><span>${this.money(intTotal)}</span></div>
       `;
     },
 

@@ -17,7 +17,7 @@ async function checkExportStatus() {
         badge.innerHTML = `<i class="fa-solid fa-circle-check" style="color:var(--success)"></i> Google Sheets Connected`;
         badge.style.color = 'var(--success)';
       } else {
-        badge.innerHTML = `<i class="fa-solid fa-circle-info" style="color:var(--warning)"></i> Sheets: ${res.reason || 'Not configured'}`;
+        badge.innerHTML = `<i class="fa-solid fa-circle-info" style="color:var(--warning)"></i> Sheets: ${escapeHtml(res.reason || 'Not configured')}`;
         badge.style.color = 'var(--warning)';
       }
     }

@@ -82,7 +82,7 @@ function renderAdminPortal() {
       ? (employees.find(e => String(e.id) === String(myAdminId)) || employees[0])
       : null;
     if (adminUser && adminUser.name) {
-      name = `, ${adminUser.name.split(' ')[0]}`;
+      name = `, ${escapeHtml(adminUser.name.split(' ')[0])}`;
     }
     greetEl.innerHTML = `${hello}${name}. Here is <strong class="hv-text-brand">${months[now.getMonth()]} ${now.getFullYear()}</strong> so far`;
   }
@@ -347,7 +347,7 @@ function renderEmployeePortal() {
           <div style="display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--fv-line);">
             <span style="width: 32px; height: 32px; flex: none; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; background: var(--fv-area-teal-bg, #e0f4f1); color: var(--id-teal-ink, #0b7a6d);">${iconSvg}</span>
             <span style="flex: 1; min-width: 0;">
-              <span style="display: block; font-weight: 600; color: var(--ink-strong); font-size: 13.5px;">${x.title}</span>
+              <span style="display: block; font-weight: 600; color: var(--ink-strong); font-size: 13.5px;">${escapeHtml(x.title)}</span>
               <span style="font-size: 12px; color: var(--ink-muted);">${x.sub}</span>
             </span>
             <span class="badge-pill ${pillTone}">${label}</span>
