@@ -250,7 +250,7 @@ def test_payroll_approval_blocked_by_exceptions(app_client, admin_cookies, seed_
     run_id = create_res.json()["id"]
 
     # Attempt to approve
-    app_res = app_client.post(f"/api/finance/payroll/runs/{run_id}/approve", cookies=admin_cookies)
+    app_res = app_client.post(f"/api/finance/payroll/runs/{run_id}/approve?allow_self_approval=true", cookies=admin_cookies)
     assert app_res.status_code == 400
     assert "blocking exception" in app_res.json()["detail"].lower()
 
@@ -314,7 +314,7 @@ def test_payroll_approval_allowed_with_warning_only_exceptions(app_client, admin
     assert create_res.status_code == 201
     run_id = create_res.json()["id"]
 
-    app_res = app_client.post(f"/api/finance/payroll/runs/{run_id}/approve", cookies=admin_cookies)
+    app_res = app_client.post(f"/api/finance/payroll/runs/{run_id}/approve?allow_self_approval=true", cookies=admin_cookies)
     assert app_res.status_code == 200
     assert app_res.json()["status"] == "approved"
 
@@ -356,7 +356,7 @@ def test_payroll_approval_finalization_immutability(app_client, admin_cookies, d
     assert create_res.json()["status"] == "draft"
 
     # Approve run
-    app_res = app_client.post(f"/api/finance/payroll/runs/{run_id}/approve", cookies=admin_cookies)
+    app_res = app_client.post(f"/api/finance/payroll/runs/{run_id}/approve?allow_self_approval=true", cookies=admin_cookies)
     assert app_res.status_code == 200
     assert app_res.json()["status"] == "approved"
     assert app_res.json()["approved_at"] is not None
@@ -401,7 +401,7 @@ def test_payroll_partial_payment_recovery(app_client, admin_cookies, db_session,
         cookies=admin_cookies,
     )
     run_id = create_res.json()["id"]
-    app_client.post(f"/api/finance/payroll/runs/{run_id}/approve", cookies=admin_cookies)
+    app_client.post(f"/api/finance/payroll/runs/{run_id}/approve?allow_self_approval=true", cookies=admin_cookies)
     app_client.post(f"/api/finance/payroll/runs/{run_id}/finalize", cookies=admin_cookies)
 
     # 1. Execute payment with simulated failure on emp2
@@ -472,7 +472,7 @@ def test_payroll_gl_journal_posting_and_payslips(app_client, admin_cookies, empl
         cookies=admin_cookies,
     )
     run_id = create_res.json()["id"]
-    app_client.post(f"/api/finance/payroll/runs/{run_id}/approve", cookies=admin_cookies)
+    app_client.post(f"/api/finance/payroll/runs/{run_id}/approve?allow_self_approval=true", cookies=admin_cookies)
     app_client.post(f"/api/finance/payroll/runs/{run_id}/finalize", cookies=admin_cookies)
     app_client.post(f"/api/finance/payroll/runs/{run_id}/pay", json={}, cookies=admin_cookies)
 
@@ -696,7 +696,7 @@ def test_payroll_approval_and_finalization_succeeds_with_missing_bank_warning(ap
     run_id = create_res.json()["id"]
 
     # 3. Approve: succeeds (not blocked by missing bank details)
-    app_res = app_client.post(f"/api/finance/payroll/runs/{run_id}/approve", cookies=admin_cookies)
+    app_res = app_client.post(f"/api/finance/payroll/runs/{run_id}/approve?allow_self_approval=true", cookies=admin_cookies)
     assert app_res.status_code == 200
     assert app_res.json()["status"] == "approved"
 

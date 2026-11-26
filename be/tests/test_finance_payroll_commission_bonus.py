@@ -281,7 +281,7 @@ def test_commissions_participate_in_statutory_obligations(app_client, admin_cook
     assert b_resp.status_code == 201
 
     # Approve and finalize run
-    assert app_client.post(f"/api/finance/payroll/runs/{run_id}/approve", cookies=admin_cookies).status_code == 200
+    assert app_client.post(f"/api/finance/payroll/runs/{run_id}/approve?allow_self_approval=true", cookies=admin_cookies).status_code == 200
     fin_resp = app_client.post(f"/api/finance/payroll/runs/{run_id}/finalize", cookies=admin_cookies)
     assert fin_resp.status_code == 200
     fin_data = fin_resp.json()
@@ -311,7 +311,7 @@ def test_reject_modifications_on_locked_run(app_client, admin_cookies):
     line_id = gen_resp.json()["lines"][0]["id"]
 
     # Approve run
-    assert app_client.post(f"/api/finance/payroll/runs/{run_id}/approve", cookies=admin_cookies).status_code == 200
+    assert app_client.post(f"/api/finance/payroll/runs/{run_id}/approve?allow_self_approval=true", cookies=admin_cookies).status_code == 200
 
     # Attempt to add line to approved run -> 400
     add_resp = app_client.post(

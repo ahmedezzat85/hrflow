@@ -117,7 +117,7 @@ def test_per_employee_and_company_spend_reports(app_client, admin_cookies):
     assert resp_comm.status_code == 201
 
     # Approve & Finalize Run 1
-    app_client.post(f"/api/finance/payroll/runs/{run1_id}/approve", cookies=admin_cookies)
+    app_client.post(f"/api/finance/payroll/runs/{run1_id}/approve?allow_self_approval=true", cookies=admin_cookies)
     app_client.post(f"/api/finance/payroll/runs/{run1_id}/finalize", cookies=admin_cookies)
 
     # 2. Run 2: 2026-10
@@ -149,7 +149,7 @@ def test_per_employee_and_company_spend_reports(app_client, admin_cookies):
     assert resp_bonus.status_code == 201
 
     # Approve & Finalize Run 2
-    app_client.post(f"/api/finance/payroll/runs/{run2_id}/approve", cookies=admin_cookies)
+    app_client.post(f"/api/finance/payroll/runs/{run2_id}/approve?allow_self_approval=true", cookies=admin_cookies)
     app_client.post(f"/api/finance/payroll/runs/{run2_id}/finalize", cookies=admin_cookies)
 
     # --- Test Alice Per-Employee Report across both months (2026-09 to 2026-10) ---
@@ -248,7 +248,7 @@ def test_statutory_remitted_report_and_payable_status(app_client, admin_cookies)
         cookies=admin_cookies,
     )
     run_id = resp_gen.json()["id"]
-    app_client.post(f"/api/finance/payroll/runs/{run_id}/approve", cookies=admin_cookies)
+    app_client.post(f"/api/finance/payroll/runs/{run_id}/approve?allow_self_approval=true", cookies=admin_cookies)
     app_client.post(f"/api/finance/payroll/runs/{run_id}/finalize", cookies=admin_cookies)
 
     # Explicitly seed statutory obligations for 2026-09 compliance testing (replacing the estimates finalize opened)
@@ -420,7 +420,7 @@ def test_custom_date_range_crossing_year_boundary(app_client, admin_cookies):
         )
         assert resp.status_code == 201
         run_id = resp.json()["id"]
-        app_client.post(f"/api/finance/payroll/runs/{run_id}/approve", cookies=admin_cookies)
+        app_client.post(f"/api/finance/payroll/runs/{run_id}/approve?allow_self_approval=true", cookies=admin_cookies)
         app_client.post(f"/api/finance/payroll/runs/{run_id}/finalize", cookies=admin_cookies)
 
     # Query custom date range crossing year boundary

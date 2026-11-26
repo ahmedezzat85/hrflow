@@ -48,7 +48,7 @@ def _finalized_run(client, cookies, label, ext_id=None, int_id=None, bank_id=Non
     resp = client.post(f"{RUNS}/generate", json=body, cookies=cookies)
     assert resp.status_code == 201, resp.text
     run_id = resp.json()["id"]
-    assert client.post(f"{RUNS}/{run_id}/approve", cookies=cookies).status_code == 200
+    assert client.post(f"{RUNS}/{run_id}/approve?allow_self_approval=true", cookies=cookies).status_code == 200
     assert client.post(f"{RUNS}/{run_id}/finalize", cookies=cookies).status_code == 200
     return run_id
 
