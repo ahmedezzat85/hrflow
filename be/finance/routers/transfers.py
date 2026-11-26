@@ -100,10 +100,17 @@ def void_transfer(
     payload: TransferVoidRequest,
     current_user: dict = Depends(require_permission("finance.account.write")),
     service: TransfersService = Depends(get_transfers_service),
+    idempotency_key: Optional[str] = Depends(get_idempotency_key),
+    idempotency: IdempotencyService = Depends(get_idempotency_service),
 ):
     """Voids a wrong transfer: removes all its ledger rows, recomputes both accounts' balances, keeps the record hidden."""
     voided_by = current_user.get("email") or current_user.get("sub") or "user"
-    return service.void_transfer(transfer_id, payload.reason, voided_by=voided_by)
+    return idempotency.execute_idempotent(
+        idempotency_key=idempotency_key,
+        user_email=current_user.get("email") or "user",
+        endpoint_path=f"/api/finance/transfers/{transfer_id}/void",
+        operation_fn=lambda: service.void_transfer(transfer_id, payload.reason, voided_by=voided_by),
+    )
 
 
 @router.post("/{transfer_id}/match", response_model=AccountTransferResponse)

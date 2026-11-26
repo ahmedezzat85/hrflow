@@ -131,7 +131,7 @@
         lines.forEach((l) => { l.settlement_id = st.id; });
         return st;
       }
-      return apiRequest("POST", "/api/finance/commissions/settlements", payload);
+      return apiRequest("POST", "/api/finance/commissions/settlements", payload, true, (root._intentHeaders ? root._intentHeaders("/api/finance/commissions/settlements", payload) : {}));
     },
     async undoCommissionSettlement(id) {
       if (_isMock()) {
@@ -142,7 +142,7 @@
         FinanceMockState.commissions.forEach((l) => { if (l.settlement_id === st.id) l.settlement_id = null; });
         return st;
       }
-      return apiRequest("POST", `/api/finance/commissions/settlements/${id}/undo`);
+      return apiRequest("POST", `/api/finance/commissions/settlements/${id}/undo`, null, true, (root._intentHeaders ? root._intentHeaders(`/api/finance/commissions/settlements/${id}/undo`, null) : {}));
     },
     _salespersonName: _name,
   };

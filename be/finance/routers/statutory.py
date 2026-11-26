@@ -24,6 +24,9 @@ from finance.schemas import (
 from finance.services.statutory_service import StatutoryObligationsService
 from finance.deps import get_statutory_service
 
+from finance.deps import get_idempotency_key, get_idempotency_service
+from finance.services.idempotency import IdempotencyService
+
 router = APIRouter(prefix="/api/finance/statutory-obligations", tags=["Finance - Statutory Obligations"])
 
 
@@ -105,12 +108,19 @@ def settle_statutory_obligation(
     payload: StatutoryObligationSettle,
     current_user: dict = Depends(require_permission("finance.statutory.write")),
     service: StatutoryObligationsService = Depends(get_statutory_service),
+    idempotency_key: Optional[str] = Depends(get_idempotency_key),
+    idempotency: IdempotencyService = Depends(get_idempotency_service),
 ):
     """
     Record a remittance payment against an accrued or partially remitted statutory obligation.
     Atomically updates obligation status, creates linked ledger transaction, and updates bank account balance.
     """
-    return service.settle_obligation(obligation_id, payload.dict(), user_email=current_user.get("email") or current_user.get("sub"))
+    return idempotency.execute_idempotent(
+        idempotency_key=idempotency_key,
+        user_email=current_user.get("email") or "user",
+        endpoint_path=f"/api/finance/statutory-obligations/{obligation_id}/settle",
+        operation_fn=lambda: service.settle_obligation(obligation_id, payload.dict(), user_email=current_user.get("email") or current_user.get("sub")),
+    )
 
 
 @router.patch("/{obligation_id}", response_model=StatutoryObligationResponse)

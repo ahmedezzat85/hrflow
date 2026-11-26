@@ -36,6 +36,9 @@ from finance.schemas import (
 from finance.services.subscriptions_service import SubscriptionsService
 from finance.deps import get_subscriptions_service
 
+from finance.deps import get_idempotency_key, get_idempotency_service
+from finance.services.idempotency import IdempotencyService
+
 router = APIRouter(prefix="/api/finance", tags=["Finance - Subscriptions & Attachments"])
 
 
@@ -84,11 +87,18 @@ def settle_subscription_charge(
     current_user: dict = Depends(require_permission("finance.subscription.write")),
     access: AccessContext = Depends(get_access_context),
     service: SubscriptionsService = Depends(get_subscriptions_service),
+    idempotency_key: Optional[str] = Depends(get_idempotency_key),
+    idempotency: IdempotencyService = Depends(get_idempotency_service),
 ):
     """Settles an expected charge by linking an existing payment, or by creating an Already paid bill."""
     from finance.services.bills_service import BillActor
     actor = BillActor(email=access.email, is_super_admin=access.is_super_admin, permissions=frozenset(access.permissions))
-    return service.settle_charge(charge_id, payload, actor=actor)
+    return idempotency.execute_idempotent(
+        idempotency_key=idempotency_key,
+        user_email=current_user.get("email") or "user",
+        endpoint_path=f"/api/finance/subscriptions/charges/{charge_id}/settle",
+        operation_fn=lambda: service.settle_charge(charge_id, payload, actor=actor),
+    )
 
 
 @router.post("/subscriptions/charges/{charge_id}/skip", response_model=SubscriptionChargeResponse)

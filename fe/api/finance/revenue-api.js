@@ -84,7 +84,7 @@
         FinanceMockState.revenueReceipts.push(r);
         return r;
       }
-      return apiRequest("POST", "/api/finance/revenue-receipts", payload);
+      return apiRequest("POST", "/api/finance/revenue-receipts", payload, true, (root._intentHeaders ? root._intentHeaders("/api/finance/revenue-receipts", payload) : {}));
     },
     async reverseRevenueReceipt(id, payload) {
       if (_isMock()) {
@@ -98,7 +98,7 @@
         FinanceMockState.revenueReceipts.push(rev);
         return rev;
       }
-      return apiRequest("POST", `/api/finance/revenue-receipts/${id}/reverse`, payload);
+      return apiRequest("POST", `/api/finance/revenue-receipts/${id}/reverse`, payload, true, (root._intentHeaders ? root._intentHeaders(`/api/finance/revenue-receipts/${id}/reverse`, payload) : {}));
     },
     async uploadRevenueReceiptAttachment(id, file) {
       if (_isMock()) {

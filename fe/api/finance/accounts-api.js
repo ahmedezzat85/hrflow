@@ -655,7 +655,7 @@
 
       return newTx;
     }
-    return apiRequest("POST", `/api/finance/accounts/${accountId}/transactions`, payload);
+    return apiRequest("POST", `/api/finance/accounts/${accountId}/transactions`, payload, true, (root._intentHeaders ? root._intentHeaders(`/api/finance/accounts/${accountId}/transactions`, payload) : {}));
   },
 
   async checkDuplicateSettlement(params) {
@@ -913,7 +913,7 @@
       transfer.settlement_status = "voided";
       return transfer;
     }
-    return apiRequest("POST", `/api/finance/transfers/${transferId}/void`, { reason });
+    return apiRequest("POST", `/api/finance/transfers/${transferId}/void`, { reason }, true, (root._intentHeaders ? root._intentHeaders(`/api/finance/transfers/${transferId}/void`, { reason }) : {}));
   },
 
   async getTransfer(id) {
@@ -1026,7 +1026,7 @@
       FinanceMockState.transfers.unshift(newTransfer);
       return newTransfer;
     }
-    return apiRequest("POST", "/api/finance/transfers", payload);
+    return apiRequest("POST", "/api/finance/transfers", payload, true, (root._intentHeaders ? root._intentHeaders("/api/finance/transfers", payload) : {}));
   },
 
   async previewTransfer(payload) {

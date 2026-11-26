@@ -194,7 +194,7 @@
       }
       return _chequeView(newCheque);
     }
-    return apiRequest("POST", "/api/finance/cheques", payload);
+    return apiRequest("POST", "/api/finance/cheques", payload, true, (root._intentHeaders ? root._intentHeaders("/api/finance/cheques", payload) : {}));
   },
   async updateChequeStatus(id, payload) {
     if (_isMock()) {

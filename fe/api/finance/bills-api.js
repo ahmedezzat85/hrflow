@@ -436,7 +436,7 @@
 
       return newBill;
     }
-    return apiRequest("POST", "/api/finance/bills", payload);
+    return apiRequest("POST", "/api/finance/bills", payload, true, (root._intentHeaders ? root._intentHeaders("/api/finance/bills", payload) : {}));
   },
   async updateBill(id, payload) {
     if (_isMock()) {
@@ -652,7 +652,7 @@
       bill.status = _billDerivePaymentStatus(bill);
       return newPayment;
     }
-    return apiRequest("POST", `/api/finance/bills/${billId}/payments`, payload);
+    return apiRequest("POST", `/api/finance/bills/${billId}/payments`, payload, true, (root._intentHeaders ? root._intentHeaders(`/api/finance/bills/${billId}/payments`, payload) : {}));
   },
   async reverseBillPayment(billId, paymentId, payload) {
     if (_isMock()) {
@@ -680,7 +680,7 @@
       bill.status = _billDerivePaymentStatus(bill);
       return payment;
     }
-    return apiRequest("POST", `/api/finance/bills/${billId}/payments/${paymentId}/reverse`, payload);
+    return apiRequest("POST", `/api/finance/bills/${billId}/payments/${paymentId}/reverse`, payload, true, (root._intentHeaders ? root._intentHeaders(`/api/finance/bills/${billId}/payments/${paymentId}/reverse`, payload) : {}));
   },
 
   async uploadBillAttachment(billId, file) {
