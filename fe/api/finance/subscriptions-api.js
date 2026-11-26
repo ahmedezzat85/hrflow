@@ -152,7 +152,7 @@
       _advanceRenewal(c);
       return _chargeView(c);
     }
-    return apiRequest("POST", `/api/finance/subscriptions/charges/${id}/settle`, payload);
+    return apiRequest("POST", `/api/finance/subscriptions/charges/${id}/settle`, payload, true, (root._intentHeaders ? root._intentHeaders(`/api/finance/subscriptions/charges/${id}/settle`, payload) : {}));
   },
   async skipSubscriptionCharge(id, payload) {
     if (_isMock()) {

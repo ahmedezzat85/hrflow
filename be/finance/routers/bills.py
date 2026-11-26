@@ -309,16 +309,23 @@ def reverse_bill_payment(
     current_user: dict = Depends(require_permission("finance.bill.pay")),
     access: AccessContext = Depends(get_access_context),
     service: BillsService = Depends(get_bills_service),
+    idempotency_key: Optional[str] = Depends(get_idempotency_key),
+    idempotency: IdempotencyService = Depends(get_idempotency_service),
 ):
     """
     Atomically reverse a recorded bill payment.
     Restores the bank account balance and creates a corresponding reversal ledger entry.
     """
-    return service.reverse_payment(
+    return idempotency.execute_idempotent(
+        idempotency_key=idempotency_key,
+        user_email=current_user.get("email") or "user",
+        endpoint_path=f"/api/finance/bills/{bill_id}/payments/{payment_id}/reverse",
+        operation_fn=lambda: service.reverse_payment(
         bill_id=bill_id,
         payment_id=payment_id,
         req=payload,
         actor=_actor(access),
+    ),
     )
 
 

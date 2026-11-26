@@ -59,6 +59,26 @@
   }
   root._getIdempHeaders = _getIdempHeaders;
 
+  // Money-moving requests carry an Idempotency-Key (audit 2026-11, M-4). The same request repeated within 30 seconds
+  // (a double submit, a retry after a timeout) reuses its key, so the server returns the first result instead of
+  // posting twice; an identical entry made on purpose after that gets a new key.
+  const _intentKeys = new Map();
+  function _intentHeaders(path, payload) {
+    const now = Date.now();
+    for (const [k, v] of _intentKeys) if (now - v.at > 30000) _intentKeys.delete(k);
+    const id = `${path}|${JSON.stringify(payload === undefined ? null : payload)}`;
+    let hit = _intentKeys.get(id);
+    if (!hit) {
+      const key = (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function")
+        ? crypto.randomUUID()
+        : `idemp-${now}-${Math.random().toString(36).slice(2, 11)}`;
+      hit = { key, at: now };
+      _intentKeys.set(id, hit);
+    }
+    return { "Idempotency-Key": hit.key };
+  }
+  root._intentHeaders = _intentHeaders;
+
   const FinanceMockState = root.FinanceMockState || (root.FinanceMockState = {});
   if (!FinanceMockState.featureFlags) {
     FinanceMockState.featureFlags = {
@@ -491,7 +511,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       }
       return newPayment;
     }
-    return apiRequest("POST", `/api/finance/invoices/${invoiceId}/payments`, payload);
+    return apiRequest("POST", `/api/finance/invoices/${invoiceId}/payments`, payload, true, (root._intentHeaders ? root._intentHeaders(`/api/finance/invoices/${invoiceId}/payments`, payload) : {}));
   },
   // reversalDate (YYYY-MM-DD, default today) and kind ("refund" | "correction", default correction) are optional (INV-REFUND-1)
   async reverseInvoicePayment(invoiceId, paymentId, reason = null, reversalDate = null, kind = null) {
@@ -526,7 +546,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
     if (reversalDate) params.set("reversal_date", reversalDate);
     if (kind) params.set("kind", kind);
     const qs = params.toString();
-    return apiRequest("POST", `/api/finance/invoices/${invoiceId}/payments/${paymentId}/reverse${qs ? `?${qs}` : ""}`);
+    return apiRequest("POST", `/api/finance/invoices/${invoiceId}/payments/${paymentId}/reverse${qs ? `?${qs}` : ""}`, null, true, (root._intentHeaders ? root._intentHeaders(`/api/finance/invoices/${invoiceId}/payments/${paymentId}/reverse${qs ? `?${qs}` : ""}`, null) : {}));
   },
   async sendInvoiceReminder(invoiceId) {
     if (_isMock()) {
@@ -984,7 +1004,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
         lines.forEach((l) => { l.settlement_id = st.id; });
         return st;
       }
-      return apiRequest("POST", "/api/finance/commissions/settlements", payload);
+      return apiRequest("POST", "/api/finance/commissions/settlements", payload, true, (root._intentHeaders ? root._intentHeaders("/api/finance/commissions/settlements", payload) : {}));
     },
     async undoCommissionSettlement(id) {
       if (_isMock()) {
@@ -995,7 +1015,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
         FinanceMockState.commissions.forEach((l) => { if (l.settlement_id === st.id) l.settlement_id = null; });
         return st;
       }
-      return apiRequest("POST", `/api/finance/commissions/settlements/${id}/undo`);
+      return apiRequest("POST", `/api/finance/commissions/settlements/${id}/undo`, null, true, (root._intentHeaders ? root._intentHeaders(`/api/finance/commissions/settlements/${id}/undo`, null) : {}));
     },
     _salespersonName: _name,
   };
@@ -1096,7 +1116,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
         FinanceMockState.revenueReceipts.push(r);
         return r;
       }
-      return apiRequest("POST", "/api/finance/revenue-receipts", payload);
+      return apiRequest("POST", "/api/finance/revenue-receipts", payload, true, (root._intentHeaders ? root._intentHeaders("/api/finance/revenue-receipts", payload) : {}));
     },
     async reverseRevenueReceipt(id, payload) {
       if (_isMock()) {
@@ -1110,7 +1130,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
         FinanceMockState.revenueReceipts.push(rev);
         return rev;
       }
-      return apiRequest("POST", `/api/finance/revenue-receipts/${id}/reverse`, payload);
+      return apiRequest("POST", `/api/finance/revenue-receipts/${id}/reverse`, payload, true, (root._intentHeaders ? root._intentHeaders(`/api/finance/revenue-receipts/${id}/reverse`, payload) : {}));
     },
     async uploadRevenueReceiptAttachment(id, file) {
       if (_isMock()) {
@@ -1610,7 +1630,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
 
       return newBill;
     }
-    return apiRequest("POST", "/api/finance/bills", payload);
+    return apiRequest("POST", "/api/finance/bills", payload, true, (root._intentHeaders ? root._intentHeaders("/api/finance/bills", payload) : {}));
   },
   async updateBill(id, payload) {
     if (_isMock()) {
@@ -1826,7 +1846,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       bill.status = _billDerivePaymentStatus(bill);
       return newPayment;
     }
-    return apiRequest("POST", `/api/finance/bills/${billId}/payments`, payload);
+    return apiRequest("POST", `/api/finance/bills/${billId}/payments`, payload, true, (root._intentHeaders ? root._intentHeaders(`/api/finance/bills/${billId}/payments`, payload) : {}));
   },
   async reverseBillPayment(billId, paymentId, payload) {
     if (_isMock()) {
@@ -1854,7 +1874,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       bill.status = _billDerivePaymentStatus(bill);
       return payment;
     }
-    return apiRequest("POST", `/api/finance/bills/${billId}/payments/${paymentId}/reverse`, payload);
+    return apiRequest("POST", `/api/finance/bills/${billId}/payments/${paymentId}/reverse`, payload, true, (root._intentHeaders ? root._intentHeaders(`/api/finance/bills/${billId}/payments/${paymentId}/reverse`, payload) : {}));
   },
 
   async uploadBillAttachment(billId, file) {
@@ -2878,7 +2898,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
 
       return newTx;
     }
-    return apiRequest("POST", `/api/finance/accounts/${accountId}/transactions`, payload);
+    return apiRequest("POST", `/api/finance/accounts/${accountId}/transactions`, payload, true, (root._intentHeaders ? root._intentHeaders(`/api/finance/accounts/${accountId}/transactions`, payload) : {}));
   },
 
   async checkDuplicateSettlement(params) {
@@ -3136,7 +3156,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       transfer.settlement_status = "voided";
       return transfer;
     }
-    return apiRequest("POST", `/api/finance/transfers/${transferId}/void`, { reason });
+    return apiRequest("POST", `/api/finance/transfers/${transferId}/void`, { reason }, true, (root._intentHeaders ? root._intentHeaders(`/api/finance/transfers/${transferId}/void`, { reason }) : {}));
   },
 
   async getTransfer(id) {
@@ -3249,7 +3269,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       FinanceMockState.transfers.unshift(newTransfer);
       return newTransfer;
     }
-    return apiRequest("POST", "/api/finance/transfers", payload);
+    return apiRequest("POST", "/api/finance/transfers", payload, true, (root._intentHeaders ? root._intentHeaders("/api/finance/transfers", payload) : {}));
   },
 
   async previewTransfer(payload) {
@@ -3597,7 +3617,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       }
       return _chequeView(newCheque);
     }
-    return apiRequest("POST", "/api/finance/cheques", payload);
+    return apiRequest("POST", "/api/finance/cheques", payload, true, (root._intentHeaders ? root._intentHeaders("/api/finance/cheques", payload) : {}));
   },
   async updateChequeStatus(id, payload) {
     if (_isMock()) {
@@ -3874,7 +3894,7 @@ if (typeof window !== "undefined") window._withBook = _withBook;
       _advanceRenewal(c);
       return _chargeView(c);
     }
-    return apiRequest("POST", `/api/finance/subscriptions/charges/${id}/settle`, payload);
+    return apiRequest("POST", `/api/finance/subscriptions/charges/${id}/settle`, payload, true, (root._intentHeaders ? root._intentHeaders(`/api/finance/subscriptions/charges/${id}/settle`, payload) : {}));
   },
   async skipSubscriptionCharge(id, payload) {
     if (_isMock()) {
@@ -8420,10 +8440,9 @@ async getEntityActivity(entityType, entityId) {
         run.paid_by = "mock.payroll@hrflow.test";
         return run;
       }
-      return apiRequest("POST", `/api/finance/payroll/runs/${runId}/pay`, {
-        retry_failed_only: retryFailedOnly,
-        simulate_partial_failure_ids: simulateFailures,
-      });
+      const payBody = { retry_failed_only: retryFailedOnly, simulate_partial_failure_ids: simulateFailures };
+      const payPath = `/api/finance/payroll/runs/${runId}/pay`;
+      return apiRequest("POST", payPath, payBody, true, root._intentHeaders ? root._intentHeaders(payPath, payBody) : {});
     },
 
     async postPayrollJournal(runId) {
@@ -9170,7 +9189,7 @@ async getEntityActivity(entityType, entityId) {
       obl.updated_at = new Date().toISOString();
       return obl;
     }
-    return apiRequest("POST", `/api/finance/statutory-obligations/${id}/settle`, data);
+    return apiRequest("POST", `/api/finance/statutory-obligations/${id}/settle`, data, true, (root._intentHeaders ? root._intentHeaders(`/api/finance/statutory-obligations/${id}/settle`, data) : {}));
   },
 
   async updateStatutoryObligation(id, data) {

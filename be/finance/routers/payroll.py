@@ -32,6 +32,9 @@ from finance.schemas import (
 )
 from finance.services.payroll_service import PayrollService
 
+from finance.deps import get_idempotency_key, get_idempotency_service
+from finance.services.idempotency import IdempotencyService
+
 router = APIRouter(prefix="/api/finance/payroll", tags=["Finance - Payroll"])
 
 
@@ -330,18 +333,25 @@ def execute_payroll_payment(
     run_id: int = Path(..., description="Payroll Run ID to disburse"),
     service: PayrollService = Depends(get_payroll_service),
     current_user: dict = Depends(require_permission("finance.payroll.pay")),
+    idempotency_key: Optional[str] = Depends(get_idempotency_key),
+    idempotency: IdempotencyService = Depends(get_idempotency_service),
 ):
     """
     Executes net salary funding and disbursements.
     Supports partial failure recovery without rerunning already-successful lines.
     """
     user_email = current_user.get("email") if isinstance(current_user, dict) else None
-    return service.execute_payment(
+    return idempotency.execute_idempotent(
+        idempotency_key=idempotency_key,
+        user_email=current_user.get("email") or "user",
+        endpoint_path=f"/api/finance/payroll/runs/{run_id}/pay",
+        operation_fn=lambda: service.execute_payment(
         run_id=run_id,
         user_email=user_email,
         bank_account_id=req.bank_account_id,
         retry_failed_only=req.retry_failed_only,
         simulate_partial_failure_ids=req.simulate_partial_failure_ids,
+    ),
     )
 
 

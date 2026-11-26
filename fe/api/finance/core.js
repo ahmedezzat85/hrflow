@@ -35,6 +35,26 @@
   }
   root._getIdempHeaders = _getIdempHeaders;
 
+  // Money-moving requests carry an Idempotency-Key (audit 2026-11, M-4). The same request repeated within 30 seconds
+  // (a double submit, a retry after a timeout) reuses its key, so the server returns the first result instead of
+  // posting twice; an identical entry made on purpose after that gets a new key.
+  const _intentKeys = new Map();
+  function _intentHeaders(path, payload) {
+    const now = Date.now();
+    for (const [k, v] of _intentKeys) if (now - v.at > 30000) _intentKeys.delete(k);
+    const id = `${path}|${JSON.stringify(payload === undefined ? null : payload)}`;
+    let hit = _intentKeys.get(id);
+    if (!hit) {
+      const key = (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function")
+        ? crypto.randomUUID()
+        : `idemp-${now}-${Math.random().toString(36).slice(2, 11)}`;
+      hit = { key, at: now };
+      _intentKeys.set(id, hit);
+    }
+    return { "Idempotency-Key": hit.key };
+  }
+  root._intentHeaders = _intentHeaders;
+
   const FinanceMockState = root.FinanceMockState || (root.FinanceMockState = {});
   if (!FinanceMockState.featureFlags) {
     FinanceMockState.featureFlags = {

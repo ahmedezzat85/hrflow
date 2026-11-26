@@ -171,11 +171,18 @@ def reverse_invoice_payment(
     kind: Optional[str] = Query(None, description="refund (money returned to the customer) or correction (entered wrongly, the default)"),
     current_user: dict = Depends(require_permission("finance.invoice.write")),
     service: InvoicesService = Depends(get_invoices_service),
+    idempotency_key: Optional[str] = Depends(get_idempotency_key),
+    idempotency: IdempotencyService = Depends(get_idempotency_service),
 ):
     """Reverse a previously recorded payment against an invoice, as of `reversal_date` (INV-REFUND-1)."""
-    return service.reverse_payment(
+    return idempotency.execute_idempotent(
+        idempotency_key=idempotency_key,
+        user_email=current_user.get("email") or "user",
+        endpoint_path=f"/api/finance/invoices/{invoice_id}/payments/{payment_id}/reverse",
+        operation_fn=lambda: service.reverse_payment(
         invoice_id, payment_id, reason=reason, actor=_actor_email(current_user),
         reversal_date=reversal_date, reversal_kind=kind,
+    ),
     )
 
 

@@ -32,6 +32,9 @@ from finance.services.accounts_service import AccountsService
 from finance.services.ledger_service import LedgerService
 from finance.deps import get_accounts_service, get_ledger_service
 
+from finance.deps import get_idempotency_key, get_idempotency_service
+from finance.services.idempotency import IdempotencyService
+
 router = APIRouter(prefix="/api/finance/accounts", tags=["Finance - Bank Accounts"])
 
 
@@ -163,6 +166,8 @@ def create_account_transaction(
     current_user: dict = Depends(require_permission("finance.account.write")),
     access: AccessContext = Depends(get_access_context),
     service: LedgerService = Depends(get_ledger_service),
+    idempotency_key: Optional[str] = Depends(get_idempotency_key),
+    idempotency: IdempotencyService = Depends(get_idempotency_service),
 ):
     """Records a manual continuous ledger transaction and recomputes running balances."""
     if payload.linked_bill_id and not (access.is_super_admin or "finance.bill.pay" in access.permissions):
@@ -178,7 +183,12 @@ def create_account_transaction(
                 detail="Manual balance adjustments require 'finance.adjustment.manage' authorization",
             )
     user_email = current_user.get("email") if isinstance(current_user, dict) else None
-    return service.record_manual_transaction(account_id, payload, user_email=user_email)
+    return idempotency.execute_idempotent(
+        idempotency_key=idempotency_key,
+        user_email=current_user.get("email") or "user",
+        endpoint_path=f"/api/finance/accounts/{account_id}/transactions",
+        operation_fn=lambda: service.record_manual_transaction(account_id, payload, user_email=user_email),
+    )
 
 
 @router.post(

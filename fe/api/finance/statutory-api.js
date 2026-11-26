@@ -268,7 +268,7 @@
       obl.updated_at = new Date().toISOString();
       return obl;
     }
-    return apiRequest("POST", `/api/finance/statutory-obligations/${id}/settle`, data);
+    return apiRequest("POST", `/api/finance/statutory-obligations/${id}/settle`, data, true, (root._intentHeaders ? root._intentHeaders(`/api/finance/statutory-obligations/${id}/settle`, data) : {}));
   },
 
   async updateStatutoryObligation(id, data) {

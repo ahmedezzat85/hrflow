@@ -22,6 +22,9 @@ from finance.schemas import (
 )
 from finance.services.revenue_service import RevenueService
 
+from finance.deps import get_idempotency_key, get_idempotency_service
+from finance.services.idempotency import IdempotencyService
+
 router = APIRouter(prefix="/api/finance", tags=["Finance - Revenue"])
 
 
@@ -82,9 +85,16 @@ def record_revenue_receipt(
     payload: RevenueReceiptCreate,
     current_user: dict = Depends(require_permission("finance.account.write")),
     service: RevenueService = Depends(get_revenue_service),
+    idempotency_key: Optional[str] = Depends(get_idempotency_key),
+    idempotency: IdempotencyService = Depends(get_idempotency_service),
 ):
     """Records money received on any account with its source, product, customer, period and memo gross/fees."""
-    return service.create_receipt(payload, created_by=_email(current_user))
+    return idempotency.execute_idempotent(
+        idempotency_key=idempotency_key,
+        user_email=current_user.get("email") or "user",
+        endpoint_path="/api/finance/revenue-receipts",
+        operation_fn=lambda: service.create_receipt(payload, created_by=_email(current_user)),
+    )
 
 
 @router.get("/revenue-receipts/{receipt_id}", response_model=RevenueReceiptResponse)
@@ -102,9 +112,16 @@ def reverse_revenue_receipt(
     payload: RevenueReceiptReverse,
     current_user: dict = Depends(require_permission("finance.account.write")),
     service: RevenueService = Depends(get_revenue_service),
+    idempotency_key: Optional[str] = Depends(get_idempotency_key),
+    idempotency: IdempotencyService = Depends(get_idempotency_service),
 ):
     """Corrects a receipt with a reversing ledger row; receipts are never deleted."""
-    return service.reverse_receipt(receipt_id, payload, created_by=_email(current_user))
+    return idempotency.execute_idempotent(
+        idempotency_key=idempotency_key,
+        user_email=current_user.get("email") or "user",
+        endpoint_path=f"/api/finance/revenue-receipts/{receipt_id}/reverse",
+        operation_fn=lambda: service.reverse_receipt(receipt_id, payload, created_by=_email(current_user)),
+    )
 
 
 @router.post("/revenue-receipts/{receipt_id}/attachment", response_model=RevenueReceiptResponse)

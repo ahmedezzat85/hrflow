@@ -24,6 +24,9 @@ from finance.schemas import (
 )
 from finance.services.commissions_service import CommissionsService, quarter_bounds
 
+from finance.deps import get_idempotency_key, get_idempotency_service
+from finance.services.idempotency import IdempotencyService
+
 router = APIRouter(prefix="/api/finance", tags=["Finance - Commissions"])
 
 
@@ -111,9 +114,16 @@ def settle_commissions(
     payload: SettlementCreate,
     current_user: dict = Depends(require_permission("finance.commission.write")),
     service: CommissionsService = Depends(get_commissions_service),
+    idempotency_key: Optional[str] = Depends(get_idempotency_key),
+    idempotency: IdempotencyService = Depends(get_idempotency_service),
 ):
     """Confirm that a salesperson's unsettled commissions for a month (employees) or quarter (others) were paid out. Records only; posts nothing to the ledger."""
-    return service.settle(payload, actor=_actor(current_user))
+    return idempotency.execute_idempotent(
+        idempotency_key=idempotency_key,
+        user_email=current_user.get("email") or "user",
+        endpoint_path="/api/finance/commissions/settlements",
+        operation_fn=lambda: service.settle(payload, actor=_actor(current_user)),
+    )
 
 
 @router.post("/commissions/settlements/{settlement_id}/undo", response_model=SettlementResponse)
@@ -121,5 +131,12 @@ def undo_commission_settlement(
     settlement_id: int,
     current_user: dict = Depends(require_permission("finance.commission.write")),
     service: CommissionsService = Depends(get_commissions_service),
+    idempotency_key: Optional[str] = Depends(get_idempotency_key),
+    idempotency: IdempotencyService = Depends(get_idempotency_service),
 ):
-    return service.undo_settlement(settlement_id, actor=_actor(current_user))
+    return idempotency.execute_idempotent(
+        idempotency_key=idempotency_key,
+        user_email=current_user.get("email") or "user",
+        endpoint_path=f"/api/finance/commissions/settlements/{settlement_id}/undo",
+        operation_fn=lambda: service.undo_settlement(settlement_id, actor=_actor(current_user)),
+    )

@@ -968,10 +968,9 @@
         run.paid_by = "mock.payroll@hrflow.test";
         return run;
       }
-      return apiRequest("POST", `/api/finance/payroll/runs/${runId}/pay`, {
-        retry_failed_only: retryFailedOnly,
-        simulate_partial_failure_ids: simulateFailures,
-      });
+      const payBody = { retry_failed_only: retryFailedOnly, simulate_partial_failure_ids: simulateFailures };
+      const payPath = `/api/finance/payroll/runs/${runId}/pay`;
+      return apiRequest("POST", payPath, payBody, true, root._intentHeaders ? root._intentHeaders(payPath, payBody) : {});
     },
 
     async postPayrollJournal(runId) {

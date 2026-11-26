@@ -343,7 +343,7 @@
       }
       return newPayment;
     }
-    return apiRequest("POST", `/api/finance/invoices/${invoiceId}/payments`, payload);
+    return apiRequest("POST", `/api/finance/invoices/${invoiceId}/payments`, payload, true, (root._intentHeaders ? root._intentHeaders(`/api/finance/invoices/${invoiceId}/payments`, payload) : {}));
   },
   // reversalDate (YYYY-MM-DD, default today) and kind ("refund" | "correction", default correction) are optional (INV-REFUND-1)
   async reverseInvoicePayment(invoiceId, paymentId, reason = null, reversalDate = null, kind = null) {
@@ -378,7 +378,7 @@
     if (reversalDate) params.set("reversal_date", reversalDate);
     if (kind) params.set("kind", kind);
     const qs = params.toString();
-    return apiRequest("POST", `/api/finance/invoices/${invoiceId}/payments/${paymentId}/reverse${qs ? `?${qs}` : ""}`);
+    return apiRequest("POST", `/api/finance/invoices/${invoiceId}/payments/${paymentId}/reverse${qs ? `?${qs}` : ""}`, null, true, (root._intentHeaders ? root._intentHeaders(`/api/finance/invoices/${invoiceId}/payments/${paymentId}/reverse${qs ? `?${qs}` : ""}`, null) : {}));
   },
   async sendInvoiceReminder(invoiceId) {
     if (_isMock()) {
