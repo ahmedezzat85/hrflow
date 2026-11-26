@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
 import drive_client
-from logging_config import get_logger
+from logging_config import get_logger, redact_ref
 from auth import get_current_user
 from deps import audit_log, permission_scope, Scope
 from services.uploads import validate_upload_content, safe_content_disposition_filename
@@ -84,7 +84,7 @@ def create_employee(
         "id_type": payload.id_type,
         "id_number": payload.id_number,
     })
-    logger.info("Admin %s created employee id=%s (%s)", current_user.get("email"), new_id, payload.email)
+    logger.info("Admin %s created employee id=%s", current_user.get("email"), new_id)
     audit_log(audit_repo, "employee.create", current_user.get("email"), "employee", new_id, f"name={payload.name}, email={payload.email}")
     return {"message": "Employee created. They can now sign in with their Google account.", "id": new_id}
 
@@ -313,9 +313,9 @@ def upload_employee_document(
     drive = drive_client.get_drive_client()
     try:
         uploaded = drive.upload_file(emp_id, emp["name"], payload.name, payload.data_url)
-    except Exception as exc:
+    except Exception:
         logger.exception("Drive upload failed for employee_id=%s, name='%s'. Returning 502 to client.", emp_id, payload.name)
-        raise HTTPException(status_code=502, detail=f"Could not upload document to Google Drive: {exc}")
+        raise HTTPException(status_code=502, detail="Could not upload the document to Google Drive. Try again, or ask an administrator to check the server log.")
 
     try:
         doc_id = employee_repo.create_document(emp_id, {
@@ -326,10 +326,10 @@ def upload_employee_document(
             "uploaded_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M"),
         })
     except Exception:
-        logger.exception("Uploaded file to Drive (file_id=%s) but failed to record it in repository. Manual cleanup may be needed.", uploaded.get("file_id"))
+        logger.exception("Uploaded file to Drive (file_id=%s) but failed to record it in repository. Manual cleanup may be needed.", redact_ref(uploaded.get("file_id")))
         raise
 
-    logger.info("Document upload complete: doc_id=%s, employee_id=%s, drive_file_id=%s", doc_id, emp_id, uploaded["file_id"])
+    logger.info("Document upload complete: doc_id=%s, employee_id=%s, drive_file_id=%s", doc_id, emp_id, redact_ref(uploaded["file_id"]))
     return {"message": "Document uploaded", "id": doc_id}
 
 
@@ -350,9 +350,9 @@ def stream_employee_document(
     drive = drive_client.get_drive_client()
     try:
         raw_bytes, mime, drive_name = drive.download_file(doc.get("drive_file_id"))
-    except Exception as exc:
-        logger.exception("Failed to stream document doc_id=%s (drive_file_id=%s)", doc_id, doc.get("drive_file_id"))
-        raise HTTPException(status_code=502, detail=f"Could not fetch document from Google Drive: {exc}")
+    except Exception:
+        logger.exception("Failed to stream document doc_id=%s (drive_file_id=%s)", doc_id, redact_ref(doc.get("drive_file_id")))
+        raise HTTPException(status_code=502, detail="Could not fetch the document from Google Drive. Try again, or ask an administrator to check the server log.")
 
     file_name = safe_content_disposition_filename(str(doc.get("name") or drive_name))
     disposition = "attachment" if download else "inline"
@@ -374,11 +374,11 @@ def delete_employee_document(
         logger.warning("Document delete rejected: doc_id=%s not found", doc_id)
         raise HTTPException(status_code=404, detail="Document not found")
     _check_document_access(scope, doc["employee_id"])
-    logger.info("Deleting document doc_id=%s (drive_file_id=%s) requested by %s", doc_id, doc.get("drive_file_id"), current_user.get("email"))
+    logger.info("Deleting document doc_id=%s (drive_file_id=%s) requested by %s", doc_id, redact_ref(doc.get("drive_file_id")), current_user.get("email"))
     drive = drive_client.get_drive_client()
     drive_deleted = drive.delete_file(doc.get("drive_file_id"))
     if not drive_deleted:
-        logger.warning("Drive file deletion returned False for drive_file_id=%s (doc_id=%s) - continuing to remove repository record", doc.get("drive_file_id"), doc_id)
+        logger.warning("Drive file deletion returned False for drive_file_id=%s (doc_id=%s) - continuing to remove repository record", redact_ref(doc.get("drive_file_id")), doc_id)
     employee_repo.delete_document(doc_id)
     logger.info("Document delete complete: doc_id=%s", doc_id)
     audit_log(audit_repo, "document.delete", current_user.get("email"), "employee_document", doc_id, f"employee_id={doc['employee_id']}")

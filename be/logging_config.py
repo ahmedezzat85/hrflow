@@ -14,8 +14,10 @@ Usage in any module:
     logger.error("...")
     logger.debug("...")
 """
+import hashlib
 import logging
 import os
+import re
 import sys
 from logging.handlers import RotatingFileHandler
 
@@ -25,6 +27,24 @@ _LOG_FORMAT = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
 _DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 _configured = False
+
+
+def redact_ref(value) -> str:
+    """A storage reference (Google Drive file or folder ID, local path) as a short stable fingerprint for logs:
+    the same file always gives the same value, so log lines can still be followed, but the ID itself (which grants
+    access to whoever holds the service account) is never written (audit 2026-11, M-8)."""
+    if value is None or value == "":
+        return "-"
+    return "ref:" + hashlib.sha256(str(value).encode("utf-8")).hexdigest()[:10]
+
+
+# Drive IDs inside text we do not build ourselves, such as a Google API error or its traceback
+_DRIVE_ID_IN_TEXT = re.compile(r"((?:/files/|/folders/|fileId=|File not found: |parents=|'parents': \[')\s*)([A-Za-z0-9_-]{20,})")
+
+
+class _RedactingFormatter(logging.Formatter):
+    def format(self, record):
+        return _DRIVE_ID_IN_TEXT.sub(lambda m: m.group(1) + "<redacted>", super().format(record))
 
 
 def setup_logging():
@@ -50,7 +70,7 @@ def setup_logging():
     logger.setLevel(level)
     logger.propagate = False
 
-    formatter = logging.Formatter(_LOG_FORMAT, datefmt=_DATE_FORMAT)
+    formatter = _RedactingFormatter(_LOG_FORMAT, datefmt=_DATE_FORMAT)
 
     # Console handler - always enabled, useful when tailing container logs.
     console_handler = logging.StreamHandler(sys.stdout)

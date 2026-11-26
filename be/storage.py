@@ -17,7 +17,7 @@ from typing import Tuple, Optional, Dict, Any
 
 from config import Config
 import file_layout
-from logging_config import get_logger
+from logging_config import get_logger, redact_ref
 
 logger = get_logger("storage")
 
@@ -240,7 +240,7 @@ class LocalStorageClient(StorageClient):
         mime = guessed_mime or "application/octet-stream"
         file_name = os.path.basename(full_path)
 
-        logger.info("Read local file: file_id=%s (%d bytes, mime=%s)", file_id, len(raw_bytes), mime)
+        logger.info("Read local file: file_id=%s (%d bytes, mime=%s)", redact_ref(file_id), len(raw_bytes), mime)
         return raw_bytes, mime, file_name
 
     def delete_file(self, file_id: str) -> bool:
@@ -252,14 +252,14 @@ class LocalStorageClient(StorageClient):
             full_path = file_layout.resolve_path(file_id, root=self.base_path, must_exist=True)
             if os.path.isfile(full_path):
                 os.remove(full_path)
-                logger.info("Deleted local file: file_id=%s (path=%s)", file_id, full_path)
+                logger.info("Deleted local file: file_id=%s (path=%s)", redact_ref(file_id), redact_ref(full_path))
                 return True
             return False
         except (FileNotFoundError, ValueError):
-            logger.warning("Local file to delete did not exist: file_id=%s", file_id)
+            logger.warning("Local file to delete did not exist: file_id=%s", redact_ref(file_id))
             return False
         except Exception:
-            logger.exception("Failed to delete local file_id=%s", file_id)
+            logger.exception("Failed to delete local file_id=%s", redact_ref(file_id))
             return False
 
 
@@ -278,7 +278,7 @@ def get_storage_client() -> StorageClient:
                 logger.info("Using LocalStorageClient (LOCAL_STORAGE_PATH=%s)", Config.LOCAL_STORAGE_PATH)
                 _storage_instance = LocalStorageClient()
             else:
-                logger.info("Using Google Drive StorageClient (DRIVE_ROOT_FOLDER_ID=%s)", Config.DRIVE_ROOT_FOLDER_ID)
+                logger.info("Using Google Drive StorageClient (DRIVE_ROOT_FOLDER_ID=%s)", redact_ref(Config.DRIVE_ROOT_FOLDER_ID))
                 import drive_client
                 _storage_instance = drive_client.DriveClient()
     return _storage_instance

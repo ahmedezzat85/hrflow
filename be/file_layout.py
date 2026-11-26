@@ -10,6 +10,7 @@ symlink escape guards, and legacy fallback resolvers.
 import datetime
 import json
 import logging
+from logging_config import redact_ref
 import os
 import posixpath
 import re
@@ -646,5 +647,5 @@ def delete_file(
         return False
     except ValueError:
         # Reference outside the storage root: never delete it
-        logger.warning("Refused to delete file outside storage root (ref=%r)", storage_ref)
+        logger.warning("Refused to delete file outside storage root (ref=%r)", redact_ref(storage_ref))
         return False
