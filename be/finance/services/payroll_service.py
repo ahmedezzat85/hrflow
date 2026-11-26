@@ -14,6 +14,7 @@ from sqlalchemy import desc
 import csv
 import io
 from fastapi import HTTPException, status
+from logging_config import get_logger
 
 from models_db import EmployeeDB, EmployeeBankAccountDB, AuditLogDB, EmployeeSocialInsuranceDB
 from finance.services.excel_exporter import sanitize_csv_cell
@@ -60,6 +61,9 @@ _REFRESH_LINE_FIELDS = (
     "annual_taxed_salary_egp", "annual_tax_egp",
     "tax_settings_version_id", "tax_method_snapshot", "tax_rate_snapshot", "snapshot_notes",
 )
+
+
+logger = get_logger("finance.payroll")
 
 
 class PayrollService:
@@ -2016,6 +2020,16 @@ class PayrollService:
         )
         return self._format_run_detail(run)
 
+    @staticmethod
+    def _require_actor(user_email: Optional[str], action: str) -> str:
+        """Who submits, approves, finalizes or pays a run is recorded as given; it is never filled in with a
+        placeholder, and the maker-checker rule cannot be skipped by leaving it out (audit 2026-11, H-6)."""
+        actor = (user_email or "").strip()
+        if not actor:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail=f"A signed-in user is required to {action} a payroll run.")
+        return actor
+
     def submit_run(self, run_id: int, user_email: Optional[str] = None) -> Dict[str, Any]:
         """Submits a draft payroll run for maker-checker approval."""
         run = self.db.query(PayrollRunDB).filter(PayrollRunDB.id == run_id).first()
@@ -2036,9 +2050,10 @@ class PayrollService:
                 detail=f"Cannot submit payroll run #{run_id}: {len(blocking)} blocking issue(s) remain unresolved."
             )
 
+        actor = self._require_actor(user_email, "submit")
         run.status = "submitted"
         run.submitted_at = datetime.utcnow()
-        run.submitted_by = user_email or "preparer@hrflow.test"
+        run.submitted_by = actor
         self.db.commit()
         self.db.refresh(run)
         self._log_audit(
@@ -2071,20 +2086,24 @@ class PayrollService:
                 detail=f"Cannot approve payroll run #{run_id}: {len(blocking)} blocking exception(s) remain unresolved (e.g. {blocking[0].get('title')})."
             )
 
-        # Maker-checker validation: Submitter cannot self-approve (can be bypassed via allow_self_approval or ENFORCE_MAKER_CHECKER=false)
+        # Maker-checker: the person who prepared the run (its submitter, or its creator when it is approved straight
+        # from draft) cannot approve it, unless the route allowed self-approval for this user. Turning the rule off
+        # with ENFORCE_MAKER_CHECKER=false is logged on every approval it lets through.
+        actor = self._require_actor(user_email, "approve")
+        maker = (run.submitted_by or run.created_by or "").strip().lower()
+        is_self = bool(maker) and actor.lower() == maker
         enforce_mc = os.getenv("ENFORCE_MAKER_CHECKER", "true").lower() == "true"
-        if enforce_mc and not allow_self_approval and user_email:
-            submitter = (run.submitted_by or "").strip().lower()
-            current = user_email.strip().lower()
-            if submitter and current == submitter:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Maker-checker violation: Run cannot be approved by the user who submitted it.",
-                )
+        if is_self and enforce_mc and not allow_self_approval:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Maker-checker violation: Run cannot be approved by the user who prepared it.",
+            )
+        if is_self and not enforce_mc:
+            logger.warning("ENFORCE_MAKER_CHECKER is off: payroll run %s approved by the user who prepared it", run.id)
 
         run.status = "approved"
         run.approved_at = datetime.utcnow()
-        run.approved_by = user_email or "admin@hrflow.test"
+        run.approved_by = actor
         for adj in (run.adjustments or []):
             adj.status = "APPROVED"
             adj.updated_at = datetime.utcnow()
@@ -2095,7 +2114,8 @@ class PayrollService:
             target_type="payroll_run",
             target_id=str(run.id),
             actor_email=user_email,
-            details={"period_label": run.period_label, "total_net": run.total_net, "approved_by": run.approved_by},
+            details={"period_label": run.period_label, "total_net": run.total_net, "approved_by": run.approved_by,
+                     "self_approved": is_self},
         )
         return self._format_run_detail(run)
 
@@ -2119,9 +2139,10 @@ class PayrollService:
         if int_account:
             run.internal_funding_account_id = int_account.id
 
+        actor = self._require_actor(user_email, "finalize")
         run.status = "finalized"
         run.finalized_at = datetime.utcnow()
-        run.finalized_by = user_email or "admin@hrflow.test"
+        run.finalized_by = actor
 
         # Finalizing creates no ledger or liability entries (D-025). It does open the run's statutory obligations
         # (income tax, social insurance) as estimates, so they show in Finance > Spend > Statutory to confirm and pay.
@@ -2297,6 +2318,7 @@ class PayrollService:
         Executes net salary funding and disbursements.
         Supports partial failure recovery without rerunning already-successful lines.
         """
+        self._require_actor(user_email, "pay")
         run = self.db.query(PayrollRunDB).filter(PayrollRunDB.id == run_id).first()
         if not run:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Payroll run #{run_id} not found")
@@ -2343,11 +2365,11 @@ class PayrollService:
 
         if remaining_failed:
             run.status = "partially_paid"
-            run.paid_by = user_email or "payroll@hrflow.test"
+            run.paid_by = user_email
         elif not remaining_pending:
             run.status = "paid"
             run.paid_at = now
-            run.paid_by = user_email or "payroll@hrflow.test"
+            run.paid_by = user_email
 
         # D-025: marking a run paid moves net pay at once. The ledger rows and balances are posted in the
         # same transaction; a refusal (missing funding account, currency mismatch) leaves the run unpaid.

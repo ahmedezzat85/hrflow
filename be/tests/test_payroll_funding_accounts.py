@@ -173,7 +173,7 @@ def test_runs_follow_settings_until_finalize_then_freeze(app_client, admin_cooki
     shown = app_client.get(f"{RUNS}/{run_id}", cookies=admin_cookies).json()
     assert shown["external_funding_account_id"] == second and shown["internal_funding_account_id"] == second
 
-    assert app_client.post(f"{RUNS}/{run_id}/approve", cookies=admin_cookies).status_code == 200
+    assert app_client.post(f"{RUNS}/{run_id}/approve?allow_self_approval=true", cookies=admin_cookies).status_code == 200
     assert app_client.post(f"{RUNS}/{run_id}/finalize", cookies=admin_cookies).status_code == 200
 
     # Settings change after finalize: the run keeps its frozen accounts and pays from them

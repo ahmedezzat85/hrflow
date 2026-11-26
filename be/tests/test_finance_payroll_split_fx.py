@@ -216,7 +216,7 @@ def test_fx_rate_locked_and_draft_regeneration(app_client, admin_cookies):
     assert resp_regen.json()["fx_rate_value"] == 50.10
 
     # 3. Approve run
-    resp_app = app_client.post(f"/api/finance/payroll/runs/{run_id}/approve", cookies=admin_cookies)
+    resp_app = app_client.post(f"/api/finance/payroll/runs/{run_id}/approve?allow_self_approval=true", cookies=admin_cookies)
     assert resp_app.status_code == 200
     assert resp_app.json()["status"] == "approved"
 
@@ -260,7 +260,7 @@ def test_finalize_run_excludes_external_usd_from_statutory_obligations(app_clien
     run_id = resp_gen.json()["id"]
 
     # Approve run
-    resp_app = app_client.post(f"/api/finance/payroll/runs/{run_id}/approve", cookies=admin_cookies)
+    resp_app = app_client.post(f"/api/finance/payroll/runs/{run_id}/approve?allow_self_approval=true", cookies=admin_cookies)
     assert resp_app.status_code == 200
 
     # Finalize run
@@ -345,7 +345,7 @@ def test_dual_funding_accounts_split_journal_posting(app_client, admin_cookies):
     assert run_data["internal_funding_account_id"] == cash_id
 
     # Approve, Finalize, and Disburse
-    assert app_client.post(f"/api/finance/payroll/runs/{run_id}/approve", cookies=admin_cookies).status_code == 200
+    assert app_client.post(f"/api/finance/payroll/runs/{run_id}/approve?allow_self_approval=true", cookies=admin_cookies).status_code == 200
     assert app_client.post(f"/api/finance/payroll/runs/{run_id}/finalize", cookies=admin_cookies).status_code == 200
     assert app_client.post(f"/api/finance/payroll/runs/{run_id}/pay", json={}, cookies=admin_cookies).status_code == 200
 

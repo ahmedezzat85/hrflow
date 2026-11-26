@@ -34,7 +34,7 @@ def test_finalized_run_reverts_to_draft_and_accepts_edits_again(app_client, admi
     # it is persisted (a reload still sees a draft), editable, and can go through approval again
     assert app_client.get(f"{RUNS}/{run_id}", cookies=admin_cookies).json()["status"] == "draft"
     assert app_client.post(f"{RUNS}/{run_id}/refresh", cookies=admin_cookies).status_code == 200
-    assert app_client.post(f"{RUNS}/{run_id}/approve", cookies=admin_cookies).status_code == 200
+    assert app_client.post(f"{RUNS}/{run_id}/approve?allow_self_approval=true", cookies=admin_cookies).status_code == 200
     assert app_client.post(f"{RUNS}/{run_id}/finalize", cookies=admin_cookies).status_code == 200
 
     with get_db_context() as db:
