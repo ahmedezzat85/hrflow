@@ -3,7 +3,7 @@ be/repositories/sql/audit.py
 SQLAlchemy-backed implementation of AuditRepository.
 """
 from datetime import datetime
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any, Optional, Tuple, Union
 
 from sqlalchemy.orm import Session
 
@@ -32,6 +32,30 @@ class SqlAuditRepository:
 
     def _get_session(self) -> Session:
         return get_db_context()
+
+    def list_page(
+        self,
+        limit: int = 200,
+        offset: int = 0,
+        action: Optional[str] = None,
+        target_type: Optional[str] = None,
+        target_id: Optional[str] = None,
+        actor_email: Optional[str] = None,
+    ) -> Tuple[List[Dict[str, Any]], int]:
+        """Newest first, filtered and paged in the database. Returns (rows, total matching)."""
+        with self._get_session() as db:
+            q = db.query(AuditLogDB)
+            if action:
+                q = q.filter(AuditLogDB.action == action)
+            if target_type:
+                q = q.filter(AuditLogDB.target_type == target_type)
+            if target_id is not None and target_id != "":
+                q = q.filter(AuditLogDB.target_id == str(target_id))
+            if actor_email:
+                q = q.filter(AuditLogDB.actor_email.ilike(actor_email.strip()))
+            total = q.count()
+            rows = q.order_by(AuditLogDB.id.desc()).offset(max(offset, 0)).limit(max(limit, 0)).all()
+            return [_audit_to_dict(a) for a in rows], total
 
     def list_all(self) -> List[Dict[str, Any]]:
         with self._get_session() as db:
