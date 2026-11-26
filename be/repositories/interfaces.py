@@ -227,6 +227,11 @@ class AuditRepository(Protocol):
     def list_all(self) -> List[Dict[str, Any]]:
         ...
 
+    def list_page(self, limit: int = 200, offset: int = 0, action: Optional[str] = None,
+                  target_type: Optional[str] = None, target_id: Optional[str] = None,
+                  actor_email: Optional[str] = None) -> Tuple[List[Dict[str, Any]], int]:
+        ...
+
     def log(
         self,
         action: str,

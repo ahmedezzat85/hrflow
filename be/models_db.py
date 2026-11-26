@@ -386,6 +386,9 @@ class AuditLogDB(Base):
     target_id = Column(String(100), default="")
     details = Column(Text, default="")
 
+    # Per-record lookups (activity drawer, audit-log filter); migration 0082
+    __table_args__ = (Index("ix_audit_log_target", "target_type", "target_id"),)
+
 
 class EmployeeSocialInsuranceDB(Base):
     __tablename__ = "employee_social_insurance"
