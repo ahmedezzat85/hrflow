@@ -37,7 +37,7 @@ from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
 
 from config import Config
-from logging_config import get_logger
+from logging_config import get_logger, redact_ref
 
 logger = get_logger("drive_client")
 
@@ -114,7 +114,7 @@ class DriveClient:
         if not self.root_folder_id:
             logger.warning("DRIVE_ROOT_FOLDER_ID is not set. Document uploads will fail until it is configured.")
         self._folder_cache = {}
-        logger.info("Google Drive client initialized (root_folder_id=%s)", self.root_folder_id or "")
+        logger.info("Google Drive client initialized (root_folder_id=%s)", redact_ref(self.root_folder_id or ""))
 
     def _find_folder(self, name: str, parent_id: str):
         safe_name = name.replace("'", "\\'")
@@ -122,7 +122,7 @@ class DriveClient:
             f"name = '{safe_name}' and mimeType = 'application/vnd.google-apps.folder' "
             f"and '{parent_id}' in parents and trashed = false"
         )
-        logger.debug("Searching for Drive folder: name='%s', parent_id=%s", name, parent_id)
+        logger.debug("Searching for Drive folder: name='%s', parent_id=%s", name, redact_ref(parent_id))
         try:
             res = self.service.files().list(
                 q=query, spaces="drive", fields="files(id, name)",
@@ -130,7 +130,7 @@ class DriveClient:
                 corpora="allDrives",
             ).execute()
         except HttpError:
-            logger.exception("Drive API error while searching for folder '%s' under parent %s", name, parent_id)
+            logger.exception("Drive API error while searching for folder '%s' under parent %s", name, redact_ref(parent_id))
             raise
         files = res.get("files", [])
         found_id = files[0]["id"] if files else None
@@ -143,13 +143,13 @@ class DriveClient:
             "mimeType": "application/vnd.google-apps.folder",
             "parents": [parent_id],
         }
-        logger.info("Creating Drive folder '%s' under parent %s", name, parent_id)
+        logger.info("Creating Drive folder '%s' under parent %s", name, redact_ref(parent_id))
         try:
             folder = self.service.files().create(
                 body=metadata, fields="id", supportsAllDrives=True,
             ).execute()
         except HttpError:
-            logger.exception("Drive API error while creating folder '%s' under parent %s. Verify the service account is a Content Manager (or higher) member of the Shared Drive containing DRIVE_ROOT_FOLDER_ID.", name, parent_id)
+            logger.exception("Drive API error while creating folder '%s' under parent %s. Verify the service account is a Content Manager (or higher) member of the Shared Drive containing DRIVE_ROOT_FOLDER_ID.", name, redact_ref(parent_id))
             raise
         logger.info("Created Drive folder '%s' -> id=%s", name, folder["id"])
         return folder["id"]
@@ -214,21 +214,21 @@ class DriveClient:
 
         media = MediaIoBaseUpload(io.BytesIO(raw_bytes), mimetype=mime, resumable=False)
         metadata = {"name": file_name, "parents": [folder_id]}
-        logger.debug("Uploading file to Drive: folder_id=%s, mime=%s, size=%d bytes", folder_id, mime, len(raw_bytes))
+        logger.debug("Uploading file to Drive: folder_id=%s, mime=%s, size=%d bytes", redact_ref(folder_id), mime, len(raw_bytes))
         try:
             created = self.service.files().create(
                 body=metadata, media_body=media, fields="id, webViewLink, webContentLink",
                 supportsAllDrives=True,
             ).execute()
         except HttpError as exc:
-            logger.exception("Drive API error while uploading file '%s' for employee_id=%s (folder_id=%s): status=%s", file_name, employee_id, folder_id, getattr(exc, "status_code", "?"))
+            logger.exception("Drive API error while uploading file '%s' for employee_id=%s (folder_id=%s): status=%s", file_name, employee_id, redact_ref(folder_id), getattr(exc, "status_code", "?"))
             raise
         except Exception:
             logger.exception("Unexpected error while uploading file '%s' for employee_id=%s", file_name, employee_id)
             raise
 
         file_id = created["id"]
-        logger.info("File uploaded to Drive: file_id=%s, name='%s', employee_id=%s", file_id, file_name, employee_id)
+        logger.info("File uploaded to Drive: file_id=%s, name='%s', employee_id=%s", redact_ref(file_id), file_name, employee_id)
 
         try:
             refreshed = self.service.files().get(
@@ -236,10 +236,10 @@ class DriveClient:
                 supportsAllDrives=True,
             ).execute()
         except HttpError:
-            logger.exception("Drive API error while fetching links for file_id=%s", file_id)
+            logger.exception("Drive API error while fetching links for file_id=%s", redact_ref(file_id))
             raise
 
-        logger.info("Upload complete: file_id=%s, employee_id=%s, file_name='%s'", file_id, employee_id, file_name)
+        logger.info("Upload complete: file_id=%s, employee_id=%s, file_name='%s'", redact_ref(file_id), employee_id, file_name)
         return {
             "file_id": file_id,
             "view_url": refreshed.get("webViewLink", ""),
@@ -263,21 +263,21 @@ class DriveClient:
 
         media = MediaIoBaseUpload(io.BytesIO(raw_bytes), mimetype=mime, resumable=False)
         metadata = {"name": file_name, "parents": [folder_id]}
-        logger.debug("Uploading company document to Drive: folder_id=%s, mime=%s, size=%d bytes", folder_id, mime, len(raw_bytes))
+        logger.debug("Uploading company document to Drive: folder_id=%s, mime=%s, size=%d bytes", redact_ref(folder_id), mime, len(raw_bytes))
         try:
             created = self.service.files().create(
                 body=metadata, media_body=media, fields="id, webViewLink, webContentLink",
                 supportsAllDrives=True,
             ).execute()
         except HttpError as exc:
-            logger.exception("Drive API error while uploading company document '%s' (folder_id=%s): status=%s", file_name, folder_id, getattr(exc, "status_code", "?"))
+            logger.exception("Drive API error while uploading company document '%s' (folder_id=%s): status=%s", file_name, redact_ref(folder_id), getattr(exc, "status_code", "?"))
             raise
         except Exception:
             logger.exception("Unexpected error while uploading company document '%s'", file_name)
             raise
 
         file_id = created["id"]
-        logger.info("Company document uploaded to Drive: file_id=%s, name='%s'", file_id, file_name)
+        logger.info("Company document uploaded to Drive: file_id=%s, name='%s'", redact_ref(file_id), file_name)
 
         try:
             refreshed = self.service.files().get(
@@ -285,10 +285,10 @@ class DriveClient:
                 supportsAllDrives=True,
             ).execute()
         except HttpError:
-            logger.exception("Drive API error while fetching links for file_id=%s", file_id)
+            logger.exception("Drive API error while fetching links for file_id=%s", redact_ref(file_id))
             raise
 
-        logger.info("Company document upload complete: file_id=%s, file_name='%s'", file_id, file_name)
+        logger.info("Company document upload complete: file_id=%s, file_name='%s'", redact_ref(file_id), file_name)
         return {
             "file_id": file_id,
             "view_url": refreshed.get("webViewLink", ""),
@@ -380,7 +380,7 @@ class DriveClient:
                 supportsAllDrives=True,
             ).execute()
         except HttpError:
-            logger.exception("Drive API error while uploading invoice '%s' (folder_id=%s)", file_name, folder_id)
+            logger.exception("Drive API error while uploading invoice '%s' (folder_id=%s)", file_name, redact_ref(folder_id))
             raise
 
         file_id = created["id"]
@@ -389,7 +389,7 @@ class DriveClient:
                 fileId=file_id, fields="webViewLink, webContentLink", supportsAllDrives=True,
             ).execute()
         except HttpError:
-            logger.exception("Drive API error while fetching links for invoice file_id=%s", file_id)
+            logger.exception("Drive API error while fetching links for invoice file_id=%s", redact_ref(file_id))
             raise
 
         # If PDF bytes provided, upload PDF version to period folder
@@ -420,7 +420,7 @@ class DriveClient:
                 ).execute()
                 logger.info(
                     "Invoice copy uploaded to employee folder: employee_id=%s, folder_id=%s, file_name='%s'",
-                    employee_id, emp_invoices_folder_id, file_name,
+                    employee_id, redact_ref(emp_invoices_folder_id), file_name,
                 )
 
                 if pdf_bytes is not None and pdf_filename:
@@ -437,7 +437,7 @@ class DriveClient:
                     employee_id, employee_name,
                 )
 
-        logger.info("Invoice upload complete: file_id=%s, file_name='%s'", file_id, file_name)
+        logger.info("Invoice upload complete: file_id=%s, file_name='%s'", redact_ref(file_id), file_name)
         return {
             "file_id": file_id,
             "view_url": refreshed.get("webViewLink", ""),
@@ -462,7 +462,7 @@ class DriveClient:
                 fileId=file_id, fields="name, mimeType", supportsAllDrives=True,
             ).execute()
         except HttpError:
-            logger.exception("Drive API error while fetching metadata for file_id=%s", file_id)
+            logger.exception("Drive API error while fetching metadata for file_id=%s", redact_ref(file_id))
             raise
 
         try:
@@ -474,12 +474,12 @@ class DriveClient:
                 _, done = downloader.next_chunk()
             raw_bytes = buffer.getvalue()
         except HttpError:
-            logger.exception("Drive API error while downloading media for file_id=%s", file_id)
+            logger.exception("Drive API error while downloading media for file_id=%s", redact_ref(file_id))
             raise
 
         mime = meta.get("mimeType", "application/octet-stream")
         name = meta.get("name", "document")
-        logger.info("Downloaded file_id=%s from Drive (%d bytes, mime=%s)", file_id, len(raw_bytes), mime)
+        logger.info("Downloaded file_id=%s from Drive (%d bytes, mime=%s)", redact_ref(file_id), len(raw_bytes), mime)
         return raw_bytes, mime, name
 
     def delete_file(self, file_id: str) -> bool:
@@ -488,10 +488,10 @@ class DriveClient:
             return False
         try:
             self.service.files().delete(fileId=file_id, supportsAllDrives=True).execute()
-            logger.info("Deleted Drive file_id=%s", file_id)
+            logger.info("Deleted Drive file_id=%s", redact_ref(file_id))
             return True
         except Exception:
-            logger.exception("Failed to delete Drive file_id=%s", file_id)
+            logger.exception("Failed to delete Drive file_id=%s", redact_ref(file_id))
             return False
 
 

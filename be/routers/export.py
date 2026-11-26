@@ -244,7 +244,7 @@ def export_dataset_to_google_sheets(
         logger.exception("Google Sheets export failed for dataset '%s'", dataset_key)
         raise HTTPException(
             status_code=502,
-            detail=f"Failed to export to Google Sheets: {str(exc)}. Please check Google service account credentials and permissions.",
+            detail="Failed to export to Google Sheets. Check the Google service account credentials and the sheet's sharing, or ask an administrator to check the server log.",
         )
 
     # Audit log

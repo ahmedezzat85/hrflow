@@ -22,6 +22,9 @@ from services.salary_payment_docs import (
 )
 from repositories.interfaces import SalaryPaymentDocRepository, InvoiceRepository, EmployeeRepository, AuditRepository
 from repositories.deps import get_salary_payment_doc_repo, get_invoice_repo, get_employee_repo, get_audit_repo
+from logging_config import get_logger
+
+logger = get_logger("salary_payment_docs")
 
 router = APIRouter(prefix="/api/salary-payment-docs", tags=["Salary Payment Documents"])
 # Secondary router for backward compatibility with /api/invoices
@@ -165,8 +168,9 @@ def stream_invoice_pdf(
         import services.salary_payment_docs as spd_mod
         get_pdf_fn = getattr(spd_mod, "get_invoice_pdf_bytes", getattr(spd_mod, "get_salary_payment_doc_pdf_bytes", get_salary_payment_doc_pdf_bytes))
         pdf_bytes, filename = get_pdf_fn(inv)
-    except Exception as exc:
-        raise HTTPException(status_code=404, detail=f"PDF preview unavailable: {exc}")
+    except Exception:
+        logger.exception("PDF preview failed for salary payment doc invoice_id=%s", invoice_id)
+        raise HTTPException(status_code=404, detail="PDF preview unavailable for this document.")
 
     disposition = "attachment" if download else "inline"
     safe_filename = urllib.parse.quote(filename)

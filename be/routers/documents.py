@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
 import drive_client
-from logging_config import get_logger
+from logging_config import get_logger, redact_ref
 from auth import get_current_user
 from core.permissions import require_permission
 from deps import audit_log
@@ -54,9 +54,9 @@ def upload_company_document(
     drive = drive_client.get_drive_client()
     try:
         uploaded = drive.upload_company_file(payload.name, payload.data_url)
-    except Exception as exc:
+    except Exception:
         logger.exception("Drive upload failed for company document '%s'. Returning 502 to client.", payload.name)
-        raise HTTPException(status_code=502, detail=f"Could not upload document to Google Drive: {exc}")
+        raise HTTPException(status_code=502, detail="Could not upload the document to Google Drive. Try again, or ask an administrator to check the server log.")
 
     try:
         doc_id = doc_repo.create({
@@ -68,10 +68,10 @@ def upload_company_document(
             "uploaded_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M"),
         })
     except Exception:
-        logger.exception("Uploaded company document to Drive (file_id=%s) but failed to record it in repository.", uploaded.get("file_id"))
+        logger.exception("Uploaded company document to Drive (file_id=%s) but failed to record it in repository.", redact_ref(uploaded.get("file_id")))
         raise
 
-    logger.info("Company document upload complete: doc_id=%s, drive_file_id=%s", doc_id, uploaded["file_id"])
+    logger.info("Company document upload complete: doc_id=%s, drive_file_id=%s", doc_id, redact_ref(uploaded["file_id"]))
     return {"message": "Document uploaded", "id": doc_id}
 
 
@@ -90,9 +90,9 @@ def stream_company_document(
     drive = drive_client.get_drive_client()
     try:
         raw_bytes, mime, drive_name = drive.download_file(doc.get("drive_file_id"))
-    except Exception as exc:
-        logger.exception("Failed to stream company document doc_id=%s (drive_file_id=%s)", doc_id, doc.get("drive_file_id"))
-        raise HTTPException(status_code=502, detail=f"Could not fetch document from Google Drive: {exc}")
+    except Exception:
+        logger.exception("Failed to stream company document doc_id=%s (drive_file_id=%s)", doc_id, redact_ref(doc.get("drive_file_id")))
+        raise HTTPException(status_code=502, detail="Could not fetch the document from Google Drive. Try again, or ask an administrator to check the server log.")
 
     file_name = safe_content_disposition_filename(str(doc.get("name") or drive_name))
     disposition = "attachment" if download else "inline"
@@ -111,11 +111,11 @@ def delete_company_document(
     doc = doc_repo.get_by_id(doc_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
-    logger.info("Deleting company document doc_id=%s (drive_file_id=%s) requested by %s", doc_id, doc.get("drive_file_id"), current_user.get("email"))
+    logger.info("Deleting company document doc_id=%s (drive_file_id=%s) requested by %s", doc_id, redact_ref(doc.get("drive_file_id")), current_user.get("email"))
     drive = drive_client.get_drive_client()
     drive_deleted = drive.delete_file(doc.get("drive_file_id"))
     if not drive_deleted:
-        logger.warning("Drive file deletion returned False for drive_file_id=%s (doc_id=%s) - continuing to remove repository record", doc.get("drive_file_id"), doc_id)
+        logger.warning("Drive file deletion returned False for drive_file_id=%s (doc_id=%s) - continuing to remove repository record", redact_ref(doc.get("drive_file_id")), doc_id)
     doc_repo.delete(doc_id)
     logger.info("Company document delete complete: doc_id=%s", doc_id)
     audit_log(audit_repo, "company_document.delete", current_user.get("email"), "company_document", doc_id)

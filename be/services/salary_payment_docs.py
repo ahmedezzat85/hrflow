@@ -34,7 +34,7 @@ from docxtpl import DocxTemplate
 import drive_client
 import file_layout
 from config import Config
-from logging_config import get_logger
+from logging_config import get_logger, redact_ref
 
 logger = get_logger("salary_payment_docs")
 
@@ -292,7 +292,7 @@ def generate_salary_payment_doc_for_employee(
     )
     logger.info(
         "Generated document_number=%s for employee_id=%s, period=%s-%02d, drive_file_id=%s",
-        invoice_number, employee_id, payment_year, payment_month, uploaded["file_id"],
+        invoice_number, employee_id, payment_year, payment_month, redact_ref(uploaded["file_id"]),
     )
     return {
         "employee_id": employee_id,
@@ -435,7 +435,7 @@ def get_salary_payment_doc_pdf_bytes(doc: dict) -> Tuple[bytes, str]:
             if pdf_bytes:
                 return pdf_bytes, pdf_filename
         except Exception as exc:
-            logger.warning("Could not download/convert document file %s: %s", drive_file_id, exc)
+            logger.warning("Could not download/convert document file %s: %s", redact_ref(drive_file_id), exc)
 
     raise ValueError(f"PDF version of document {doc.get('invoice_number')} could not be found or converted.")
 
